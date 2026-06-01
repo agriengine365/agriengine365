@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Agri Sim — 農業作物適正シミュレーター</title>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css"/>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg:       #0e1a12;
+  --bg2:      #162019;
+  --bg3:      #1e2d20;
+  --panel:    #192418;
+  --border:   #2a3d2c;
+  --green:    #4ade80;
+  --green2:   #22c55e;
+  --green3:   #16a34a;
+  --amber:    #fbbf24;
+  --red:      #f87171;
+  --text:     #e2ede3;
+  --text2:    #8faa91;
+  --text3:    #5a7a5c;
+  --mono:     'DM Mono', monospace;
+  --sans:     'Noto Sans JP', sans-serif;
+  --radius:   10px;
+  --shadow:   0 4px 24px rgba(0,0,0,0.5);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ─── Header ─── */
+header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 20px;
+  height: 52px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 1000;
+}
+header .logo {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--green);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+header .logo span { color: var(--text3); }
+header .badge {
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  color: var(--text3);
+  letter-spacing: 0.06em;
+}
+header .spacer { flex: 1; }
+header .conf-btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  padding: 5px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+header .conf-btn:hover { border-color: var(--green3); color: var(--green); }
+
+/* ─── Layout ─── */
+.main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── Map ─── */
+#map {
+  flex: 1;
+  z-index: 1;
+}
+
+/* Leaflet draw toolbar dark override */
+.leaflet-draw-toolbar a {
+  background-color: var(--bg2) !important;
+  border-color: var(--border) !important;
+}
+.leaflet-draw-toolbar a:hover { background-color: var(--bg3) !important; }
+.leaflet-bar a {
+  background-color: var(--bg2) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+.leaflet-bar a:hover { background-color: var(--bg3) !important; }
+.leaflet-draw-guide-dash { border-color: var(--green) !important; }
+
+/* ─── Side Panel ─── */
+.side {
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tab {
+  flex: 1;
+  padding: 12px 0;
+  font-size: 11px;
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+  color: var(--text3);
+  cursor: pointer;
+  text-align: center;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+.tab.active { color: var(--green); border-bottom-color: var(--green); }
+.tab:hover:not(.active) { color: var(--text2); }
+
+.tab-content { display: none; flex: 1; overflow-y: auto; padding: 16px; }
+.tab-content.active { display: flex; flex-direction: column; gap: 12px; }
+
+/* ─── Cards ─── */
+.card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+.card-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+
+/* ─── Area Info ─── */
+.area-stat {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 12px;
+}
+.area-stat:last-child { border-bottom: none; }
+.area-stat .label { color: var(--text2); }
+.area-stat .value {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--green);
+}
+.area-stat .unit { font-size: 10px; color: var(--text3); margin-left: 3px; }
+
+/* ─── Form Elements ─── */
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field label { font-size: 11px; color: var(--text2); }
+.field input, .field select, .field textarea {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 12px;
+  padding: 7px 10px;
+  outline: none;
+  transition: border-color 0.2s;
+  width: 100%;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  border-color: var(--green3);
+}
+.field select option { background: var(--bg2); }
+.field textarea { resize: vertical; min-height: 60px; }
+
+/* Buttons */
+.btn {
+  padding: 9px 16px;
+  border-radius: 7px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+  width: 100%;
+}
+.btn-primary {
+  background: var(--green3);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--green2); }
+.btn-primary:disabled { background: var(--bg3); color: var(--text3); cursor: not-allowed; }
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+.btn-ghost:hover { border-color: var(--green3); color: var(--green); }
+.btn-danger {
+  background: transparent;
+  border: 1px solid #3d1f1f;
+  color: #f87171;
+  font-size: 10px;
+  padding: 6px 10px;
+  width: auto;
+}
+.btn-danger:hover { background: #2a1010; }
+
+/* ─── Confidence bar ─── */
+.conf-bar-wrap { margin-top: 4px; }
+.conf-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text3);
+  margin-bottom: 4px;
+  font-family: var(--mono);
+}
+.conf-bar-track {
+  height: 4px;
+  background: var(--bg2);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.conf-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--green3);
+  transition: width 0.5s ease;
+}
+.conf-bar-fill.low { background: var(--amber); }
+.conf-bar-fill.vlow { background: var(--red); }
+
+/* ─── Crop Score Card ─── */
+.crop-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.crop-rank {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  width: 18px;
+  flex-shrink: 0;
+}
+.crop-name { flex: 1; font-size: 13px; font-weight: 500; }
+.crop-score {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--green);
+}
+.crop-score-bar {
+  width: 60px;
+  height: 3px;
+  background: var(--bg3);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 2px;
+}
+.crop-score-bar-fill {
+  height: 100%;
+  background: var(--green3);
+  border-radius: 99px;
+}
+
+/* ─── Area List ─── */
+.area-item {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.area-item:hover { border-color: var(--green3); }
+.area-item.active { border-color: var(--green); }
+.area-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.area-item-name { font-weight: 500; font-size: 13px; }
+.area-item-meta {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  display: flex;
+  gap: 12px;
+}
+.area-item-meta span { color: var(--text2); }
+
+/* ─── Notice ─── */
+.notice {
+  padding: 10px 12px;
+  border-radius: 7px;
+  font-size: 11px;
+  line-height: 1.6;
+  border: 1px solid;
+}
+.notice-warn { background: #2a2310; border-color: #4a3a10; color: var(--amber); }
+.notice-info { background: #0e1e18; border-color: var(--border); color: var(--text2); }
+.notice-ok { background: #0e2010; border-color: #1a4020; color: var(--green); }
+
+/* ─── Soil selector ─── */
+.soil-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.soil-btn {
+  padding: 7px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text2);
+  font-size: 11px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+.soil-btn:hover { border-color: var(--green3); color: var(--text); }
+.soil-btn.selected { border-color: var(--green); color: var(--green); background: #0e2010; }
+
+/* ─── Firebase config modal ─── */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 9000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 28px;
+  width: 440px;
+  max-width: 95vw;
+  box-shadow: var(--shadow);
+}
+.modal h2 {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--green);
+  margin-bottom: 6px;
+  letter-spacing: 0.08em;
+}
+.modal p { font-size: 12px; color: var(--text2); margin-bottom: 16px; line-height: 1.7; }
+.modal-actions { display: flex; gap: 8px; margin-top: 20px; }
+.modal-actions .btn { flex: 1; }
+
+/* ─── Toast ─── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 9px 20px;
+  font-size: 12px;
+  font-family: var(--mono);
+  color: var(--text);
+  z-index: 9999;
+  transition: transform 0.3s ease;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.green { border-color: var(--green3); color: var(--green); }
+.toast.amber { border-color: #4a3a10; color: var(--amber); }
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+/* ─── Empty state ─── */
+.empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text3);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.empty .icon { font-size: 28px; margin-bottom: 10px; }
+
+/* ─── Loading ─── */
+.spinner {
+  width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.section-gap { height: 4px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">AGRI<span>/</span>SIM <span style="color:var(--text3);font-size:10px;margin-left:4px;">v0.1</span></div>
+  <div class="badge">農業作物適正シミュレーター</div>
+  <div class="spacer"></div>
+  <div id="firebase-status" class="badge" style="color:var(--red);border-color:#3d1f1f;">● Firebase未接続</div>
+  <button class="conf-btn" onclick="openModal()">Firebase設定</button>
+</header>
+
+<div class="main">
+  <!-- Map -->
+  <div id="map"></div>
+
+  <!-- Side Panel -->
+  <div class="side">
+    <div class="tabs">
+      <div class="tab active" data-tab="draw">描画</div>
+      <div class="tab" data-tab="areas">エリア一覧</div>
+      <div class="tab" data-tab="analysis">分析</div>
+    </div>
+
+    <!-- TAB: 描画 -->
+    <div class="tab-content active" id="tab-draw">
+      <div class="notice notice-info">
+        地図上でポリゴンツールを使い、圃場の形に沿って多角形を描いてください。
+      </div>
+
+      <div class="card" id="area-stats-card">
+        <div class="card-title">エリア情報</div>
+        <div class="area-stat">
+          <span class="label">面積</span>
+          <span class="value" id="stat-area">—<span class="unit">ha</span></span>
+        </div>
+        <div class="area-stat">
+          <span class="label">周長</span>
+          <span class="value" id="stat-perim">—<span class="unit">m</span></span>
+        </div>
+        <div class="area-stat">
+          <span class="label">重心緯度</span>
+          <span class="value" id="stat-lat">—</span>
+        </div>
+        <div class="area-stat">
+          <span class="label">重心経度</span>
+          <span class="value" id="stat-lng">—</span>
+        </div>
+        <div class="area-stat">
+          <span class="label">推定標高</span>
+          <span class="value" id="stat-elev">—<span class="unit">m</span></span>
+        </div>
+        <div class="area-stat">
+          <span class="label">気候帯</span>
+          <span class="value" id="stat-climate" style="font-size:11px;color:var(--text2);">—</span>
+        </div>
+      </div>
+
+      <!-- Save form -->
+      <div class="card" id="save-card">
+        <div class="card-title">エリアを保存</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="field">
+            <label>エリア名</label>
+            <input type="text" id="area-name" placeholder="例：北側田んぼ A区画">
+          </div>
+          <div class="field">
+            <label>土壌タイプ（任意）</label>
+            <div class="soil-grid" id="soil-grid">
+              <div class="soil-btn" data-soil="sandy">砂質土</div>
+              <div class="soil-btn" data-soil="loam">壌土（ローム）</div>
+              <div class="soil-btn" data-soil="clay">粘土質</div>
+              <div class="soil-btn" data-soil="peat">泥炭土</div>
+              <div class="soil-btn" data-soil="volcanic">火山灰土</div>
+              <div class="soil-btn" data-soil="unknown">不明</div>
+            </div>
+          </div>
+          <div class="field">
+            <label>メモ（任意）</label>
+            <textarea id="area-memo" placeholder="水はけが悪い、日当たり良好など"></textarea>
+          </div>
+          <button class="btn btn-primary" id="save-btn" disabled onclick="saveArea()">
+            エリアを保存する
+          </button>
+        </div>
+      </div>
+
+      <button class="btn btn-ghost" onclick="clearDraw()">描画をリセット</button>
+    </div>
+
+    <!-- TAB: エリア一覧 -->
+    <div class="tab-content" id="tab-areas">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:11px;color:var(--text3);font-family:var(--mono);" id="areas-count">0 エリア</span>
+        <button class="btn btn-ghost" style="width:auto;font-size:10px;padding:5px 12px;" onclick="loadAreas()">再読み込み</button>
+      </div>
+      <div id="areas-list">
+        <div class="empty">
+          <div class="icon">🗾</div>
+          保存されたエリアはありません。<br>地図でポリゴンを描いて保存してください。
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: 分析 -->
+    <div class="tab-content" id="tab-analysis">
+      <div id="analysis-empty" class="empty">
+        <div class="icon">🌾</div>
+        エリアを選択して分析を実行してください。
+      </div>
+      <div id="analysis-result" style="display:none;flex-direction:column;gap:12px;">
+        <!-- Confidence -->
+        <div class="card">
+          <div class="card-title">データ信頼度</div>
+          <div class="conf-bar-wrap">
+            <div class="conf-bar-label">
+              <span id="conf-label">推定精度</span>
+              <span id="conf-pct">0%</span>
+            </div>
+            <div class="conf-bar-track">
+              <div class="conf-bar-fill" id="conf-bar" style="width:0%"></div>
+            </div>
+          </div>
+          <div id="conf-detail" style="font-size:10px;color:var(--text3);margin-top:8px;line-height:1.7;"></div>
+        </div>
+
+        <!-- Land eval -->
+        <div class="card">
+          <div class="card-title">土地評価</div>
+          <div id="land-eval"></div>
+        </div>
+
+        <!-- Crop ranking -->
+        <div class="card">
+          <div class="card-title">適正作物ランキング</div>
+          <div id="crop-ranking"></div>
+        </div>
+
+        <!-- Fertilizer -->
+        <div class="card">
+          <div class="card-title">施肥概算（主要推奨作物）</div>
+          <div id="fert-result"></div>
+        </div>
+
+        <!-- Risk -->
+        <div class="card">
+          <div class="card-title">リスク・注意点</div>
+          <div id="risk-result"></div>
+        </div>
+
+        <button class="btn btn-ghost" onclick="exportJSON()">JSONエクスポート</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Firebase Config Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h2>FIREBASE_CONFIG</h2>
+    <p>FirebaseプロジェクトのWeb設定から取得した値を貼り付けてください。<br>設定はlocalStorageに保存されます。</p>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <div class="field"><label>apiKey</label><input type="text" id="cfg-apiKey" placeholder="AIza..."></div>
+      <div class="field"><label>authDomain</label><input type="text" id="cfg-authDomain" placeholder="your-app.firebaseapp.com"></div>
+      <div class="field"><label>projectId</label><input type="text" id="cfg-projectId" placeholder="your-project-id"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveFirebaseConfig()">接続する</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
+<!-- Firebase SDKs (modular compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+<script>
+// ═══════════════════════════════════════════
+//  CROP DATABASE — 雛形 (コメ 1品目、拡張可能)
+// ═══════════════════════════════════════════
+const CROP_DB = [
+  {
+    id: 'rice',
+    name: 'コメ（水稲）',
+    category: 'grain',      // grain / vegetable / fruit / specialty / wildveg
+    variety: '一般品種',
+    // 適性条件
+    conditions: {
+      latMin: 30, latMax: 45,          // 適正緯度帯
+      elevMax: 600,                    // 最大標高(m)
+      tempMeanMin: 13, tempMeanMax: 27,// 年平均気温
+      soilTypes: ['loam', 'clay', 'unknown'],
+      waterNeed: 'high',               // high / medium / low
+      continuousCropYears: 1,          // 連作可能年数
+    },
+    // 作付けカレンダー（月: 1-12）
+    calendar: {
+      seedling: [4],       // 育苗
+      transplant: [5],     // 田植え
+      manage: [6,7,8],     // 管理
+      harvest: [9,10],     // 収穫
+      prep: [11,12,1,2,3], // 土づくり・準備
+    },
+    // 施肥標準値 (kg/10a)
+    fertilizer: {
+      N: 8, P: 4, K: 5,
+      baseDressing: 0.6,   // 元肥割合
+      topDressing:  0.4,   // 追肥割合
+      notes: '基肥はNPK一発肥料が便利。出穂前穂肥を忘れずに。'
+    },
+    // 収量・収益目安 (10aあたり)
+    yield: { min: 420, max: 540, unit: 'kg' },
+    price: { min: 14000, max: 22000, unit: '円/60kg' },
+    // リスク
+    risks: [
+      { type: 'pest',    name: 'いもち病',   level: 'high',   note: '高温多湿で多発。薬剤防除必須。' },
+      { type: 'pest',    name: 'カメムシ',   level: 'medium', note: '穂が汚損米になる。出穂後防除。' },
+      { type: 'weather', name: '冷害',       level: 'medium', note: '東北・北海道は特に注意。' },
+      { type: 'rotation',name: '連作障害',   level: 'low',    note: '水田は連作可能だが地力管理が必要。' },
+    ],
+  },
+  // ─── 追加作物はここに追加 ───
+  // { id: 'soybean', name: '大豆', ... },
+  // { id: 'wheat',   name: '小麦', ... },
+];
+
+// ═══════════════════════════════════════════
+//  CLIMATE TABLE — 緯度帯 × 推定気候
+// ═══════════════════════════════════════════
+const CLIMATE_TABLE = [
+  { latMin:24, latMax:27, name:'亜熱帯', tempMean:23, rain:2100 },
+  { latMin:27, latMax:31, name:'温暖帯南部', tempMean:19, rain:1800 },
+  { latMin:31, latMax:34, name:'温暖帯',   tempMean:17, rain:1600 },
+  { latMin:34, latMax:37, name:'温帯',     tempMean:14, rain:1300 },
+  { latMin:37, latMax:40, name:'冷温帯',   tempMean:11, rain:1200 },
+  { latMin:40, latMax:43, name:'亜寒帯南部',tempMean:8, rain:1100 },
+  { latMin:43, latMax:46, name:'亜寒帯',   tempMean:6, rain:1000 },
+];
+
+function getClimate(lat) {
+  return CLIMATE_TABLE.find(c => lat >= c.latMin && lat < c.latMax)
+    || CLIMATE_TABLE[CLIMATE_TABLE.length - 1];
+}
+
+// 標高補正 (100mごとに約0.6℃低下)
+function elevCorrect(tempMean, elev) {
+  return tempMean - (elev / 100) * 0.6;
+}
+
+// ═══════════════════════════════════════════
+//  SCORING ENGINE — 欠損込みで動く
+// ═══════════════════════════════════════════
+function scoreCrop(crop, areaData) {
+  const { lat, elev, soilType, climate } = areaData;
+  let score = 0;
+  let maxScore = 0;
+  const details = [];
+
+  // 1. 緯度スコア (30点)
+  maxScore += 30;
+  if (lat !== null) {
+    const c = crop.conditions;
+    if (lat >= c.latMin && lat <= c.latMax) {
+      score += 30;
+      details.push({ ok: true, text: `緯度 ${lat.toFixed(2)}° — 適正範囲内` });
+    } else {
+      const dist = Math.min(Math.abs(lat - c.latMin), Math.abs(lat - c.latMax));
+      const s = Math.max(0, 30 - dist * 10);
+      score += s;
+      details.push({ ok: s > 0, text: `緯度 ${lat.toFixed(2)}° — 適正外 (${c.latMin}–${c.latMax}°)` });
+    }
+  }
+
+  // 2. 標高スコア (20点)
+  maxScore += 20;
+  if (elev !== null) {
+    if (elev <= crop.conditions.elevMax) {
+      score += 20;
+      details.push({ ok: true, text: `標高 ${Math.round(elev)}m — 適正範囲内` });
+    } else {
+      const over = elev - crop.conditions.elevMax;
+      const s = Math.max(0, 20 - over / 20);
+      score += s;
+      details.push({ ok: false, text: `標高 ${Math.round(elev)}m — 上限(${crop.conditions.elevMax}m)超過` });
+    }
+  }
+
+  // 3. 気温スコア (25点)
+  maxScore += 25;
+  if (climate) {
+    const corrTemp = elev ? elevCorrect(climate.tempMean, elev) : climate.tempMean;
+    const c = crop.conditions;
+    if (corrTemp >= c.tempMeanMin && corrTemp <= c.tempMeanMax) {
+      score += 25;
+      details.push({ ok: true, text: `推定年均気温 ${corrTemp.toFixed(1)}℃ — 適正` });
+    } else {
+      details.push({ ok: false, text: `推定年均気温 ${corrTemp.toFixed(1)}℃ — 適正外(${c.tempMeanMin}–${c.tempMeanMax}℃)` });
+    }
+  }
+
+  // 4. 土壌スコア (25点)
+  maxScore += 25;
+  if (soilType && soilType !== 'unknown') {
+    if (crop.conditions.soilTypes.includes(soilType)) {
+      score += 25;
+      details.push({ ok: true, text: `土壌タイプ — 適合` });
+    } else {
+      details.push({ ok: false, text: `土壌タイプ — 非推奨（土壌改良を要検討）` });
+    }
+  } else {
+    // 欠損: 平均的なスコアを付与
+    score += 12;
+    details.push({ ok: null, text: `土壌タイプ未入力 — 推定値使用` });
+  }
+
+  const pct = maxScore > 0 ? Math.round(score / maxScore * 100) : 0;
+  return { crop, score: pct, details };
+}
+
+function calcConfidence(areaData) {
+  let pts = 0;
+  const items = [];
+  if (areaData.lat)       { pts += 30; items.push('緯度情報 ✓'); }
+  if (areaData.elev)      { pts += 25; items.push('標高情報 ✓'); }
+  if (areaData.climate)   { pts += 20; items.push('気候推定 ✓'); }
+  if (areaData.soilType && areaData.soilType !== 'unknown') {
+    pts += 25; items.push('土壌タイプ ✓');
+  } else {
+    items.push('土壌タイプ 未入力（精度↓）');
+  }
+  return { pct: pts, items };
+}
+
+// ═══════════════════════════════════════════
+//  FERTILIZER ENGINE
+// ═══════════════════════════════════════════
+function calcFertilizer(crop, areaSqm) {
+  const per10a = crop.fertilizer;
+  const area10a = areaSqm / 1000; // 1000㎡ = 10a
+  return {
+    N: (per10a.N * area10a).toFixed(1),
+    P: (per10a.P * area10a).toFixed(1),
+    K: (per10a.K * area10a).toFixed(1),
+    area10a: area10a.toFixed(2),
+    notes: per10a.notes,
+  };
+}
+
+// ═══════════════════════════════════════════
+//  MAP SETUP
+// ═══════════════════════════════════════════
+const map = L.map('map', {
+  center: [35.6762, 139.6503],
+  zoom: 13,
+  zoomControl: true,
+});
+
+// 国土地理院 航空写真タイル
+L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg', {
+  attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>',
+  maxZoom: 18,
+}).addTo(map);
+
+// Drawn layers
+const drawnItems = new L.FeatureGroup().addTo(map);
+
+// Draw control
+const drawControl = new L.Control.Draw({
+  edit: { featureGroup: drawnItems },
+  draw: {
+    polygon: {
+      allowIntersection: false,
+      shapeOptions: { color: '#4ade80', weight: 2, fillOpacity: 0.15 },
+    },
+    polyline: false,
+    rectangle: false,
+    circle: false,
+    marker: false,
+    circlemarker: false,
+  }
+});
+map.addControl(drawControl);
+
+let currentPolygon = null;
+let currentAreaData = null;
+let selectedSoil = null;
+let db = null; // Firestore
+
+// Draw created
+map.on(L.Draw.Event.CREATED, async (e) => {
+  drawnItems.clearLayers();
+  drawnItems.addLayer(e.layer);
+  currentPolygon = e.layer;
+  await updateAreaStats(e.layer);
+  document.getElementById('save-btn').disabled = false;
+  switchTab('draw');
+});
+
+map.on(L.Draw.Event.DELETED, () => {
+  currentPolygon = null;
+  currentAreaData = null;
+  document.getElementById('save-btn').disabled = true;
+  resetStats();
+});
+
+// ─── Area Stats ───
+async function updateAreaStats(layer) {
+  const latlngs = layer.getLatLngs()[0];
+  // 面積 (Leaflet.GeometryUtil 代わりに turf-like 計算)
+  const areaSqm = calcPolygonArea(latlngs);
+  const perim = calcPerimeter(latlngs);
+  const centroid = calcCentroid(latlngs);
+  const lat = centroid.lat;
+  const lng = centroid.lng;
+  const climate = getClimate(lat);
+
+  // 標高（国土地理院 標高API）
+  let elev = null;
+  try {
+    const res = await fetch(`https://cyberjapandata2.gsi.go.jp/general/dem/scripts/getelevation.php?lon=${lng}&lat=${lat}&outtype=JSON`);
+    const json = await res.json();
+    elev = json.elevation ?? null;
+  } catch(e) { /* offline ok */ }
+
+  currentAreaData = { lat, lng, elev, climate, soilType: selectedSoil, areaSqm };
+
+  // Display
+  setText('stat-area', `${(areaSqm / 10000).toFixed(4)}<span class="unit">ha</span>`);
+  setText('stat-perim', `${Math.round(perim)}<span class="unit">m</span>`);
+  setText('stat-lat', lat.toFixed(5));
+  setText('stat-lng', lng.toFixed(5));
+  setText('stat-elev', elev !== null ? `${Math.round(elev)}<span class="unit">m</span>` : '—');
+  setText('stat-climate', climate ? climate.name : '—');
+}
+
+function resetStats() {
+  ['stat-area','stat-perim','stat-lat','stat-lng','stat-elev','stat-climate']
+    .forEach(id => setText(id, '—'));
+}
+
+// ─── Geometry helpers ───
+function calcPolygonArea(latlngs) {
+  // Shoelace formula (approximate in meters via projection)
+  const R = 6371000;
+  let area = 0;
+  const n = latlngs.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const xi = latlngs[i].lng * Math.PI / 180 * R * Math.cos(latlngs[i].lat * Math.PI / 180);
+    const yi = latlngs[i].lat * Math.PI / 180 * R;
+    const xj = latlngs[j].lng * Math.PI / 180 * R * Math.cos(latlngs[j].lat * Math.PI / 180);
+    const yj = latlngs[j].lat * Math.PI / 180 * R;
+    area += xi * yj - xj * yi;
+  }
+  return Math.abs(area / 2);
+}
+
+function calcPerimeter(latlngs) {
+  let d = 0;
+  const n = latlngs.length;
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    d += latlngs[i].distanceTo(latlngs[j]);
+  }
+  return d;
+}
+
+function calcCentroid(latlngs) {
+  const lat = latlngs.reduce((s, p) => s + p.lat, 0) / latlngs.length;
+  const lng = latlngs.reduce((s, p) => s + p.lng, 0) / latlngs.length;
+  return { lat, lng };
+}
+
+// ═══════════════════════════════════════════
+//  SOIL SELECTOR
+// ═══════════════════════════════════════════
+document.querySelectorAll('.soil-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.soil-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    selectedSoil = btn.dataset.soil;
+    if (currentAreaData) {
+      currentAreaData.soilType = selectedSoil;
+    }
+  });
+});
+
+// ═══════════════════════════════════════════
+//  FIREBASE
+// ═══════════════════════════════════════════
+function loadFirebaseConfig() {
+  try {
+    const raw = localStorage.getItem('agrisim_firebase');
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function initFirebase(cfg) {
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp({
+        apiKey: cfg.apiKey,
+        authDomain: cfg.authDomain,
+        projectId: cfg.projectId,
+      });
+    }
+    db = firebase.firestore();
+    document.getElementById('firebase-status').textContent = '● Firebase接続済';
+    document.getElementById('firebase-status').style.color = 'var(--green)';
+    document.getElementById('firebase-status').style.borderColor = 'var(--green3)';
+    return true;
+  } catch(e) {
+    console.error(e);
+    return false;
+  }
+}
+
+// Auto-init from stored config
+const storedCfg = loadFirebaseConfig();
+if (storedCfg) initFirebase(storedCfg);
+
+function openModal() {
+  const cfg = loadFirebaseConfig() || {};
+  ['apiKey','authDomain','projectId'].forEach(k => {
+    document.getElementById('cfg-' + k).value = cfg[k] || '';
+  });
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+function saveFirebaseConfig() {
+  const cfg = {
+    apiKey:      document.getElementById('cfg-apiKey').value.trim(),
+    authDomain:  document.getElementById('cfg-authDomain').value.trim(),
+    projectId:   document.getElementById('cfg-projectId').value.trim(),
+  };
+  if (!cfg.apiKey || !cfg.projectId) { showToast('apiKeyとprojectIdは必須です', 'amber'); return; }
+  localStorage.setItem('agrisim_firebase', JSON.stringify(cfg));
+  if (initFirebase(cfg)) {
+    showToast('Firebase接続しました', 'green');
+    closeModal();
+    loadAreas();
+  } else {
+    showToast('接続に失敗しました。設定を確認してください', 'amber');
+  }
+}
+
+// ═══════════════════════════════════════════
+//  AREA SAVE / LOAD
+// ═══════════════════════════════════════════
+async function saveArea() {
+  if (!currentPolygon || !currentAreaData) return;
+
+  const name = document.getElementById('area-name').value.trim() || `エリア ${Date.now()}`;
+  const memo = document.getElementById('area-memo').value.trim();
+  const geojson = currentPolygon.toGeoJSON();
+
+  const payload = {
+    name,
+    memo,
+    geojson,
+    meta: {
+      areaSqm: currentAreaData.areaSqm,
+      lat: currentAreaData.lat,
+      lng: currentAreaData.lng,
+      elev: currentAreaData.elev,
+      climateName: currentAreaData.climate?.name || null,
+      soilType: currentAreaData.soilType || null,
+    },
+    createdAt: new Date().toISOString(),
+  };
+
+  const btn = document.getElementById('save-btn');
+  btn.innerHTML = '<span class="spinner"></span>保存中...';
+  btn.disabled = true;
+
+  try {
+    if (db) {
+      await db.collection('areas').add(payload);
+    } else {
+      // Fallback: localStorage
+      const stored = JSON.parse(localStorage.getItem('agrisim_areas') || '[]');
+      payload.id = 'local_' + Date.now();
+      stored.push(payload);
+      localStorage.setItem('agrisim_areas', JSON.stringify(stored));
+    }
+    showToast('保存しました ✓', 'green');
+    loadAreas();
+    switchTab('areas');
+  } catch(e) {
+    showToast('保存に失敗しました', 'amber');
+    console.error(e);
+  }
+
+  btn.innerHTML = 'エリアを保存する';
+  btn.disabled = false;
+}
+
+async function loadAreas() {
+  const list = document.getElementById('areas-list');
+  list.innerHTML = '<div class="empty"><span class="spinner"></span> 読み込み中...</div>';
+
+  let areas = [];
+  try {
+    if (db) {
+      const snap = await db.collection('areas').orderBy('createdAt', 'desc').get();
+      snap.forEach(doc => areas.push({ id: doc.id, ...doc.data() }));
+    } else {
+      areas = JSON.parse(localStorage.getItem('agrisim_areas') || '[]').reverse();
+    }
+  } catch(e) {
+    console.error(e);
+  }
+
+  document.getElementById('areas-count').textContent = `${areas.length} エリア`;
+
+  if (areas.length === 0) {
+    list.innerHTML = '<div class="empty"><div class="icon">🗾</div>保存されたエリアはありません。</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  areas.forEach(area => {
+    const ha = area.meta?.areaSqm ? (area.meta.areaSqm / 10000).toFixed(3) : '—';
+    const div = document.createElement('div');
+    div.className = 'area-item';
+    div.innerHTML = `
+      <div class="area-item-header">
+        <div class="area-item-name">${escHtml(area.name)}</div>
+        <button class="btn btn-danger" onclick="event.stopPropagation();deleteArea('${area.id}')">削除</button>
+      </div>
+      <div class="area-item-meta">
+        <span>${ha} ha</span>
+        <span>${area.meta?.climateName || '—'}</span>
+        <span>${area.meta?.soilType || '土壌不明'}</span>
+      </div>
+      ${area.memo ? `<div style="font-size:11px;color:var(--text3);margin-top:4px;">${escHtml(area.memo)}</div>` : ''}
+    `;
+    div.onclick = () => selectArea(area);
+    list.appendChild(div);
+  });
+}
+
+async function deleteArea(id) {
+  if (!confirm('このエリアを削除しますか？')) return;
+  try {
+    if (db && !id.startsWith('local_')) {
+      await db.collection('areas').doc(id).delete();
+    } else {
+      const stored = JSON.parse(localStorage.getItem('agrisim_areas') || '[]');
+      localStorage.setItem('agrisim_areas', JSON.stringify(stored.filter(a => a.id !== id)));
+    }
+    showToast('削除しました', 'green');
+    loadAreas();
+  } catch(e) {
+    showToast('削除に失敗しました', 'amber');
+  }
+}
+
+function selectArea(area) {
+  // 地図にポリゴンを表示
+  drawnItems.clearLayers();
+  const layer = L.geoJSON(area.geojson, {
+    style: { color: '#4ade80', weight: 2, fillOpacity: 0.2 }
+  });
+  layer.addTo(drawnItems);
+  map.fitBounds(layer.getBounds());
+
+  currentAreaData = {
+    lat: area.meta?.lat || null,
+    lng: area.meta?.lng || null,
+    elev: area.meta?.elev || null,
+    climate: getClimate(area.meta?.lat || 35),
+    soilType: area.meta?.soilType || null,
+    areaSqm: area.meta?.areaSqm || 0,
+  };
+
+  runAnalysis(area.name);
+  switchTab('analysis');
+}
+
+// ═══════════════════════════════════════════
+//  ANALYSIS RUNNER
+// ═══════════════════════════════════════════
+function runAnalysis(areaName) {
+  if (!currentAreaData) return;
+
+  document.getElementById('analysis-empty').style.display = 'none';
+  document.getElementById('analysis-result').style.display = 'flex';
+
+  const ad = currentAreaData;
+
+  // Confidence
+  const conf = calcConfidence(ad);
+  const confPct = conf.pct;
+  const bar = document.getElementById('conf-bar');
+  bar.style.width = confPct + '%';
+  bar.className = 'conf-bar-fill' + (confPct < 40 ? ' vlow' : confPct < 70 ? ' low' : '');
+  document.getElementById('conf-pct').textContent = confPct + '%';
+  document.getElementById('conf-label').textContent =
+    confPct >= 70 ? '高精度' : confPct >= 40 ? '中精度' : '低精度（推定値ベース）';
+  document.getElementById('conf-detail').innerHTML = conf.items.map(i => `・${i}`).join('<br>');
+
+  // Land eval
+  const climate = ad.climate;
+  const corrTemp = climate && ad.elev ? elevCorrect(climate.tempMean, ad.elev) : climate?.tempMean;
+  document.getElementById('land-eval').innerHTML = `
+    <div class="area-stat"><span class="label">気候帯</span><span class="value" style="font-size:12px;">${climate?.name || '—'}</span></div>
+    <div class="area-stat"><span class="label">推定年均気温</span><span class="value">${corrTemp != null ? corrTemp.toFixed(1) : '—'}<span class="unit">℃</span></span></div>
+    <div class="area-stat"><span class="label">推定年間降水量</span><span class="value">${climate?.rain || '—'}<span class="unit">mm</span></span></div>
+    <div class="area-stat"><span class="label">標高</span><span class="value">${ad.elev != null ? Math.round(ad.elev) : '—'}<span class="unit">m</span></span></div>
+    <div class="area-stat"><span class="label">土壌タイプ</span><span class="value" style="font-size:11px;">${ad.soilType || '未入力'}</span></div>
+  `;
+
+  // Crop ranking
+  const scores = CROP_DB.map(c => scoreCrop(c, ad)).sort((a, b) => b.score - a.score);
+  const rankEl = document.getElementById('crop-ranking');
+  rankEl.innerHTML = scores.map((s, i) => `
+    <div class="crop-item">
+      <div class="crop-rank">#${i+1}</div>
+      <div style="flex:1;">
+        <div class="crop-name">${s.crop.name}</div>
+        <div class="crop-score-bar"><div class="crop-score-bar-fill" style="width:${s.score}%"></div></div>
+      </div>
+      <div class="crop-score">${s.score}%</div>
+    </div>
+  `).join('');
+
+  // Fertilizer (top crop)
+  const topCrop = scores[0].crop;
+  if (ad.areaSqm > 0) {
+    const fert = calcFertilizer(topCrop, ad.areaSqm);
+    document.getElementById('fert-result').innerHTML = `
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">対象：${topCrop.name}　面積：${(ad.areaSqm/1000).toFixed(2)}a（${fert.area10a} 10a）</div>
+      <div class="area-stat"><span class="label">窒素 (N)</span><span class="value">${fert.N}<span class="unit">kg</span></span></div>
+      <div class="area-stat"><span class="label">リン酸 (P)</span><span class="value">${fert.P}<span class="unit">kg</span></span></div>
+      <div class="area-stat"><span class="label">カリ (K)</span><span class="value">${fert.K}<span class="unit">kg</span></span></div>
+      <div class="notice notice-info" style="margin-top:8px;">${fert.notes}</div>
+    `;
+  } else {
+    document.getElementById('fert-result').innerHTML = '<div style="color:var(--text3);font-size:11px;">面積が取得できていません</div>';
+  }
+
+  // Risk
+  const riskEl = document.getElementById('risk-result');
+  riskEl.innerHTML = topCrop.risks.map(r => {
+    const color = r.level === 'high' ? 'var(--red)' : r.level === 'medium' ? 'var(--amber)' : 'var(--green2)';
+    return `
+      <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);">
+        <span style="color:${color};font-size:10px;font-family:var(--mono);padding-top:2px;flex-shrink:0;">
+          ${r.level === 'high' ? '高' : r.level === 'medium' ? '中' : '低'}
+        </span>
+        <div>
+          <div style="font-size:12px;font-weight:500;">${r.name}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px;">${r.note}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════
+function exportJSON() {
+  if (!currentAreaData) return;
+  const scores = CROP_DB.map(c => scoreCrop(c, currentAreaData));
+  const data = {
+    exportedAt: new Date().toISOString(),
+    areaData: currentAreaData,
+    analysis: { cropScores: scores.map(s => ({ crop: s.crop.id, name: s.crop.name, score: s.score })) },
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `agrisim_${Date.now()}.json`;
+  a.click();
+}
+
+// ═══════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
+}
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    switchTab(t.dataset.tab);
+    if (t.dataset.tab === 'areas') loadAreas();
+  });
+});
+
+function clearDraw() {
+  drawnItems.clearLayers();
+  currentPolygon = null;
+  currentAreaData = null;
+  document.getElementById('save-btn').disabled = true;
+  resetStats();
+}
+
+function setText(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// Initial load
+loadAreas();
+</script>
+</body>
+</html>
