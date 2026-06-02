@@ -823,3 +823,265 @@ header .spacer { flex: 1; }
 }
 
 .soil-meta { color: var(--text2); }
+
+/* ═══════════════════════════════════════════
+   SAVE WIZARD (保存ウィザード)
+═══════════════════════════════════════════ */
+
+/* ウィザード全体コンテナ */
+.save-wizard {
+  display: none;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+.save-wizard.active { display: flex; }
+
+/* ウィザードヘッダー（タイトル + ステップインジケーター） */
+.wizard-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+
+.wizard-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text3);
+}
+
+/* ウィザードステップドット */
+.wizard-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.wizard-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  transition: all 0.3s ease;
+}
+.wizard-dot.active {
+  width: 20px;
+  border-radius: 99px;
+  background: var(--green);
+  border-color: var(--green);
+}
+.wizard-dot.done {
+  background: var(--green3);
+  border-color: var(--green3);
+}
+
+/* スライドパネルラッパー */
+.wizard-slides {
+  position: relative;
+  overflow: hidden;
+  /* 高さはcontentに追従するためmin-heightで確保 */
+  min-height: 160px;
+}
+
+/* 各スライド */
+.wizard-slide {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  opacity: 0;
+  transform: translateX(60px);
+  pointer-events: none;
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+.wizard-slide.active {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+  position: relative; /* 高さ確保のため */
+}
+.wizard-slide.exit-left {
+  opacity: 0;
+  transform: translateX(-60px);
+  pointer-events: none;
+  position: absolute;
+}
+
+/* スライドタイトル */
+.wizard-slide-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.4;
+}
+.wizard-slide-sub {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: -8px;
+  line-height: 1.6;
+}
+
+/* 名前入力スライド */
+.wizard-name-input {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+  padding: 13px 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  -webkit-appearance: none;
+}
+.wizard-name-input:focus {
+  border-color: var(--green3);
+  box-shadow: 0 0 0 3px rgba(22,163,74,0.12);
+}
+
+/* 土壌グリッド（ウィザード内） */
+.wizard-soil-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 7px;
+}
+.wizard-soil-btn {
+  padding: 11px 6px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text2);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.18s;
+  -webkit-tap-highlight-color: transparent;
+  line-height: 1.3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.wizard-soil-btn .soil-icon { font-size: 16px; }
+.wizard-soil-btn:active { transform: scale(0.96); }
+.wizard-soil-btn.selected {
+  border-color: var(--green);
+  color: var(--green);
+  background: #0d1f10;
+  box-shadow: inset 0 0 0 1px var(--green3);
+}
+
+/* メモエリア（ウィザード内） */
+.wizard-memo {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  width: 100%;
+  resize: none;
+  min-height: 80px;
+  -webkit-appearance: none;
+  line-height: 1.6;
+}
+.wizard-memo:focus {
+  border-color: var(--green3);
+  box-shadow: 0 0 0 3px rgba(22,163,74,0.12);
+}
+
+/* サマリーカード（Step3確認） */
+.wizard-summary {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wizard-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.wizard-summary-key {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  flex-shrink: 0;
+  padding-top: 1px;
+  letter-spacing: 0.06em;
+}
+.wizard-summary-val {
+  font-size: 12px;
+  color: var(--text);
+  text-align: right;
+  line-height: 1.5;
+}
+.wizard-summary-val.highlight { color: var(--green); font-weight: 500; }
+
+/* フッターボタン行 */
+.wizard-footer {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.wizard-footer .btn { flex: 1; }
+.wizard-footer .btn-back {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text2);
+  max-width: 80px;
+}
+.wizard-footer .btn-back:hover { border-color: var(--green3); color: var(--green); }
+
+/* ウィザード完了アニメーション */
+.wizard-done {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px 16px;
+  text-align: center;
+}
+.wizard-done.active { display: flex; }
+.wizard-done-icon {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  background: #0d2012;
+  border: 2px solid var(--green3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  animation: wizardDonePop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+@keyframes wizardDonePop {
+  from { transform: scale(0.3); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+.wizard-done-title {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text);
+}
+.wizard-done-sub {
+  font-size: 11px;
+  color: var(--text3);
+  line-height: 1.6;
+}

@@ -60,8 +60,8 @@
     <!-- TAB: 描画 -->
     <div class="tab-content active" id="tab-draw">
 
-      <!-- ステップインジケーター -->
-      <div class="draw-steps">
+      <!-- ステップインジケーター（描画フェーズ） -->
+      <div class="draw-steps" id="draw-phase-steps">
         <div class="draw-step active" data-step="0">
           <div class="step-circle">1</div>
           <span class="step-label">開始</span>
@@ -76,7 +76,7 @@
         </div>
         <div class="draw-step" data-step="3">
           <div class="step-circle">4</div>
-          <span class="step-label">完了</span>
+          <span class="step-label">保存</span>
         </div>
       </div>
 
@@ -85,7 +85,7 @@
         地図右上の <strong>📐ボタン</strong> を押して描画を開始してください
       </div>
 
-      <!-- 計測値 -->
+      <!-- 計測値（描画直後に表示） -->
       <div class="stats-grid" id="area-stats-card">
         <div class="stat-chip">
           <span class="stat-label">面積</span>
@@ -113,7 +113,117 @@
         </div>
       </div>
 
-      <button class="btn btn-ghost" onclick="clearDraw()">描画をリセット</button>
+      <!-- ─── 保存ウィザード ─── -->
+      <div class="save-wizard" id="save-wizard">
+
+        <div class="wizard-header">
+          <div class="wizard-title">エリアを保存</div>
+          <div class="wizard-dots">
+            <div class="wizard-dot active" id="wdot-0"></div>
+            <div class="wizard-dot" id="wdot-1"></div>
+            <div class="wizard-dot" id="wdot-2"></div>
+          </div>
+        </div>
+
+        <div class="wizard-slides" id="wizard-slides">
+
+          <!-- Slide 0: エリア名 -->
+          <div class="wizard-slide active" id="wslide-0">
+            <div>
+              <div class="wizard-slide-label">エリア名を入力</div>
+              <div class="wizard-slide-sub">後から変更できます</div>
+            </div>
+            <input
+              type="text"
+              class="wizard-name-input"
+              id="wizard-name"
+              placeholder="例：南圃場A、水田1号"
+              autocomplete="off"
+              maxlength="50"
+            >
+            <div class="wizard-footer">
+              <button class="btn btn-ghost" onclick="cancelWizard()">キャンセル</button>
+              <button class="btn btn-primary" onclick="wizardNext(0)">次へ →</button>
+            </div>
+          </div>
+
+          <!-- Slide 1: 土壌タイプ -->
+          <div class="wizard-slide" id="wslide-1">
+            <div>
+              <div class="wizard-slide-label">土壌タイプを選択</div>
+              <div class="wizard-slide-sub">スキップ可（後で変更できます）</div>
+            </div>
+            <div class="wizard-soil-grid">
+              <div class="wizard-soil-btn" data-soil="sandy" onclick="selectWizardSoil(this)">
+                <span class="soil-icon">🏖️</span>砂質土
+              </div>
+              <div class="wizard-soil-btn" data-soil="loam" onclick="selectWizardSoil(this)">
+                <span class="soil-icon">🟫</span>壌土
+              </div>
+              <div class="wizard-soil-btn" data-soil="clay" onclick="selectWizardSoil(this)">
+                <span class="soil-icon">🧱</span>粘土質
+              </div>
+              <div class="wizard-soil-btn" data-soil="peat" onclick="selectWizardSoil(this)">
+                <span class="soil-icon">🌿</span>泥炭土
+              </div>
+              <div class="wizard-soil-btn" data-soil="volcanic" onclick="selectWizardSoil(this)">
+                <span class="soil-icon">🌋</span>火山灰土
+              </div>
+              <div class="wizard-soil-btn selected" data-soil="unknown" onclick="selectWizardSoil(this)">
+                <span class="soil-icon">❓</span>不明
+              </div>
+            </div>
+            <div class="wizard-footer">
+              <button class="btn btn-back btn-ghost" onclick="wizardBack(1)">← 戻る</button>
+              <button class="btn btn-primary" onclick="wizardNext(1)">次へ →</button>
+            </div>
+          </div>
+
+          <!-- Slide 2: メモ＋確認 -->
+          <div class="wizard-slide" id="wslide-2">
+            <div>
+              <div class="wizard-slide-label">メモ・確認</div>
+              <div class="wizard-slide-sub">特記事項があれば入力してください</div>
+            </div>
+            <textarea class="wizard-memo" id="wizard-memo" placeholder="水はけが悪い、南向き日当たり良好など（任意）" rows="3"></textarea>
+            <!-- サマリー -->
+            <div class="wizard-summary" id="wizard-summary">
+              <div class="wizard-summary-row">
+                <span class="wizard-summary-key">エリア名</span>
+                <span class="wizard-summary-val highlight" id="wsummary-name">—</span>
+              </div>
+              <div class="wizard-summary-row">
+                <span class="wizard-summary-key">面積</span>
+                <span class="wizard-summary-val" id="wsummary-area">—</span>
+              </div>
+              <div class="wizard-summary-row">
+                <span class="wizard-summary-key">土壌</span>
+                <span class="wizard-summary-val" id="wsummary-soil">—</span>
+              </div>
+              <div class="wizard-summary-row">
+                <span class="wizard-summary-key">気候帯</span>
+                <span class="wizard-summary-val" id="wsummary-climate">—</span>
+              </div>
+            </div>
+            <div class="wizard-footer">
+              <button class="btn btn-back btn-ghost" onclick="wizardBack(2)">← 戻る</button>
+              <button class="btn btn-primary" id="wizard-save-btn" onclick="wizardCommit()">✓ 保存する</button>
+            </div>
+          </div>
+
+        </div><!-- /wizard-slides -->
+
+        <!-- 完了画面 -->
+        <div class="wizard-done" id="wizard-done">
+          <div class="wizard-done-icon">✓</div>
+          <div class="wizard-done-title">保存しました</div>
+          <div class="wizard-done-sub" id="wizard-done-sub">エリア一覧から確認・編集できます</div>
+          <button class="btn btn-ghost" style="margin-top:4px;" onclick="goToAreas()">エリア一覧を見る →</button>
+        </div>
+
+      </div><!-- /save-wizard -->
+
+      <button class="btn btn-ghost" id="btn-clear-draw" onclick="clearDraw()">描画をリセット</button>
     </div>
 
     <!-- TAB: エリア一覧 -->
