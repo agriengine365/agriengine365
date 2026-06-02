@@ -42,6 +42,12 @@ function showDrawToast(msg, type = '') {
   showToast(msg, type, 4200);
 }
 
+/** 地図下部ダイアログのヒント文 */
+function updateMapDrawHint(text) {
+  const el = document.getElementById('map-draw-dialog-hint');
+  if (el) el.textContent = text;
+}
+
 // ─── Modal ───
 function openModal() {
   const cfg = loadFirebaseConfig() || {};
@@ -95,6 +101,10 @@ function setDrawStep(state) {
 
   const guide = document.getElementById('draw-guide');
   if (guide) guide.innerHTML = cfg.guide;
+
+  if (state === 'drawing') {
+    updateMapDrawHint('地図をタップして頂点を配置');
+  }
 }
 
 // ═══════════════════════════════════════════
