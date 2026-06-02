@@ -31,10 +31,23 @@ const PolygonDraw = (() => {
   }
 
   function setControlsVisible(visible) {
-    const el = document.getElementById('draw-controls');
-    if (el) el.hidden = !visible;
+    const dlg = document.getElementById('map-draw-dialog');
+    if (dlg) {
+      dlg.hidden = !visible;
+      dlg.setAttribute('aria-hidden', String(!visible));
+    }
+    document.documentElement.classList.toggle('draw-dialog-active', visible);
+
+    // BottomSheetを描画中は完全非表示・描画終了で復帰
+    const sheet = document.getElementById('sheet');
+    if (sheet) {
+      sheet.style.display = visible ? 'none' : '';
+    }
+
     const clearBtn = document.getElementById('btn-clear-draw');
     if (clearBtn) clearBtn.style.display = visible ? 'none' : '';
+    const guide = document.getElementById('draw-guide');
+    if (guide) guide.style.display = visible ? 'none' : '';
   }
 
   function updateControls() {
@@ -131,8 +144,10 @@ const PolygonDraw = (() => {
     setDraft(e.latlng);
     const n = confirmed.length;
     if (n === 0) {
+      updateMapDrawHint('ドラッグで位置調整 → 確定');
       showDrawToast('1点目を配置しました。位置を調整して「確定」を押してください');
     } else {
+      updateMapDrawHint(`頂点${n + 1} — 調整後に確定`);
       showDrawToast(`${n + 1}点目を配置しました。位置を調整して「確定」を押してください`);
     }
     updateControls();
@@ -185,6 +200,7 @@ const PolygonDraw = (() => {
     setDrawStep('drawing');
     setSheet('half');
     switchTab('draw');
+    updateMapDrawHint('地図をタップして1点目を配置');
     showDrawToast('地図をタップして1点目を置いてください');
   }
 
@@ -198,6 +214,8 @@ const PolygonDraw = (() => {
     clearPreviewLayers();
     setControlsVisible(false);
     updateControls();
+    // Sheet復帰：peek状態でスライドイン
+    if (typeof setSheet === 'function') setSheet('half');
   }
 
   function confirmVertex() {
@@ -211,8 +229,10 @@ const PolygonDraw = (() => {
 
     const n = confirmed.length;
     if (n < 3) {
+      updateMapDrawHint(`${n}点確定 — あと${3 - n}点以上`);
       showDrawToast(`${n}点目を確定しました。あと${3 - n}点以上で「完了」できます`);
     } else {
+      updateMapDrawHint(`${n}点確定 — 「完了」で閉じる`);
       showDrawToast(`${n}点目を確定しました。「完了」で圃場を閉じられます`);
     }
   }
@@ -224,6 +244,7 @@ const PolygonDraw = (() => {
       removeDraft();
       updatePreview();
       updateControls();
+      updateMapDrawHint('地図をタップして頂点を配置');
       showDrawToast('配置中の頂点を取り消しました');
       return;
     }
@@ -233,6 +254,8 @@ const PolygonDraw = (() => {
     renderConfirmedMarkers();
     updatePreview();
     updateControls();
+    const left = confirmed.length;
+    updateMapDrawHint(left ? `${left}点確定 — 次の頂点を配置` : '地図をタップして頂点を配置');
     showDrawToast('1つ前の確定頂点に戻しました');
   }
 
@@ -273,6 +296,7 @@ const PolygonDraw = (() => {
     clearPreviewLayers();
     updateControls();
     setDrawStep('drawing');
+    updateMapDrawHint('地図をタップして頂点を配置');
     showDrawToast('リセットしました。地図をタップして描き直してください');
   }
 
