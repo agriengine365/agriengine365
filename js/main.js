@@ -34,5 +34,8 @@ function clearDraw() {
   resetStats();
 }
 
+// ─── ボトムシート初期化 ───
+initSheet();
+
 // ─── 初期ロード ───
 loadAreas();

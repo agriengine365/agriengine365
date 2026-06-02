@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Agri Sim — 農業作物適正シミュレーター</title>
 
 <!-- Leaflet -->
@@ -20,24 +20,42 @@
 
 <!-- Header -->
 <header>
-  <div class="logo">AGRI<span>/</span>SIM <span style="color:var(--text3);font-size:10px;margin-left:4px;">v0.1</span></div>
-  <div class="badge">農業作物適正シミュレーター</div>
+  <div class="logo">AGRI<span>/</span>SIM <span class="ver">v0.1</span></div>
   <div class="spacer"></div>
-  <div id="firebase-status" class="badge" style="color:var(--red);border-color:#3d1f1f;">● Firebase未接続</div>
-  <button class="conf-btn" onclick="openModal()">Firebase設定</button>
+  <div id="firebase-status" class="status-dot status-off" title="Firebase未接続"></div>
+  <button class="icon-btn" onclick="openModal()" title="Firebase設定">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+  </button>
 </header>
 
-<div class="main">
-  <!-- Map -->
-  <div id="map"></div>
+<!-- Map (full screen base) -->
+<div id="map"></div>
 
-  <!-- Side Panel -->
-  <div class="side">
-    <div class="tabs">
-      <div class="tab active" data-tab="draw">描画</div>
-      <div class="tab" data-tab="areas">エリア一覧</div>
-      <div class="tab" data-tab="analysis">分析</div>
+<!-- ─── Bottom Sheet ─── -->
+<div class="sheet" id="sheet">
+  <!-- Handle -->
+  <div class="sheet-handle-area" id="sheet-handle">
+    <div class="sheet-handle"></div>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="tabs">
+    <div class="tab active" data-tab="draw">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+      描画
     </div>
+    <div class="tab" data-tab="areas">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      エリア
+    </div>
+    <div class="tab" data-tab="analysis">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      分析
+    </div>
+  </div>
+
+  <!-- Sheet Body -->
+  <div class="sheet-body">
 
     <!-- TAB: 描画 -->
     <div class="tab-content active" id="tab-draw">
@@ -45,61 +63,54 @@
         地図上でポリゴンツールを使い、圃場の形に沿って多角形を描いてください。
       </div>
 
-      <div class="card" id="area-stats-card">
-        <div class="card-title">エリア情報</div>
-        <div class="area-stat">
-          <span class="label">面積</span>
-          <span class="value" id="stat-area">—<span class="unit">ha</span></span>
+      <div class="stats-grid" id="area-stats-card">
+        <div class="stat-chip">
+          <div class="stat-label">面積</div>
+          <div class="stat-val" id="stat-area">—<span class="unit">ha</span></div>
         </div>
-        <div class="area-stat">
-          <span class="label">周長</span>
-          <span class="value" id="stat-perim">—<span class="unit">m</span></span>
+        <div class="stat-chip">
+          <div class="stat-label">周長</div>
+          <div class="stat-val" id="stat-perim">—<span class="unit">m</span></div>
         </div>
-        <div class="area-stat">
-          <span class="label">重心緯度</span>
-          <span class="value" id="stat-lat">—</span>
+        <div class="stat-chip">
+          <div class="stat-label">標高</div>
+          <div class="stat-val" id="stat-elev">—<span class="unit">m</span></div>
         </div>
-        <div class="area-stat">
-          <span class="label">重心経度</span>
-          <span class="value" id="stat-lng">—</span>
+        <div class="stat-chip">
+          <div class="stat-label">気候帯</div>
+          <div class="stat-val stat-small" id="stat-climate">—</div>
         </div>
-        <div class="area-stat">
-          <span class="label">推定標高</span>
-          <span class="value" id="stat-elev">—<span class="unit">m</span></span>
-        </div>
-        <div class="area-stat">
-          <span class="label">気候帯</span>
-          <span class="value" id="stat-climate" style="font-size:11px;color:var(--text2);">—</span>
+        <div class="stat-chip stat-chip-wide">
+          <div class="stat-label">緯度 / 経度</div>
+          <div class="stat-val stat-small"><span id="stat-lat">—</span> / <span id="stat-lng">—</span></div>
         </div>
       </div>
 
       <!-- Save form -->
       <div class="card" id="save-card">
         <div class="card-title">エリアを保存</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div class="field">
-            <label>エリア名</label>
-            <input type="text" id="area-name" placeholder="例：北側田んぼ A区画">
-          </div>
-          <div class="field">
-            <label>土壌タイプ（任意）</label>
-            <div class="soil-grid" id="soil-grid">
-              <div class="soil-btn" data-soil="sandy">砂質土</div>
-              <div class="soil-btn" data-soil="loam">壌土（ローム）</div>
-              <div class="soil-btn" data-soil="clay">粘土質</div>
-              <div class="soil-btn" data-soil="peat">泥炭土</div>
-              <div class="soil-btn" data-soil="volcanic">火山灰土</div>
-              <div class="soil-btn" data-soil="unknown">不明</div>
-            </div>
-          </div>
-          <div class="field">
-            <label>メモ（任意）</label>
-            <textarea id="area-memo" placeholder="水はけが悪い、日当たり良好など"></textarea>
-          </div>
-          <button class="btn btn-primary" id="save-btn" disabled onclick="saveArea()">
-            エリアを保存する
-          </button>
+        <div class="field">
+          <label>エリア名</label>
+          <input type="text" id="area-name" placeholder="例：北側田んぼ A区画">
         </div>
+        <div class="field">
+          <label>土壌タイプ（任意）</label>
+          <div class="soil-grid" id="soil-grid">
+            <div class="soil-btn" data-soil="sandy">砂質土</div>
+            <div class="soil-btn" data-soil="loam">壌土</div>
+            <div class="soil-btn" data-soil="clay">粘土質</div>
+            <div class="soil-btn" data-soil="peat">泥炭土</div>
+            <div class="soil-btn" data-soil="volcanic">火山灰土</div>
+            <div class="soil-btn" data-soil="unknown">不明</div>
+          </div>
+        </div>
+        <div class="field">
+          <label>メモ（任意）</label>
+          <textarea id="area-memo" placeholder="水はけが悪い、日当たり良好など"></textarea>
+        </div>
+        <button class="btn btn-primary" id="save-btn" disabled onclick="saveArea()">
+          エリアを保存する
+        </button>
       </div>
 
       <button class="btn btn-ghost" onclick="clearDraw()">描画をリセット</button>
@@ -107,9 +118,9 @@
 
     <!-- TAB: エリア一覧 -->
     <div class="tab-content" id="tab-areas">
-      <div style="display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-size:11px;color:var(--text3);font-family:var(--mono);" id="areas-count">0 エリア</span>
-        <button class="btn btn-ghost" style="width:auto;font-size:10px;padding:5px 12px;" onclick="loadAreas()">再読み込み</button>
+      <div class="list-header">
+        <span class="mono-sm" id="areas-count">0 エリア</span>
+        <button class="pill-btn" onclick="loadAreas()">再読み込み</button>
       </div>
       <div id="areas-list">
         <div class="empty">
@@ -153,29 +164,40 @@
           <div id="crop-ranking"></div>
         </div>
 
-        <!-- 施肥概算 -->
-        <div class="card">
-          <div class="card-title">施肥概算（主要推奨作物）</div>
-          <div id="fert-result"></div>
+        <!-- 施肥概算（アコーディオン） -->
+        <div class="card accordion">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="card-title" style="margin:0">施肥概算（主要推奨作物）</div>
+            <svg class="acc-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="accordion-body">
+            <div id="fert-result"></div>
+          </div>
         </div>
 
-        <!-- リスク -->
-        <div class="card">
-          <div class="card-title">リスク・注意点</div>
-          <div id="risk-result"></div>
+        <!-- リスク（アコーディオン） -->
+        <div class="card accordion">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="card-title" style="margin:0">リスク・注意点</div>
+            <svg class="acc-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="accordion-body">
+            <div id="risk-result"></div>
+          </div>
         </div>
 
         <button class="btn btn-ghost" onclick="exportJSON()">JSONエクスポート</button>
       </div>
     </div>
-  </div>
-</div>
+
+  </div><!-- /sheet-body -->
+</div><!-- /sheet -->
 
 <!-- Firebase Config Modal -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <h2>FIREBASE_CONFIG</h2>
-    <p>FirebaseプロジェクトのWeb設定から取得した値を貼り付けてください。<br>設定はlocalStorageに保存されます。</p>
+    <p>FirebaseプロジェクトのWeb設定から取得した値を貼り付けてください。設定はlocalStorageに保存されます。</p>
     <div style="display:flex;flex-direction:column;gap:8px;">
       <div class="field"><label>apiKey</label><input type="text" id="cfg-apiKey" placeholder="AIza..."></div>
       <div class="field"><label>authDomain</label><input type="text" id="cfg-authDomain" placeholder="your-app.firebaseapp.com"></div>
@@ -192,15 +214,11 @@
 <div class="toast" id="toast"></div>
 
 <!-- ─── Scripts ─── -->
-<!-- Leaflet -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
-
-<!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
-<!-- App JS（依存順） -->
 <script src="js/config.js"></script>
 <script src="js/db/cropDB.js"></script>
 <script src="js/engine/climate.js"></script>
@@ -212,6 +230,5 @@
 <script src="js/area.js"></script>
 <script src="js/analysis.js"></script>
 <script src="js/main.js"></script>
-
 </body>
 </html>
