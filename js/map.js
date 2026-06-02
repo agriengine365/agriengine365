@@ -58,6 +58,31 @@ const drawControl = new L.Control.Draw({
 });
 map.addControl(drawControl);
 
+// ─── 右側フロート操作群トグル ───
+const FloatToggleControl = L.Control.extend({
+  options: { position: 'topright' },
+  onAdd() {
+    const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-float-toggle');
+    const btn = L.DomUtil.create('a', 'float-toggle-btn', container);
+    btn.href = '#';
+    btn.title = '操作パネルを開閉';
+    btn.setAttribute('aria-label', '操作パネルを開閉');
+    btn.innerHTML = '≡';
+
+    L.DomEvent.disableClickPropagation(container);
+    L.DomEvent.on(btn, 'click', (e) => {
+      L.DomEvent.preventDefault(e);
+      const mapEl = map.getContainer();
+      const isClosed = mapEl.classList.toggle('float-controls-collapsed');
+      btn.innerHTML = isClosed ? '≡' : '×';
+    });
+    return container;
+  },
+});
+
+map.addControl(new FloatToggleControl());
+map.getContainer().classList.add('float-controls-collapsed');
+
 // ─── Draw イベント ───
 map.on(L.Draw.Event.DRAWSTART, () => {
   setDrawStep('drawing');

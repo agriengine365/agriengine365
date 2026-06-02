@@ -23,6 +23,7 @@
   --sheet-full:   92vh;
   --header-h:     48px;
   --safe-bottom:  env(safe-area-inset-bottom, 0px);
+  --mobile-nav-offset: 0px;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -123,6 +124,10 @@ header .spacer { flex: 1; }
   margin-right: 12px;
 }
 
+.leaflet-bottom.leaflet-right {
+  margin-bottom: calc(var(--sheet-peek) + 12px + var(--mobile-nav-offset));
+}
+
 .leaflet-control-zoom,
 .leaflet-draw-toolbar,
 .leaflet-draw-actions {
@@ -130,6 +135,22 @@ header .spacer { flex: 1; }
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.38);
   border-radius: 12px;
   overflow: hidden;
+}
+
+.leaflet-control-float-toggle {
+  margin-top: 8px;
+}
+
+.leaflet-control-float-toggle .float-toggle-btn {
+  width: 42px !important;
+  height: 42px !important;
+  line-height: 42px !important;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 600;
+  background: linear-gradient(180deg, #2a4732 0%, #1e3526 100%) !important;
+  border: 1px solid var(--green3) !important;
+  color: #eaffef !important;
 }
 
 .leaflet-control-zoom a,
@@ -159,6 +180,27 @@ header .spacer { flex: 1; }
 
 .leaflet-draw-toolbar .leaflet-disabled {
   opacity: 0.45 !important;
+}
+
+/* トグルでフロート操作群の表示を切り替え */
+#map.float-controls-collapsed .leaflet-draw,
+#map.float-controls-collapsed .leaflet-control-zoom {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(14px);
+}
+
+#map .leaflet-draw,
+#map .leaflet-control-zoom {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+/* モバイル端末で下部UIに隠れやすい分を追加で確保 */
+@media (max-width: 820px), (pointer: coarse) {
+  :root {
+    --mobile-nav-offset: 24px;
+    --sheet-peek: calc(72px + var(--safe-bottom));
+  }
 }
 
 /* ─── Bottom Sheet ─── */
