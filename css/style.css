@@ -155,9 +155,17 @@ header .spacer { flex: 1; }
   display: flex;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.tabs::-webkit-scrollbar {
+  display: none;
 }
 .tab {
-  flex: 1;
+  flex: 1 0 110px;
+  min-width: 110px;
   padding: 10px 0;
   font-size: 11px;
   font-family: var(--mono);
@@ -171,6 +179,7 @@ header .spacer { flex: 1; }
   align-items: center;
   justify-content: center;
   gap: 5px;
+  white-space: nowrap;
 }
 .tab.active { color: var(--green); border-bottom-color: var(--green); }
 .tab:hover:not(.active) { color: var(--text2); }
