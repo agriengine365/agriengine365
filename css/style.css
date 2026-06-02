@@ -698,98 +698,67 @@ header .spacer { flex: 1; }
 }
 
 /* ═══════════════════════════════════════════
-   DRAW STEP INDICATOR
+   DIALOG WIZARD (ダイアログ内保存ウィザード)
 ═══════════════════════════════════════════ */
 
-.draw-steps {
-  display: flex;
-  align-items: flex-start;
-  gap: 0;
-  margin-bottom: 4px;
-}
+/* フェーズ切替 */
+.draw-phase { display: block; }
+.draw-phase[hidden] { display: none !important; }
 
-.draw-step {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  flex: 1;
-  position: relative;
-}
-
-/* 横線は circle の中心（11px = circle半径）から次のstepのcircle中心まで */
-.draw-step:not(:last-child)::after {
-  content: '';
-  position: absolute;
-  top: 11px; /* step-circle の高さの半分 */
-  left: calc(50% + 11px);
-  right: calc(-50% + 11px);
-  height: 1px;
-  background: var(--border);
-  transition: background 0.3s;
-}
-.draw-step.done::after { background: var(--green3); }
-
-.step-circle {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--bg2);
-  color: var(--text3);
-  font-family: var(--mono);
-  font-size: 9px;
+/* ウィザードヘッダー */
+.dlg-wizard-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: all 0.3s;
-  z-index: 1;
-  position: relative;
+  justify-content: space-between;
+  margin-bottom: 10px;
 }
 
-.draw-step.active .step-circle {
-  border-color: var(--green);
-  background: #0e2010;
-  color: var(--green);
-  box-shadow: 0 0 0 3px rgba(74,222,128,0.15);
-}
-
-.draw-step.done .step-circle {
-  border-color: var(--green3);
-  background: var(--green3);
-  color: #fff;
-}
-
-.draw-step.done .step-circle::after {
-  content: '✓';
-}
-
-.step-label {
+.dlg-wizard-title {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--text3);
-  white-space: nowrap;
-  text-align: center;
-  line-height: 1;
 }
 
-.draw-step.active .step-label { color: var(--green); }
-.draw-step.done .step-label   { color: var(--green3); }
-
-/* ガイドテキスト */
-.draw-guide {
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 12px;
-  font-size: 12px;
-  color: var(--text2);
-  line-height: 1.7;
-  min-height: 44px;
-  transition: all 0.25s;
+/* スライドタイトル行 */
+.dlg-slide-top {
+  margin-bottom: 2px;
 }
-.draw-guide strong { color: var(--green); }
+
+/* wizard-slidesをダイアログ内用に上書き */
+#draw-phase-wizard .wizard-slides {
+  min-height: 0;
+}
+
+#draw-phase-wizard .wizard-slide {
+  gap: 10px;
+}
+
+/* wizard-footerのborder-topを除去（ダイアログ内では不要） */
+#draw-phase-wizard .wizard-footer {
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  margin-top: 0;
+}
+
+/* wizard-memoの高さを縮小（ダイアログ内は空間が限られる） */
+#draw-phase-wizard .wizard-memo {
+  min-height: 56px;
+  rows: 2;
+}
+
+/* wizard-doneをダイアログ内用に調整 */
+#draw-phase-wizard .wizard-done {
+  padding: 12px 0;
+  gap: 8px;
+}
+
+#draw-phase-wizard .wizard-done-icon {
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+}
 
 /* 地図上：描画操作ダイアログ（画面下端フルワイド） */
 .map-draw-dialog {

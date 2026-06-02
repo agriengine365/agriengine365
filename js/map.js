@@ -124,10 +124,8 @@ map.addControl(new FloatToggleControl());
 
 // ─── カスタム描画完了 ───
 async function onDrawPolygonComplete(layer) {
-  setDrawStep('wizard');
   await updateAreaStats(layer);
   showWizard();
-  switchTab('draw');
 }
 
 // ─── Leaflet Draw（編集・削除のみ）───
@@ -136,29 +134,23 @@ map.on(L.Draw.Event.EDITSTART, () => {
     PolygonDraw.cancel();
     showToast('描画を中断して頂点編集を開始しました', 'amber');
   }
-  setDrawStep('editing');
 });
 
 map.on(L.Draw.Event.EDITSTOP, async () => {
   if (!currentPolygon) return;
-  // 編集確定後に統計再計算
   await updateAreaStats(currentPolygon);
-  setDrawStep('done');
 });
 
 map.on(L.Draw.Event.DELETED, () => {
   currentPolygon  = null;
   currentAreaData = null;
   resetStats();
-  setDrawStep('idle');
-  hideWizard();
 });
 
-// ─── エリア統計 ───
+// ─── エリア統計（データのみ保持・画面表示なし） ───
 async function updateAreaStats(layer) {
   const latlngs  = layer.getLatLngs()[0];
   const areaSqm  = calcPolygonArea(latlngs);
-  const perim    = calcPerimeter(latlngs);
   const centroid = calcCentroid(latlngs);
   const { lat, lng } = centroid;
   const climate = getClimate(lat);
@@ -171,18 +163,10 @@ async function updateAreaStats(layer) {
   } catch(e) { /* offline ok */ }
 
   currentAreaData = { lat, lng, elev, climate, soilType: selectedSoil, areaSqm };
-
-  setText('stat-area',    `${(areaSqm / 10000).toFixed(4)}<span class="unit">ha</span>`);
-  setText('stat-perim',   `${Math.round(perim)}<span class="unit">m</span>`);
-  setText('stat-lat',     lat.toFixed(5));
-  setText('stat-lng',     lng.toFixed(5));
-  setText('stat-elev',    elev !== null ? `${Math.round(elev)}<span class="unit">m</span>` : '—');
-  setText('stat-climate', climate ? climate.name : '—');
 }
 
 function resetStats() {
-  ['stat-area','stat-perim','stat-lat','stat-lng','stat-elev','stat-climate']
-    .forEach(id => setText(id, '—'));
+  currentAreaData = null;
 }
 
 // ─── ジオメトリヘルパー ───

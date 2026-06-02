@@ -179,7 +179,6 @@ const PolygonDraw = (() => {
 
   function start() {
     if (active) return;
-    if (typeof hideWizard === 'function') hideWizard();
 
     active = true;
     confirmed = [];
@@ -197,9 +196,6 @@ const PolygonDraw = (() => {
 
     setControlsVisible(true);
     updateControls();
-    setDrawStep('drawing');
-    setSheet('half');
-    switchTab('draw');
     updateMapDrawHint('地図をタップして1点目を配置');
     showDrawToast('地図をタップして1点目を置いてください');
   }
@@ -295,14 +291,12 @@ const PolygonDraw = (() => {
     clearVertexMarkers();
     clearPreviewLayers();
     updateControls();
-    setDrawStep('drawing');
     updateMapDrawHint('地図をタップして頂点を配置');
     showDrawToast('リセットしました。地図をタップして描き直してください');
   }
 
   function cancel() {
     stop();
-    setDrawStep('idle');
   }
 
   return {

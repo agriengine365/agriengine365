@@ -66,59 +66,22 @@ function toggleAccordion(header) {
   card.classList.toggle('open');
 }
 
-// ─── Draw Step Indicator ───
-const STEP_CONFIG = {
-  idle: {
-    step: 0,
-    guide: '地図右上の <strong>📐ボタン</strong> を押して描画を開始してください',
-  },
-  drawing: {
-    step: 1,
-    guide: '地図をタップして頂点を置き、位置を調整して<strong>確定</strong>。<br>3点以上で<strong>完了</strong>、<strong>戻る</strong>で取り消し、<strong>リセット</strong>で最初から',
-  },
-  editing: {
-    step: 2,
-    guide: '頂点をドラッグして位置を微調整できます。<br>完了したら <strong>編集を保存</strong> を押してください',
-  },
-  wizard: {
-    step: 3,
-    guide: 'エリア情報を入力して保存してください',
-  },
-  done: {
-    step: 3,
-    guide: '圃場を保存しました ✓<br>エリア一覧から確認・編集できます',
-  },
-};
-
-function setDrawStep(state) {
-  const cfg   = STEP_CONFIG[state] || STEP_CONFIG.idle;
-  const steps = document.querySelectorAll('#draw-phase-steps .draw-step');
-  steps.forEach((el, i) => {
-    el.classList.remove('active', 'done');
-    if (i < cfg.step)  el.classList.add('done');
-    if (i === cfg.step) el.classList.add('active');
-  });
-
-  const guide = document.getElementById('draw-guide');
-  if (guide) guide.innerHTML = cfg.guide;
-
-  if (state === 'drawing') {
-    updateMapDrawHint('地図をタップして頂点を配置');
-  }
-}
-
 // ═══════════════════════════════════════════
-//  SAVE WIZARD
+//  SAVE WIZARD（ダイアログ内フェーズ切替）
 // ═══════════════════════════════════════════
 
 let _wizardStep = 0;
 
+/** 描画フェーズ → ウィザードフェーズに切替 */
 function showWizard() {
-  // ウィザード表示・ドン完了画面を隠す
-  const wizard = document.getElementById('save-wizard');
-  const done   = document.getElementById('wizard-done');
-  wizard.classList.add('active');
-  done.classList.remove('active');
+  const phaseDrawing = document.getElementById('draw-phase-drawing');
+  const phaseWizard  = document.getElementById('draw-phase-wizard');
+  if (phaseDrawing) phaseDrawing.hidden = true;
+  if (phaseWizard)  phaseWizard.hidden  = false;
+
+  // 完了画面を隠す
+  const done = document.getElementById('wizard-done');
+  if (done) done.classList.remove('active');
 
   // スライドをslide 0にリセット
   _wizardStep = 0;
@@ -127,32 +90,30 @@ function showWizard() {
   // 入力フィールドをリセット
   const nameInput = document.getElementById('wizard-name');
   if (nameInput) {
-    // デフォルト名を日時から生成
     const now = new Date();
     const pad = n => String(n).padStart(2, '0');
     nameInput.value = `エリア ${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-    // 全選択して上書きしやすくする
     setTimeout(() => nameInput.select(), 80);
   }
-  document.getElementById('wizard-memo').value = '';
+  const memo = document.getElementById('wizard-memo');
+  if (memo) memo.value = '';
 
   // 土壌を「不明」にリセット
   document.querySelectorAll('.wizard-soil-btn').forEach(b => {
     b.classList.toggle('selected', b.dataset.soil === 'unknown');
   });
-
-  // リセットボタン非表示
-  const clearBtn = document.getElementById('btn-clear-draw');
-  if (clearBtn) clearBtn.style.display = 'none';
-
-  // シートを half に
-  setSheet('half');
 }
 
+/** ウィザードを閉じてダイアログごと非表示＆BottomSheet復帰 */
 function hideWizard() {
-  document.getElementById('save-wizard').classList.remove('active');
-  const clearBtn = document.getElementById('btn-clear-draw');
-  if (clearBtn) clearBtn.style.display = '';
+  const dlg = document.getElementById('map-draw-dialog');
+  if (dlg) {
+    dlg.hidden = true;
+    dlg.setAttribute('aria-hidden', 'true');
+  }
+  document.documentElement.classList.remove('draw-dialog-active');
+  const sheet = document.getElementById('sheet');
+  if (sheet) sheet.style.display = '';
 }
 
 // ─── ドット更新 ───
@@ -252,8 +213,6 @@ function _updateWizardSummary() {
 // ─── キャンセル ───
 function cancelWizard() {
   hideWizard();
-  // ポリゴンは残す（ユーザーが再描画を選べるよう）
-  setDrawStep('idle');
   showToast('保存をキャンセルしました');
 }
 
@@ -276,10 +235,10 @@ async function wizardCommit() {
 // ─── 完了画面に切替 ───
 function showWizardDone(areaName) {
   document.querySelectorAll('.wizard-slide').forEach(s => s.classList.remove('active'));
-  document.getElementById('wizard-done').classList.add('active');
+  const done = document.getElementById('wizard-done');
+  if (done) done.classList.add('active');
   const sub = document.getElementById('wizard-done-sub');
   if (sub) sub.textContent = `「${areaName}」をエリア一覧に追加しました`;
-  setDrawStep('done');
 }
 
 // ─── エリア一覧へ移動 ───
