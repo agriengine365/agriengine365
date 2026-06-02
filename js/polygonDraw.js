@@ -1,29 +1,131 @@
 // ═══════════════════════════════════════════
-//  POLYGON DRAW — 頂点を1つずつ確定するカスタム描画
+//  POLYGON DRAW — スコープ（画面中央）方式
+//  地図をドラッグして中央スコープに合わせ、「確定」で頂点追加
 // ═══════════════════════════════════════════
 
 const PolygonDraw = (() => {
   let active = false;
   /** @type {L.LatLng[]} */
   let confirmed = [];
-  let draftMarker = null;
-  /** @type {L.LatLng|null} */
-  let draftLatLng = null;
   let previewLine = null;
   let previewFill = null;
+  let liveLayer  = null;   // スコープ中心→最終確定点のライブライン
   /** @type {L.Marker[]} */
   let vertexMarkers = [];
 
-  // confirmedIcon は renderConfirmedMarkers() で番号付きに動的生成するため削除
+  // ─── 確定頂点：小さい点マーカー ───
+  function makeConfirmedIcon() {
+    return L.divIcon({
+      className: 'vertex-marker vertex-confirmed',
+      iconSize:  [8, 8],
+      iconAnchor:[4, 4],
+    });
+  }
 
-  const draftIcon = L.divIcon({
-    className: 'vertex-marker vertex-draft',
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-  });
+  // ─── スコープ表示/非表示 ───
+  function setScopeVisible(visible) {
+    const el = document.getElementById('draw-scope');
+    if (el) el.classList.toggle('active', visible);
+  }
 
-  function isActive() {
-    return active;
+  // ─── 地図中心の LatLng を取得 ───
+  function getCenter() {
+    return map.getCenter();
+  }
+
+  // ─── ライブライン（スコープ中心 ↔ 最終確定点）を更新 ───
+  function updateLiveLine() {
+    if (liveLayer) { map.removeLayer(liveLayer); liveLayer = null; }
+    if (!active || confirmed.length === 0) return;
+
+    const center = getCenter();
+    const last   = confirmed[confirmed.length - 1];
+
+    // 2点以上確定済みなら閉じた薄いプレビューも描く
+    const pts = [...confirmed, center];
+
+    if (confirmed.length >= 2) {
+      // 閉じたポリゴンプレビュー（薄い塗り）
+      const closed = [...confirmed, center];
+      liveLayer = L.polygon(closed, {
+        color:       CONFIG.DRAW_COLOR,
+        weight:      1.5,
+        dashArray:   '5 7',
+        fillOpacity: 0.07,
+        opacity:     0.5,
+        interactive: false,
+      }).addTo(map);
+    } else {
+      // 1点だけならライン
+      liveLayer = L.polyline([last, center], {
+        color:       CONFIG.DRAW_COLOR,
+        weight:      2,
+        dashArray:   '5 7',
+        opacity:     0.7,
+        interactive: false,
+      }).addTo(map);
+    }
+  }
+
+  // ─── 確定済みポリゴンプレビュー（確定点だけで構成） ───
+  function updateConfirmedPreview() {
+    if (previewLine) { map.removeLayer(previewLine); previewLine = null; }
+    if (previewFill) { map.removeLayer(previewFill); previewFill = null; }
+
+    const n = confirmed.length;
+    if (n < 2) return;
+
+    if (n >= 3) {
+      previewFill = L.polygon(confirmed, {
+        color:       CONFIG.DRAW_COLOR,
+        weight:      2,
+        fillOpacity: 0.12,
+        opacity:     0.85,
+        interactive: false,
+      }).addTo(map);
+    } else {
+      previewLine = L.polyline(confirmed, {
+        color:       CONFIG.DRAW_COLOR,
+        weight:      2,
+        opacity:     0.85,
+        interactive: false,
+      }).addTo(map);
+    }
+  }
+
+  // ─── 確定頂点マーカー再描画 ───
+  function renderConfirmedMarkers() {
+    vertexMarkers.forEach(m => map.removeLayer(m));
+    vertexMarkers = [];
+    confirmed.forEach(ll => {
+      const m = L.marker(ll, {
+        icon:        makeConfirmedIcon(),
+        draggable:   false,
+        interactive: false,
+      }).addTo(map);
+      vertexMarkers.push(m);
+    });
+  }
+
+  // ─── 地図移動時にライブライン更新 ───
+  function onMapMove() {
+    if (!active) return;
+    updateLiveLine();
+  }
+
+  // ─── ボタン有効/無効 ───
+  function updateControls() {
+    const n = confirmed.length;
+    const btnConfirm  = document.getElementById('btn-draw-confirm');
+    const btnBack     = document.getElementById('btn-draw-back');
+    const btnComplete = document.getElementById('btn-draw-complete');
+    const btnReset    = document.getElementById('btn-draw-reset');
+
+    // 確定：常に押せる（スコープ中心を即追加）
+    if (btnConfirm)  btnConfirm.disabled  = !active;
+    if (btnBack)     btnBack.disabled     = !active || n === 0;
+    if (btnComplete) btnComplete.disabled = !active || n < 3;
+    if (btnReset)    btnReset.disabled    = !active || n === 0;
   }
 
   function setControlsVisible(visible) {
@@ -34,237 +136,95 @@ const PolygonDraw = (() => {
     }
     document.documentElement.classList.toggle('draw-dialog-active', visible);
 
-    // BottomSheetを描画中は完全非表示・描画終了で復帰
     const sheet = document.getElementById('sheet');
-    if (sheet) {
-      sheet.style.display = visible ? 'none' : '';
-    }
-
-    const clearBtn = document.getElementById('btn-clear-draw');
-    if (clearBtn) clearBtn.style.display = visible ? 'none' : '';
-    const guide = document.getElementById('draw-guide');
-    if (guide) guide.style.display = visible ? 'none' : '';
+    if (sheet) sheet.style.display = visible ? 'none' : '';
   }
 
-  function updateControls() {
-    const hasDraft = !!draftLatLng;
-    const n = confirmed.length;
-
-    const btnConfirm = document.getElementById('btn-draw-confirm');
-    const btnBack = document.getElementById('btn-draw-back');
-    const btnComplete = document.getElementById('btn-draw-complete');
-    const btnReset = document.getElementById('btn-draw-reset');
-
-    if (btnConfirm) btnConfirm.disabled = !active || !hasDraft;
-    if (btnBack) btnBack.disabled = !active || (!hasDraft && n === 0);
-    if (btnComplete) btnComplete.disabled = !active || n < 3 || hasDraft;
-    if (btnReset) btnReset.disabled = !active || (n === 0 && !hasDraft);
-  }
-
-  function clearPreviewLayers() {
-    if (previewLine) {
-      map.removeLayer(previewLine);
-      previewLine = null;
-    }
-    if (previewFill) {
-      map.removeLayer(previewFill);
-      previewFill = null;
-    }
-  }
-
-  function clearVertexMarkers() {
-    vertexMarkers.forEach(m => map.removeLayer(m));
-    vertexMarkers = [];
-  }
-
-  function removeDraft() {
-    if (draftMarker) {
-      map.removeLayer(draftMarker);
-      draftMarker = null;
-    }
-    draftLatLng = null;
-  }
-
-  function renderConfirmedMarkers() {
-    clearVertexMarkers();
-    confirmed.forEach((ll, i) => {
-      const icon = L.divIcon({
-        className: 'vertex-marker vertex-confirmed',
-        html: `<span style="pointer-events:none;user-select:none">${i + 1}</span>`,
-        iconSize: [22, 22],
-        iconAnchor: [11, 11],
-      });
-      const m = L.marker(ll, {
-        draggable: false,
-        icon,
-        interactive: false,
-        title: `頂点 ${i + 1}`,
-      }).addTo(map);
-      vertexMarkers.push(m);
-    });
-  }
-
-  function updatePreview() {
-    clearPreviewLayers();
-    const pts = [...confirmed];
-    if (draftLatLng) pts.push(draftLatLng);
-
-    if (pts.length >= 2) {
-      previewLine = L.polyline(pts, {
-        color: CONFIG.DRAW_COLOR,
-        weight: 2,
-        dashArray: draftLatLng ? '6 6' : null,
-        opacity: 0.9,
-      }).addTo(map);
-    }
-
-    if (pts.length >= 3 && !draftLatLng) {
-      previewFill = L.polygon(pts, {
-        color: CONFIG.DRAW_COLOR,
-        weight: 2,
-        fillOpacity: 0.12,
-        opacity: 0.85,
-      }).addTo(map);
-      if (previewLine) {
-        map.removeLayer(previewLine);
-        previewLine = null;
-      }
-    } else if (pts.length >= 3 && draftLatLng) {
-      const closed = [...confirmed, draftLatLng, confirmed[0]];
-      previewFill = L.polygon(closed, {
-        color: CONFIG.DRAW_COLOR,
-        weight: 1,
-        fillOpacity: 0.06,
-        opacity: 0.35,
-        dashArray: '4 8',
-      }).addTo(map);
-    }
-  }
-
-  function onMapClick(e) {
-    if (!active) return;
-    setDraft(e.latlng);
-    const n = confirmed.length;
-    if (n === 0) {
-      updateMapDrawHint('ドラッグで位置調整 → 確定');
-      showDrawToast('1点目を配置しました。位置を調整して「確定」を押してください');
-    } else {
-      updateMapDrawHint(`頂点${n + 1} — 調整後に確定`);
-      showDrawToast(`${n + 1}点目を配置しました。位置を調整して「確定」を押してください`);
-    }
-    updateControls();
-  }
-
-  function onDraftDrag() {
-    if (!draftMarker) return;
-    draftLatLng = draftMarker.getLatLng();
-    updatePreview();
-  }
-
-  function setDraft(latlng) {
-    draftLatLng = L.latLng(latlng.lat, latlng.lng);
-    if (!draftMarker) {
-      draftMarker = L.marker(draftLatLng, {
-        draggable: true,
-        icon: draftIcon,
-        zIndexOffset: 1000,
-      }).addTo(map);
-      draftMarker.on('drag', onDraftDrag);
-      draftMarker.on('dragend', onDraftDrag);
-      draftMarker.on('click', L.DomEvent.stopPropagation);
-    } else {
-      draftMarker.setLatLng(draftLatLng);
-    }
-    updatePreview();
-    updateControls();
-  }
-
+  // ─── 開始 ───
   function start() {
     if (active) return;
-
-    active = true;
+    active    = true;
     confirmed = [];
-    removeDraft();
-    clearVertexMarkers();
-    clearPreviewLayers();
+
+    vertexMarkers.forEach(m => map.removeLayer(m));
+    vertexMarkers = [];
+    if (previewLine) { map.removeLayer(previewLine); previewLine = null; }
+    if (previewFill) { map.removeLayer(previewFill); previewFill = null; }
+    if (liveLayer)   { map.removeLayer(liveLayer);   liveLayer   = null; }
 
     drawnItems.clearLayers();
-    currentPolygon = null;
+    currentPolygon  = null;
     currentAreaData = null;
     resetStats();
 
-    map.on('click', onMapClick);
+    map.on('move',    onMapMove);
+    map.on('moveend', onMapMove);
     map.getContainer().classList.add('polygon-draw-active');
 
+    setScopeVisible(true);
     setControlsVisible(true);
     updateControls();
-    updateMapDrawHint('地図をタップして1点目を配置');
-    showDrawToast('地図をタップして1点目を置いてください');
+    updateMapDrawHint('地図を動かして中央に合わせ「確定」');
+    showDrawToast('地図をドラッグして1点目を中央に合わせてください');
   }
 
+  // ─── 停止（内部用） ───
   function stop() {
     if (!active) return;
     active = false;
-    map.off('click', onMapClick);
+    map.off('move',    onMapMove);
+    map.off('moveend', onMapMove);
     map.getContainer().classList.remove('polygon-draw-active');
-    removeDraft();
-    clearVertexMarkers();
-    clearPreviewLayers();
+
+    vertexMarkers.forEach(m => map.removeLayer(m));
+    vertexMarkers = [];
+    if (previewLine) { map.removeLayer(previewLine); previewLine = null; }
+    if (previewFill) { map.removeLayer(previewFill); previewFill = null; }
+    if (liveLayer)   { map.removeLayer(liveLayer);   liveLayer   = null; }
+
+    setScopeVisible(false);
     setControlsVisible(false);
     updateControls();
-    // Sheet復帰：peek状態でスライドイン
     if (typeof setSheet === 'function') setSheet('half');
   }
 
+  // ─── 頂点確定（スコープ中心を追加） ───
   function confirmVertex() {
-    if (!active || !draftLatLng) return;
+    if (!active) return;
+    const ll = getCenter();
+    confirmed.push(L.latLng(ll.lat, ll.lng));
 
-    confirmed.push(L.latLng(draftLatLng.lat, draftLatLng.lng));
-    removeDraft();
     renderConfirmedMarkers();
-    updatePreview();
+    updateConfirmedPreview();
+    updateLiveLine();
     updateControls();
 
     const n = confirmed.length;
     if (n < 3) {
       updateMapDrawHint(`${n}点確定 — あと${3 - n}点以上`);
-      showDrawToast(`${n}点目を確定しました。あと${3 - n}点以上で「完了」できます`);
+      showDrawToast(`${n}点目を確定。地図を動かして次の頂点を合わせてください`);
     } else {
       updateMapDrawHint(`${n}点確定 — 「完了」で閉じる`);
-      showDrawToast(`${n}点目を確定しました。「完了」で圃場を閉じられます`);
+      showDrawToast(`${n}点目を確定。「完了」で圃場を閉じられます`);
     }
   }
 
+  // ─── 1つ戻る ───
   function goBack() {
-    if (!active) return;
-
-    if (draftLatLng) {
-      removeDraft();
-      updatePreview();
-      updateControls();
-      updateMapDrawHint('地図をタップして頂点を配置');
-      showDrawToast('配置中の頂点を取り消しました');
-      return;
-    }
-
-    if (confirmed.length === 0) return;
+    if (!active || confirmed.length === 0) return;
     confirmed.pop();
     renderConfirmedMarkers();
-    updatePreview();
+    updateConfirmedPreview();
+    updateLiveLine();
     updateControls();
-    const left = confirmed.length;
-    updateMapDrawHint(left ? `${left}点確定 — 次の頂点を配置` : '地図をタップして頂点を配置');
-    showDrawToast('1つ前の確定頂点に戻しました');
+    const n = confirmed.length;
+    updateMapDrawHint(n ? `${n}点確定 — 次の頂点を合わせて確定` : '地図を動かして中央に合わせ「確定」');
+    showDrawToast('1つ前の頂点に戻しました');
   }
 
+  // ─── 完了 ───
   function complete() {
     if (!active) return;
-
-    if (draftLatLng) {
-      showDrawToast('配置中の頂点を「確定」するか「戻る」で取り消してください', 'amber');
-      return;
-    }
-
     if (confirmed.length < 3) {
       showDrawToast('完了には頂点を3つ以上確定してください', 'amber');
       return;
@@ -272,67 +232,42 @@ const PolygonDraw = (() => {
 
     const latlngs = confirmed.map(ll => [ll.lat, ll.lng]);
     const poly = L.polygon(latlngs, {
-      color: CONFIG.DRAW_COLOR,
-      weight: 2,
+      color:       CONFIG.DRAW_COLOR,
+      weight:      2,
       fillOpacity: 0.15,
+      interactive: true,
     });
 
-    // stop() より先にポリゴンを確定しておく
     drawnItems.clearLayers();
     drawnItems.addLayer(poly);
     currentPolygon = poly;
 
-    // 描画状態を終了（ダイアログは hidden になるが、この後 onDrawPolygonComplete で再表示）
     stop();
-
     showDrawToast('圃場の形を確定しました', 'green');
-    // 非同期で updateAreaStats → showWizard を呼ぶ
     onDrawPolygonComplete(poly);
   }
 
+  // ─── リセット ───
   function reset() {
     if (!active) return;
     confirmed = [];
-    removeDraft();
-    clearVertexMarkers();
-    clearPreviewLayers();
+    renderConfirmedMarkers();
+    updateConfirmedPreview();
+    if (liveLayer) { map.removeLayer(liveLayer); liveLayer = null; }
     updateControls();
-    updateMapDrawHint('地図をタップして頂点を配置');
-    showDrawToast('リセットしました。地図をタップして描き直してください');
+    updateMapDrawHint('地図を動かして中央に合わせ「確定」');
+    showDrawToast('リセットしました');
   }
 
-  function cancel() {
-    stop();
-  }
+  // ─── キャンセル ───
+  function cancel() { stop(); }
 
-  return {
-    isActive,
-    start,
-    stop,
-    confirmVertex,
-    goBack,
-    complete,
-    reset,
-    cancel,
-  };
+  return { isActive: () => active, start, stop, confirmVertex, goBack, complete, reset, cancel };
 })();
 
-function startPolygonDraw() {
-  PolygonDraw.start();
-}
-
-function polygonDrawConfirm() {
-  PolygonDraw.confirmVertex();
-}
-
-function polygonDrawBack() {
-  PolygonDraw.goBack();
-}
-
-function polygonDrawComplete() {
-  PolygonDraw.complete();
-}
-
-function polygonDrawReset() {
-  PolygonDraw.reset();
-}
+// ─── グローバル関数 ───
+function startPolygonDraw()  { PolygonDraw.start(); }
+function polygonDrawConfirm()  { PolygonDraw.confirmVertex(); }
+function polygonDrawBack()     { PolygonDraw.goBack(); }
+function polygonDrawComplete() { PolygonDraw.complete(); }
+function polygonDrawReset()    { PolygonDraw.reset(); }

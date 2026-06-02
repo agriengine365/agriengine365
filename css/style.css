@@ -903,57 +903,71 @@ html.draw-dialog-active {
   border: none !important;
 }
 
-/* 確定済み頂点：大型化・番号ラベル付き */
+/* 確定済み頂点：小さい点のみ */
 .vertex-confirmed {
-  width: 22px;
-  height: 22px;
+  width: 8px;
+  height: 8px;
   margin: 0 !important;
   border-radius: 50%;
-  background: var(--green3);
-  border: 2.5px solid #fff;
-  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.4), 0 2px 8px rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--mono);
-  font-size: 9px;
-  font-weight: 600;
-  color: #fff;
-  line-height: 1;
-  transition: transform 0.15s;
-}
-
-/* ドラフト頂点：大型・アンバー・強パルス */
-.vertex-draft {
-  width: 28px;
-  height: 28px;
-  margin: 0 !important;
-  border-radius: 50%;
-  background: var(--amber);
-  border: 3px solid #fff;
-  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.5), 0 3px 12px rgba(0,0,0,0.5);
-  animation: vertex-pulse 0.9s ease-in-out infinite;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ドラフト頂点の内側白丸 */
-.vertex-draft::after {
-  content: '';
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.6);
-}
-
-@keyframes vertex-pulse {
-  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 4px rgba(251,191,36,0.5), 0 3px 12px rgba(0,0,0,0.5); }
-  50%       { transform: scale(1.18); box-shadow: 0 0 0 8px rgba(251,191,36,0.18), 0 3px 12px rgba(0,0,0,0.5); }
+  background: var(--green);
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.45), 0 1px 4px rgba(0,0,0,0.6);
 }
 
 #map.polygon-draw-active {
-  cursor: crosshair;
+  cursor: grab;
+}
+#map.polygon-draw-active:active {
+  cursor: grabbing;
+}
+
+/* ═══════════════════════════════════════════
+   DRAW SCOPE（画面中央固定十字）
+═══════════════════════════════════════════ */
+#draw-scope {
+  position: fixed;
+  /* ヘッダー分を除いた地図領域の中央 */
+  top: calc(var(--header-h) + (100dvh - var(--header-h)) / 2);
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 48px;
+  height: 48px;
+  pointer-events: none;
+  z-index: 400;
+  display: none;
+}
+
+#draw-scope.active {
+  display: block;
+}
+
+/* 横線 */
+.scope-h {
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 1px;
+  margin-top: -0.5px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* 縦線 */
+.scope-v {
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 1px;
+  margin-left: -0.5px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* 中心の小丸 */
+.scope-dot {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 6px; height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 0 1.5px rgba(0,0,0,0.5);
 }
 
 /* ═══════════════════════════════════════════
