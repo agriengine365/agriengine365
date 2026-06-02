@@ -162,7 +162,21 @@ async function updateAreaStats(layer) {
     elev = json.elevation ?? null;
   } catch(e) { /* offline ok */ }
 
-  currentAreaData = { lat, lng, elev, climate, soilType: selectedSoil, areaSqm };
+  const perimeter   = calcPerimeter(latlngs);
+  const vertexCount = latlngs.length;
+  const areaHa      = areaSqm / 10000;
+
+  currentAreaData = {
+    lat,
+    lng,
+    elev,
+    climate,
+    soilType:    null,        // ウィザードで上書きされる
+    areaSqm,
+    areaHa,
+    perimeter,
+    vertexCount,
+  };
 }
 
 function resetStats() {
