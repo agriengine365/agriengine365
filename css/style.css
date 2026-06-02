@@ -177,7 +177,8 @@ header .spacer { flex: 1; }
 /* ─── Sheet Body (scrollable) ─── */
 .sheet-body {
   flex: 1;
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   position: relative;
 }
 
@@ -186,39 +187,36 @@ header .spacer { flex: 1; }
   flex-direction: column;
   gap: 12px;
   padding: 16px;
-  height: 100%;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  padding-bottom: 40px;
 }
 .tab-content.active { display: flex; }
 
 /* ─── Stats Grid ─── */
 .stats-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-.stat-chip {
   background: var(--bg3);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 10px 12px;
+  overflow: hidden;
 }
-.stat-chip-wide { grid-column: span 2; }
+.stat-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.stat-chip:last-child { border-bottom: none; }
+.stat-chip-wide { /* 通常と同じ */ }
 .stat-label {
   font-family: var(--mono);
-  font-size: 9px;
+  font-size: 10px;
   color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: 4px;
 }
 .stat-val {
   font-family: var(--mono);
-  font-size: 16px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--green);
-  line-height: 1;
 }
 .stat-val.stat-small { font-size: 11px; color: var(--text2); }
 .stat-val .unit { font-size: 10px; color: var(--text3); margin-left: 2px; }
