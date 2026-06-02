@@ -14,16 +14,12 @@ const PolygonDraw = (() => {
   /** @type {L.Marker[]} */
   let vertexMarkers = [];
 
-  const confirmedIcon = L.divIcon({
-    className: 'vertex-marker vertex-confirmed',
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
+  // confirmedIcon は renderConfirmedMarkers() で番号付きに動的生成するため削除
 
   const draftIcon = L.divIcon({
     className: 'vertex-marker vertex-draft',
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
   });
 
   function isActive() {
@@ -92,9 +88,15 @@ const PolygonDraw = (() => {
   function renderConfirmedMarkers() {
     clearVertexMarkers();
     confirmed.forEach((ll, i) => {
+      const icon = L.divIcon({
+        className: 'vertex-marker vertex-confirmed',
+        html: `<span style="pointer-events:none;user-select:none">${i + 1}</span>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
       const m = L.marker(ll, {
         draggable: false,
-        icon: confirmedIcon,
+        icon,
         interactive: false,
         title: `頂点 ${i + 1}`,
       }).addTo(map);
@@ -275,12 +277,16 @@ const PolygonDraw = (() => {
       fillOpacity: 0.15,
     });
 
-    stop();
+    // stop() より先にポリゴンを確定しておく
     drawnItems.clearLayers();
     drawnItems.addLayer(poly);
     currentPolygon = poly;
 
+    // 描画状態を終了（ダイアログは hidden になるが、この後 onDrawPolygonComplete で再表示）
+    stop();
+
     showDrawToast('圃場の形を確定しました', 'green');
+    // 非同期で updateAreaStats → showWizard を呼ぶ
     onDrawPolygonComplete(poly);
   }
 

@@ -74,6 +74,17 @@ let _wizardStep = 0;
 
 /** 描画フェーズ → ウィザードフェーズに切替 */
 function showWizard() {
+  // stop() でダイアログが hidden になっているので必ず再表示する
+  const dlg = document.getElementById('map-draw-dialog');
+  if (dlg) {
+    dlg.hidden = false;
+    dlg.removeAttribute('aria-hidden');
+  }
+  // BottomSheet は描画完了後も引き続き非表示にする
+  const sheet = document.getElementById('sheet');
+  if (sheet) sheet.style.display = 'none';
+  document.documentElement.classList.add('draw-dialog-active');
+
   const phaseDrawing = document.getElementById('draw-phase-drawing');
   const phaseWizard  = document.getElementById('draw-phase-wizard');
   if (phaseDrawing) phaseDrawing.hidden = true;
