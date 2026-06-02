@@ -1085,3 +1085,52 @@ header .spacer { flex: 1; }
   color: var(--text3);
   line-height: 1.6;
 }
+/* ═══════════════════════════════════════════
+   カスタム描画開始ボタン（右上）
+═══════════════════════════════════════════ */
+
+/* 右上コントロールの余白 */
+.leaflet-top.leaflet-right {
+  top: calc(var(--header-h) + 10px);
+  margin-right: 12px;
+}
+
+.leaflet-control-draw-start {
+  border-radius: 10px !important;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5) !important;
+}
+
+.draw-start-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  height: 38px !important;
+  padding: 0 14px !important;
+  width: auto !important;
+  line-height: normal !important;
+  font-family: var(--mono) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.06em !important;
+  color: var(--green) !important;
+  background: linear-gradient(180deg, #2a4732 0%, #1e3526 100%) !important;
+  border: 1px solid var(--green3) !important;
+  transition: background 0.2s, border-color 0.2s, transform 0.15s !important;
+  white-space: nowrap !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.draw-start-btn:hover {
+  background: linear-gradient(180deg, #2f5239 0%, #22402d 100%) !important;
+  border-color: var(--green2) !important;
+}
+
+.draw-start-btn:active {
+  transform: scale(0.96) !important;
+}
+
+.draw-start-btn span {
+  color: var(--green);
+}
