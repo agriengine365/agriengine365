@@ -101,12 +101,11 @@ map.on(L.Draw.Event.CREATED, async (e) => {
   drawnItems.addLayer(e.layer);
   currentPolygon = e.layer;
 
-  setDrawStep('saving');
+  setDrawStep('wizard');
   await updateAreaStats(e.layer);
 
-  // 自動保存
-  await autoSaveArea();
-  setDrawStep('done');
+  // 統計取得完了後にウィザードを表示
+  showWizard();
   switchTab('draw');
 });
 
@@ -126,6 +125,7 @@ map.on(L.Draw.Event.DELETED, () => {
   currentAreaData = null;
   resetStats();
   setDrawStep('idle');
+  hideWizard();
 });
 
 // ─── エリア統計 ───

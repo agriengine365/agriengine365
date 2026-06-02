@@ -55,11 +55,7 @@ function toggleAccordion(header) {
   card.classList.toggle('open');
 }
 
-// ═══════════════════════════════════════════
-//  DRAW STEP INDICATOR
-// ═══════════════════════════════════════════
-
-// 状態: idle / drawing / editing / saving / done
+// ─── Draw Step Indicator ───
 const STEP_CONFIG = {
   idle: {
     step: 0,
@@ -73,19 +69,19 @@ const STEP_CONFIG = {
     step: 2,
     guide: '頂点をドラッグして位置を微調整できます。<br>完了したら <strong>編集を保存</strong> を押してください',
   },
-  saving: {
-    step: 2,
-    guide: '保存中...',
+  wizard: {
+    step: 3,
+    guide: 'エリア情報を入力して保存してください',
   },
   done: {
     step: 3,
-    guide: '圃場を保存しました ✓<br>エリア一覧から名前・土壌・メモを編集できます',
+    guide: '圃場を保存しました ✓<br>エリア一覧から確認・編集できます',
   },
 };
 
 function setDrawStep(state) {
-  const cfg  = STEP_CONFIG[state] || STEP_CONFIG.idle;
-  const steps = document.querySelectorAll('.draw-step');
+  const cfg   = STEP_CONFIG[state] || STEP_CONFIG.idle;
+  const steps = document.querySelectorAll('#draw-phase-steps .draw-step');
   steps.forEach((el, i) => {
     el.classList.remove('active', 'done');
     if (i < cfg.step)  el.classList.add('done');
@@ -94,6 +90,188 @@ function setDrawStep(state) {
 
   const guide = document.getElementById('draw-guide');
   if (guide) guide.innerHTML = cfg.guide;
+}
+
+// ═══════════════════════════════════════════
+//  SAVE WIZARD
+// ═══════════════════════════════════════════
+
+let _wizardStep = 0;
+
+function showWizard() {
+  // ウィザード表示・ドン完了画面を隠す
+  const wizard = document.getElementById('save-wizard');
+  const done   = document.getElementById('wizard-done');
+  wizard.classList.add('active');
+  done.classList.remove('active');
+
+  // スライドをslide 0にリセット
+  _wizardStep = 0;
+  _goToWizardSlide(0, 'none');
+
+  // 入力フィールドをリセット
+  const nameInput = document.getElementById('wizard-name');
+  if (nameInput) {
+    // デフォルト名を日時から生成
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    nameInput.value = `エリア ${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+    // 全選択して上書きしやすくする
+    setTimeout(() => nameInput.select(), 80);
+  }
+  document.getElementById('wizard-memo').value = '';
+
+  // 土壌を「不明」にリセット
+  document.querySelectorAll('.wizard-soil-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.soil === 'unknown');
+  });
+
+  // リセットボタン非表示
+  const clearBtn = document.getElementById('btn-clear-draw');
+  if (clearBtn) clearBtn.style.display = 'none';
+
+  // シートを half に
+  setSheet('half');
+}
+
+function hideWizard() {
+  document.getElementById('save-wizard').classList.remove('active');
+  const clearBtn = document.getElementById('btn-clear-draw');
+  if (clearBtn) clearBtn.style.display = '';
+}
+
+// ─── ドット更新 ───
+function _updateWizardDots(step) {
+  for (let i = 0; i < 3; i++) {
+    const dot = document.getElementById('wdot-' + i);
+    if (!dot) continue;
+    dot.classList.remove('active', 'done');
+    if (i < step)  dot.classList.add('done');
+    if (i === step) dot.classList.add('active');
+  }
+}
+
+// ─── スライド遷移 ───
+function _goToWizardSlide(target, direction) {
+  const slides = document.querySelectorAll('.wizard-slide');
+  slides.forEach((s, i) => {
+    s.classList.remove('active', 'exit-left');
+    if (direction !== 'none' && s.classList.contains('active') && i !== target) {
+      // 現在スライドにexit-leftを付ける（forwardなら左退場）
+    }
+  });
+  slides.forEach((s, i) => {
+    s.classList.remove('active', 'exit-left');
+  });
+  // 現在のスライドを退場させる
+  const current = document.querySelector('.wizard-slide.active');
+  if (current && direction !== 'none') {
+    current.classList.add('exit-left');
+    setTimeout(() => current.classList.remove('exit-left'), 300);
+  }
+  const targetSlide = document.getElementById('wslide-' + target);
+  if (targetSlide) {
+    if (direction === 'back') {
+      targetSlide.style.transform = 'translateX(-60px)';
+      targetSlide.style.transition = 'none';
+      requestAnimationFrame(() => {
+        targetSlide.style.transition = '';
+        targetSlide.style.transform  = '';
+        targetSlide.classList.add('active');
+      });
+    } else {
+      targetSlide.classList.add('active');
+    }
+  }
+  _wizardStep = target;
+  _updateWizardDots(target);
+}
+
+// ─── 次へ ───
+function wizardNext(from) {
+  if (from === 0) {
+    const name = document.getElementById('wizard-name').value.trim();
+    if (!name) {
+      document.getElementById('wizard-name').focus();
+      showToast('エリア名を入力してください', 'amber');
+      return;
+    }
+    _goToWizardSlide(1, 'forward');
+  } else if (from === 1) {
+    // Step2: サマリーを更新してから遷移
+    _updateWizardSummary();
+    _goToWizardSlide(2, 'forward');
+  }
+}
+
+// ─── 戻る ───
+function wizardBack(from) {
+  _goToWizardSlide(from - 1, 'back');
+}
+
+// ─── 土壌選択 ───
+function selectWizardSoil(btn) {
+  document.querySelectorAll('.wizard-soil-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+// ─── サマリー更新 ───
+function _updateWizardSummary() {
+  const name = document.getElementById('wizard-name').value.trim();
+  const soilBtn = document.querySelector('.wizard-soil-btn.selected');
+  const soilKey = soilBtn ? soilBtn.dataset.soil : 'unknown';
+
+  const soilMap = { sandy:'砂質土', loam:'壌土', clay:'粘土質', peat:'泥炭土', volcanic:'火山灰土', unknown:'不明' };
+
+  document.getElementById('wsummary-name').textContent    = name || '—';
+  document.getElementById('wsummary-soil').textContent    = soilMap[soilKey] || '—';
+
+  // 面積・気候帯はcurrentAreaDataから
+  if (typeof currentAreaData !== 'undefined' && currentAreaData) {
+    const ha = currentAreaData.areaSqm ? (currentAreaData.areaSqm / 10000).toFixed(3) + ' ha' : '—';
+    document.getElementById('wsummary-area').textContent    = ha;
+    document.getElementById('wsummary-climate').textContent = currentAreaData.climate?.name || '—';
+  }
+}
+
+// ─── キャンセル ───
+function cancelWizard() {
+  hideWizard();
+  // ポリゴンは残す（ユーザーが再描画を選べるよう）
+  setDrawStep('idle');
+  showToast('保存をキャンセルしました');
+}
+
+// ─── コミット（保存実行） ───
+async function wizardCommit() {
+  const btn = document.getElementById('wizard-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '保存中...'; }
+
+  const name  = document.getElementById('wizard-name').value.trim() || '無名エリア';
+  const memo  = document.getElementById('wizard-memo').value.trim();
+  const soilBtn = document.querySelector('.wizard-soil-btn.selected');
+  const soilType = soilBtn ? soilBtn.dataset.soil : 'unknown';
+
+  // area.js の commitSaveArea に渡す
+  await commitSaveArea({ name, memo, soilType });
+
+  if (btn) { btn.disabled = false; btn.textContent = '✓ 保存する'; }
+}
+
+// ─── 完了画面に切替 ───
+function showWizardDone(areaName) {
+  document.querySelectorAll('.wizard-slide').forEach(s => s.classList.remove('active'));
+  document.getElementById('wizard-done').classList.add('active');
+  const sub = document.getElementById('wizard-done-sub');
+  if (sub) sub.textContent = `「${areaName}」をエリア一覧に追加しました`;
+  setDrawStep('done');
+}
+
+// ─── エリア一覧へ移動 ───
+function goToAreas() {
+  hideWizard();
+  switchTab('areas');
+  loadAreas();
 }
 
 // ═══════════════════════════════════════════

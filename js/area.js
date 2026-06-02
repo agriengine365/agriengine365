@@ -2,18 +2,18 @@
 //  AREA — 自動保存・一覧・削除・選択・インライン編集
 // ═══════════════════════════════════════════
 
-// ─── 自動保存（描画確定時に呼ばれる）───
-async function autoSaveArea() {
-  if (!currentPolygon || !currentAreaData) return;
+// ─── ウィザードからの確定保存 ───
+async function commitSaveArea({ name, memo, soilType }) {
+  if (!currentPolygon || !currentAreaData) {
+    showToast('保存対象のエリアがありません', 'amber');
+    return;
+  }
 
-  const now  = new Date();
-  const pad  = n => String(n).padStart(2, '0');
-  const name = `エリア ${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const geojson = currentPolygon.toGeoJSON();
 
   const payload = {
     name,
-    memo: '',
+    memo,
     geojson,
     meta: {
       areaSqm:     currentAreaData.areaSqm,
@@ -21,7 +21,7 @@ async function autoSaveArea() {
       lng:         currentAreaData.lng,
       elev:        currentAreaData.elev,
       climateName: currentAreaData.climate?.name || null,
-      soilType:    null,
+      soilType:    soilType || null,
     },
     createdAt: new Date().toISOString(),
   };
@@ -37,7 +37,7 @@ async function autoSaveArea() {
       localStorage.setItem(CONFIG.AREAS_KEY, JSON.stringify(stored));
       currentSavedAreaId = payload.id;
     }
-    showToast('自動保存しました ✓', 'green');
+    showWizardDone(name);
     loadAreas();
   } catch(e) {
     showToast('保存に失敗しました', 'amber');
@@ -45,9 +45,10 @@ async function autoSaveArea() {
   }
 }
 
-// ─── 手動保存（旧フロー・互換用。現在は使用しない）───
-async function saveArea() {
-  // autoSaveArea に統合済み
+// ─── 旧 autoSaveArea (互換用・現在は未使用) ───
+async function autoSaveArea() {
+  // ウィザードフローに移行したため、map.js の CREATED イベントから
+  // showWizard() を呼ぶようになっています。
 }
 
 // ─── エリア一覧読み込み ───
