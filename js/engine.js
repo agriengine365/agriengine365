@@ -1,7 +1,29 @@
 // ═══════════════════════════════════════════
-//  SCORING ENGINE — 欠損込みで動く
+//  ENGINE — 気候推定 / スコアリング / 施肥計算
 // ═══════════════════════════════════════════
 
+// ─── CLIMATE ───
+const CLIMATE_TABLE = [
+  { latMin:24, latMax:27, name:'亜熱帯',      tempMean:23, rain:2100 },
+  { latMin:27, latMax:31, name:'温暖帯南部',   tempMean:19, rain:1800 },
+  { latMin:31, latMax:34, name:'温暖帯',       tempMean:17, rain:1600 },
+  { latMin:34, latMax:37, name:'温帯',         tempMean:14, rain:1300 },
+  { latMin:37, latMax:40, name:'冷温帯',       tempMean:11, rain:1200 },
+  { latMin:40, latMax:43, name:'亜寒帯南部',   tempMean:8,  rain:1100 },
+  { latMin:43, latMax:46, name:'亜寒帯',       tempMean:6,  rain:1000 },
+];
+
+function getClimate(lat) {
+  return CLIMATE_TABLE.find(c => lat >= c.latMin && lat < c.latMax)
+    || CLIMATE_TABLE[CLIMATE_TABLE.length - 1];
+}
+
+// 標高補正: 100mごとに約0.6℃低下
+function elevCorrect(tempMean, elev) {
+  return tempMean - (elev / 100) * 0.6;
+}
+
+// ─── SCORING ───
 function scoreCrop(crop, areaData) {
   const { lat, elev, soilType, climate } = areaData;
   let score = 0;
@@ -80,4 +102,17 @@ function calcConfidence(areaData) {
     items.push('土壌タイプ 未入力（精度↓）');
   }
   return { pct: pts, items };
+}
+
+// ─── FERTILIZER ───
+function calcFertilizer(crop, areaSqm) {
+  const per10a = crop.fertilizer;
+  const area10a = areaSqm / 1000; // 1000㎡ = 10a
+  return {
+    N:       (per10a.N * area10a).toFixed(1),
+    P:       (per10a.P * area10a).toFixed(1),
+    K:       (per10a.K * area10a).toFixed(1),
+    area10a: area10a.toFixed(2),
+    notes:   per10a.notes,
+  };
 }
