@@ -29,8 +29,10 @@ L.drawLocal.edit.handlers.remove.tooltip.text= '削除するエリアをクリ�
 const map = L.map('map', {
   center: CONFIG.MAP_CENTER,
   zoom:   CONFIG.MAP_ZOOM,
-  zoomControl: true,
+  zoomControl: false,
 });
+
+L.control.zoom({ position: 'bottomright' }).addTo(map);
 
 L.tileLayer(CONFIG.TILE_URL, {
   attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>',
@@ -40,6 +42,7 @@ L.tileLayer(CONFIG.TILE_URL, {
 const drawnItems = new L.FeatureGroup().addTo(map);
 
 const drawControl = new L.Control.Draw({
+  position: 'topright',
   edit: { featureGroup: drawnItems },
   draw: {
     polygon: {

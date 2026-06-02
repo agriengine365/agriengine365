@@ -112,6 +112,55 @@ header .spacer { flex: 1; }
 .leaflet-bar a:hover { background-color: var(--bg3) !important; }
 .leaflet-draw-guide-dash { border-color: var(--green) !important; }
 
+/* 頂点編集時に中間ハンドル（新規頂点追加）を無効化 */
+.leaflet-middle-icon {
+  display: none !important;
+}
+
+/* 右側フロート操作群（ズーム/描画）を見やすく強化 */
+.leaflet-top.leaflet-right,
+.leaflet-bottom.leaflet-right {
+  margin-right: 12px;
+}
+
+.leaflet-control-zoom,
+.leaflet-draw-toolbar,
+.leaflet-draw-actions {
+  border: none !important;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.38);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.leaflet-control-zoom a,
+.leaflet-draw-toolbar a,
+.leaflet-draw-actions a {
+  width: 42px !important;
+  height: 42px !important;
+  line-height: 42px !important;
+  background: linear-gradient(180deg, #203024 0%, #17251b 100%) !important;
+  border: 1px solid #2f4732 !important;
+  color: var(--text) !important;
+  transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.leaflet-control-zoom a:hover,
+.leaflet-draw-toolbar a:hover,
+.leaflet-draw-actions a:hover {
+  background: linear-gradient(180deg, #25402d 0%, #193323 100%) !important;
+  border-color: var(--green3) !important;
+}
+
+.leaflet-control-zoom a:active,
+.leaflet-draw-toolbar a:active,
+.leaflet-draw-actions a:active {
+  transform: scale(0.96);
+}
+
+.leaflet-draw-toolbar .leaflet-disabled {
+  opacity: 0.45 !important;
+}
+
 /* ─── Bottom Sheet ─── */
 .sheet {
   position: fixed;
