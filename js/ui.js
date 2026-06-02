@@ -10,7 +10,6 @@ function switchTab(name) {
   document.querySelectorAll('.tab-content').forEach(c =>
     c.classList.toggle('active', c.id === 'tab-' + name)
   );
-  // タブ切り替え時にシートを半開きに
   setSheet('half');
 }
 
@@ -40,6 +39,10 @@ function showToast(msg, type = '') {
 
 // ─── Modal ───
 function openModal() {
+  const cfg = loadFirebaseConfig() || {};
+  ['apiKey','authDomain','projectId'].forEach(k => {
+    document.getElementById('cfg-' + k).value = cfg[k] || '';
+  });
   document.getElementById('modal-overlay').classList.add('open');
 }
 function closeModal() {
@@ -50,6 +53,47 @@ function closeModal() {
 function toggleAccordion(header) {
   const card = header.closest('.accordion');
   card.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════
+//  DRAW STEP INDICATOR
+// ═══════════════════════════════════════════
+
+// 状態: idle / drawing / editing / saving / done
+const STEP_CONFIG = {
+  idle: {
+    step: 0,
+    guide: '地図右上の <strong>📐ボタン</strong> を押して描画を開始してください',
+  },
+  drawing: {
+    step: 1,
+    guide: '地図をタップして頂点を追加してください。<br>最初の点をタップすると圃場が完成します',
+  },
+  editing: {
+    step: 2,
+    guide: '頂点をドラッグして位置を微調整できます。<br>完了したら <strong>編集を保存</strong> を押してください',
+  },
+  saving: {
+    step: 2,
+    guide: '保存中...',
+  },
+  done: {
+    step: 3,
+    guide: '圃場を保存しました ✓<br>エリア一覧から名前・土壌・メモを編集できます',
+  },
+};
+
+function setDrawStep(state) {
+  const cfg  = STEP_CONFIG[state] || STEP_CONFIG.idle;
+  const steps = document.querySelectorAll('.draw-step');
+  steps.forEach((el, i) => {
+    el.classList.remove('active', 'done');
+    if (i < cfg.step)  el.classList.add('done');
+    if (i === cfg.step) el.classList.add('active');
+  });
+
+  const guide = document.getElementById('draw-guide');
+  if (guide) guide.innerHTML = cfg.guide;
 }
 
 // ═══════════════════════════════════════════
@@ -68,30 +112,28 @@ function initSheet() {
   const sheet  = document.getElementById('sheet');
   const handle = document.getElementById('sheet-handle');
 
-  // 初期状態
   sheet.classList.add('peek');
 
-  // ─── タッチ操作 ───
   let startY = 0;
   let startTranslate = 0;
   let isDragging = false;
 
   function getTranslate(el) {
     const style = window.getComputedStyle(el);
-    const mat = new WebKitCSSMatrix(style.transform);
+    const mat   = new WebKitCSSMatrix(style.transform);
     return mat.m42;
   }
 
   handle.addEventListener('touchstart', (e) => {
-    isDragging = true;
-    startY = e.touches[0].clientY;
+    isDragging     = true;
+    startY         = e.touches[0].clientY;
     startTranslate = getTranslate(sheet);
     sheet.style.transition = 'none';
   }, { passive: true });
 
   handle.addEventListener('touchmove', (e) => {
     if (!isDragging) return;
-    const dy = e.touches[0].clientY - startY;
+    const dy   = e.touches[0].clientY - startY;
     const newY = Math.max(0, startTranslate + dy);
     sheet.style.transform = `translateY(${newY}px)`;
   }, { passive: true });
@@ -100,38 +142,29 @@ function initSheet() {
     if (!isDragging) return;
     isDragging = false;
     sheet.style.transition = '';
-    sheet.style.transform = '';
-
+    sheet.style.transform  = '';
     const endY = e.changedTouches[0].clientY;
     const dy   = endY - startY;
-    const fullH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-full'));
-
-    // 現在の状態を取得
-    const cur = SHEET_STATES.find(s => sheet.classList.contains(s)) || 'peek';
-    const idx = SHEET_STATES.indexOf(cur);
-
-    if (dy < -40 && idx < SHEET_STATES.length - 1) {
-      setSheet(SHEET_STATES[idx + 1]); // 上にスワイプ → 次の状態へ
-    } else if (dy > 40 && idx > 0) {
-      setSheet(SHEET_STATES[idx - 1]); // 下にスワイプ → 前の状態へ
-    } else {
-      setSheet(cur); // 元の状態に戻す
-    }
+    const cur  = SHEET_STATES.find(s => sheet.classList.contains(s)) || 'peek';
+    const idx  = SHEET_STATES.indexOf(cur);
+    if (dy < -40 && idx < SHEET_STATES.length - 1) setSheet(SHEET_STATES[idx + 1]);
+    else if (dy > 40 && idx > 0)                    setSheet(SHEET_STATES[idx - 1]);
+    else                                             setSheet(cur);
   });
 
-  // ─── マウス操作（PC） ───
+  // ─── マウス操作（PC）───
   handle.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    startY = e.clientY;
+    isDragging     = true;
+    startY         = e.clientY;
     startTranslate = getTranslate(sheet);
     sheet.style.transition = 'none';
     document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('mouseup',   onMouseUp);
   });
 
   function onMouseMove(e) {
     if (!isDragging) return;
-    const dy = e.clientY - startY;
+    const dy   = e.clientY - startY;
     const newY = Math.max(0, startTranslate + dy);
     sheet.style.transform = `translateY(${newY}px)`;
   }
@@ -140,24 +173,17 @@ function initSheet() {
     if (!isDragging) return;
     isDragging = false;
     sheet.style.transition = '';
-    sheet.style.transform = '';
+    sheet.style.transform  = '';
     document.removeEventListener('mousemove', onMouseMove);
-    document.removeEventListener('mouseup', onMouseUp);
-
+    document.removeEventListener('mouseup',   onMouseUp);
     const dy  = e.clientY - startY;
     const cur = SHEET_STATES.find(s => sheet.classList.contains(s)) || 'peek';
     const idx = SHEET_STATES.indexOf(cur);
-
-    if (dy < -40 && idx < SHEET_STATES.length - 1) {
-      setSheet(SHEET_STATES[idx + 1]);
-    } else if (dy > 40 && idx > 0) {
-      setSheet(SHEET_STATES[idx - 1]);
-    } else {
-      setSheet(cur);
-    }
+    if (dy < -40 && idx < SHEET_STATES.length - 1) setSheet(SHEET_STATES[idx + 1]);
+    else if (dy > 40 && idx > 0)                    setSheet(SHEET_STATES[idx - 1]);
+    else                                             setSheet(cur);
   }
 
-  // ─── タブクリック時にシート半開き ───
   document.querySelectorAll('.tab').forEach(t => {
     t.addEventListener('click', () => {
       const cur = SHEET_STATES.find(s => sheet.classList.contains(s)) || 'peek';

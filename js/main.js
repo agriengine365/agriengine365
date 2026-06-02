@@ -3,9 +3,10 @@
 // ═══════════════════════════════════════════
 
 // グローバル状態（複数モジュールから参照）
-let currentPolygon  = null;
-let currentAreaData = null;
-let selectedSoil    = null;
+let currentPolygon    = null;
+let currentAreaData   = null;
+let selectedSoil      = null;
+let currentSavedAreaId = null;
 
 // ─── タブ切り替え ───
 document.querySelectorAll('.tab').forEach(t => {
@@ -15,27 +16,22 @@ document.querySelectorAll('.tab').forEach(t => {
   });
 });
 
-// ─── 土壌セレクター ───
-document.querySelectorAll('.soil-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.soil-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    selectedSoil = btn.dataset.soil;
-    if (currentAreaData) currentAreaData.soilType = selectedSoil;
-  });
-});
-
 // ─── 描画リセット ───
 function clearDraw() {
   drawnItems.clearLayers();
-  currentPolygon  = null;
-  currentAreaData = null;
-  document.getElementById('save-btn').disabled = true;
+  currentPolygon     = null;
+  currentAreaData    = null;
+  currentSavedAreaId = null;
+  selectedSoil       = null;
   resetStats();
+  setDrawStep('idle');
 }
 
 // ─── ボトムシート初期化 ───
 initSheet();
+
+// ─── ステップ初期化 ───
+setDrawStep('idle');
 
 // ─── 初期ロード ───
 loadAreas();

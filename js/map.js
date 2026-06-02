@@ -2,6 +2,30 @@
 //  MAP — Leaflet初期化・描画・ジオメトリ
 // ═══════════════════════════════════════════
 
+// ─── Leaflet Draw 日本語化 ───
+L.drawLocal.draw.toolbar.buttons.polygon     = '圃場を描く';
+L.drawLocal.draw.toolbar.finish.text         = '完成';
+L.drawLocal.draw.toolbar.finish.title        = '描画を完成させる';
+L.drawLocal.draw.toolbar.undo.text           = '頂点を戻す';
+L.drawLocal.draw.toolbar.undo.title          = '最後の頂点を削除';
+L.drawLocal.draw.toolbar.actions.text        = 'キャンセル';
+L.drawLocal.draw.toolbar.actions.title       = '描画をキャンセル';
+L.drawLocal.draw.handlers.polygon.tooltip.start  = 'クリックして圃場の頂点を打ってください';
+L.drawLocal.draw.handlers.polygon.tooltip.cont   = 'クリックで頂点を追加します';
+L.drawLocal.draw.handlers.polygon.tooltip.end    = '最初の点をクリックして圃場を完成させてください';
+L.drawLocal.edit.toolbar.buttons.edit        = '頂点を編集';
+L.drawLocal.edit.toolbar.buttons.editDisabled= '編集できるエリアがありません';
+L.drawLocal.edit.toolbar.buttons.remove      = 'エリアを削除';
+L.drawLocal.edit.toolbar.buttons.removeDisabled = '削除できるエリアがありません';
+L.drawLocal.edit.toolbar.actions.save.text   = '編集を保存';
+L.drawLocal.edit.toolbar.actions.save.title  = '編集内容を保存する';
+L.drawLocal.edit.toolbar.actions.cancel.text = 'キャンセル';
+L.drawLocal.edit.toolbar.actions.cancel.title= '編集をキャンセルして元に戻す';
+L.drawLocal.edit.toolbar.actions.clearAll.text  = '全て削除';
+L.drawLocal.edit.toolbar.actions.clearAll.title = '全てのレイヤーを削除する';
+L.drawLocal.edit.handlers.edit.tooltip.text  = '頂点をドラッグして位置を微調整できます';
+L.drawLocal.edit.handlers.remove.tooltip.text= '削除するエリアをクリックしてください';
+
 const map = L.map('map', {
   center: CONFIG.MAP_CENTER,
   zoom:   CONFIG.MAP_ZOOM,
@@ -32,27 +56,52 @@ const drawControl = new L.Control.Draw({
 map.addControl(drawControl);
 
 // ─── Draw イベント ───
+map.on(L.Draw.Event.DRAWSTART, () => {
+  setDrawStep('drawing');
+});
+
+map.on(L.Draw.Event.DRAWSTOP, () => {
+  // 描画キャンセル時（CREATEDが発火しなかった場合）
+  if (!currentPolygon) setDrawStep('idle');
+});
+
 map.on(L.Draw.Event.CREATED, async (e) => {
   drawnItems.clearLayers();
   drawnItems.addLayer(e.layer);
   currentPolygon = e.layer;
+
+  setDrawStep('saving');
   await updateAreaStats(e.layer);
-  document.getElementById('save-btn').disabled = false;
+
+  // 自動保存
+  await autoSaveArea();
+  setDrawStep('done');
   switchTab('draw');
 });
 
+map.on(L.Draw.Event.EDITSTART, () => {
+  setDrawStep('editing');
+});
+
+map.on(L.Draw.Event.EDITSTOP, async () => {
+  if (!currentPolygon) return;
+  // 編集確定後に統計再計算
+  await updateAreaStats(currentPolygon);
+  setDrawStep('done');
+});
+
 map.on(L.Draw.Event.DELETED, () => {
-  currentPolygon = null;
+  currentPolygon  = null;
   currentAreaData = null;
-  document.getElementById('save-btn').disabled = true;
   resetStats();
+  setDrawStep('idle');
 });
 
 // ─── エリア統計 ───
 async function updateAreaStats(layer) {
-  const latlngs = layer.getLatLngs()[0];
-  const areaSqm = calcPolygonArea(latlngs);
-  const perim   = calcPerimeter(latlngs);
+  const latlngs  = layer.getLatLngs()[0];
+  const areaSqm  = calcPolygonArea(latlngs);
+  const perim    = calcPerimeter(latlngs);
   const centroid = calcCentroid(latlngs);
   const { lat, lng } = centroid;
   const climate = getClimate(lat);

@@ -59,10 +59,33 @@
 
     <!-- TAB: 描画 -->
     <div class="tab-content active" id="tab-draw">
-      <div class="notice notice-info">
-        地図上でポリゴンツールを使い、圃場の形に沿って多角形を描いてください。
+
+      <!-- ステップインジケーター -->
+      <div class="draw-steps">
+        <div class="draw-step active" data-step="0">
+          <div class="step-circle">1</div>
+          <span class="step-label">開始</span>
+        </div>
+        <div class="draw-step" data-step="1">
+          <div class="step-circle">2</div>
+          <span class="step-label">描画中</span>
+        </div>
+        <div class="draw-step" data-step="2">
+          <div class="step-circle">3</div>
+          <span class="step-label">編集</span>
+        </div>
+        <div class="draw-step" data-step="3">
+          <div class="step-circle">4</div>
+          <span class="step-label">完了</span>
+        </div>
       </div>
 
+      <!-- 操作ガイド -->
+      <div class="draw-guide" id="draw-guide">
+        地図右上の <strong>📐ボタン</strong> を押して描画を開始してください
+      </div>
+
+      <!-- 計測値 -->
       <div class="stats-grid" id="area-stats-card">
         <div class="stat-chip">
           <span class="stat-label">面積</span>
@@ -88,33 +111,6 @@
           <span class="stat-label">経度</span>
           <span class="stat-val stat-small" id="stat-lng">—</span>
         </div>
-      </div>
-
-      <!-- Save form -->
-      <div class="card" id="save-card">
-        <div class="card-title">エリアを保存</div>
-        <div class="field">
-          <label>エリア名</label>
-          <input type="text" id="area-name" placeholder="例：北側田んぼ A区画">
-        </div>
-        <div class="field">
-          <label>土壌タイプ（任意）</label>
-          <div class="soil-grid" id="soil-grid">
-            <div class="soil-btn" data-soil="sandy">砂質土</div>
-            <div class="soil-btn" data-soil="loam">壌土</div>
-            <div class="soil-btn" data-soil="clay">粘土質</div>
-            <div class="soil-btn" data-soil="peat">泥炭土</div>
-            <div class="soil-btn" data-soil="volcanic">火山灰土</div>
-            <div class="soil-btn" data-soil="unknown">不明</div>
-          </div>
-        </div>
-        <div class="field">
-          <label>メモ（任意）</label>
-          <textarea id="area-memo" placeholder="水はけが悪い、日当たり良好など"></textarea>
-        </div>
-        <button class="btn btn-primary" id="save-btn" disabled onclick="saveArea()">
-          エリアを保存する
-        </button>
       </div>
 
       <button class="btn btn-ghost" onclick="clearDraw()">描画をリセット</button>

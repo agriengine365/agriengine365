@@ -550,3 +550,128 @@ header .spacer { flex: 1; }
 .sheet-body {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+/* ═══════════════════════════════════════════
+   DRAW STEP INDICATOR
+═══════════════════════════════════════════ */
+
+.draw-steps {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 4px;
+}
+
+.draw-step {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  position: relative;
+}
+
+.draw-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: calc(100% - 28px);
+  left: 28px;
+  height: 1px;
+  background: var(--border);
+  transition: background 0.3s;
+}
+.draw-step.done::after  { background: var(--green3); }
+
+.step-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text3);
+  font-family: var(--mono);
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.3s;
+  z-index: 1;
+}
+
+.draw-step.active .step-circle {
+  border-color: var(--green);
+  background: #0e2010;
+  color: var(--green);
+  box-shadow: 0 0 0 3px rgba(74,222,128,0.15);
+}
+
+.draw-step.done .step-circle {
+  border-color: var(--green3);
+  background: var(--green3);
+  color: #fff;
+}
+
+.draw-step.done .step-circle::after {
+  content: '✓';
+}
+
+.step-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+  white-space: nowrap;
+  display: none; /* モバイルでは非表示 */
+}
+
+.draw-step.active .step-label { color: var(--green); display: block; }
+.draw-step.done .step-label   { color: var(--green3); }
+
+/* ガイドテキスト */
+.draw-guide {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.7;
+  min-height: 44px;
+  transition: all 0.25s;
+}
+.draw-guide strong { color: var(--green); }
+
+/* ═══════════════════════════════════════════
+   INLINE EDIT
+═══════════════════════════════════════════ */
+
+.inline-edit {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: slideDown 0.2s ease;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.area-memo-display {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+.ie-soil-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 5px;
+}
+
+.soil-meta { color: var(--text2); }
