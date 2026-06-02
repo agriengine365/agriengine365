@@ -18,10 +18,11 @@
   --shadow:   0 4px 24px rgba(0,0,0,0.5);
 
   /* Sheet heights */
-  --sheet-peek:   56px;   /* ハンドル + タブバーだけ見える高さ */
+  --sheet-peek:   62px;   /* ハンドル(18px) + タブバー(44px) */
   --sheet-half:   52vh;
-  --sheet-full:   88vh;
+  --sheet-full:   92vh;
   --header-h:     48px;
+  --safe-bottom:  env(safe-area-inset-bottom, 0px);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -129,7 +130,7 @@ header .spacer { flex: 1; }
   will-change: transform;
   box-shadow: 0 -4px 32px rgba(0,0,0,0.5);
 }
-.sheet.peek  { transform: translateY(calc(var(--sheet-full) - var(--sheet-peek))); }
+.sheet.peek  { transform: translateY(calc(var(--sheet-full) - var(--sheet-peek) - var(--safe-bottom))); }
 .sheet.half  { transform: translateY(calc(var(--sheet-full) - var(--sheet-half))); }
 .sheet.open  { transform: translateY(0); }
 
@@ -180,6 +181,8 @@ header .spacer { flex: 1; }
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   position: relative;
+  /* peek状態でも中身をスクロールできるようにmin-heightを確保 */
+  min-height: 0;
 }
 
 .tab-content {
@@ -548,7 +551,12 @@ header .spacer { flex: 1; }
 
 /* ─── Safe area (iPhone notch etc.) ─── */
 .sheet-body {
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
+}
+
+/* システムナビゲーションバーとの被り防止 */
+.sheet {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* ═══════════════════════════════════════════
