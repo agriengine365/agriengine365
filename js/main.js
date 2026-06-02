@@ -18,6 +18,9 @@ document.querySelectorAll('.tab').forEach(t => {
 
 // ─── 描画リセット ───
 function clearDraw() {
+  if (typeof PolygonDraw !== 'undefined' && PolygonDraw.isActive()) {
+    PolygonDraw.cancel();
+  }
   drawnItems.clearLayers();
   currentPolygon     = null;
   currentAreaData    = null;
@@ -25,6 +28,7 @@ function clearDraw() {
   selectedSoil       = null;
   resetStats();
   setDrawStep('idle');
+  showToast('描画をリセットしました');
 }
 
 // ─── ボトムシート初期化 ───

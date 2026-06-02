@@ -85,6 +85,14 @@
         地図右上の <strong>📐ボタン</strong> を押して描画を開始してください
       </div>
 
+      <!-- 頂点確定式 描画コントロール -->
+      <div class="draw-controls" id="draw-controls" hidden>
+        <button type="button" class="btn btn-primary" id="btn-draw-confirm" onclick="polygonDrawConfirm()" disabled>確定</button>
+        <button type="button" class="btn btn-ghost" id="btn-draw-back" onclick="polygonDrawBack()" disabled>戻る</button>
+        <button type="button" class="btn btn-primary btn-draw-complete" id="btn-draw-complete" onclick="polygonDrawComplete()" disabled>完了</button>
+        <button type="button" class="btn btn-ghost" id="btn-draw-reset" onclick="polygonDrawReset()" disabled>リセット</button>
+      </div>
+
       <!-- 計測値（描画直後に表示） -->
       <div class="stats-grid" id="area-stats-card">
         <div class="stat-chip">
@@ -335,6 +343,7 @@
 <script src="js/ui.js"></script>
 <script src="js/firebase.js"></script>
 <script src="js/map.js"></script>
+<script src="js/polygonDraw.js"></script>
 <script src="js/area.js"></script>
 <script src="js/analysis.js"></script>
 <script src="js/main.js"></script>

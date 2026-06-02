@@ -86,8 +86,7 @@ const DrawStartControl = L.Control.extend({
     L.DomEvent.disableClickPropagation(container);
     L.DomEvent.on(btn, 'click', (e) => {
       L.DomEvent.preventDefault(e);
-      // Leaflet Draw のポリゴン描画ハンドラを起動
-      new L.Draw.Polygon(map, drawControl.options.draw.polygon).enable();
+      startPolygonDraw();
     });
     return container;
   },
@@ -123,30 +122,20 @@ const FloatToggleControl = L.Control.extend({
 map.addControl(new FloatToggleControl());
 // 初期状態：表示済み（collapsed付与なし）
 
-// ─── Draw イベント ───
-map.on(L.Draw.Event.DRAWSTART, () => {
-  setDrawStep('drawing');
-});
-
-map.on(L.Draw.Event.DRAWSTOP, () => {
-  // 描画キャンセル時（CREATEDが発火しなかった場合）
-  if (!currentPolygon) setDrawStep('idle');
-});
-
-map.on(L.Draw.Event.CREATED, async (e) => {
-  drawnItems.clearLayers();
-  drawnItems.addLayer(e.layer);
-  currentPolygon = e.layer;
-
+// ─── カスタム描画完了 ───
+async function onDrawPolygonComplete(layer) {
   setDrawStep('wizard');
-  await updateAreaStats(e.layer);
-
-  // 統計取得完了後にウィザードを表示
+  await updateAreaStats(layer);
   showWizard();
   switchTab('draw');
-});
+}
 
+// ─── Leaflet Draw（編集・削除のみ）───
 map.on(L.Draw.Event.EDITSTART, () => {
+  if (typeof PolygonDraw !== 'undefined' && PolygonDraw.isActive()) {
+    PolygonDraw.cancel();
+    showToast('描画を中断して頂点編集を開始しました', 'amber');
+  }
   setDrawStep('editing');
 });
 

@@ -790,6 +790,58 @@ header .spacer { flex: 1; }
 }
 .draw-guide strong { color: var(--green); }
 
+/* 頂点確定式 描画コントロール */
+.draw-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.draw-controls .btn {
+  min-height: 44px;
+  font-size: 13px;
+}
+
+.draw-controls .btn-draw-complete {
+  grid-column: span 2;
+}
+
+/* 地図上の頂点マーカー */
+.vertex-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+.vertex-confirmed {
+  width: 14px;
+  height: 14px;
+  margin: 0 !important;
+  border-radius: 50%;
+  background: var(--green);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.35);
+}
+
+.vertex-draft {
+  width: 20px;
+  height: 20px;
+  margin: 0 !important;
+  border-radius: 50%;
+  background: var(--amber);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.45);
+  animation: vertex-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes vertex-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+#map.polygon-draw-active {
+  cursor: crosshair;
+}
+
 /* ═══════════════════════════════════════════
    INLINE EDIT
 ═══════════════════════════════════════════ */

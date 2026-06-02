@@ -29,12 +29,17 @@ function escHtml(s) {
 
 // ─── Toast ───
 let _toastTimer;
-function showToast(msg, type = '') {
+function showToast(msg, type = '', duration = 2800) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.className = 'toast show' + (type ? ' ' + type : '');
   clearTimeout(_toastTimer);
-  _toastTimer = setTimeout(() => t.classList.remove('show'), 2800);
+  _toastTimer = setTimeout(() => t.classList.remove('show'), duration);
+}
+
+/** 描画ステップの案内（やや長め表示） */
+function showDrawToast(msg, type = '') {
+  showToast(msg, type, 4200);
 }
 
 // ─── Modal ───
@@ -63,7 +68,7 @@ const STEP_CONFIG = {
   },
   drawing: {
     step: 1,
-    guide: '地図をタップして頂点を追加してください。<br>最初の点をタップすると圃場が完成します',
+    guide: '地図をタップして頂点を置き、位置を調整して<strong>確定</strong>。<br>3点以上で<strong>完了</strong>、<strong>戻る</strong>で取り消し、<strong>リセット</strong>で最初から',
   },
   editing: {
     step: 2,
