@@ -42,7 +42,7 @@ L.tileLayer(CONFIG.TILE_URL, {
 const drawnItems = new L.FeatureGroup().addTo(map);
 
 const drawControl = new L.Control.Draw({
-  position: 'topright',
+  position: 'bottomright',
   edit: { featureGroup: drawnItems },
   draw: {
     polygon: {
@@ -59,29 +59,32 @@ const drawControl = new L.Control.Draw({
 map.addControl(drawControl);
 
 // ─── 右側フロート操作群トグル ───
+const ICON_MENU = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>`;
+const ICON_CLOSE = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+
 const FloatToggleControl = L.Control.extend({
-  options: { position: 'topright' },
+  options: { position: 'bottomright' },
   onAdd() {
     const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-float-toggle');
     const btn = L.DomUtil.create('a', 'float-toggle-btn', container);
     btn.href = '#';
     btn.title = '操作パネルを開閉';
     btn.setAttribute('aria-label', '操作パネルを開閉');
-    btn.innerHTML = '≡';
+    btn.innerHTML = ICON_MENU;
 
     L.DomEvent.disableClickPropagation(container);
     L.DomEvent.on(btn, 'click', (e) => {
       L.DomEvent.preventDefault(e);
       const mapEl = map.getContainer();
       const isClosed = mapEl.classList.toggle('float-controls-collapsed');
-      btn.innerHTML = isClosed ? '≡' : '×';
+      btn.innerHTML = isClosed ? ICON_MENU : ICON_CLOSE;
     });
     return container;
   },
 });
 
 map.addControl(new FloatToggleControl());
-map.getContainer().classList.add('float-controls-collapsed');
+// 初期状態：表示済み（collapsed付与なし）
 
 // ─── Draw イベント ───
 map.on(L.Draw.Event.DRAWSTART, () => {

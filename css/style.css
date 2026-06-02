@@ -17,10 +17,10 @@
   --radius:   12px;
   --shadow:   0 4px 24px rgba(0,0,0,0.5);
 
-  /* Sheet heights */
-  --sheet-peek:   calc(62px + var(--safe-bottom)); /* ハンドル + タブバー + 端末下部UI余白 */
-  --sheet-half:   52vh;
-  --sheet-full:   92vh;
+  /* Sheet layout */
+  --sheet-peek-visible: calc(84px + var(--safe-bottom));
+  --sheet-half-offset: 44%;
+  --sheet-max-h: calc(100dvh - var(--header-h) - 8px);
   --header-h:     48px;
   --safe-bottom:  env(safe-area-inset-bottom, 0px);
   --mobile-nav-offset: 0px;
@@ -125,20 +125,32 @@ header .spacer { flex: 1; }
 }
 
 .leaflet-bottom.leaflet-right {
-  margin-bottom: calc(var(--sheet-peek) + 12px + var(--mobile-nav-offset));
+  margin-bottom: calc(var(--sheet-peek-visible) + 12px + var(--mobile-nav-offset));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+/* すべての右下コントロールを縦に並べる */
+.leaflet-bottom.leaflet-right .leaflet-control {
+  margin: 0 !important;
 }
 
 .leaflet-control-zoom,
 .leaflet-draw-toolbar,
 .leaflet-draw-actions {
   border: none !important;
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.38);
-  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.45);
+  border-radius: 12px !important;
   overflow: hidden;
 }
 
+/* トグルボタン */
 .leaflet-control-float-toggle {
-  margin-top: 8px;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.45);
 }
 
 .leaflet-control-float-toggle .float-toggle-btn {
@@ -146,11 +158,20 @@ header .spacer { flex: 1; }
   height: 42px !important;
   line-height: 42px !important;
   text-align: center;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   background: linear-gradient(180deg, #2a4732 0%, #1e3526 100%) !important;
   border: 1px solid var(--green3) !important;
-  color: #eaffef !important;
+  color: var(--green) !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.leaflet-control-float-toggle .float-toggle-btn:hover {
+  background: linear-gradient(180deg, #2f5239 0%, #22402d 100%) !important;
+  border-color: var(--green2) !important;
 }
 
 .leaflet-control-zoom a,
@@ -160,46 +181,55 @@ header .spacer { flex: 1; }
   height: 42px !important;
   line-height: 42px !important;
   background: linear-gradient(180deg, #203024 0%, #17251b 100%) !important;
-  border: 1px solid #2f4732 !important;
+  border: none !important;
+  border-bottom: 1px solid #2f4732 !important;
   color: var(--text) !important;
-  transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease;
+  transition: transform 0.15s ease, background 0.2s ease;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaflet-control-zoom a:last-child,
+.leaflet-draw-toolbar a:last-child {
+  border-bottom: none !important;
 }
 
 .leaflet-control-zoom a:hover,
 .leaflet-draw-toolbar a:hover,
 .leaflet-draw-actions a:hover {
   background: linear-gradient(180deg, #25402d 0%, #193323 100%) !important;
-  border-color: var(--green3) !important;
 }
 
 .leaflet-control-zoom a:active,
 .leaflet-draw-toolbar a:active,
 .leaflet-draw-actions a:active {
-  transform: scale(0.96);
+  transform: scale(0.94);
 }
 
 .leaflet-draw-toolbar .leaflet-disabled {
-  opacity: 0.45 !important;
+  opacity: 0.38 !important;
 }
 
-/* トグルでフロート操作群の表示を切り替え */
+/* トグルで非表示 */
 #map.float-controls-collapsed .leaflet-draw,
 #map.float-controls-collapsed .leaflet-control-zoom {
   opacity: 0;
   pointer-events: none;
-  transform: translateX(14px);
+  transform: translateX(10px) scale(0.96);
 }
 
 #map .leaflet-draw,
 #map .leaflet-control-zoom {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 /* モバイル端末で下部UIに隠れやすい分を追加で確保 */
 @media (max-width: 820px), (pointer: coarse) {
   :root {
     --mobile-nav-offset: 24px;
-    --sheet-peek: calc(72px + var(--safe-bottom));
+    --sheet-peek-visible: calc(96px + var(--safe-bottom));
+    --sheet-half-offset: 38%;
   }
 }
 
@@ -208,21 +238,21 @@ header .spacer { flex: 1; }
   position: fixed;
   left: 0; right: 0;
   bottom: 0;
-  height: var(--sheet-full);
+  height: min(92dvh, var(--sheet-max-h));
   background: var(--panel);
   border-top: 1px solid var(--border);
   border-radius: 18px 18px 0 0;
   z-index: 500;
   display: flex;
   flex-direction: column;
-  /* 初期位置：ピーク状態（タブバーだけ見える） */
-  transform: translateY(calc(var(--sheet-full) - var(--sheet-peek)));
+  /* 初期位置：常にタブ領域が見える量だけ残す */
+  transform: translateY(calc(100% - var(--sheet-peek-visible)));
   transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform;
   box-shadow: 0 -4px 32px rgba(0,0,0,0.5);
 }
-.sheet.peek  { transform: translateY(calc(var(--sheet-full) - var(--sheet-peek))); }
-.sheet.half  { transform: translateY(calc(var(--sheet-full) - var(--sheet-half))); }
+.sheet.peek  { transform: translateY(calc(100% - var(--sheet-peek-visible))); }
+.sheet.half  { transform: translateY(var(--sheet-half-offset)); }
 .sheet.open  { transform: translateY(0); }
 
 /* Handle area */
@@ -246,18 +276,10 @@ header .spacer { flex: 1; }
   display: flex;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-}
-.tabs::-webkit-scrollbar {
-  display: none;
 }
 .tab {
-  flex: 1 0 110px;
-  min-width: 110px;
-  padding: 10px 0;
+  flex: 1;
+  padding: 11px 4px;
   font-size: 11px;
   font-family: var(--mono);
   letter-spacing: 0.04em;
@@ -265,12 +287,13 @@ header .spacer { flex: 1; }
   cursor: pointer;
   text-align: center;
   border-bottom: 2px solid transparent;
-  transition: all 0.2s;
+  transition: color 0.2s, border-color 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
   white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
 }
 .tab.active { color: var(--green); border-bottom-color: var(--green); }
 .tab:hover:not(.active) { color: var(--text2); }
@@ -300,29 +323,37 @@ header .spacer { flex: 1; }
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
 }
 .stat-chip {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 7px 12px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 12px;
   border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
 }
-.stat-chip:last-child { border-bottom: none; }
+/* 右列のborder-rightを消す */
+.stat-chip:nth-child(even) { border-right: none; }
+/* 最下段2つのborder-bottomを消す */
+.stat-chip:nth-last-child(-n+2) { border-bottom: none; }
 .stat-chip-wide { /* 通常と同じ */ }
 .stat-label {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text3);
+  letter-spacing: 0.05em;
 }
 .stat-val {
   font-family: var(--mono);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--green);
+  line-height: 1.2;
 }
 .stat-val.stat-small { font-size: 11px; color: var(--text2); }
-.stat-val .unit { font-size: 10px; color: var(--text3); margin-left: 2px; }
+.stat-val .unit { font-size: 9px; color: var(--text3); margin-left: 2px; }
 
 /* ─── Cards ─── */
 .card {
@@ -601,7 +632,7 @@ header .spacer { flex: 1; }
 /* ─── Toast ─── */
 .toast {
   position: fixed;
-  bottom: calc(var(--sheet-peek) + 16px);
+  bottom: calc(var(--sheet-peek-visible) + 16px);
   left: 50%;
   transform: translateX(-50%) translateY(80px);
   background: var(--bg2);
@@ -671,31 +702,32 @@ header .spacer { flex: 1; }
 
 .draw-steps {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0;
   margin-bottom: 4px;
 }
 
 .draw-step {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
   position: relative;
 }
 
+/* 横線は circle の中心（11px = circle半径）から次のstepのcircle中心まで */
 .draw-step:not(:last-child)::after {
   content: '';
   position: absolute;
-  right: 0;
-  top: 50%;
-  width: calc(100% - 28px);
-  left: 28px;
+  top: 11px; /* step-circle の高さの半分 */
+  left: calc(50% + 11px);
+  right: calc(-50% + 11px);
   height: 1px;
   background: var(--border);
   transition: background 0.3s;
 }
-.draw-step.done::after  { background: var(--green3); }
+.draw-step.done::after { background: var(--green3); }
 
 .step-circle {
   width: 22px;
@@ -712,6 +744,7 @@ header .spacer { flex: 1; }
   flex-shrink: 0;
   transition: all 0.3s;
   z-index: 1;
+  position: relative;
 }
 
 .draw-step.active .step-circle {
@@ -736,10 +769,11 @@ header .spacer { flex: 1; }
   font-size: 9px;
   color: var(--text3);
   white-space: nowrap;
-  display: none; /* モバイルでは非表示 */
+  text-align: center;
+  line-height: 1;
 }
 
-.draw-step.active .step-label { color: var(--green); display: block; }
+.draw-step.active .step-label { color: var(--green); }
 .draw-step.done .step-label   { color: var(--green3); }
 
 /* ガイドテキスト */
