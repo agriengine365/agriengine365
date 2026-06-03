@@ -294,3 +294,187 @@ function calcFertilizer(crop, areaSqm) {
     notes:   per10a.notes,
   };
 }
+// Core land-profile and profitability model.
+function toNum(value, fallback = null) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function riskLevelFromScore(score) {
+  if (score >= 70) return 'high';
+  if (score >= 35) return 'medium';
+  return 'low';
+}
+
+function estimateSunshineHours(lat) {
+  const n = toNum(lat, 35);
+  if (n < 31) return 1850;
+  if (n < 34) return 1900;
+  if (n < 37) return 2050;
+  if (n < 40) return 1800;
+  if (n < 43) return 1700;
+  return 1600;
+}
+
+function estimateEnvironmentalRisk(areaData, correctedTemp) {
+  const rain = areaData.climate?.rain ?? areaData.annualRainfall ?? null;
+  const slope = toNum(areaData.slope, 0);
+  const elev = toNum(areaData.elev ?? areaData.elevation, 0);
+  const temp = toNum(correctedTemp, null);
+
+  const floodRisk = rain == null ? 25 : clamp((rain - 1100) / 9 + Math.max(0, 4 - slope) * 5, 0, 100);
+  const droughtRisk = rain == null ? 25 : clamp((1150 - rain) / 8 + Math.max(0, slope - 8) * 3, 0, 100);
+  const snowRisk = temp == null ? 20 : clamp((10 - temp) * 8 + elev / 25, 0, 100);
+
+  return {
+    floodRisk: Math.round(floodRisk),
+    droughtRisk: Math.round(droughtRisk),
+    snowRisk: Math.round(snowRisk),
+    floodRiskLevel: riskLevelFromScore(floodRisk),
+    droughtRiskLevel: riskLevelFromScore(droughtRisk),
+    snowRiskLevel: riskLevelFromScore(snowRisk),
+  };
+}
+
+function buildLandProfile(areaData = {}, soilInput = {}) {
+  const lat = toNum(areaData.lat);
+  const lng = toNum(areaData.lng);
+  const elevation = toNum(areaData.elev ?? areaData.elevation);
+  const climate = areaData.climate || (lat != null ? getClimate(lat) : null);
+  const avgTemp = climate
+    ? (elevation != null ? elevCorrect(climate.tempMean, elevation) : climate.tempMean)
+    : toNum(areaData.avgTemp);
+  const annualRainfall = climate?.rain ?? toNum(areaData.annualRainfall);
+  const sunshineHours = toNum(areaData.sunshineHours, estimateSunshineHours(lat));
+  const slope = toNum(areaData.slope, 0);
+  const soilType = soilInput.soilType || areaData.soilType || areaData.meta?.soilType || 'unknown';
+  const ph = toNum(soilInput.ph ?? areaData.ph);
+  const risk = estimateEnvironmentalRisk({ ...areaData, climate }, avgTemp);
+
+  return {
+    lat,
+    lng,
+    elevation,
+    slope,
+    soilType,
+    ph,
+    avgTemp,
+    annualRainfall,
+    sunshineHours,
+    floodRisk: risk.floodRisk,
+    droughtRisk: risk.droughtRisk,
+    snowRisk: risk.snowRisk,
+    floodRiskLevel: risk.floodRiskLevel,
+    droughtRiskLevel: risk.droughtRiskLevel,
+    snowRiskLevel: risk.snowRiskLevel,
+    climateName: climate?.name || null,
+    source: {
+      elevation: elevation == null ? 'missing' : 'gsi',
+      climate: climate ? 'local-climate-table' : 'missing',
+      sunshineHours: 'estimated',
+      risks: 'estimated',
+    },
+  };
+}
+
+function areaDataFromLandProfile(areaData, landProfile) {
+  const baseClimate = landProfile.lat != null ? getClimate(landProfile.lat) : areaData.climate;
+  return {
+    ...areaData,
+    lat: landProfile.lat,
+    lng: landProfile.lng,
+    elev: landProfile.elevation,
+    soilType: landProfile.soilType,
+    ph: landProfile.ph,
+    climate: baseClimate,
+  };
+}
+
+function cropPricePerKg(crop) {
+  const avg = ((crop.price?.min || 0) + (crop.price?.max || 0)) / 2;
+  const unit = crop.price?.unit || '';
+  if (unit.includes('60kg')) return avg / 60;
+  if (unit.includes('45kg')) return avg / 45;
+  if (unit.includes('30kg')) return avg / 30;
+  if (unit.includes('100kg')) return avg / 100;
+  return avg || 0;
+}
+
+function cropYieldPer10aKg(crop) {
+  return ((crop.yield?.min || 0) + (crop.yield?.max || 0)) / 2;
+}
+
+function calculateRiskDeductionRate(crop, landProfile) {
+  const envRisk = (
+    (landProfile.floodRisk || 0) +
+    (landProfile.droughtRisk || 0) +
+    (landProfile.snowRisk || 0)
+  ) / 300;
+  const cropRisk = (crop.risks || []).reduce((sum, r) => {
+    return sum + (r.level === 'high' ? 0.06 : r.level === 'medium' ? 0.035 : 0.015);
+  }, 0);
+  const continuous = crop.conditions?.continuousCropYears <= 1 ? 0.05 : 0.02;
+  return clamp(envRisk * 0.16 + cropRisk + continuous, 0, 0.45);
+}
+
+function calculateProfitability(crop, areaData, scoreResult, landProfile) {
+  const area10a = Math.max(0, (areaData.areaSqm || 0) / 1000);
+  const suitabilityRate = clamp((scoreResult?.score || 0) / 100, 0, 1);
+  const baseYield = cropYieldPer10aKg(crop) * area10a;
+  const predictedYield = baseYield * suitabilityRate;
+  const marketableYieldRate = scoreResult?.viable === false ? 0 : clamp(0.72 + suitabilityRate * 0.22, 0.45, 0.96);
+  const marketableYield = predictedYield * marketableYieldRate;
+  const demandScore = crop.category === 'fruit' || crop.category === 'wildveg' ? 1.08 : 1.0;
+  const revenue = marketableYield * cropPricePerKg(crop) * demandScore;
+  const fertilizer = crop.fertilizer || { N: 0, P: 0, K: 0 };
+  const annualCost = area10a * (45000 + (fertilizer.N + fertilizer.P + fertilizer.K) * 1200);
+  const initialCost = area10a * (crop.category === 'fruit' ? 120000 : crop.category === 'wildveg' ? 70000 : 35000);
+  const laborCost = area10a * (crop.category === 'fruit' ? 90000 : crop.category === 'vegetable' ? 75000 : 48000);
+  const riskDeductionRate = calculateRiskDeductionRate(crop, landProfile);
+  const riskDeduction = revenue * riskDeductionRate;
+  const averageProfit = revenue - annualCost - initialCost - laborCost - riskDeduction;
+
+  return {
+    area10a,
+    predictedYield,
+    marketableYieldRate,
+    marketableYield,
+    averagePrice: cropPricePerKg(crop),
+    demandScore,
+    revenue,
+    initialCost,
+    annualCost,
+    laborCost,
+    riskDeduction,
+    riskDeductionRate,
+    averageProfit,
+  };
+}
+
+function buildAnalysisResult(areaData) {
+  const landProfile = buildLandProfile(areaData);
+  const scoringAreaData = areaDataFromLandProfile(areaData, landProfile);
+  const cropScores = CROP_DB
+    .map(crop => {
+      const score = scoreCrop(crop, scoringAreaData);
+      return {
+        ...score,
+        profitability: calculateProfitability(crop, areaData, score, landProfile),
+      };
+    })
+    .sort((a, b) => {
+      if (a.viable !== b.viable) return a.viable ? -1 : 1;
+      if (b.score !== a.score) return b.score - a.score;
+      return b.profitability.averageProfit - a.profitability.averageProfit;
+    });
+
+  return {
+    landProfile,
+    cropScores,
+    topCrop: cropScores[0] || null,
+  };
+}

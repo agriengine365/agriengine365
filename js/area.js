@@ -10,11 +10,13 @@ async function commitSaveArea({ name, memo, soilType }) {
   }
 
   const geojson = currentPolygon.toGeoJSON();
+  const landProfile = buildLandProfile({ ...currentAreaData, soilType });
 
   const payload = {
     name,
     memo,
     geojson,
+    landProfile,
     meta: {
       areaSqm:      currentAreaData.areaSqm,
       areaHa:       currentAreaData.areaHa,
@@ -162,7 +164,7 @@ async function saveInlineEdit(id) {
 
   if (!name) { showToast('エリア名を入力してください', 'amber'); return; }
 
-  const update = { name, memo, 'meta.soilType': soilType };
+  const update = { name, memo, 'meta.soilType': soilType, 'landProfile.soilType': soilType };
 
   try {
     if (db && !id.startsWith('local_')) {
@@ -175,6 +177,8 @@ async function saveInlineEdit(id) {
         stored[idx].memo = memo;
         stored[idx].meta = stored[idx].meta || {};
         stored[idx].meta.soilType = soilType;
+        stored[idx].landProfile = stored[idx].landProfile || buildLandProfile(stored[idx].meta || {});
+        stored[idx].landProfile.soilType = soilType;
         localStorage.setItem(CONFIG.AREAS_KEY, JSON.stringify(stored));
       }
     }
@@ -213,13 +217,17 @@ function selectArea(area) {
   map.fitBounds(layer.getBounds());
 
   currentAreaData = {
-    lat:      area.meta?.lat      || null,
-    lng:      area.meta?.lng      || null,
-    elev:     area.meta?.elev     || null,
-    climate:  getClimate(area.meta?.lat || 35),
-    soilType: area.meta?.soilType || null,
-    areaSqm:  area.meta?.areaSqm  || 0,
+    lat:      area.landProfile?.lat       ?? area.meta?.lat      ?? null,
+    lng:      area.landProfile?.lng       ?? area.meta?.lng      ?? null,
+    elev:     area.landProfile?.elevation ?? area.meta?.elev     ?? null,
+    climate:  getClimate(area.landProfile?.lat ?? area.meta?.lat ?? 35),
+    soilType: area.landProfile?.soilType  ?? area.meta?.soilType ?? null,
+    ph:       area.landProfile?.ph        ?? null,
+    slope:    area.landProfile?.slope     ?? 0,
+    areaSqm:  area.meta?.areaSqm          || 0,
+    areaHa:   area.meta?.areaHa           || 0,
   };
+  currentAreaData.landProfile = area.landProfile || buildLandProfile(currentAreaData);
 
   runAnalysis(area.name);
   switchTab('analysis');

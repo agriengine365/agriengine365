@@ -177,6 +177,7 @@ async function updateAreaStats(layer) {
     perimeter,
     vertexCount,
   };
+  currentAreaData.landProfile = buildLandProfile(currentAreaData);
 }
 
 function resetStats() {
