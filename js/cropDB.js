@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════
-//  CROP DATABASE — 44品目 (日本全国対応)
+//  CROP DATABASE — 68品目 (日本全国対応)
 //  category: grain / vegetable / fruit / wildveg
 //  price: JA概算値ベース
 // ═══════════════════════════════════════════
@@ -7,7 +7,7 @@
 const CROP_DB = [
 
   // ════════════════════════════════
-  //  穀物 (6品目)
+  //  穀物 (10品目)
   // ════════════════════════════════
 
   {
@@ -218,8 +218,145 @@ const CROP_DB = [
     ],
   },
 
+  {
+    id: 'barley',
+    name: '大麦（六条・二条）',
+    category: 'grain',
+    variety: '六条大麦・二条大麦',
+    conditions: {
+      latMin: 33, latMax: 45,
+      elevMax: 700,
+      tempMeanMin: 5, tempMeanMax: 22,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'low',
+      continuousCropYears: 2,
+    },
+    calendar: {
+      sowing:  [10,11],
+      manage:  [12,1,2,3,4],
+      harvest: [6,7],
+      prep:    [8,9],
+    },
+    fertilizer: {
+      N: 10, P: 8, K: 8,
+      baseDressing: 0.5,
+      topDressing:  0.5,
+      notes: '二条大麦はビール原料として需要安定。穂肥は4月上旬が目安。排水不良ほ場は畝立てで対応。',
+    },
+    yield: { min: 250, max: 450, unit: 'kg/10a' },
+    price: { min: 4000, max: 6500, unit: '円/60kg' },
+    risks: [
+      { type: 'pest',    name: '赤かび病',   level: 'high',   note: '出穂期の降雨で多発。小麦同様の防除を。' },
+      { type: 'pest',    name: 'うどんこ病', level: 'medium', note: '春先に発生。抵抗性品種の選択が有効。' },
+      { type: 'weather', name: '倒伏',       level: 'medium', note: 'N過多で倒伏しやすい。矮化剤も有効。' },
+      { type: 'rotation',name: '連作障害',   level: 'low',    note: '2〜3年輪作が望ましい。' },
+    ],
+  },
+
+  {
+    id: 'rye',
+    name: 'ライ麦',
+    category: 'grain',
+    variety: '一般品種',
+    conditions: {
+      latMin: 35, latMax: 45,
+      elevMax: 900,
+      tempMeanMin: 3, tempMeanMax: 20,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'low',
+      continuousCropYears: 2,
+    },
+    calendar: {
+      sowing:  [9,10],
+      manage:  [11,12,1,2,3,4],
+      harvest: [6,7],
+      prep:    [8,9],
+    },
+    fertilizer: {
+      N: 8, P: 6, K: 8,
+      baseDressing: 0.6,
+      topDressing:  0.4,
+      notes: '寒冷地・やせ地に強い。北海道産の需要増。緑肥・景観用としても利用される。',
+    },
+    yield: { min: 200, max: 400, unit: 'kg/10a' },
+    price: { min: 4500, max: 7000, unit: '円/60kg' },
+    risks: [
+      { type: 'pest',    name: '麦角病',   level: 'medium', note: '開花期の低温多湿で発生。毒素に注意。' },
+      { type: 'weather', name: '倒伏',     level: 'high',   note: '茎が長く倒伏しやすい。密植を避ける。' },
+      { type: 'rotation',name: '連作障害', level: 'low',    note: '比較的連作耐性あり。' },
+    ],
+  },
+
+  {
+    id: 'millet_mix',
+    name: '雑穀（アワ・キビ・ヒエ）',
+    category: 'grain',
+    variety: 'アワ・キビ・ヒエ',
+    conditions: {
+      latMin: 33, latMax: 45,
+      elevMax: 800,
+      tempMeanMin: 10, tempMeanMax: 26,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'low',
+      continuousCropYears: 2,
+    },
+    calendar: {
+      sowing:  [5,6],
+      manage:  [6,7,8],
+      harvest: [9,10],
+      prep:    [11,12,1,2,3,4],
+    },
+    fertilizer: {
+      N: 6, P: 5, K: 6,
+      baseDressing: 0.8,
+      topDressing:  0.2,
+      notes: 'やせ地・乾燥地に強い。有機・無農薬栽培との相性が良い。健康食品需要で単価高め。',
+    },
+    yield: { min: 100, max: 250, unit: 'kg/10a' },
+    price: { min: 15000, max: 35000, unit: '円/30kg' },
+    risks: [
+      { type: 'pest',    name: '鳥害',       level: 'high',   note: '出穂〜収穫期に鳥が集中。防鳥ネット必須。' },
+      { type: 'weather', name: '倒伏',       level: 'medium', note: '茎が細く台風で倒れやすい。' },
+      { type: 'rotation',name: '連作障害',   level: 'low',    note: '比較的連作耐性あり。' },
+    ],
+  },
+
+  {
+    id: 'rapeseed',
+    name: '菜種（ナタネ）',
+    category: 'grain',
+    variety: '一般品種',
+    conditions: {
+      latMin: 33, latMax: 45,
+      elevMax: 600,
+      tempMeanMin: 5, tempMeanMax: 22,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'low',
+      continuousCropYears: 2,
+    },
+    calendar: {
+      sowing:  [9,10],
+      manage:  [11,12,1,2,3,4],
+      harvest: [5,6],
+      prep:    [7,8],
+    },
+    fertilizer: {
+      N: 12, P: 8, K: 8,
+      baseDressing: 0.5,
+      topDressing:  0.5,
+      notes: '搾油作物。景観用・蜜源としても利用。播種深度が浅いと不均一発芽。',
+    },
+    yield: { min: 120, max: 220, unit: 'kg/10a' },
+    price: { min: 8000, max: 12000, unit: '円/60kg' },
+    risks: [
+      { type: 'pest',    name: 'アブラムシ', level: 'medium', note: 'ウイルス媒介。早期防除。' },
+      { type: 'pest',    name: 'キスジノミハムシ', level: 'medium', note: '発芽直後の葉を食害。' },
+      { type: 'rotation',name: '連作障害',   level: 'medium', note: 'アブラナ科。根こぶ病に注意。2〜3年輪作。' },
+    ],
+  },
+
   // ════════════════════════════════
-  //  野菜 (20品目)
+  //  野菜 (30品目)
   // ════════════════════════════════
 
   {
@@ -912,8 +1049,349 @@ const CROP_DB = [
     ],
   },
 
+  {
+    id: 'chinese_cabbage',
+    name: 'ハクサイ',
+    category: 'vegetable',
+    variety: '一般品種',
+    conditions: {
+      latMin: 33, latMax: 45,
+      elevMax: 1000,
+      tempMeanMin: 8, tempMeanMax: 22,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 1,
+    },
+    calendar: {
+      seedling:  [8,9],
+      transplant:[9],
+      manage:    [9,10,11],
+      harvest:   [11,12,1,2],
+      prep:      [3,4,5,6,7],
+    },
+    fertilizer: {
+      N: 20, P: 15, K: 15,
+      baseDressing: 0.6,
+      topDressing:  0.4,
+      notes: '結球開始期の追肥が球重に直結。カルシウム欠乏（心腐れ）に注意。石灰施用徹底。',
+    },
+    yield: { min: 4000, max: 8000, unit: 'kg/10a' },
+    price: { min: 20, max: 60, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: 'コナガ・アオムシ', level: 'high',   note: '結球内部に侵入すると防除困難。' },
+      { type: 'pest',    name: '軟腐病',           level: 'high',   note: '高温多湿・傷口から感染。排水管理。' },
+      { type: 'rotation',name: '連作障害',         level: 'high',   note: '根こぶ病。3年以上輪作推奨。' },
+    ],
+  },
+
+  {
+    id: 'chili',
+    name: 'トウガラシ',
+    category: 'vegetable',
+    variety: '鷹の爪・伏見甘長等',
+    conditions: {
+      latMin: 30, latMax: 43,
+      elevMax: 600,
+      tempMeanMin: 15, tempMeanMax: 28,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 1,
+    },
+    calendar: {
+      seedling:  [2,3],
+      transplant:[4,5],
+      manage:    [5,6,7,8,9],
+      harvest:   [7,8,9,10,11],
+      prep:      [12,1],
+    },
+    fertilizer: {
+      N: 15, P: 10, K: 15,
+      baseDressing: 0.5,
+      topDressing:  0.5,
+      notes: '辛味成分カプサイシンは乾燥ストレスで増加。加工用途の場合は収穫適期管理が重要。',
+    },
+    yield: { min: 300, max: 800, unit: 'kg/10a（生果換算）' },
+    price: { min: 300, max: 800, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: 'アブラムシ', level: 'medium', note: 'ウイルス媒介。黄色粘着板で管理。' },
+      { type: 'pest',    name: '炭疽病',     level: 'medium', note: '収穫期の高温多湿で多発。' },
+      { type: 'rotation',name: '連作障害',   level: 'high',   note: 'ナス科。4〜5年輪作推奨。' },
+    ],
+  },
+
+  {
+    id: 'edamame',
+    name: 'エダマメ',
+    category: 'vegetable',
+    variety: '一般品種・黒枝豆等',
+    conditions: {
+      latMin: 33, latMax: 45,
+      elevMax: 500,
+      tempMeanMin: 13, tempMeanMax: 28,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 1,
+    },
+    calendar: {
+      sowing:  [4,5,6],
+      manage:  [5,6,7,8],
+      harvest: [7,8,9,10],
+      prep:    [11,12,1,2,3],
+    },
+    fertilizer: {
+      N: 3, P: 8, K: 8,
+      baseDressing: 1.0,
+      topDressing:  0.0,
+      notes: '根粒菌でN自己固定。追肥は原則不要。莢肥大期（開花2〜3週後）の水分確保が品質の鍵。',
+    },
+    yield: { min: 600, max: 1200, unit: 'kg/10a（莢付き）' },
+    price: { min: 200, max: 600, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: 'カメムシ',   level: 'high',   note: '莢を吸汁し品質低下。出穂後の防除重要。' },
+      { type: 'pest',    name: 'マメシンクイガ', level: 'medium', note: '莢内部に食入。早期発見。' },
+      { type: 'rotation',name: '連作障害',   level: 'high',   note: '大豆と同じ連作障害。3年以上輪作。' },
+    ],
+  },
+
+  {
+    id: 'asparagus',
+    name: 'アスパラガス',
+    category: 'vegetable',
+    variety: '一般品種',
+    conditions: {
+      latMin: 35, latMax: 45,
+      elevMax: 700,
+      tempMeanMin: 8, tempMeanMax: 25,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 10,
+    },
+    calendar: {
+      manage:  [3,4,5,6,7,8,9,10,11],
+      harvest: [4,5,6,7,8,9],
+      prep:    [12,1,2],
+    },
+    fertilizer: {
+      N: 15, P: 10, K: 15,
+      baseDressing: 0.4,
+      topDressing:  0.6,
+      notes: '定植後2〜3年は収穫せず株を充実させる。追肥は収穫終了後（株充実期）が重要。',
+    },
+    yield: { min: 400, max: 800, unit: 'kg/10a' },
+    price: { min: 500, max: 1200, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: 'アスパラガスハムシ', level: 'medium', note: '葉・茎を食害。春先に多発。' },
+      { type: 'pest',    name: '茎枯病',             level: 'high',   note: '高温多湿で多発。罹病茎は除去。' },
+      { type: 'rotation',name: '株疲弊',             level: 'medium', note: '10〜15年で株更新推奨。' },
+    ],
+  },
+
+  {
+    id: 'chinese_chive',
+    name: 'ニラ',
+    category: 'vegetable',
+    variety: '一般品種',
+    conditions: {
+      latMin: 30, latMax: 45,
+      elevMax: 700,
+      tempMeanMin: 7, tempMeanMax: 26,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 5,
+    },
+    calendar: {
+      manage:  [3,4,5,6,7,8,9,10,11],
+      harvest: [4,5,6,7,8,9,10,11],
+      prep:    [12,1,2],
+    },
+    fertilizer: {
+      N: 18, P: 10, K: 15,
+      baseDressing: 0.4,
+      topDressing:  0.6,
+      notes: '収穫後すぐに追肥することで次回芽吹きが促進される。年3〜5回収穫可能。',
+    },
+    yield: { min: 1500, max: 3000, unit: 'kg/10a' },
+    price: { min: 150, max: 400, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: 'ネギコガ',   level: 'medium', note: '葉に食入。多発すると商品価値ゼロ。' },
+      { type: 'pest',    name: '黒腐菌核病', level: 'high',   note: '土壌病害で根が腐敗。連作で悪化。' },
+      { type: 'rotation',name: '株疲弊',     level: 'medium', note: '5〜6年で株更新推奨。' },
+    ],
+  },
+
+  {
+    id: 'celery',
+    name: 'セロリ',
+    category: 'vegetable',
+    variety: '一般品種',
+    conditions: {
+      latMin: 33, latMax: 43,
+      elevMax: 1200,
+      tempMeanMin: 8, tempMeanMax: 20,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'high',
+      continuousCropYears: 1,
+    },
+    calendar: {
+      seedling:  [2,3,7,8],
+      transplant:[4,5,9],
+      manage:    [5,6,10,11],
+      harvest:   [6,7,11,12],
+      prep:      [1,8],
+    },
+    fertilizer: {
+      N: 20, P: 15, K: 15,
+      baseDressing: 0.5,
+      topDressing:  0.5,
+      notes: '長野県が全国生産量の約70%を占める。高冷地での夏秋栽培が主流。水分要求量が高い。',
+    },
+    yield: { min: 2000, max: 4000, unit: 'kg/10a' },
+    price: { min: 100, max: 300, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: '斑点病',     level: 'medium', note: '多湿で多発。排水・換気管理。' },
+      { type: 'weather', name: '抽台',       level: 'medium', note: '低温処理後の高温長日で発生。品種選択重要。' },
+      { type: 'rotation',name: '連作障害',   level: 'medium', note: 'セリ科。2〜3年輪作推奨。' },
+    ],
+  },
+
+  {
+    id: 'taro',
+    name: 'サトイモ',
+    category: 'vegetable',
+    variety: '石川早生・土垂等',
+    conditions: {
+      latMin: 30, latMax: 42,
+      elevMax: 500,
+      tempMeanMin: 15, tempMeanMax: 28,
+      soilTypes: ['loam', 'clay', 'unknown'],
+      waterNeed: 'high',
+      continuousCropYears: 1,
+    },
+    calendar: {
+      planting:[4,5],
+      manage:  [6,7,8,9],
+      harvest: [10,11,12],
+      prep:    [1,2,3],
+    },
+    fertilizer: {
+      N: 15, P: 10, K: 20,
+      baseDressing: 0.5,
+      topDressing:  0.5,
+      notes: '土寄せごとに追肥。高温多湿を好む。乾燥が続くと子いもが肥大しない。',
+    },
+    yield: { min: 1500, max: 3000, unit: 'kg/10a' },
+    price: { min: 100, max: 300, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: 'セスジスズメ', level: 'medium', note: '葉を食害。大型幼虫は捕殺。' },
+      { type: 'pest',    name: '乾腐病',       level: 'high',   note: '種いもの腐敗。健全種いも選別が重要。' },
+      { type: 'rotation',name: '連作障害',     level: 'high',   note: '3〜4年輪作推奨。' },
+    ],
+  },
+
+  {
+    id: 'yam',
+    name: 'ヤマノイモ（長芋）',
+    category: 'vegetable',
+    variety: '長芋・自然薯等',
+    conditions: {
+      latMin: 35, latMax: 45,
+      elevMax: 600,
+      tempMeanMin: 10, tempMeanMax: 25,
+      soilTypes: ['sandy_loam', 'loam', 'unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 1,
+    },
+    calendar: {
+      planting:[4,5],
+      manage:  [6,7,8,9],
+      harvest: [10,11,12],
+      prep:    [1,2,3],
+    },
+    fertilizer: {
+      N: 12, P: 8, K: 18,
+      baseDressing: 0.6,
+      topDressing:  0.4,
+      notes: '深耕（60〜80cm）が必須。パイプ法や波板法で形状をそろえる技術が普及。',
+    },
+    yield: { min: 2000, max: 4000, unit: 'kg/10a' },
+    price: { min: 150, max: 400, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: '炭疽病',       level: 'high',   note: '葉・茎に発生。梅雨期に多発。' },
+      { type: 'weather', name: 'また根',       level: 'medium', note: '硬盤・石で発生。深耕が基本。' },
+      { type: 'rotation',name: '連作障害',     level: 'high',   note: 'ネコブセンチュウ。3〜4年輪作必須。' },
+    ],
+  },
+
+  {
+    id: 'mitsuba',
+    name: 'ミツバ',
+    category: 'vegetable',
+    variety: '根ミツバ・切りミツバ等',
+    conditions: {
+      latMin: 33, latMax: 45,
+      elevMax: 600,
+      tempMeanMin: 8, tempMeanMax: 22,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'high',
+      continuousCropYears: 1,
+    },
+    calendar: {
+      sowing:  [3,4,9,10],
+      manage:  [4,5,10,11],
+      harvest: [5,6,11,12,1,2],
+      prep:    [7,8],
+    },
+    fertilizer: {
+      N: 15, P: 10, K: 12,
+      baseDressing: 0.7,
+      topDressing:  0.3,
+      notes: '半日陰でも栽培可能。軟白化（遮光）で高品質化。施設栽培で周年出荷。',
+    },
+    yield: { min: 800, max: 1500, unit: 'kg/10a' },
+    price: { min: 300, max: 800, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: 'アブラムシ', level: 'medium', note: '発生初期に防除。薬剤は収穫前日数に注意。' },
+      { type: 'weather', name: '抽台',       level: 'medium', note: '高温長日で抽台。品種・遮光で対応。' },
+      { type: 'rotation',name: '連作障害',   level: 'medium', note: 'セリ科。2〜3年輪作推奨。' },
+    ],
+  },
+
+  {
+    id: 'garland_chrysanthemum',
+    name: '春菊',
+    category: 'vegetable',
+    variety: '一般品種',
+    conditions: {
+      latMin: 30, latMax: 45,
+      elevMax: 700,
+      tempMeanMin: 8, tempMeanMax: 22,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 1,
+    },
+    calendar: {
+      sowing:  [3,4,9,10],
+      manage:  [4,5,10,11],
+      harvest: [5,6,11,12,1],
+      prep:    [7,8],
+    },
+    fertilizer: {
+      N: 15, P: 10, K: 12,
+      baseDressing: 0.7,
+      topDressing:  0.3,
+      notes: '鍋野菜として秋冬需要が高い。摘み取り収穫で長期収穫が可能。施設栽培で品質向上。',
+    },
+    yield: { min: 800, max: 1500, unit: 'kg/10a' },
+    price: { min: 150, max: 400, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: 'アブラムシ', level: 'medium', note: '春・秋に多発。早期防除。' },
+      { type: 'weather', name: '抽台',       level: 'medium', note: '高温長日で開花・品質低下。' },
+      { type: 'rotation',name: '連作障害',   level: 'low',    note: '比較的連作耐性あり。1〜2年輪作推奨。' },
+    ],
+  },
+
   // ════════════════════════════════
-  //  果樹 (10品目)
+  //  果樹 (16品目)
   // ════════════════════════════════
 
   {
@@ -1246,8 +1724,207 @@ const CROP_DB = [
     ],
   },
 
+  {
+    id: 'western_pear',
+    name: '洋ナシ（ラ・フランス等）',
+    category: 'fruit',
+    variety: 'ラ・フランス・バートレット等',
+    conditions: {
+      latMin: 35, latMax: 43,
+      elevMax: 600,
+      tempMeanMin: 8, tempMeanMax: 22,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 20,
+    },
+    calendar: {
+      manage:  [2,3,4,5,6,7,8,9],
+      harvest: [9,10],
+      prep:    [11,12,1],
+    },
+    fertilizer: {
+      N: 12, P: 7, K: 10,
+      baseDressing: 0.5,
+      topDressing:  0.5,
+      notes: '収穫後2〜3週間の追熟が必須。山形県が国内生産の約70%。人工授粉が必要。',
+    },
+    yield: { min: 1500, max: 3000, unit: 'kg/10a' },
+    price: { min: 200, max: 500, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: '黒星病',   level: 'high',   note: '春雨期に感染拡大。展葉初期から防除。' },
+      { type: 'weather', name: '晩霜',     level: 'medium', note: '開花期の低温で受粉障害。' },
+      { type: 'pest',    name: 'ナシヒメシンクイ', level: 'medium', note: '果実・新梢に食入。フェロモン剤で管理。' },
+    ],
+  },
+
+  {
+    id: 'japanese_plum',
+    name: 'スモモ（プラム）',
+    category: 'fruit',
+    variety: '大石早生・ソルダム等',
+    conditions: {
+      latMin: 33, latMax: 42,
+      elevMax: 700,
+      tempMeanMin: 8, tempMeanMax: 22,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 15,
+    },
+    calendar: {
+      manage:  [2,3,4,5,6],
+      harvest: [6,7,8],
+      prep:    [9,10,11,12,1],
+    },
+    fertilizer: {
+      N: 10, P: 6, K: 10,
+      baseDressing: 0.5,
+      topDressing:  0.5,
+      notes: '自家不和合性の品種が多く、授粉樹の選定が重要。山梨・長野が主産地。',
+    },
+    yield: { min: 1000, max: 2500, unit: 'kg/10a' },
+    price: { min: 150, max: 400, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: 'せん孔細菌病', level: 'high',   note: '雨・風で伝播。モモと同様の防除を。' },
+      { type: 'weather', name: '晩霜',         level: 'high',   note: '早咲き品種は3月開花で霜害リスク大。' },
+      { type: 'pest',    name: 'アブラムシ',   level: 'medium', note: '春先の新芽に多発。' },
+    ],
+  },
+
+  {
+    id: 'cherry',
+    name: 'オウトウ（サクランボ）',
+    category: 'fruit',
+    variety: '佐藤錦・紅秀峰等',
+    conditions: {
+      latMin: 35, latMax: 43,
+      elevMax: 700,
+      tempMeanMin: 7, tempMeanMax: 20,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 20,
+    },
+    calendar: {
+      manage:  [2,3,4,5],
+      harvest: [6,7],
+      prep:    [8,9,10,11,12,1],
+    },
+    fertilizer: {
+      N: 10, P: 6, K: 10,
+      baseDressing: 0.5,
+      topDressing:  0.5,
+      notes: '山形県が全国生産量の約75%。収穫期の雨が致命的なため雨除けハウスが普及。',
+    },
+    yield: { min: 500, max: 1200, unit: 'kg/10a' },
+    price: { min: 1500, max: 5000, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'weather', name: '裂果',         level: 'high',   note: '収穫直前の雨で裂果多発。雨除け必須。' },
+      { type: 'weather', name: '晩霜',         level: 'high',   note: '開花期（4月）の霜害に注意。' },
+      { type: 'pest',    name: 'オウトウショウジョウバエ', level: 'high', note: '着色期から収穫期に産卵。防除困難。' },
+    ],
+  },
+
+  {
+    id: 'loquat',
+    name: 'ビワ',
+    category: 'fruit',
+    variety: '茂木・長崎早生等',
+    conditions: {
+      latMin: 30, latMax: 38,
+      elevMax: 400,
+      tempMeanMin: 13, tempMeanMax: 24,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'low',
+      continuousCropYears: 20,
+    },
+    calendar: {
+      manage:  [1,2,3,4,5,6,7,8,9,10],
+      harvest: [5,6,7],
+      prep:    [11,12],
+    },
+    fertilizer: {
+      N: 10, P: 6, K: 10,
+      baseDressing: 0.5,
+      topDressing:  0.5,
+      notes: '長崎・千葉が主産地。袋かけで品質向上。冬季の開花期の低温が最大リスク。',
+    },
+    yield: { min: 800, max: 2000, unit: 'kg/10a' },
+    price: { min: 300, max: 800, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'weather', name: '凍霜害',   level: 'high',   note: '開花期（11〜1月）の低温で受粉・結実障害。' },
+      { type: 'pest',    name: '灰色かび病', level: 'medium', note: '開花期の多湿で発生。袋かけで軽減。' },
+      { type: 'pest',    name: 'カイガラムシ', level: 'medium', note: '樹勢低下の原因。冬季防除が有効。' },
+    ],
+  },
+
+  {
+    id: 'yuzu',
+    name: 'ユズ',
+    category: 'fruit',
+    variety: '一般品種',
+    conditions: {
+      latMin: 30, latMax: 38,
+      elevMax: 600,
+      tempMeanMin: 12, tempMeanMax: 24,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'low',
+      continuousCropYears: 25,
+    },
+    calendar: {
+      manage:  [3,4,5,6,7,8,9,10],
+      harvest: [10,11,12],
+      prep:    [1,2],
+    },
+    fertilizer: {
+      N: 10, P: 6, K: 10,
+      baseDressing: 0.5,
+      topDressing:  0.5,
+      notes: '高知県馬路村が有名。実生から結実まで約18年かかるため接ぎ木苗が必須。',
+    },
+    yield: { min: 1000, max: 2500, unit: 'kg/10a' },
+    price: { min: 200, max: 600, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: 'かいよう病', level: 'high',   note: '台風後に多発。銅剤散布で防除。' },
+      { type: 'weather', name: '凍害',       level: 'medium', note: '-5℃以下で枝枯れ。防寒対策必要。' },
+      { type: 'pest',    name: 'アゲハ類',   level: 'low',    note: '幼虫が葉を食害。量は少ない。' },
+    ],
+  },
+
+  {
+    id: 'passion_fruit',
+    name: 'パッションフルーツ',
+    category: 'fruit',
+    variety: '一般品種',
+    conditions: {
+      latMin: 24, latMax: 34,
+      elevMax: 400,
+      tempMeanMin: 18, tempMeanMax: 30,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 5,
+    },
+    calendar: {
+      planting:[3,4],
+      manage:  [4,5,6,7,8,9,10],
+      harvest: [7,8,9,10,11],
+      prep:    [12,1,2],
+    },
+    fertilizer: {
+      N: 15, P: 10, K: 15,
+      baseDressing: 0.5,
+      topDressing:  0.5,
+      notes: '沖縄・九州南部が主産地。棚仕立てで管理。自然落果したものが完熟の目安。',
+    },
+    yield: { min: 800, max: 2000, unit: 'kg/10a' },
+    price: { min: 500, max: 1500, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'weather', name: '台風',     level: 'high',   note: '棚・つるが大きな被害を受ける。防風対策必須。' },
+      { type: 'weather', name: '低温障害', level: 'high',   note: '10℃以下で生育停止。露地では越冬困難。' },
+      { type: 'pest',    name: 'アブラムシ', level: 'medium', note: 'ウイルス媒介。早期防除。' },
+    ],
+  },
+
   // ════════════════════════════════
-  //  山菜・特用林産 (8品目)
+  //  山菜・特用林産 (12品目)
   // ════════════════════════════════
 
   {
@@ -1504,6 +2181,134 @@ const CROP_DB = [
     risks: [
       { type: 'pest',    name: 'ナメクジ',   level: 'medium', note: '収穫期に集中。誘殺剤で管理。' },
       { type: 'weather', name: '高温乾燥',   level: 'high',   note: '夏場の管理が翌秋の発生量を左右。' },
+    ],
+  },
+
+  {
+    id: 'koshiabura',
+    name: 'コシアブラ',
+    category: 'wildveg',
+    variety: 'コシアブラ',
+    conditions: {
+      latMin: 35, latMax: 45,
+      elevMax: 1400,
+      tempMeanMin: 5, tempMeanMax: 20,
+      soilTypes: ['loam', 'sandy_loam', 'unknown'],
+      waterNeed: 'low',
+      continuousCropYears: 5,
+    },
+    calendar: {
+      manage:  [1,2,3,10,11,12],
+      harvest: [4,5],
+      prep:    [6,7,8,9],
+    },
+    fertilizer: {
+      N: 8, P: 6, K: 8,
+      baseDressing: 0.7,
+      topDressing:  0.3,
+      notes: 'タラノメと並ぶ春山菜の王者。促成栽培で早出し可能。芽吹き量は株齢に依存。',
+    },
+    yield: { min: 150, max: 500, unit: 'kg/10a' },
+    price: { min: 1000, max: 3000, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'weather', name: '晩霜',       level: 'medium', note: '萌芽期の遅霜で新芽が黒変する。' },
+      { type: 'pest',    name: 'アブラムシ', level: 'low',    note: '新芽に散発。収穫前日数に注意。' },
+    ],
+  },
+
+  {
+    id: 'zenmai',
+    name: 'ゼンマイ',
+    category: 'wildveg',
+    variety: 'ゼンマイ',
+    conditions: {
+      latMin: 33, latMax: 45,
+      elevMax: 1300,
+      tempMeanMin: 5, tempMeanMax: 22,
+      soilTypes: ['loam', 'clay', 'unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 10,
+    },
+    calendar: {
+      manage:  [11,12,1,2,3],
+      harvest: [4,5,6],
+      prep:    [7,8,9,10],
+    },
+    fertilizer: {
+      N: 8, P: 5, K: 8,
+      baseDressing: 0.6,
+      topDressing:  0.4,
+      notes: '半日陰・湿潤地を好む。根茎での繁殖。定植後2〜3年は株充実に専念。天日干し加工で単価が上がる。',
+    },
+    yield: { min: 100, max: 400, unit: 'kg/10a（生重）' },
+    price: { min: 600, max: 2000, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: '雑草競合', level: 'high',   note: '定植初期は除草管理が最重要。' },
+      { type: 'weather', name: '干ばつ',   level: 'medium', note: '乾燥で収量が著しく低下。水分確保が重要。' },
+    ],
+  },
+
+  {
+    id: 'nameko',
+    name: 'ナメコ',
+    category: 'wildveg',
+    variety: '原木・菌床',
+    conditions: {
+      latMin: 33, latMax: 45,
+      elevMax: 1000,
+      tempMeanMin: 3, tempMeanMax: 18,
+      soilTypes: ['unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 3,
+    },
+    calendar: {
+      manage:  [1,2,3,4,5,6,7,8,9,10,11,12],
+      harvest: [9,10,11,12],
+      prep:    [1,2,3],
+    },
+    fertilizer: {
+      N: 0, P: 0, K: 0,
+      baseDressing: 0,
+      topDressing:  0,
+      notes: 'ブナ・ナラの原木または菌床で栽培。ぬめり成分がきのこの中でも特徴的。湿度管理が重要。',
+    },
+    yield: { min: 200, max: 600, unit: 'kg/10a（原木換算）' },
+    price: { min: 600, max: 1800, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: '害虫・ナメクジ', level: 'medium', note: '高湿度環境で多発。衛生管理が重要。' },
+      { type: 'weather', name: '高温障害',       level: 'high',   note: '20℃超でほだ木が劣化。夏場の遮光必須。' },
+    ],
+  },
+
+  {
+    id: 'buna_shimeji',
+    name: 'ブナシメジ',
+    category: 'wildveg',
+    variety: '菌床栽培',
+    conditions: {
+      latMin: 30, latMax: 45,
+      elevMax: 1000,
+      tempMeanMin: 3, tempMeanMax: 20,
+      soilTypes: ['unknown'],
+      waterNeed: 'medium',
+      continuousCropYears: 1,
+    },
+    calendar: {
+      manage:  [1,2,3,4,5,6,7,8,9,10,11,12],
+      harvest: [1,2,3,4,5,6,7,8,9,10,11,12],
+      prep:    [1,2],
+    },
+    fertilizer: {
+      N: 0, P: 0, K: 0,
+      baseDressing: 0,
+      topDressing:  0,
+      notes: '施設内菌床栽培で周年出荷が可能。長野県が全国トップ生産量。温度・湿度・CO2濃度の精密管理が重要。',
+    },
+    yield: { min: 1000, max: 2500, unit: 'kg/10a（施設換算）' },
+    price: { min: 300, max: 800, unit: '円/kg（JA概算）' },
+    risks: [
+      { type: 'pest',    name: '細菌性腐敗', level: 'high',   note: '施設衛生管理が最重要。消毒徹底。' },
+      { type: 'weather', name: '高温障害',   level: 'high',   note: '22℃超で生育障害。空調設備必須。' },
     ],
   },
 
