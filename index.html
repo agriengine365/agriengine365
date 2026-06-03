@@ -215,6 +215,11 @@
           <div id="land-profile"></div>
         </div>
 
+        <div class="card">
+          <div class="card-title">MATCH RANGE</div>
+          <div id="match-ranges"></div>
+        </div>
+
         <!-- 作物ランキング -->
         <div class="card">
           <div class="card-title">適正作物ランキング</div>
@@ -272,6 +277,39 @@
   </div>
 </div>
 
+<!-- 分析ウィザードダイアログ -->
+<div class="aw-overlay" id="aw-overlay">
+  <div class="aw-dialog">
+
+    <!-- ヘッダー -->
+    <div class="aw-header">
+      <div class="aw-header-top">
+        <span class="aw-title">分析ウィザード</span>
+        <button class="aw-close-btn" onclick="closeAnalysisWizard()">✕</button>
+      </div>
+      <div class="aw-area-name" id="aw-area-name"></div>
+      <!-- プログレス -->
+      <div class="aw-progress">
+        <div class="aw-prog-dot active" id="awdot-0"></div>
+        <div class="aw-prog-line"></div>
+        <div class="aw-prog-dot" id="awdot-1"></div>
+        <div class="aw-prog-line"></div>
+        <div class="aw-prog-dot" id="awdot-2"></div>
+        <div class="aw-prog-line"></div>
+        <div class="aw-prog-dot" id="awdot-3"></div>
+      </div>
+      <div class="aw-step-title" id="aw-step-title">カテゴリ選択</div>
+    </div>
+
+    <!-- ボディ（動的描画） -->
+    <div class="aw-body" id="aw-body"></div>
+
+    <!-- フッター（動的描画） -->
+    <div class="aw-footer" id="aw-footer"></div>
+
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -283,6 +321,7 @@
 
 <script src="js/config.js"></script>
 <script src="js/cropDB.js"></script>
+<script src="js/amedas.js"></script>
 <script src="js/engine.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/firebase.js"></script>
@@ -290,6 +329,7 @@
 <script src="js/polygonDraw.js"></script>
 <script src="js/area.js"></script>
 <script src="js/analysis.js"></script>
+<script src="js/analysisWizard.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

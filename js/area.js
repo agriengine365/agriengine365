@@ -227,10 +227,8 @@ function selectArea(area) {
     areaSqm:  area.meta?.areaSqm          || 0,
     areaHa:   area.meta?.areaHa           || 0,
   };
-  currentAreaData.landProfile = area.landProfile || buildLandProfile(currentAreaData);
-
-  runAnalysis(area.name);
-  switchTab('analysis');
+  // 分析ウィザードを開く
+  openAnalysisWizard(area);
 }
 
 // ─── 土壌ラベル変換 ───
