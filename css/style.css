@@ -1314,3 +1314,115 @@ html.draw-dialog-active {
 .draw-start-btn span {
   color: var(--green);
 }
+
+
+/* ══════════════════════════════════════════════
+   CROP RANKING — engine.js renderCropRanking()
+   ══════════════════════════════════════════════ */
+
+.crop-rank-item {
+  border: 1px solid var(--border, #2a2a2a);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--card-bg, #141414);
+  transition: opacity 0.2s;
+}
+
+/* 栽培不可の場合: 赤枠・薄暗く */
+.crop-rank-unavailable {
+  border-color: #7f1d1d;
+  background: #1a0a0a;
+  opacity: 0.85;
+}
+
+/* ヘッダー行 */
+.crop-rank-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.crop-rank-no {
+  font-family: var(--mono, monospace);
+  font-size: 10px;
+  color: var(--text3, #555);
+  min-width: 14px;
+}
+
+.crop-rank-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text1, #e8e8e8);
+}
+
+.crop-rank-score {
+  font-family: var(--mono, monospace);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* スコア帯カラー */
+.score-high { color: #4ade80; }
+.score-mid  { color: #facc15; }
+.score-low  { color: #f87171; }
+
+/* スコアバー */
+.crop-score-bar-wrap  { margin-bottom: 8px; }
+.crop-score-bar-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border, #2a2a2a);
+  overflow: hidden;
+}
+.crop-score-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+.crop-score-bar-fill.score-high { background: #4ade80; }
+.crop-score-bar-fill.score-mid  { background: #facc15; }
+.crop-score-bar-fill.score-low  { background: #f87171; }
+
+/* 栽培不可アラートバナー */
+.crop-alert-banner {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.35);
+  border: 1px solid #7f1d1d;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+}
+
+/* 詳細行 */
+.crop-rank-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.crop-detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text2, #999);
+}
+
+.det-icon {
+  font-size: 10px;
+  min-width: 12px;
+  margin-top: 1px;
+  font-weight: 700;
+}
+.det-ok { color: #4ade80; }
+.det-ng { color: #f87171; }
+.det-na { color: #6b7280; }
+
+.det-text { flex: 1; }
