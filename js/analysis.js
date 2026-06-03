@@ -24,39 +24,62 @@ function rangeStatus(value, min, max) {
   return 'in';
 }
 
-function rangeGauge({ label, value, unit = '', min, max, displayMin, displayMax, optimalMin, optimalMax }) {
+function rangeGauge({ label, value, unit = '', min, max, displayMin, displayMax, optimalMin, optimalMax, survivalMin = null }) {
   const hasValue = Number.isFinite(Number(value));
   const lo = Number.isFinite(Number(displayMin)) ? displayMin : min;
   const hi = Number.isFinite(Number(displayMax)) ? displayMax : max;
   const span = Math.max(hi - lo, 0.0001);
-  const pos = hasValue ? clamp((value - lo) / span * 100, 0, 100) : 50;
-  const optLeft = clamp((optimalMin - lo) / span * 100, 0, 100);
+  const pos = hasValue ? clamp((value - lo) / span * 100, 0, 100) : null;
+  const optLeft  = clamp((optimalMin - lo) / span * 100, 0, 100);
   const optRight = clamp((optimalMax - lo) / span * 100, 0, 100);
   const optWidth = Math.max(2, optRight - optLeft);
   const status = rangeStatus(value, optimalMin, optimalMax);
   const statusLabel = status === 'missing' ? 'データなし' : status === 'out' ? '範囲外' : '適合';
+  const statusClass = status === 'in' ? 'rg-status-in' : status === 'out' ? 'rg-status-out' : 'rg-status-missing';
   const valueText = hasValue ? `${fmtNum(value, value % 1 === 0 ? 0 : 1)}${unit}` : '-';
   const minText = `${fmtNum(optimalMin, optimalMin % 1 === 0 ? 0 : 1)}${unit}`;
   const maxText = `${fmtNum(optimalMax, optimalMax % 1 === 0 ? 0 : 1)}${unit}`;
 
+  // survivalMinの赤縦線位置
+  const survivalPos = (survivalMin !== null && Number.isFinite(Number(survivalMin)))
+    ? clamp((survivalMin - lo) / span * 100, 0, 100)
+    : null;
+
+  // マーカーラベルの左右どちらに出すか（端に近い場合は反転）
+  const markerLabelAlign = pos !== null && pos > 70 ? 'right' : 'left';
+
   return `
-    <div class="range-gauge range-${status}">
-      <div class="range-head">
-        <div>
-          <span>${label}</span>
-          <strong>${valueText}</strong>
+    <div class="rg-wrap rg-${status}">
+      <div class="rg-head">
+        <span class="rg-label">${label}</span>
+        <span class="${statusClass}">${statusLabel}</span>
+      </div>
+      <div class="rg-track-wrap">
+        <!-- グラデーション背景 -->
+        <div class="rg-track">
+          <!-- 適正範囲オーバーレイ -->
+          <div class="rg-optimal" style="left:${optLeft}%;width:${optWidth}%"></div>
+          <!-- survivalMin 赤縦線 -->
+          ${survivalPos !== null ? `<div class="rg-survival-line" style="left:${survivalPos}%"></div>` : ''}
+          <!-- 現在値マーカー（▼） -->
+          ${pos !== null ? `
+            <div class="rg-marker-wrap" style="left:${pos}%">
+              <div class="rg-marker-label rg-marker-label-${markerLabelAlign}">${valueText}</div>
+              <div class="rg-marker">▼</div>
+            </div>
+          ` : ''}
         </div>
-        <b>${statusLabel}</b>
       </div>
-      <div class="range-track">
-        <div class="range-optimal" style="left:${optLeft}%;width:${optWidth}%"></div>
-        ${hasValue ? `<div class="range-marker" style="left:${pos}%"></div>` : ''}
-      </div>
-      <div class="range-scale">
+      <div class="rg-scale">
         <span>${fmtNum(lo, lo % 1 === 0 ? 0 : 1)}${unit}</span>
-        <span>適正 ${minText} - ${maxText}</span>
+        <span>適正 ${minText}〜 ${maxText}</span>
         <span>${fmtNum(hi, hi % 1 === 0 ? 0 : 1)}${unit}</span>
       </div>
+      ${survivalPos !== null ? `
+        <div class="rg-survival-note">
+          <span class="rg-survival-dot"></span>耐寒限界 ${fmtNum(survivalMin, 1)}${unit}
+        </div>
+      ` : ''}
     </div>
   `;
 }
@@ -91,6 +114,7 @@ function renderMatchRanges(result, profile) {
       displayMax: c.tempMeanMax + 4,
       optimalMin: c.tempMeanMin,
       optimalMax: c.tempMeanMax,
+      survivalMin: survivalTempMin,
     })}
     ${rangeGauge({
       label: 'pH',
