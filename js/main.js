@@ -40,3 +40,32 @@ setDrawStep('idle');
 
 // ─── 初期ロード ───
 loadAreas();
+
+// ═══════════════════════════════════════════
+//  MAP FLOAT BAR — ボタン挙動
+// ═══════════════════════════════════════════
+
+function mfbRecords() {
+  switchTab('records');
+  setSheet('half');
+  renderRecordTab();
+}
+
+function mfbAddField() {
+  // polygonDraw.js の開始関数を呼ぶ
+  // polygonDraw.js が PolygonDraw オブジェクトを公開している場合
+  if (typeof PolygonDraw !== 'undefined' && typeof PolygonDraw.start === 'function') {
+    PolygonDraw.start();
+  } else if (typeof startPolygonDraw === 'function') {
+    startPolygonDraw();
+  } else if (typeof setDrawStep === 'function') {
+    setDrawStep('drawing');
+  } else {
+    showToast('描画機能を読み込み中です', 'amber');
+  }
+}
+
+function mfbMenu() {
+  // 将来的に設定メニュー展開予定
+  showToast('メニューは準備中です');
+}

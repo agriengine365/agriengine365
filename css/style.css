@@ -2616,3 +2616,78 @@ html.draw-dialog-active {
   gap: 8px;
 }
 .adp-edit-actions .btn { flex: 1; }
+
+/* ═══════════════════════════════════════════
+   MAP FLOAT BAR — 地図上部フロートボタン
+═══════════════════════════════════════════ */
+
+.map-float-bar {
+  position: fixed;
+  top: calc(var(--header-h) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 900;
+  display: flex;
+  gap: 8px;
+  background: rgba(14, 26, 18, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 6px 8px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.45);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+/* 描画モード中は非表示 */
+.draw-dialog-active .map-float-bar {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) translateY(-6px);
+}
+
+.mfb-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  color: var(--text2);
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 9px;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  min-width: 56px;
+}
+
+.mfb-btn:hover {
+  background: var(--bg3);
+  color: var(--text);
+}
+
+.mfb-btn:active {
+  background: rgba(74,222,128,0.08);
+  color: var(--green);
+}
+
+/* 圃場追加ボタン（中央・アクセント） */
+.mfb-btn-primary {
+  color: var(--green);
+  background: rgba(74,222,128,0.08);
+  border: 1px solid rgba(74,222,128,0.2);
+}
+
+.mfb-btn-primary:hover {
+  background: rgba(74,222,128,0.16);
+  color: var(--green2);
+}
+
+.mfb-btn svg {
+  flex-shrink: 0;
+}
