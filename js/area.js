@@ -227,8 +227,350 @@ function selectArea(area) {
     areaSqm:  area.meta?.areaSqm          || 0,
     areaHa:   area.meta?.areaHa           || 0,
   };
-  // 分析ウィザードを開く
-  openAnalysisWizard(area);
+  // 詳細パネルを開く
+  openAreaDetailPanel(area);
+}
+
+// ═══════════════════════════════════════════
+//  AREA DETAIL PANEL — カレンダー付き詳細パネル
+// ═══════════════════════════════════════════
+
+let _adpArea     = null;   // 現在表示中のエリア
+let _adpYear     = 0;
+let _adpMonth    = 0;
+let _adpSelDate  = null;   // 選択中の日付文字列 'YYYY-MM-DD'
+let _adpEditId   = null;   // 編集中レコードID
+
+function openAreaDetailPanel(area) {
+  _adpArea    = area;
+  const now   = new Date();
+  _adpYear    = now.getFullYear();
+  _adpMonth   = now.getMonth();
+  _adpSelDate = null;
+  _adpEditId  = null;
+
+  _adpEnsureDOM();
+
+  const panel   = document.getElementById('adp-panel');
+  const overlay = document.getElementById('adp-overlay');
+  const title   = document.getElementById('adp-title');
+  const meta    = document.getElementById('adp-meta');
+
+  const ha = area.meta?.areaSqm ? (area.meta.areaSqm / 10000).toFixed(3) : '—';
+  title.textContent = area.name || '無名エリア';
+  meta.textContent  = `${ha} ha　${area.meta?.climateName || ''}`;
+
+  _adpRenderCalendar();
+  _adpRenderDayRecords();
+
+  overlay.classList.add('open');
+  panel.classList.add('open');
+}
+
+function closeAreaDetailPanel() {
+  const panel   = document.getElementById('adp-panel');
+  const overlay = document.getElementById('adp-overlay');
+  if (!panel) return;
+  panel.classList.remove('open');
+  overlay.classList.remove('open');
+}
+
+// ─── DOM を初回だけ生成 ───
+function _adpEnsureDOM() {
+  if (document.getElementById('adp-panel')) return;
+
+  // overlay
+  const ov = document.createElement('div');
+  ov.className = 'area-detail-overlay';
+  ov.id = 'adp-overlay';
+  ov.addEventListener('click', closeAreaDetailPanel);
+  document.body.appendChild(ov);
+
+  // panel
+  const panel = document.createElement('div');
+  panel.className = 'area-detail-panel';
+  panel.id = 'adp-panel';
+  panel.innerHTML = `
+    <div class="adp-handle-area"><div class="adp-handle"></div></div>
+    <div class="adp-header">
+      <div>
+        <div class="adp-title" id="adp-title"></div>
+        <div class="adp-meta"  id="adp-meta"></div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;"
+          onclick="if(_adpArea){openAnalysisWizard(_adpArea);}">分析 →</button>
+        <button class="adp-close-btn" onclick="closeAreaDetailPanel()">✕</button>
+      </div>
+    </div>
+    <div class="adp-body" id="adp-body">
+      <div id="adp-calendar-wrap"></div>
+      <div id="adp-day-records-wrap"></div>
+    </div>
+  `;
+  document.body.appendChild(panel);
+}
+
+// ─── カレンダー描画 ───
+function _adpRenderCalendar() {
+  const wrap = document.getElementById('adp-calendar-wrap');
+  if (!wrap) return;
+
+  const areaId  = _adpArea?.id;
+  const records = (typeof recordsLoad === 'function') ? recordsLoad() : [];
+  // このエリアの記録を日付ごとにまとめる
+  const byDate  = {};
+  records.forEach(r => {
+    if (r.areaId !== areaId) return;
+    const d = r.shipDate || r.harvestDate || r.createdAt?.slice(0, 10);
+    if (!d) return;
+    if (!byDate[d]) byDate[d] = [];
+    byDate[d].push(r);
+  });
+
+  const y = _adpYear, m = _adpMonth;
+  const monthLabel = `${y}年 ${m + 1}月`;
+  const firstDay   = new Date(y, m, 1).getDay();  // 0=Sun
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  // DOW header
+  const dows = ['日','月','火','水','木','金','土'];
+  const dowHTML = dows.map(d => `<div class="adp-cal-dow">${d}</div>`).join('');
+
+  // cells
+  let cellsHTML = '';
+  // 空セル
+  for (let i = 0; i < firstDay; i++) {
+    cellsHTML += `<div class="adp-cal-day empty"></div>`;
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const recs    = byDate[dateStr] || [];
+    const isToday = dateStr === todayStr;
+    const isSel   = dateStr === _adpSelDate;
+    let cls = 'adp-cal-day';
+    if (isToday)     cls += ' today';
+    if (isSel)       cls += ' selected';
+    if (recs.length) cls += ' has-record';
+
+    // ドット（最大3個）
+    const dots = recs.slice(0, 3).map(() => `<div class="adp-cal-dot"></div>`).join('');
+    const dotsHTML = recs.length ? `<div class="adp-cal-dots">${dots}</div>` : `<div class="adp-cal-dots"></div>`;
+
+    cellsHTML += `
+      <div class="${cls}" onclick="_adpSelectDate('${dateStr}')">
+        <div class="adp-cal-day-num">${d}</div>
+        ${dotsHTML}
+      </div>`;
+  }
+
+  wrap.innerHTML = `
+    <div class="adp-cal-nav">
+      <button class="adp-cal-nav-btn" onclick="_adpChangeMonth(-1)">‹</button>
+      <span class="adp-cal-month-label">${monthLabel}</span>
+      <button class="adp-cal-nav-btn" onclick="_adpChangeMonth(1)">›</button>
+    </div>
+    <div class="adp-cal-grid">
+      ${dowHTML}
+      ${cellsHTML}
+    </div>
+  `;
+}
+
+function _adpChangeMonth(delta) {
+  _adpMonth += delta;
+  if (_adpMonth < 0)  { _adpYear--;  _adpMonth = 11; }
+  if (_adpMonth > 11) { _adpYear++;  _adpMonth = 0;  }
+  _adpSelDate = null;
+  _adpRenderCalendar();
+  _adpRenderDayRecords();
+}
+
+function _adpSelectDate(dateStr) {
+  _adpSelDate = (_adpSelDate === dateStr) ? null : dateStr;
+  _adpEditId  = null;
+  _adpRenderCalendar();
+  _adpRenderDayRecords();
+}
+
+// ─── 選択日記録リスト ───
+function _adpRenderDayRecords() {
+  const wrap = document.getElementById('adp-day-records-wrap');
+  if (!wrap) return;
+
+  if (!_adpSelDate) {
+    wrap.innerHTML = '';
+    return;
+  }
+
+  const areaId  = _adpArea?.id;
+  const records = (typeof recordsLoad === 'function') ? recordsLoad() : [];
+  const dayRecs = records.filter(r => {
+    if (r.areaId !== areaId) return false;
+    const d = r.shipDate || r.harvestDate || r.createdAt?.slice(0, 10);
+    return d === _adpSelDate;
+  });
+
+  const label = `${parseInt(_adpSelDate.slice(5,7))}月${parseInt(_adpSelDate.slice(8,10))}日の記録`;
+
+  if (!dayRecs.length) {
+    wrap.innerHTML = `
+      <div class="adp-day-records">
+        <div class="adp-day-records-title">${label}</div>
+        <div class="empty" style="padding:16px 0;font-size:12px;">この日の記録はありません</div>
+      </div>`;
+    return;
+  }
+
+  const cardsHTML = dayRecs.map(r => {
+    const item = r.productName || r.item || '—';
+    const dest = r.shippingTypeLabel || r.shippingType || '—';
+    const isEditing = r.id === _adpEditId;
+    return `
+      <div class="adp-rec-card" id="adp-rec-${r.id}">
+        <div class="adp-rec-card-top">
+          <span class="adp-rec-dest">${escHtml(dest)}</span>
+        </div>
+        <div class="adp-rec-item">${escHtml(item)}</div>
+        <div class="adp-rec-actions">
+          <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;"
+            onclick="_adpToggleEdit('${r.id}')">
+            ${isEditing ? '閉じる' : '編集'}
+          </button>
+          <button class="btn btn-danger" style="font-size:11px;padding:5px 10px;"
+            onclick="_adpDeleteRecord('${r.id}')">削除</button>
+        </div>
+        ${isEditing ? _adpEditPanelHTML(r) : ''}
+      </div>
+    `;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="adp-day-records">
+      <div class="adp-day-records-title">${label}</div>
+      ${cardsHTML}
+    </div>`;
+}
+
+// ─── 編集パネル HTML ───
+function _adpEditPanelHTML(record) {
+  const SHIPPING_TYPES_REF = (typeof SHIPPING_TYPES !== 'undefined') ? SHIPPING_TYPES : {};
+  const typeGrid = Object.entries(SHIPPING_TYPES_REF).map(([key, def]) => {
+    const isSel = key === record.shippingType;
+    return `<div class="adp-type-btn${isSel ? ' selected' : ''}"
+      data-type="${key}"
+      onclick="_adpSelectEditType(this, '${record.id}')">
+      ${def.icon} ${def.label}
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="adp-edit-panel" id="adp-edit-panel-${record.id}">
+      <div class="adp-edit-title">出荷先タイプを変更</div>
+      <div class="adp-type-grid">${typeGrid}</div>
+      <div class="adp-edit-form-wrap" id="adp-edit-form-wrap-${record.id}">
+        ${_adpBuildEditForm(record, record.shippingType)}
+      </div>
+      <div class="adp-edit-actions">
+        <button class="btn btn-ghost" onclick="_adpToggleEdit('${record.id}')">キャンセル</button>
+        <button class="btn btn-primary" onclick="_adpSaveEdit('${record.id}')">保存する</button>
+      </div>
+    </div>`;
+}
+
+// ─── 編集フォーム HTML（既存値埋め込み）───
+function _adpBuildEditForm(record, type) {
+  const SHIPPING_TYPES_REF = (typeof SHIPPING_TYPES !== 'undefined') ? SHIPPING_TYPES : {};
+  const def = SHIPPING_TYPES_REF[type];
+  if (!def) return '';
+
+  const fieldsHTML = def.sections.flatMap(s => s.fields).map(f => {
+    const val = record[f.id] || '';
+    let input = '';
+    if (f.type === 'select') {
+      const opts = (f.options || []).map(o =>
+        `<option value="${o}"${val === o ? ' selected' : ''}>${o}</option>`).join('');
+      input = `<select class="rec-input" name="${f.id}"><option value="">—</option>${opts}</select>`;
+    } else if (f.type === 'textarea') {
+      input = `<textarea class="rec-input rec-textarea" name="${f.id}" placeholder="${f.placeholder || ''}">${escHtml(val)}</textarea>`;
+    } else {
+      const unit = f.unit ? `<span class="rec-unit">${f.unit}</span>` : '';
+      const wrap = f.unit ? `<div class="rec-input-with-unit">` : '';
+      const wEnd = f.unit ? `</div>` : '';
+      input = `${wrap}<input class="rec-input" type="${f.type}" name="${f.id}" placeholder="${f.placeholder || ''}" value="${escHtml(val)}">${unit}${wEnd}`;
+    }
+    return `<div class="rec-field"><label class="rec-label">${f.label}</label>${input}</div>`;
+  }).join('');
+
+  return `<div class="rec-section"><div class="rec-section-title-plain">${def.label}</div>${fieldsHTML}</div>`;
+}
+
+// ─── タイプ選択時フォーム更新 ───
+function _adpSelectEditType(btn, recordId) {
+  const panel = document.getElementById(`adp-edit-panel-${recordId}`);
+  if (!panel) return;
+  panel.querySelectorAll('.adp-type-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+
+  const type = btn.dataset.type;
+  const records = (typeof recordsLoad === 'function') ? recordsLoad() : [];
+  const record  = records.find(r => r.id === recordId);
+  if (!record) return;
+
+  const formWrap = document.getElementById(`adp-edit-form-wrap-${recordId}`);
+  if (formWrap) formWrap.innerHTML = _adpBuildEditForm(record, type);
+}
+
+// ─── 編集パネル開閉 ───
+function _adpToggleEdit(id) {
+  _adpEditId = (_adpEditId === id) ? null : id;
+  _adpRenderDayRecords();
+  // 編集パネルが開いたらスクロール
+  if (_adpEditId) {
+    setTimeout(() => {
+      const el = document.getElementById(`adp-rec-${id}`);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+  }
+}
+
+// ─── 保存 ───
+function _adpSaveEdit(id) {
+  const panel = document.getElementById(`adp-edit-panel-${id}`);
+  if (!panel) return;
+
+  const typeBtn  = panel.querySelector('.adp-type-btn.selected');
+  const newType  = typeBtn ? typeBtn.dataset.type : null;
+  const SHIPPING_TYPES_REF = (typeof SHIPPING_TYPES !== 'undefined') ? SHIPPING_TYPES : {};
+
+  const inputs = panel.querySelectorAll('[name]');
+  const newData = {};
+  inputs.forEach(el => { if (el.value.trim()) newData[el.name] = el.value.trim(); });
+
+  if (newType) {
+    newData.shippingType      = newType;
+    newData.shippingTypeLabel = SHIPPING_TYPES_REF[newType]?.label || newType;
+  }
+
+  if (typeof recordsUpdate === 'function') {
+    recordsUpdate(id, newData);
+    showToast('記録を更新しました ✓', 'green');
+  }
+
+  _adpEditId = null;
+  _adpRenderCalendar();
+  _adpRenderDayRecords();
+}
+
+// ─── 削除 ───
+function _adpDeleteRecord(id) {
+  if (!confirm('この記録を削除しますか？')) return;
+  if (typeof recordsDelete === 'function') recordsDelete(id);
+  showToast('記録を削除しました', 'green');
+  _adpRenderCalendar();
+  _adpRenderDayRecords();
 }
 
 // ─── 土壌ラベル変換 ───

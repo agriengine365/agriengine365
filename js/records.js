@@ -175,6 +175,15 @@ function recordsDelete(id) {
   recordsSave(records);
 }
 
+function recordsUpdate(id, patch) {
+  const records = recordsLoad();
+  const idx = records.findIndex(r => r.id === id);
+  if (idx === -1) return null;
+  records[idx] = { ...records[idx], ...patch, updatedAt: new Date().toISOString() };
+  recordsSave(records);
+  return records[idx];
+}
+
 // ─── エリア選択肢の取得 ───
 function getAreaOptions() {
   // area.js が管理する savedAreas グローバル変数を参照
