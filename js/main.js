@@ -12,7 +12,8 @@ let currentSavedAreaId = null;
 document.querySelectorAll('.tab').forEach(t => {
   t.addEventListener('click', () => {
     switchTab(t.dataset.tab);
-    if (t.dataset.tab === 'areas') loadAreas();
+    if (t.dataset.tab === 'areas')   loadAreas();
+    if (t.dataset.tab === 'records') renderRecordTab();
   });
 });
 

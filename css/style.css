@@ -2136,3 +2136,194 @@ html.draw-dialog-active {
   box-shadow: 0 0 4px rgba(239,68,68,0.6);
   flex-shrink: 0;
 }
+
+
+/* ═══════════════════════════════════════════
+   RECORDS TAB — 出荷記録
+═══════════════════════════════════════════ */
+
+/* 出荷先タイプタブ */
+.rec-type-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.rec-type-tab {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  color: var(--text3);
+  font-family: var(--mono);
+  font-size: 10px;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: all 0.18s;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.rec-type-tab:hover  { border-color: var(--green3); color: var(--text2); }
+.rec-type-tab.active { background: rgba(22,163,74,0.12); border-color: var(--green); color: var(--green); }
+
+/* フォームコンテナ */
+.rec-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: 16px;
+}
+
+/* セクション */
+.rec-section {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 8px;
+}
+.rec-section-title-plain {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+/* アコーディオンセクション */
+.rec-section-collapsed {
+  padding: 0;
+  overflow: hidden;
+}
+.rec-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rec-section-title {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.rec-acc-icon {
+  color: var(--text3);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.rec-section-body {
+  padding: 0 14px 14px;
+}
+
+/* フィールド */
+.rec-field {
+  margin-bottom: 10px;
+}
+.rec-field:last-child { margin-bottom: 0; }
+.rec-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 5px;
+}
+.rec-input {
+  width: 100%;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+  box-sizing: border-box;
+}
+.rec-input:focus { border-color: var(--green3); }
+.rec-textarea {
+  resize: vertical;
+  min-height: 64px;
+  line-height: 1.6;
+}
+
+/* 数値入力＋単位 */
+.rec-input-with-unit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rec-input-with-unit .rec-input { flex: 1; }
+.rec-unit {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* フォームアクション */
+.rec-form-actions {
+  margin-top: 14px;
+}
+
+/* 記録一覧ヘッダー */
+.rec-list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0 10px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+
+/* 記録カード */
+.rec-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+.rec-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.rec-card-dest {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--green);
+  background: rgba(22,163,74,0.1);
+  border: 1px solid rgba(74,222,128,0.2);
+  border-radius: 99px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+.rec-card-area {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: var(--mono);
+}
+.rec-card-date {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  margin-left: auto;
+}
+.rec-card-item {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.rec-card-actions {
+  display: flex;
+  justify-content: flex-end;
+}
