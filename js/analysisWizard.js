@@ -4,10 +4,15 @@
 // ═══════════════════════════════════════════
 
 const CATEGORY_LABELS = {
-  grain:     { label: '穀物',     icon: '🌾' },
-  vegetable: { label: '野菜',     icon: '🥦' },
-  fruit:     { label: '果物',     icon: '🍎' },
+  grain:     { label: '穀物・豆類',   icon: '🌾' },
+  leafy:     { label: '葉菜類',       icon: '🥬' },
+  fruit_veg: { label: '果菜類',       icon: '🍅' },
+  root:      { label: '根菜類',       icon: '🥕' },
+  vegetable: { label: '野菜（その他）', icon: '🥦' },
+  fruit:     { label: '果物',         icon: '🍎' },
   wildveg:   { label: '山菜・きのこ', icon: '🍄' },
+  forest:    { label: '林産きのこ',   icon: '🌲' },
+  herb:      { label: 'ハーブ・薬草', icon: '🌿' },
 };
 
 const CULTIVATION_MODES = [
