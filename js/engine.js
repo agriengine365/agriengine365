@@ -78,9 +78,10 @@ function scoreCrop(crop, areaData) {
   if (cultivationMode !== 'heatedGreenhouse' && corrTemp !== null) {
     const c = crop.conditions;
     // survivalTempMin が未定義のときは tempMeanMin - 3 でフォールバック
+    // tempMeanMin が未定義の場合は -Infinity（栽培不可判定しない）
     const survivalMin = (c.survivalTempMin !== undefined && c.survivalTempMin !== null)
       ? c.survivalTempMin
-      : c.tempMeanMin - 3;
+      : (c.tempMeanMin != null ? c.tempMeanMin - 3 : -Infinity);
 
     if (corrTemp < survivalMin) {
       viable = false;
@@ -90,35 +91,43 @@ function scoreCrop(crop, areaData) {
 
   // ════════════════════════════════════════
   //  1. 緯度スコア (25点)
+  //     latMin/latMax がない場合はスキップ
   // ════════════════════════════════════════
-  maxScore += 25;
-  if (lat !== null) {
-    const c = crop.conditions;
-    if (lat >= c.latMin && lat <= c.latMax) {
+  const c0 = crop.conditions;
+  if (lat !== null && c0.latMin != null && c0.latMax != null) {
+    maxScore += 25;
+    if (lat >= c0.latMin && lat <= c0.latMax) {
       score += 25;
       details.push({ ok: true, text: `緯度 ${lat.toFixed(2)}° — 適正範囲内` });
     } else {
-      const dist = Math.min(Math.abs(lat - c.latMin), Math.abs(lat - c.latMax));
+      const dist = Math.min(Math.abs(lat - c0.latMin), Math.abs(lat - c0.latMax));
       const s    = Math.max(0, 25 - dist * 10);
       score += s;
-      details.push({ ok: s > 0, text: `緯度 ${lat.toFixed(2)}° — 適正外 (${c.latMin}–${c.latMax}°)` });
+      details.push({ ok: s > 0, text: `緯度 ${lat.toFixed(2)}° — 適正外 (${c0.latMin}–${c0.latMax}°)` });
     }
+  } else if (c0.latMin == null || c0.latMax == null) {
+    details.push({ ok: null, text: '緯度範囲データなし — 緯度軸は評価対象外' });
   }
 
   // ════════════════════════════════════════
   //  2. 標高スコア (20点)
+  //     elevMax がない場合はスキップ
   // ════════════════════════════════════════
-  maxScore += 20;
-  if (elev !== null) {
-    if (elev <= crop.conditions.elevMax) {
-      score += 20;
-      details.push({ ok: true, text: `標高 ${Math.round(elev)}m — 適正範囲内` });
-    } else {
-      const over = elev - crop.conditions.elevMax;
-      const s    = Math.max(0, 20 - over / 20);
-      score += s;
-      details.push({ ok: false, text: `標高 ${Math.round(elev)}m — 上限(${crop.conditions.elevMax}m)超過` });
+  if (crop.conditions.elevMax != null) {
+    maxScore += 20;
+    if (elev !== null) {
+      if (elev <= crop.conditions.elevMax) {
+        score += 20;
+        details.push({ ok: true, text: `標高 ${Math.round(elev)}m — 適正範囲内` });
+      } else {
+        const over = elev - crop.conditions.elevMax;
+        const s    = Math.max(0, 20 - over / 20);
+        score += s;
+        details.push({ ok: false, text: `標高 ${Math.round(elev)}m — 上限(${crop.conditions.elevMax}m)超過` });
+      }
     }
+  } else {
+    details.push({ ok: null, text: '標高制限データなし — 標高軸は評価対象外' });
   }
 
   // ════════════════════════════════════════
@@ -140,21 +149,50 @@ function scoreCrop(crop, areaData) {
   //  4. 土壌スコア (15点)
   // ════════════════════════════════════════
   maxScore += 15;
-  if (soilType && soilType !== 'unknown') {
-    if (crop.conditions.soilTypes.includes(soilType)) {
-      score += 15;
-      details.push({ ok: true,  text: '土壌タイプ — 適合' });
+  {
+    // soilTypes が未定義の場合は [] でフォールバック
+    const soilTypes = Array.isArray(crop.conditions.soilTypes) ? crop.conditions.soilTypes : [];
+    if (soilType && soilType !== 'unknown') {
+      if (soilTypes.length === 0 || soilTypes.includes(soilType)) {
+        score += 15;
+        details.push({ ok: true,  text: soilTypes.length === 0 ? '土壌タイプデータなし — 適合とみなす' : '土壌タイプ — 適合' });
+      } else {
+        details.push({ ok: false, text: '土壌タイプ — 非推奨（土壌改良を要検討）' });
+      }
     } else {
-      details.push({ ok: false, text: '土壌タイプ — 非推奨（土壌改良を要検討）' });
+      // 未入力: 中間値 7点
+      score += 7;
+      details.push({ ok: null, text: '土壌タイプ未入力 — 推定値使用' });
     }
-  } else {
-    // 未入力: 中間値 7.5点
-    score += 7;
-    details.push({ ok: null, text: '土壌タイプ未入力 — 推定値使用' });
   }
 
   // ════════════════════════════════════════
-  //  5. pH スコア (15点)
+  //  5. 降水量スコア (15点) ※仮置き TODO: 配点・ロジック調整
+  //     rainfallMin/Max がない場合はスキップ
+  // ════════════════════════════════════════
+  {
+    const rain    = climate?.rain ?? null;
+    const rMin    = crop.conditions.rainfallMin ?? null;
+    const rMax    = crop.conditions.rainfallMax ?? null;
+    if (rain !== null && rMin !== null && rMax !== null) {
+      maxScore += 15;
+      if (rain >= rMin && rain <= rMax) {
+        score += 15;
+        details.push({ ok: true,  text: `年間降水量 ${rain}mm — 適正範囲(${rMin}–${rMax}mm)` });
+      } else {
+        // TODO: 線形減点ロジックは後で調整
+        const dist = Math.min(Math.abs(rain - rMin), Math.abs(rain - rMax));
+        const s    = Math.max(0, 15 - Math.round(dist / 50));
+        score += s;
+        details.push({ ok: s > 0, text: `年間降水量 ${rain}mm — 適正外(${rMin}–${rMax}mm)` });
+      }
+    } else {
+      details.push({ ok: null, text: '降水量データなし — 降水量軸は評価対象外' });
+    }
+  }
+
+  // ════════════════════════════════════════
+  //  6. pH スコア (15点)
   //     null のとき: maxScore から除外（評価不能）
   //     フォールバック: phMin=5.0 / phMax=7.5
   // ════════════════════════════════════════
@@ -284,7 +322,9 @@ function scoreClass(score) {
 
 // ─── FERTILIZER ───
 function calcFertilizer(crop, areaSqm) {
-  const per10a = crop.fertilizer;
+  // fertilizer が null の作物（CSV由来データ等）はスキップ
+  if (!crop.fertilizer) return null;
+  const per10a  = crop.fertilizer;
   const area10a = areaSqm / 1000; // 1000㎡ = 10a
   return {
     N:       (per10a.N * area10a).toFixed(1),
@@ -395,17 +435,21 @@ function areaDataFromLandProfile(areaData, landProfile) {
 }
 
 function cropPricePerKg(crop) {
-  const avg = ((crop.price?.min || 0) + (crop.price?.max || 0)) / 2;
-  const unit = crop.price?.unit || '';
-  if (unit.includes('60kg')) return avg / 60;
-  if (unit.includes('45kg')) return avg / 45;
-  if (unit.includes('30kg')) return avg / 30;
+  // price が null の作物は 0 返却
+  if (!crop.price) return 0;
+  const avg = ((crop.price.min || 0) + (crop.price.max || 0)) / 2;
+  const unit = crop.price.unit || '';
+  if (unit.includes('60kg'))  return avg / 60;
+  if (unit.includes('45kg'))  return avg / 45;
+  if (unit.includes('30kg'))  return avg / 30;
   if (unit.includes('100kg')) return avg / 100;
   return avg || 0;
 }
 
 function cropYieldPer10aKg(crop) {
-  return ((crop.yield?.min || 0) + (crop.yield?.max || 0)) / 2;
+  // yield が null の作物は 0 返却
+  if (!crop.yield) return 0;
+  return ((crop.yield.min || 0) + (crop.yield.max || 0)) / 2;
 }
 
 function calculateRiskDeductionRate(crop, landProfile) {
