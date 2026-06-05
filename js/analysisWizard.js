@@ -30,6 +30,18 @@ const ANALYSIS_ITEMS = [
   { key: 'risk',          label: 'リスク・注意点',   icon: '⚠️' },
 ];
 
+// ─── CROP_DB ヘルパー ───
+function getCropsByCategory(category) {
+  return (typeof CROP_DB !== 'undefined')
+    ? CROP_DB.filter(c => c.category === category)
+    : [];
+}
+function getCropById(id) {
+  return (typeof CROP_DB !== 'undefined')
+    ? CROP_DB.find(c => c.id === id) || null
+    : null;
+}
+
 // ─── ウィザード状態 ───
 let _awStep       = 0;      // 現在ステップ (0〜3)
 let _awArea       = null;   // 選択中エリアデータ
