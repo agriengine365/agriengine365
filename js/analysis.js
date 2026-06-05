@@ -284,13 +284,19 @@ async function runAnalysis(areaName) {
   const topCrop = top?.crop;
   if (topCrop && ad.areaSqm > 0) {
     const fert = calcFertilizer(topCrop, ad.areaSqm);
-    document.getElementById('fert-result').innerHTML = `
-      <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">対象：${topCrop.name} / ${fert.area10a} 10a</div>
-      <div class="area-stat"><span class="label">N</span><span class="value">${fert.N}<span class="unit">kg</span></span></div>
-      <div class="area-stat"><span class="label">P</span><span class="value">${fert.P}<span class="unit">kg</span></span></div>
-      <div class="area-stat"><span class="label">K</span><span class="value">${fert.K}<span class="unit">kg</span></span></div>
-      <div class="notice notice-info" style="margin-top:8px;">${fert.notes}</div>
-    `;
+    if (fert) {
+      document.getElementById('fert-result').innerHTML = `
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">対象：${topCrop.name} / ${fert.area10a} 10a</div>
+        <div class="area-stat"><span class="label">N</span><span class="value">${fert.N}<span class="unit">kg</span></span></div>
+        <div class="area-stat"><span class="label">P</span><span class="value">${fert.P}<span class="unit">kg</span></span></div>
+        <div class="area-stat"><span class="label">K</span><span class="value">${fert.K}<span class="unit">kg</span></span></div>
+        <div class="notice notice-info" style="margin-top:8px;">${fert.notes}</div>
+      `;
+    } else {
+      // fertilizer データなし（CSV由来作物等）
+      document.getElementById('fert-result').innerHTML =
+        '<div style="color:var(--text3);font-size:11px;">施肥データなし（この作物は施肥情報未登録）</div>';
+    }
   } else {
     document.getElementById('fert-result').innerHTML =
       '<div style="color:var(--text3);font-size:11px;">面積データなし</div>';
