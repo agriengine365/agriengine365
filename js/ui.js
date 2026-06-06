@@ -2,15 +2,98 @@
 //  UI HELPERS
 // ═══════════════════════════════════════════
 
-// ─── タブ切り替え ───
+// ─── フルスクリーンページ管理 ───
+let _currentFsTab = 'areas';
+
+const FS_TAB_TITLES = {
+  areas:    'エリア一覧',
+  analysis: '分析',
+  records:  '記録',
+};
+
+function openPage(tab) {
+  const page = document.getElementById('fs-page');
+  if (!page) return;
+  switchFsTab(tab || _currentFsTab);
+  page.classList.add('open');
+  page.removeAttribute('aria-hidden');
+  // FABを隠す
+  const fab = document.getElementById('fab-group');
+  if (fab) fab.classList.add('hidden');
+}
+
+function closePage() {
+  const page = document.getElementById('fs-page');
+  if (!page) return;
+  page.classList.remove('open');
+  page.setAttribute('aria-hidden', 'true');
+  // FABを戻す
+  const fab = document.getElementById('fab-group');
+  if (fab) fab.classList.remove('hidden');
+}
+
+function switchFsTab(tab) {
+  _currentFsTab = tab;
+
+  // タブボタン
+  document.querySelectorAll('.fs-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+
+  // コンテンツ
+  document.querySelectorAll('.tab-content').forEach(c => {
+    c.classList.toggle('active', c.id === 'tab-' + tab);
+  });
+
+  // タイトル更新
+  const titleEl = document.getElementById('fs-title');
+  if (titleEl) titleEl.textContent = FS_TAB_TITLES[tab] || '';
+
+  // 記録タブ
+  if (tab === 'records' && typeof renderRecordTab === 'function') renderRecordTab();
+  // エリアタブ
+  if (tab === 'areas'   && typeof loadAreas       === 'function') loadAreas();
+}
+
+// 後方互換（他jsから呼ばれる可能性）
 function switchTab(name) {
-  document.querySelectorAll('.tab').forEach(t =>
-    t.classList.toggle('active', t.dataset.tab === name)
-  );
-  document.querySelectorAll('.tab-content').forEach(c =>
-    c.classList.toggle('active', c.id === 'tab-' + name)
-  );
-  setSheet('half');
+  openPage(name);
+}
+
+function setSheet(state) {
+  // BottomSheet廃止。呼び出し元との互換のみ保持
+  if (state === 'half' || state === 'open') openPage(_currentFsTab);
+}
+
+// ─── スワイプ閉じ（フルスクリーンページ） ───
+function initFsSwipe() {
+  const page = document.getElementById('fs-page');
+  if (!page) return;
+  let startY = 0;
+  let isDragging = false;
+
+  page.addEventListener('touchstart', (e) => {
+    // ヘッダー部分のみをスワイプ起点にする
+    if (!e.target.closest('.fs-header')) return;
+    startY = e.touches[0].clientY;
+    isDragging = true;
+  }, { passive: true });
+
+  page.addEventListener('touchmove', (e) => {
+    if (!isDragging) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy > 0) {
+      page.style.transform = `translateY(${Math.min(dy * 0.4, 60)}px)`;
+    }
+  }, { passive: true });
+
+  page.addEventListener('touchend', (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    const dy = e.changedTouches[0].clientY - startY;
+    page.style.transform = '';
+    if (dy > 80) closePage();
+  });
 }
 
 // ─── テキスト設定 ───
@@ -74,15 +157,13 @@ let _wizardStep = 0;
 
 /** 描画フェーズ → ウィザードフェーズに切替 */
 function showWizard() {
-  // stop() でダイアログが hidden になっているので必ず再表示する
   const dlg = document.getElementById('map-draw-dialog');
   if (dlg) {
     dlg.hidden = false;
     dlg.removeAttribute('aria-hidden');
   }
-  // BottomSheet は描画完了後も引き続き非表示にする
-  const sheet = document.getElementById('sheet');
-  if (sheet) sheet.style.display = 'none';
+  // フルスクリーンページを隠す（描画中はページ非表示）
+  closePage();
   document.documentElement.classList.add('draw-dialog-active');
 
   const phaseDrawing = document.getElementById('draw-phase-drawing');
@@ -90,15 +171,12 @@ function showWizard() {
   if (phaseDrawing) phaseDrawing.hidden = true;
   if (phaseWizard)  phaseWizard.hidden  = false;
 
-  // 完了画面を隠す
   const done = document.getElementById('wizard-done');
   if (done) done.classList.remove('active');
 
-  // スライドをslide 0にリセット
   _wizardStep = 0;
   _goToWizardSlide(0, 'none');
 
-  // 入力フィールドをリセット
   const nameInput = document.getElementById('wizard-name');
   if (nameInput) {
     const now = new Date();
@@ -109,13 +187,12 @@ function showWizard() {
   const memo = document.getElementById('wizard-memo');
   if (memo) memo.value = '';
 
-  // 土壌を「不明」にリセット
   document.querySelectorAll('.wizard-soil-btn').forEach(b => {
     b.classList.toggle('selected', b.dataset.soil === 'unknown');
   });
 }
 
-/** ウィザードを閉じてダイアログごと非表示＆BottomSheet復帰 */
+/** ウィザードを閉じる */
 function hideWizard() {
   const dlg = document.getElementById('map-draw-dialog');
   if (dlg) {
@@ -123,8 +200,6 @@ function hideWizard() {
     dlg.setAttribute('aria-hidden', 'true');
   }
   document.documentElement.classList.remove('draw-dialog-active');
-  const sheet = document.getElementById('sheet');
-  if (sheet) sheet.style.display = '';
 }
 
 // ─── ドット更新 ───
@@ -141,21 +216,12 @@ function _updateWizardDots(step) {
 // ─── スライド遷移 ───
 function _goToWizardSlide(target, direction) {
   const slides = document.querySelectorAll('.wizard-slide');
-  slides.forEach((s, i) => {
-    s.classList.remove('active', 'exit-left');
-    if (direction !== 'none' && s.classList.contains('active') && i !== target) {
-      // 現在スライドにexit-leftを付ける（forwardなら左退場）
-    }
-  });
-  slides.forEach((s, i) => {
-    s.classList.remove('active', 'exit-left');
-  });
-  // 現在のスライドを退場させる
   const current = document.querySelector('.wizard-slide.active');
   if (current && direction !== 'none') {
     current.classList.add('exit-left');
     setTimeout(() => current.classList.remove('exit-left'), 300);
   }
+  slides.forEach(s => s.classList.remove('active', 'exit-left'));
   const targetSlide = document.getElementById('wslide-' + target);
   if (targetSlide) {
     if (direction === 'back') {
@@ -185,7 +251,6 @@ function wizardNext(from) {
     }
     _goToWizardSlide(1, 'forward');
   } else if (from === 1) {
-    // Step2: サマリーを更新してから遷移
     _updateWizardSummary();
     _goToWizardSlide(2, 'forward');
   }
@@ -207,13 +272,9 @@ function _updateWizardSummary() {
   const name = document.getElementById('wizard-name').value.trim();
   const soilBtn = document.querySelector('.wizard-soil-btn.selected');
   const soilKey = soilBtn ? soilBtn.dataset.soil : 'unknown';
-
   const soilMap = { sandy:'砂質土', loam:'壌土', clay:'粘土質', peat:'泥炭土', volcanic:'火山灰土', unknown:'不明' };
-
   document.getElementById('wsummary-name').textContent    = name || '—';
   document.getElementById('wsummary-soil').textContent    = soilMap[soilKey] || '—';
-
-  // 面積・気候帯はcurrentAreaDataから
   if (typeof currentAreaData !== 'undefined' && currentAreaData) {
     const ha = currentAreaData.areaSqm ? (currentAreaData.areaSqm / 10000).toFixed(3) + ' ha' : '—';
     document.getElementById('wsummary-area').textContent    = ha;
@@ -231,15 +292,11 @@ function cancelWizard() {
 async function wizardCommit() {
   const btn = document.getElementById('wizard-save-btn');
   if (btn) { btn.disabled = true; btn.textContent = '保存中...'; }
-
   const name  = document.getElementById('wizard-name').value.trim() || '無名エリア';
   const memo  = document.getElementById('wizard-memo').value.trim();
   const soilBtn = document.querySelector('.wizard-soil-btn.selected');
   const soilType = soilBtn ? soilBtn.dataset.soil : 'unknown';
-
-  // area.js の commitSaveArea に渡す
   await commitSaveArea({ name, memo, soilType });
-
   if (btn) { btn.disabled = false; btn.textContent = '✓ 保存する'; }
 }
 
@@ -255,102 +312,11 @@ function showWizardDone(areaName) {
 // ─── エリア一覧へ移動 ───
 function goToAreas() {
   hideWizard();
-  switchTab('areas');
-  loadAreas();
+  openPage('areas');
 }
 
-// ═══════════════════════════════════════════
-//  BOTTOM SHEET
-// ═══════════════════════════════════════════
-
-const SHEET_STATES = ['peek', 'half', 'open'];
-
-function setSheet(state) {
-  const sheet = document.getElementById('sheet');
-  sheet.classList.remove(...SHEET_STATES);
-  sheet.classList.add(state);
-}
-
+// ─── 初期化 ───
 function initSheet() {
-  const sheet  = document.getElementById('sheet');
-  const handle = document.getElementById('sheet-handle');
-
-  sheet.classList.add('peek');
-
-  let startY = 0;
-  let startTranslate = 0;
-  let isDragging = false;
-
-  function getTranslate(el) {
-    const style = window.getComputedStyle(el);
-    const mat   = new WebKitCSSMatrix(style.transform);
-    return mat.m42;
-  }
-
-  handle.addEventListener('touchstart', (e) => {
-    isDragging     = true;
-    startY         = e.touches[0].clientY;
-    startTranslate = getTranslate(sheet);
-    sheet.style.transition = 'none';
-  }, { passive: true });
-
-  handle.addEventListener('touchmove', (e) => {
-    if (!isDragging) return;
-    const dy   = e.touches[0].clientY - startY;
-    const newY = Math.max(0, startTranslate + dy);
-    sheet.style.transform = `translateY(${newY}px)`;
-  }, { passive: true });
-
-  handle.addEventListener('touchend', (e) => {
-    if (!isDragging) return;
-    isDragging = false;
-    sheet.style.transition = '';
-    sheet.style.transform  = '';
-    const endY = e.changedTouches[0].clientY;
-    const dy   = endY - startY;
-    const cur  = SHEET_STATES.find(s => sheet.classList.contains(s)) || 'peek';
-    const idx  = SHEET_STATES.indexOf(cur);
-    if (dy < -40 && idx < SHEET_STATES.length - 1) setSheet(SHEET_STATES[idx + 1]);
-    else if (dy > 40 && idx > 0)                    setSheet(SHEET_STATES[idx - 1]);
-    else                                             setSheet(cur);
-  });
-
-  // ─── マウス操作（PC）───
-  handle.addEventListener('mousedown', (e) => {
-    isDragging     = true;
-    startY         = e.clientY;
-    startTranslate = getTranslate(sheet);
-    sheet.style.transition = 'none';
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup',   onMouseUp);
-  });
-
-  function onMouseMove(e) {
-    if (!isDragging) return;
-    const dy   = e.clientY - startY;
-    const newY = Math.max(0, startTranslate + dy);
-    sheet.style.transform = `translateY(${newY}px)`;
-  }
-
-  function onMouseUp(e) {
-    if (!isDragging) return;
-    isDragging = false;
-    sheet.style.transition = '';
-    sheet.style.transform  = '';
-    document.removeEventListener('mousemove', onMouseMove);
-    document.removeEventListener('mouseup',   onMouseUp);
-    const dy  = e.clientY - startY;
-    const cur = SHEET_STATES.find(s => sheet.classList.contains(s)) || 'peek';
-    const idx = SHEET_STATES.indexOf(cur);
-    if (dy < -40 && idx < SHEET_STATES.length - 1) setSheet(SHEET_STATES[idx + 1]);
-    else if (dy > 40 && idx > 0)                    setSheet(SHEET_STATES[idx - 1]);
-    else                                             setSheet(cur);
-  }
-
-  document.querySelectorAll('.tab').forEach(t => {
-    t.addEventListener('click', () => {
-      const cur = SHEET_STATES.find(s => sheet.classList.contains(s)) || 'peek';
-      if (cur === 'peek') setSheet('half');
-    });
-  });
+  // BottomSheet廃止。スワイプ閉じのみ初期化
+  initFsSwipe();
 }
