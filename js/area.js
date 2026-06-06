@@ -982,9 +982,9 @@ function _adpRenderTempChart(cropId) {
   // ── 栽培方式・適正温度帯の計算 ──
   const cultivationMode = currentAreaData?.cultivationMode || 'openField';
   const isHouse = cultivationMode === 'greenhouse' || cultivationMode === 'heatedGreenhouse';
-  // ハウス補正値: greenhouse→+4, heatedGreenhouse→+8（冬の加温想定）
+  // ハウス補正値: greenhouse→-4, heatedGreenhouse→-8（最低気温から引く＝ハウス内は暖かい扱い）
   const houseOffset = cultivationMode === 'heatedGreenhouse' ? 8 : 4;
-  const tMinCorrected = isHouse ? tMinArr.map(v => v !== null ? v + houseOffset : null) : null;
+  const tMinCorrected = isHouse ? tMinArr.map(v => v !== null ? v - houseOffset : null) : null;
 
   // ── 作物適正温度帯（帯シェーディング + 境界線）──
   if (crop && crop.conditions.tempMeanMin != null && crop.conditions.tempMeanMax != null) {
@@ -1028,7 +1028,9 @@ function _adpRenderTempChart(cropId) {
     // 絶対最低限界気温（absTempMin）: 危険帯グラデーション＋赤い横破線
     const absMin = crop.conditions.absTempMin;
     if (absMin != null) {
-      const yAbsMin = toY(absMin);
+      // ハウスモード時は限界最低気温もオフセット分下げる（有利になる）
+      const absMinEffective = isHouse ? absMin - houseOffset : absMin;
+      const yAbsMin = toY(absMinEffective);
 
       // tCropMin → absMin の間をグリーン→透明で塗る（下へ薄くなる）
       const yDangerTop = toY(tCropMin);
@@ -1052,7 +1054,7 @@ function _adpRenderTempChart(cropId) {
       ctx.fillStyle  = 'rgba(239,68,68,0.9)';
       ctx.font       = '8px DM Mono, monospace';
       ctx.textAlign  = 'left';
-      ctx.fillText(`限界${absMin}°`, PAD.left + gW + 2, yAbsMin + 3);
+      ctx.fillText(`限界${absMinEffective}°`, PAD.left + gW + 2, yAbsMin + 3);
     }
   }
 
@@ -1142,14 +1144,17 @@ function _adpRenderTempChart(cropId) {
     const _mode = currentAreaData?.cultivationMode || 'openField';
     const _offset = _mode === 'heatedGreenhouse' ? 8 : 4;
     const houseNote = (_mode === 'greenhouse' || _mode === 'heatedGreenhouse')
-      ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:#34d399;border:1px dashed #34d399"></span>最低気温(ハウス+${_offset}℃補正)</span>`
+      ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:#34d399;border:1px dashed #34d399"></span>最低気温(ハウス-${_offset}℃補正)</span>`
       : '';
+    const _absMin = crop.conditions.absTempMin;
+    const _absMinEff = (_absMin != null && (_mode === 'greenhouse' || _mode === 'heatedGreenhouse'))
+      ? _absMin - _offset : _absMin;
     if (legendEl) legendEl.innerHTML = `
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#fbbf24"></span>最高気温</span>
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#38bdf8"></span>最低気温</span>
       ${houseNote}
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(74,222,128,0.5)"></span>適正温度 ${tMin}–${tMax}℃</span>
-      ${crop.conditions.absTempMin != null ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(239,68,68,0.8);border:1px dashed rgba(239,68,68,0.9)"></span>限界最低気温 ${crop.conditions.absTempMin}℃</span>` : ''}
+      ${_absMinEff != null ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(239,68,68,0.8);border:1px dashed rgba(239,68,68,0.9)"></span>限界最低気温 ${_absMinEff}℃${isHouse ? '(補正後)' : ''}</span>` : ''}
       ${uniqMonths.length ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(34,197,94,0.4)"></span>生育期間 ${uniqMonths.join('/')}</span>` : ''}
     `;
   } else {
