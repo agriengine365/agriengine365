@@ -48,12 +48,22 @@ const AreaCharts = (() => {
     }
 
     wrap.innerHTML = `
-      <div class="adpc-section">
-        <div class="adpc-section-title">土地環境</div>
-        <div id="adpc-env-donut" class="adpc-env-donut-wrap"></div>
+      <div class="adpc-acc" id="adpc-acc-env">
+        <button class="adpc-acc-hd" onclick="AreaCharts.toggle('adpc-acc-env')" aria-expanded="false">
+          <span class="adpc-acc-icon">🌿</span>
+          <span class="adpc-acc-label">土地環境</span>
+          <span class="adpc-acc-chevron">›</span>
+        </button>
+        <div class="adpc-acc-body">
+          <div class="adpc-acc-inner">
+            <div id="adpc-env-donut" class="adpc-env-donut-wrap"></div>
+          </div>
+        </div>
       </div>
-      <div class="adpc-section adpc-loading-section">
-        <div class="adpc-loading"><span class="adpc-spinner"></span><span>AMeDAS平年値を取得中...</span></div>
+      <div class="adpc-acc adpc-loading-section">
+        <div class="adpc-loading" style="padding:14px 16px;">
+          <span class="adpc-spinner"></span><span>AMeDAS平年値を取得中...</span>
+        </div>
       </div>`;
 
     // まず土地環境ドーナツを即時描画
@@ -142,44 +152,93 @@ const AreaCharts = (() => {
 
     wrap.innerHTML = `
       <!-- ① 土地環境ドーナツ -->
-      <div class="adpc-section">
-        <div class="adpc-section-title">土地環境</div>
-        <div id="adpc-env-donut" class="adpc-env-donut-wrap"></div>
+      <div class="adpc-acc" id="adpc-acc-env">
+        <button class="adpc-acc-hd" onclick="AreaCharts.toggle('adpc-acc-env')" aria-expanded="false">
+          <span class="adpc-acc-icon">🌿</span>
+          <span class="adpc-acc-label">土地環境</span>
+          <span class="adpc-acc-chevron">›</span>
+        </button>
+        <div class="adpc-acc-body">
+          <div class="adpc-acc-inner">
+            <div id="adpc-env-donut" class="adpc-env-donut-wrap"></div>
+          </div>
+        </div>
       </div>
 
       <!-- ② 気候サマリー -->
-      <div class="adpc-section">
-        <div class="adpc-section-title">気候サマリー ${stationBadge}</div>
-        <div id="adpc-summary-cards" class="adpc-summary-cards"></div>
-        <div id="adpc-day-badges" class="adpc-day-badges"></div>
+      <div class="adpc-acc" id="adpc-acc-climate">
+        <button class="adpc-acc-hd" onclick="AreaCharts.toggle('adpc-acc-climate')" aria-expanded="false">
+          <span class="adpc-acc-icon">🌤️</span>
+          <span class="adpc-acc-label">気候サマリー</span>
+          ${stationBadge}
+          <span class="adpc-acc-chevron">›</span>
+        </button>
+        <div class="adpc-acc-body">
+          <div class="adpc-acc-inner">
+            <div id="adpc-summary-cards" class="adpc-summary-cards"></div>
+            <div id="adpc-day-badges" class="adpc-day-badges"></div>
+          </div>
+        </div>
       </div>
 
       <!-- ③ 月別気温・降水量 複合チャート -->
-      <div class="adpc-section">
-        <div class="adpc-section-title">月別気温 / 降水量</div>
-        ${(hasMonthlyTemp || hasMonthlyRain)
-          ? '<div class="adpc-chart-wrap"><canvas id="adpc-climate-chart"></canvas></div>'
-          : '<div class="adpc-nodata">月別データなし（AMeDAS未取得）</div>'}
+      <div class="adpc-acc" id="adpc-acc-temp">
+        <button class="adpc-acc-hd" onclick="AreaCharts.toggle('adpc-acc-temp')" aria-expanded="false">
+          <span class="adpc-acc-icon">📈</span>
+          <span class="adpc-acc-label">月別気温 / 降水量</span>
+          <span class="adpc-acc-chevron">›</span>
+        </button>
+        <div class="adpc-acc-body">
+          <div class="adpc-acc-inner">
+            ${(hasMonthlyTemp || hasMonthlyRain)
+              ? '<div class="adpc-chart-wrap"><canvas id="adpc-climate-chart"></canvas></div>'
+              : '<div class="adpc-nodata">月別データなし（AMeDAS未取得）</div>'}
+          </div>
+        </div>
       </div>
 
       <!-- ④ 月別日照時間 -->
       ${hasSunshine ? `
-      <div class="adpc-section">
-        <div class="adpc-section-title">月別日照時間</div>
-        <div class="adpc-chart-wrap adpc-chart-wrap-sm"><canvas id="adpc-sun-chart"></canvas></div>
+      <div class="adpc-acc" id="adpc-acc-sun">
+        <button class="adpc-acc-hd" onclick="AreaCharts.toggle('adpc-acc-sun')" aria-expanded="false">
+          <span class="adpc-acc-icon">☀️</span>
+          <span class="adpc-acc-label">月別日照時間</span>
+          <span class="adpc-acc-chevron">›</span>
+        </button>
+        <div class="adpc-acc-body">
+          <div class="adpc-acc-inner">
+            <div class="adpc-chart-wrap adpc-chart-wrap-sm"><canvas id="adpc-sun-chart"></canvas></div>
+          </div>
+        </div>
       </div>` : ''}
 
       <!-- ⑤ 月別降水量ヒートバー -->
       ${hasMonthlyRain ? `
-      <div class="adpc-section">
-        <div class="adpc-section-title">月別降水量</div>
-        <div id="adpc-rain-bars" class="adpc-rain-bars"></div>
+      <div class="adpc-acc" id="adpc-acc-rain">
+        <button class="adpc-acc-hd" onclick="AreaCharts.toggle('adpc-acc-rain')" aria-expanded="false">
+          <span class="adpc-acc-icon">🌧️</span>
+          <span class="adpc-acc-label">月別降水量</span>
+          <span class="adpc-acc-chevron">›</span>
+        </button>
+        <div class="adpc-acc-body">
+          <div class="adpc-acc-inner">
+            <div id="adpc-rain-bars" class="adpc-rain-bars"></div>
+          </div>
+        </div>
       </div>` : ''}
 
       <!-- ⑥ 環境リスク -->
-      <div class="adpc-section">
-        <div class="adpc-section-title">環境リスク</div>
-        <div id="adpc-risk-gauges" class="adpc-risk-gauges"></div>
+      <div class="adpc-acc" id="adpc-acc-risk">
+        <button class="adpc-acc-hd" onclick="AreaCharts.toggle('adpc-acc-risk')" aria-expanded="false">
+          <span class="adpc-acc-icon">⚠️</span>
+          <span class="adpc-acc-label">環境リスク</span>
+          <span class="adpc-acc-chevron">›</span>
+        </button>
+        <div class="adpc-acc-body">
+          <div class="adpc-acc-inner">
+            <div id="adpc-risk-gauges" class="adpc-risk-gauges"></div>
+          </div>
+        </div>
       </div>
     `;
 
@@ -658,5 +717,46 @@ const AreaCharts = (() => {
     }).join('');
   }
 
-  return { render };
+  // ─────────────────────────────────────────
+  //  アコーディオン開閉
+  //  max-height方式でdisplay:noneを使わず、Chart.jsのcanvasを守る
+  // ─────────────────────────────────────────
+  function toggle(id) {
+    const acc = document.getElementById(id);
+    if (!acc) return;
+
+    const body   = acc.querySelector('.adpc-acc-body');
+    const btn    = acc.querySelector('.adpc-acc-hd');
+    const isOpen = acc.classList.contains('adpc-acc-open');
+
+    if (isOpen) {
+      // 閉じる: 現在の高さを明示してからmax-heightを0へ
+      body.style.maxHeight = body.scrollHeight + 'px';
+      requestAnimationFrame(() => {
+        body.style.maxHeight = '0';
+      });
+      acc.classList.remove('adpc-acc-open');
+      btn.setAttribute('aria-expanded', 'false');
+    } else {
+      // 開く: scrollHeightをmax-heightにセット → transitionend後にautoへ
+      acc.classList.add('adpc-acc-open');
+      btn.setAttribute('aria-expanded', 'true');
+      body.style.maxHeight = body.scrollHeight + 'px';
+      body.addEventListener('transitionend', function onEnd() {
+        body.removeEventListener('transitionend', onEnd);
+        // autoにすることでリサイズや内部コンテンツ変化に対応
+        if (acc.classList.contains('adpc-acc-open')) {
+          body.style.maxHeight = 'none';
+          // Chart.jsはmax-height:noneになった後に再計算が必要な場合がある
+          const charts = body.querySelectorAll('canvas');
+          charts.forEach(canvas => {
+            const chart = (typeof Chart !== 'undefined' && Chart.getChart) ? Chart.getChart(canvas) : null;
+            if (chart) chart.resize();
+          });
+        }
+      }, { once: true });
+    }
+  }
+
+  return { render, toggle };
 })();

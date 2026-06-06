@@ -3353,3 +3353,88 @@ html.draw-dialog-active {
 .adpc-loading-section {
   padding: 16px 0;
 }
+
+/* ═══════════════════════════════════════════
+   ADPC ACCORDION — エリアサマリー折り畳み
+   ※ display:none を使わず max-height transition で
+     Chart.js の canvas サイズ崩れを防ぐ
+═══════════════════════════════════════════ */
+
+.adpc-acc {
+  border-bottom: 1px solid var(--border);
+}
+.adpc-acc:last-child {
+  border-bottom: none;
+}
+
+/* ── ヘッダーボタン ── */
+.adpc-acc-hd {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 13px 16px;
+  background: none;
+  border: none;
+  color: var(--text2);
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s;
+}
+.adpc-acc-hd:hover {
+  background: rgba(74,222,128,0.04);
+}
+.adpc-acc-hd:active {
+  background: rgba(74,222,128,0.08);
+}
+
+.adpc-acc-icon {
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.adpc-acc-label {
+  flex: 1;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text3);
+  transition: color 0.2s;
+}
+.adpc-acc-open .adpc-acc-label {
+  color: var(--text2);
+}
+
+/* ── シェブロン回転 ── */
+.adpc-acc-chevron {
+  font-size: 14px;
+  color: var(--text3);
+  flex-shrink: 0;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s;
+  display: inline-block;
+}
+.adpc-acc-open .adpc-acc-chevron {
+  transform: rotate(90deg);
+  color: var(--green);
+}
+
+/* ── 本体（max-height アニメーション） ── */
+.adpc-acc-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.adpc-acc-open .adpc-acc-body {
+  /* JSがscrollHeightをセットするためここでは定義不要 */
+}
+
+/* ── インナーパディング ── */
+.adpc-acc-inner {
+  padding: 0 16px 14px;
+}
