@@ -270,11 +270,13 @@ function selectArea(area) {
 //  AREA DETAIL PANEL — カレンダー付き詳細パネル
 // ═══════════════════════════════════════════
 
-let _adpArea     = null;   // 現在表示中のエリア
-let _adpYear     = 0;
-let _adpMonth    = 0;
-let _adpSelDate  = null;   // 選択中の日付文字列 'YYYY-MM-DD'
-let _adpEditId   = null;   // 編集中レコードID
+let _adpArea          = null;   // 現在表示中のエリア
+let _adpYear          = 0;
+let _adpMonth         = 0;
+let _adpSelDate       = null;   // 選択中の日付文字列 'YYYY-MM-DD'
+let _adpEditId        = null;   // 編集中レコードID
+let _adpClimateCache  = null;   // AMeDAS取得済み climate（再オープン用キャッシュ）
+let _adpSelectedCropId = null;  // 気温グラフで強調表示中の作物ID
 
 async function openAreaDetailPanel(area) {
   _adpArea    = area;
@@ -304,6 +306,16 @@ async function openAreaDetailPanel(area) {
 
   // ランキング: まずプレースホルダー表示
   const rankEl = document.getElementById('crop-ranking');
+
+  // ── 同一エリアのキャッシュがあれば即描画（パネル再オープン対応）──
+  const areaKey = area.id || area.name;
+  if (_adpClimateCache && _adpClimateCache._areaKey === areaKey) {
+    currentAreaData.climate = _adpClimateCache;
+    _adpRenderRanking(area);
+    _adpRenderTempChart();
+    return;
+  }
+
   if (rankEl) rankEl.innerHTML = '<div class="empty-mini"><span class="spinner"></span> 気候データ取得中...</div>';
 
   // AMeDAS月別データを取得してcurrentAreaDataにマージ
@@ -325,12 +337,15 @@ async function openAreaDetailPanel(area) {
           const e = monthly['temp_min_mean']?.data?.[m];
           return (e && e.q !== 0) ? Math.round(e.v / 10 * 10) / 10 : null;
         });
-        currentAreaData.climate = {
+        const merged = {
           ...(currentAreaData.climate || {}),
           ...climateData,
           _tMaxArr: tMaxArr.some(v => v !== null) ? tMaxArr : null,
           _tMinArr: tMinArr.some(v => v !== null) ? tMinArr : null,
+          _areaKey: areaKey,
         };
+        currentAreaData.climate = merged;
+        _adpClimateCache = merged;  // キャッシュ保存
       }
     } catch(e) {
       console.warn('[ADP] AMeDAS取得失敗（ランキングは年均気温で評価）:', e);
@@ -338,6 +353,7 @@ async function openAreaDetailPanel(area) {
   }
 
   _adpRenderRanking(area);
+  _adpRenderTempChart();
 }
 
 
@@ -382,6 +398,18 @@ function _adpEnsureDOM() {
           <div id="adp-calendar-wrap"></div>
           <div id="adp-day-records-wrap"></div>
         </div>
+      </div>
+
+      <!-- ─── 気温グラフ（ランキング上部・常時表示）─── -->
+      <div class="card" id="adp-temp-chart-card">
+        <div class="adp-temp-chart-header">
+          <span class="adp-temp-chart-title">📊 エリア月別気温</span>
+          <span class="adp-temp-chart-sub" id="adp-temp-chart-sub">作物を選択すると適正温度を重畳表示</span>
+        </div>
+        <div class="adp-temp-chart-wrap">
+          <canvas id="adp-temp-canvas"></canvas>
+        </div>
+        <div class="adp-temp-legend" id="adp-temp-legend"></div>
       </div>
 
       <!-- ─── 適正作物ランキング（アコーディオン）─── -->
@@ -755,15 +783,14 @@ function _adpSwitchCultivation(mode) {
     btn.classList.toggle('active', btn.dataset.mode === mode);
   });
 
-  // スコア再計算 → リスト再描画
+  // スコア再計算 → リスト再描画 → グラフ再描画
   const result = buildAnalysisResult(currentAreaData);
   _crScores = result.cropScores;
   _adpRenderRankingList();
+  _adpRenderTempChart(_adpSelectedCropId);
 }
 
 // ─── ADP専用ランキングリスト描画 ───
-// crSwitchMajor/Minor から呼ばれる _crRenderList を
-// ADPパネルが開いている間だけこちらに切り替える
 function _adpRenderRankingList() {
   const el = document.getElementById('crop-ranking');
   if (!el) return;
@@ -777,76 +804,267 @@ function _adpRenderRankingList() {
 
   el.innerHTML = scores.slice(0, 20).map((s, i) => {
     const scoreCls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
-    const barClass = s.viable ? scoreCls : 'score-low';
-    const barWidth = s.viable ? s.score : 0;
-    const monthBar = s.monthlyMatch ? _adpBuildMonthBar(s.monthlyMatch) : '';
+    const isSelected = s.crop.id === _adpSelectedCropId;
     return `
-      <div class="cr-item ${s.viable ? '' : 'cr-item-ng'}"
+      <div class="cr-item${isSelected ? ' cr-item-open' : ''}"
         onclick="adpCropTap('${s.crop.id}', '${escHtml(s.crop.name)}')">
         <div class="cr-item-header">
           <span class="cr-rank">#${i + 1}</span>
           <span class="cr-name">${escHtml(s.crop.name)}</span>
-          <span class="cr-score ${s.viable ? scoreCls : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>
+          <span class="cr-score ${scoreCls}">${s.score}%</span>
           <svg class="cr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </div>
         <div class="cr-bar-track">
-          <div class="cr-bar-fill ${barClass}" style="width:${barWidth}%"></div>
+          <div class="cr-bar-fill ${scoreCls}" style="width:${s.score}%"></div>
         </div>
         ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
-        ${monthBar}
       </div>
     `;
   }).join('');
 }
 
-// ─── 月別カラーバー HTML生成 ───
-// monthlyMatch: 12要素配列
-//   null              = 非生育月
-//   true              = 適合
-//   'border'          = 境界
-//   false             = 不適合
-//   { heated, diff }  = 加温ハウスで補填中
-function _adpBuildMonthBar(monthlyMatch) {
-  if (!monthlyMatch || monthlyMatch.every(v => v === null)) return '';
-  const labels = ['1','2','3','4','5','6','7','8','9','10','11','12'];
-  const cells = monthlyMatch.map((v, i) => {
-    let cls, title;
-    if (v === null) {
-      cls = 'mmb-none';
-      title = `${i+1}月: 非生育月`;
-    } else if (v === true) {
-      cls = 'mmb-ok';
-      title = `${i+1}月: 適合`;
-    } else if (v === 'border') {
-      cls = 'mmb-border';
-      title = `${i+1}月: 境界`;
-    } else if (v === false) {
-      cls = 'mmb-ng';
-      title = `${i+1}月: 不適合`;
-    } else if (v?.heated) {
-      // 加温ハウス: diffに応じて色を変化
-      if (v.diff === 0) {
-        cls = 'mmb-ok';
-        title = `${i+1}月: 適合（加温不要）`;
-      } else if (v.diff <= 5) {
-        cls = 'mmb-heated-low';
-        title = `${i+1}月: 加温 ${v.diff}℃補填`;
-      } else if (v.diff <= 10) {
-        cls = 'mmb-heated-mid';
-        title = `${i+1}月: 加温 ${v.diff}℃補填`;
-      } else {
-        cls = 'mmb-heated-high';
-        title = `${i+1}月: 加温 ${v.diff}℃補填（高コスト）`;
+// ─── 気温折れ線グラフ描画 ───
+// ランキング上部に常時表示。cropId指定時は適正温度帯を重畳。
+function _adpRenderTempChart(cropId) {
+  const canvas = document.getElementById('adp-temp-canvas');
+  if (!canvas) return;
+
+  const tMaxArr = currentAreaData?.climate?._tMaxArr;
+  const tMinArr = currentAreaData?.climate?._tMinArr;
+
+  const ctx    = canvas.getContext('2d');
+  const W      = canvas.offsetWidth  || 320;
+  const H      = canvas.offsetHeight || 160;
+  canvas.width  = W * (window.devicePixelRatio || 1);
+  canvas.height = H * (window.devicePixelRatio || 1);
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+  ctx.clearRect(0, 0, W, H);
+
+  const PAD = { top: 14, right: 12, bottom: 28, left: 32 };
+  const gW  = W - PAD.left - PAD.right;
+  const gH  = H - PAD.top  - PAD.bottom;
+
+  const MONTHS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+
+  // ── データがない場合はメッセージだけ ──
+  if (!tMaxArr || !tMinArr) {
+    ctx.fillStyle = 'rgba(90,122,92,0.8)';
+    ctx.font      = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('月別気温データなし（AMeDAS未取得）', W / 2, H / 2);
+    document.getElementById('adp-temp-legend').innerHTML = '';
+    document.getElementById('adp-temp-chart-sub').textContent = '気候データ未取得';
+    return;
+  }
+
+  // ── 作物データ取得 ──
+  let crop = null;
+  if (cropId && typeof CROP_DB !== 'undefined') {
+    crop = CROP_DB.find ? CROP_DB.find(c => c.id === cropId)
+         : Object.values(CROP_DB).flat().find(c => c.id === cropId);
+  }
+  if (!crop && cropId && typeof _crScores !== 'undefined') {
+    const hit = _crScores.find(s => s.crop.id === cropId);
+    if (hit) crop = hit.crop;
+  }
+
+  // ── Y軸範囲決定 ──
+  const allTemps = [...tMaxArr, ...tMinArr].filter(v => v !== null);
+  if (crop) {
+    if (crop.conditions.tempMeanMin != null) allTemps.push(crop.conditions.tempMeanMin - 2);
+    if (crop.conditions.tempMeanMax != null) allTemps.push(crop.conditions.tempMeanMax + 2);
+  }
+  const rawMin = Math.min(...allTemps);
+  const rawMax = Math.max(...allTemps);
+  const yMin   = Math.floor((rawMin - 2) / 5) * 5;
+  const yMax   = Math.ceil ((rawMax + 2) / 5) * 5;
+  const yRange = yMax - yMin || 1;
+
+  const toX = i  => PAD.left + (i / 11) * gW;
+  const toY = v  => PAD.top  + (1 - (v - yMin) / yRange) * gH;
+
+  // ── グリッド & Y軸ラベル ──
+  ctx.strokeStyle = 'rgba(42,61,44,0.7)';
+  ctx.lineWidth   = 1;
+  const ySteps = Math.round(yRange / 5);
+  for (let s = 0; s <= ySteps; s++) {
+    const val = yMin + s * 5;
+    const y   = toY(val);
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, y);
+    ctx.lineTo(PAD.left + gW, y);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(90,122,92,0.85)';
+    ctx.font      = '9px DM Mono, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(val + '°', PAD.left - 4, y + 3);
+  }
+
+  // ── 0℃ラインを強調 ──
+  if (yMin < 0 && yMax > 0) {
+    const y0 = toY(0);
+    ctx.strokeStyle = 'rgba(248,113,113,0.35)';
+    ctx.lineWidth   = 1;
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    ctx.moveTo(PAD.left, y0);
+    ctx.lineTo(PAD.left + gW, y0);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // ── 作物適正温度帯（帯シェーディング + 境界線）──
+  if (crop && crop.conditions.tempMeanMin != null && crop.conditions.tempMeanMax != null) {
+    const tCropMin = crop.conditions.tempMeanMin;
+    const tCropMax = crop.conditions.tempMeanMax;
+
+    // 生育月を取得
+    const monthKeys = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const growthSet = new Set();
+    ['manage','harvest'].forEach(phase => {
+      if (!Array.isArray(crop.calendar?.[phase])) return;
+      crop.calendar[phase].forEach(mk => {
+        const idx = monthKeys.indexOf(mk);
+        if (idx >= 0) growthSet.add(idx);
+      });
+    });
+    const growthMonths = growthSet.size > 0 ? [...growthSet].sort((a,b)=>a-b) : null;
+
+    // 生育期間の縦帯（薄い緑）
+    if (growthMonths && growthMonths.length > 0) {
+      // 連続区間をグループ化
+      const ranges = [];
+      let start = growthMonths[0], prev = growthMonths[0];
+      for (let k = 1; k < growthMonths.length; k++) {
+        if (growthMonths[k] === prev + 1) { prev = growthMonths[k]; }
+        else { ranges.push([start, prev]); start = prev = growthMonths[k]; }
       }
-    } else {
-      cls = 'mmb-none';
-      title = `${i+1}月`;
+      ranges.push([start, prev]);
+
+      ctx.fillStyle = 'rgba(34,197,94,0.08)';
+      ranges.forEach(([s, e]) => {
+        const x1 = toX(s) - (s > 0 ? gW/22 : 0);
+        const x2 = toX(e) + (e < 11 ? gW/22 : 0);
+        ctx.fillRect(x1, PAD.top, x2 - x1, gH);
+      });
     }
-    return `<div class="mmb-cell ${cls}" title="${title}"><span class="mmb-label">${labels[i]}</span></div>`;
-  }).join('');
-  return `<div class="month-match-bar">${cells}</div>`;
+
+    // 適正温度帯（黄緑シェード）
+    const yTop = toY(tCropMax);
+    const yBot = toY(tCropMin);
+    const grad = ctx.createLinearGradient(0, yTop, 0, yBot);
+    grad.addColorStop(0, 'rgba(74,222,128,0.18)');
+    grad.addColorStop(1, 'rgba(74,222,128,0.05)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(PAD.left, yTop, gW, yBot - yTop);
+
+    // 境界線 (tempMeanMin / tempMeanMax)
+    ctx.strokeStyle = 'rgba(74,222,128,0.6)';
+    ctx.lineWidth   = 1;
+    ctx.setLineDash([5, 3]);
+    [tCropMin, tCropMax].forEach(v => {
+      const y = toY(v);
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, y);
+      ctx.lineTo(PAD.left + gW, y);
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
+
+  // ── 最高気温と最低気温の面塗り（fill between） ──
+  const validIdx = tMaxArr.map((v, i) => (v !== null && tMinArr[i] !== null ? i : -1)).filter(i => i >= 0);
+  if (validIdx.length > 1) {
+    ctx.beginPath();
+    validIdx.forEach((i, k) => {
+      const x = toX(i), y = toY(tMaxArr[i]);
+      k === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    [...validIdx].reverse().forEach(i => {
+      ctx.lineTo(toX(i), toY(tMinArr[i]));
+    });
+    ctx.closePath();
+    const fillGrad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + gH);
+    fillGrad.addColorStop(0, 'rgba(251,191,36,0.12)');
+    fillGrad.addColorStop(1, 'rgba(56,189,248,0.12)');
+    ctx.fillStyle = fillGrad;
+    ctx.fill();
+  }
+
+  // ── 折れ線（最高・最低） ──
+  const drawLine = (arr, color, dash = []) => {
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = 2;
+    ctx.lineJoin    = 'round';
+    ctx.setLineDash(dash);
+    ctx.beginPath();
+    let moved = false;
+    arr.forEach((v, i) => {
+      if (v === null) { moved = false; return; }
+      if (!moved) { ctx.moveTo(toX(i), toY(v)); moved = true; }
+      else        { ctx.lineTo(toX(i), toY(v)); }
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  };
+
+  drawLine(tMaxArr, '#fbbf24');       // 最高: 黄
+  drawLine(tMinArr, '#38bdf8', []);   // 最低: 水色
+
+  // ── 月ラベル & 目盛り点 ──
+  ctx.fillStyle  = 'rgba(90,122,92,0.8)';
+  ctx.font       = '9px DM Mono, monospace';
+  ctx.textAlign  = 'center';
+  MONTHS.forEach((label, i) => {
+    const x = toX(i);
+    ctx.fillText(label, x, H - PAD.bottom + 11);
+    // 最高気温の点
+    if (tMaxArr[i] !== null) {
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.arc(x, toY(tMaxArr[i]), 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    // 最低気温の点
+    if (tMinArr[i] !== null) {
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.arc(x, toY(tMinArr[i]), 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(90,122,92,0.8)';
+  });
+
+  // ── 凡例更新 ──
+  const subEl    = document.getElementById('adp-temp-chart-sub');
+  const legendEl = document.getElementById('adp-temp-legend');
+  if (crop) {
+    if (subEl) subEl.textContent = `${crop.name} の適正温度帯を表示中`;
+    const tMin = crop.conditions.tempMeanMin ?? '—';
+    const tMax = crop.conditions.tempMeanMax ?? '—';
+    const monthKeys = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const growthLabels = ['manage','harvest'].flatMap(ph =>
+      Array.isArray(crop.calendar?.[ph]) ? crop.calendar[ph].map(mk => {
+        const idx = monthKeys.indexOf(mk);
+        return idx >= 0 ? (idx + 1) + '月' : mk;
+      }) : []
+    );
+    const uniqMonths = [...new Set(growthLabels)].sort((a,b) => parseInt(a)-parseInt(b));
+    if (legendEl) legendEl.innerHTML = `
+      <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#fbbf24"></span>最高気温</span>
+      <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#38bdf8"></span>最低気温</span>
+      <span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(74,222,128,0.5)"></span>適正温度 ${tMin}–${tMax}℃</span>
+      ${uniqMonths.length ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(34,197,94,0.4)"></span>生育期間 ${uniqMonths.join('/')}</span>` : ''}
+    `;
+  } else {
+    if (subEl) subEl.textContent = '作物を選択すると適正温度を重畳表示';
+    if (legendEl) legendEl.innerHTML = `
+      <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#fbbf24"></span>月別最高気温</span>
+      <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#38bdf8"></span>月別最低気温</span>
+    `;
+  }
 }
 
 // ─── _crRenderList をADPパネル開中に差し替え ───
@@ -871,11 +1089,19 @@ function closeAreaDetailPanel() {
   // トグルを削除（次回パネル開時に再生成）
   const toggle = document.getElementById('adp-cultivation-toggle');
   if (toggle) toggle.remove();
+  // 作物選択状態のみリセット（climateキャッシュは維持）
+  _adpSelectedCropId = null;
 }
 
-// ─── 作物タップ → 確認 → 分析実行 ───
+// ─── 作物タップ → グラフ更新 → 確認 → 分析実行 ───
 function adpCropTap(cropId, cropName) {
   if (!_adpArea) return;
+
+  // まずグラフに作物適正温度を重畳表示
+  _adpSelectedCropId = cropId;
+  _adpRenderTempChart(cropId);
+  _adpRenderRankingList(); // 選択状態ハイライト更新
+
   const areaName = _adpArea.name || 'このエリア';
   if (!confirm(`「${cropName}」を「${areaName}」で分析しますか？`)) return;
 

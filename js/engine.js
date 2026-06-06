@@ -69,25 +69,11 @@ function scoreCrop(crop, areaData) {
   }
 
   // ════════════════════════════════════════
-  //  一次判定: 栽培不可アラート
-  //  ※ 加温ハウスは survivalTempMin 制約をスキップ
+  //  viable は常に true（スコアのみで評価）
+  //  ※ 最低下限気温による除外は廃止
   // ════════════════════════════════════════
-  let viable = true;
-  let alert  = null;
-
-  if (cultivationMode !== 'heatedGreenhouse' && corrTemp !== null) {
-    const c = crop.conditions;
-    // survivalTempMin が未定義のときは tempMeanMin - 3 でフォールバック
-    // tempMeanMin が未定義の場合は -Infinity（栽培不可判定しない）
-    const survivalMin = (c.survivalTempMin !== undefined && c.survivalTempMin !== null)
-      ? c.survivalTempMin
-      : (c.tempMeanMin != null ? c.tempMeanMin - 3 : -Infinity);
-
-    if (corrTemp < survivalMin) {
-      viable = false;
-      alert  = `推定気温 ${corrTemp.toFixed(1)}℃ が生育限界温度 ${survivalMin.toFixed(1)}℃ を下回るため、${modeLabel}では栽培不可と判定されました。`;
-    }
-  }
+  const viable = true;
+  let alert    = null;
 
   // ════════════════════════════════════════
   //  1. 緯度スコア (25点)
@@ -646,7 +632,7 @@ function calculateProfitability(crop, areaData, scoreResult, landProfile) {
   const suitabilityRate = clamp((scoreResult?.score || 0) / 100, 0, 1);
   const baseYield = cropYieldPer10aKg(crop) * area10a;
   const predictedYield = baseYield * suitabilityRate;
-  const marketableYieldRate = scoreResult?.viable === false ? 0 : clamp(0.72 + suitabilityRate * 0.22, 0.45, 0.96);
+  const marketableYieldRate = clamp(0.72 + suitabilityRate * 0.22, 0.45, 0.96);
   const marketableYield = predictedYield * marketableYieldRate;
   const demandScore = crop.category === 'fruit' || crop.category === 'wildveg' ? 1.08 : 1.0;
   const revenue = marketableYield * cropPricePerKg(crop) * demandScore;
