@@ -782,7 +782,7 @@ function _adpEnsureCultivationToggle() {
   `).join('');
 
   // adp-ranking-scrollの先頭（cr-tabs-majorより前）に挿入
-  rankPane.insertBefore(wrap, rankPane.firstChild);
+  rankPane.prepend(wrap);
 }
 
 // ─── 栽培方式切替 ───
@@ -1089,17 +1089,50 @@ function _adpRenderTempChart(cropId) {
   }
 }
 
-// ─── _crRenderList をADPビュー開中に差し替え ───
-// analysis.js の crSwitchMajor / crSwitchMinor が _crRenderList() を呼ぶ。
-// ADPビューが開いている間はADP専用描画に委譲する。
-const _orig_crRenderList = (typeof _crRenderList === 'function') ? _crRenderList : null;
-window._crRenderList = function() {
-  if (document.getElementById('adp-view')?.classList.contains('open')) {
-    _adpRenderRankingList();
-  } else if (_orig_crRenderList) {
-    _orig_crRenderList();
-  }
-};
+// ─── crSwitchMajor / crSwitchMinor / _crRenderList をADPビュー開中に差し替え ───
+// analysis.js より後に読まれるため、DOMContentLoaded後にオーバーライドする。
+document.addEventListener('DOMContentLoaded', () => {
+  // _crRenderList
+  const _orig_crRenderList = (typeof _crRenderList === 'function') ? _crRenderList : null;
+  window._crRenderList = function() {
+    if (document.getElementById('adp-view')?.classList.contains('open')) {
+      _adpRenderRankingList();
+    } else if (_orig_crRenderList) {
+      _orig_crRenderList();
+    }
+  };
+
+  // crSwitchMajor: ADPビュー開中はADP用タブ切替のみ実行
+  const _orig_crSwitchMajor = (typeof crSwitchMajor === 'function') ? crSwitchMajor : null;
+  window.crSwitchMajor = function(major) {
+    if (document.getElementById('adp-view')?.classList.contains('open')) {
+      // タブUI更新
+      document.querySelectorAll('.cr-tab-major').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.major === major);
+      });
+      _crMajor = major;
+      _crMinor = null;
+      _crRenderMinorTabs();
+      _adpRenderRankingList();
+    } else if (_orig_crSwitchMajor) {
+      _orig_crSwitchMajor(major);
+    }
+  };
+
+  // crSwitchMinor: ADPビュー開中はADP用のみ
+  const _orig_crSwitchMinor = (typeof crSwitchMinor === 'function') ? crSwitchMinor : null;
+  window.crSwitchMinor = function(minor) {
+    if (document.getElementById('adp-view')?.classList.contains('open')) {
+      document.querySelectorAll('.cr-tab-minor').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.minor === minor);
+      });
+      _crMinor = minor;
+      _adpRenderRankingList();
+    } else if (_orig_crSwitchMinor) {
+      _orig_crSwitchMinor(minor);
+    }
+  };
+});
 
 // ─── フルビューを閉じてsheetに戻る ───
 function closeAreaDetailPanel() {
