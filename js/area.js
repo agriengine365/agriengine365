@@ -400,24 +400,27 @@ function _adpEnsureDOM() {
         </div>
       </div>
 
-      <!-- ─── エリア気温適性ランキング（アコーディオン・グラフ内包）─── -->
+      <!-- ─── 気温グラフ（独立カード・常時表示）─── -->
+      <div class="card" id="adp-temp-chart-card">
+        <div class="card-title">🌡️ 月別気温グラフ</div>
+        <div class="adp-temp-chart-inner">
+          <div class="adp-temp-chart-header">
+            <span class="adp-temp-chart-sub" id="adp-temp-chart-sub">作物を選択すると適正温度を重畳表示</span>
+          </div>
+          <div class="adp-temp-chart-wrap">
+            <canvas id="adp-temp-canvas"></canvas>
+          </div>
+          <div class="adp-temp-legend" id="adp-temp-legend"></div>
+        </div>
+      </div>
+
+      <!-- ─── エリア気温適性ランキング（アコーディオン）─── -->
       <div class="card accordion" id="adp-ranking-accordion">
         <div class="accordion-header" onclick="toggleAccordion(this)">
-          <div class="card-title" style="margin:0">🌡️ エリア気温適性ランキング</div>
+          <div class="card-title" style="margin:0">📊 気温適性ランキング</div>
           <svg class="acc-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="accordion-body">
-
-          <!-- 気温グラフ（ランキング内包） -->
-          <div class="adp-temp-chart-inner">
-            <div class="adp-temp-chart-header">
-              <span class="adp-temp-chart-sub" id="adp-temp-chart-sub">作物を選択すると適正温度を重畳表示</span>
-            </div>
-            <div class="adp-temp-chart-wrap">
-              <canvas id="adp-temp-canvas"></canvas>
-            </div>
-            <div class="adp-temp-legend" id="adp-temp-legend"></div>
-          </div>
 
           <div class="cr-tabs-major" id="cr-tabs-major">
             <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
@@ -807,7 +810,7 @@ function _adpRenderRankingList() {
     const isSelected = s.crop.id === _adpSelectedCropId;
     return `
       <div class="cr-item${isSelected ? ' cr-item-open' : ''}"
-        onclick="adpCropTap('${s.crop.id}', '${escHtml(s.crop.name)}')">
+        onclick="adpCropTap('${s.crop.id}')">
         <div class="cr-item-header">
           <span class="cr-rank">#${i + 1}</span>
           <span class="cr-name">${escHtml(s.crop.name)}</span>
@@ -1103,30 +1106,18 @@ function closeAreaDetailPanel() {
   if (toggle) toggle.remove();
   // 作物選択状態のみリセット（climateキャッシュは維持）
   _adpSelectedCropId = null;
+  // canvasサイズをリセット（次回オープン時にoffsetWidthが正しく取れるように）
+  const canvas = document.getElementById('adp-temp-canvas');
+  if (canvas) { canvas.width = 0; canvas.height = 0; }
 }
 
-// ─── 作物タップ → グラフ更新 → 確認 → 分析実行 ───
-function adpCropTap(cropId, cropName) {
+// ─── 作物タップ → グラフへ適正温度重畳表示のみ（分析はウィザードから）───
+function adpCropTap(cropId) {
   if (!_adpArea) return;
 
-  // まずグラフに作物適正温度を重畳表示
-  _adpSelectedCropId = cropId;
-  _adpRenderTempChart(cropId);
+  // 同じ作物を再タップしたら選択解除（トグル）
+  _adpSelectedCropId = (_adpSelectedCropId === cropId) ? null : cropId;
+
+  _adpRenderTempChart(_adpSelectedCropId);
   _adpRenderRankingList(); // 選択状態ハイライト更新
-
-  const areaName = _adpArea.name || 'このエリア';
-  if (!confirm(`「${cropName}」を「${areaName}」で分析しますか？`)) return;
-
-  // currentAreaData に選択作物をセット
-  currentAreaData.selectedCropId  = cropId;
-  currentAreaData.cultivationMode = currentAreaData.cultivationMode || 'openField';
-  currentAreaData.analysisItems   = [
-    'landProfile', 'matchRange', 'cropRanking', 'profitability', 'fertilizer', 'risk',
-  ];
-
-  closeAreaDetailPanel();
-  if (typeof switchTab === 'function') switchTab('analysis');
-  if (typeof runSingleCropAnalysis === 'function') {
-    runSingleCropAnalysis(areaName);
-  }
 }
