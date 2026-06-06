@@ -226,42 +226,57 @@
       </div>
       <div id="analysis-result" style="display:none;flex-direction:column;gap:12px;">
 
-        <!-- 信頼度 -->
-        <div class="card">
-          <div class="card-title">データ信頼度</div>
-          <div class="conf-bar-wrap">
-            <div class="conf-bar-label">
-              <span id="conf-label">推定精度</span>
-              <span id="conf-pct">0%</span>
-            </div>
-            <div class="conf-bar-track">
-              <div class="conf-bar-fill" id="conf-bar" style="width:0%"></div>
-            </div>
+        <!-- 信頼度（アコーディオン） -->
+        <div class="card accordion">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="card-title" style="margin:0">データ信頼度</div>
+            <svg class="acc-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <div id="conf-detail" style="font-size:10px;color:var(--text3);margin-top:8px;line-height:1.7;"></div>
+          <div class="accordion-body">
+            <div class="conf-bar-wrap">
+              <div class="conf-bar-label">
+                <span id="conf-label">推定精度</span>
+                <span id="conf-pct">0%</span>
+              </div>
+              <div class="conf-bar-track">
+                <div class="conf-bar-fill" id="conf-bar" style="width:0%"></div>
+              </div>
+            </div>
+            <div id="conf-detail" style="font-size:10px;color:var(--text3);margin-top:8px;line-height:1.7;"></div>
+          </div>
         </div>
 
-        <!-- カテゴリー別作物ランキング -->
-        <div class="card" id="card-crop-ranking">
-          <div class="card-title">作物ランキング</div>
-          <!-- 大カテゴリータブ -->
-          <div class="cr-tabs-major" id="cr-tabs-major">
-            <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
-            <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
-            <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
-            <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
-            <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・林産</button>
+        <!-- 作物ランキング（アコーディオン） -->
+        <div class="card accordion" id="card-crop-ranking">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="card-title" style="margin:0">作物ランキング</div>
+            <svg class="acc-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
-          <!-- 小カテゴリータブ（動的表示） -->
-          <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
-          <!-- ランキングリスト -->
-          <div id="crop-ranking"></div>
+          <div class="accordion-body">
+            <!-- 大カテゴリータブ -->
+            <div class="cr-tabs-major" id="cr-tabs-major">
+              <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
+              <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
+              <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
+              <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
+              <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・林産</button>
+            </div>
+            <!-- 小カテゴリータブ（動的表示） -->
+            <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
+            <!-- ランキングリスト -->
+            <div id="crop-ranking"></div>
+          </div>
         </div>
 
-        <!-- 収益概算 -->
-        <div class="card">
-          <div class="card-title">収益概算</div>
-          <div id="profit-waterfall"></div>
+        <!-- 収益概算（アコーディオン） -->
+        <div class="card accordion">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <div class="card-title" style="margin:0">収益概算</div>
+            <svg class="acc-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="accordion-body">
+            <div id="profit-waterfall"></div>
+          </div>
         </div>
 
         <!-- 施肥概算（アコーディオン） -->

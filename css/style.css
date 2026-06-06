@@ -810,8 +810,10 @@ header .spacer { flex: 1; }
   overflow: hidden;
   transition: max-height 0.3s ease;
 }
-.accordion.open .accordion-body { max-height: 600px; }
+.accordion.open .accordion-body { max-height: 800px; }
 .accordion.open .accordion-body > * { padding-top: 10px; }
+/* 作物ランキングはゲージ展開時に長くなるため個別に拡張 */
+#card-crop-ranking.open .accordion-body { max-height: 4000px; }
 
 /* ─── Area List ─── */
 .list-header {
