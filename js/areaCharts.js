@@ -139,6 +139,11 @@ const AreaCharts = (() => {
 
     wrap.innerHTML = `
       <div class="adpc-section">
+        <div class="adpc-section-title">土地環境</div>
+        <div id="adpc-env-donut" class="adpc-env-donut-wrap"></div>
+      </div>
+
+      <div class="adpc-section">
         <div class="adpc-section-title">気候サマリー ${stationBadge}</div>
         <div id="adpc-summary-grid" class="adpc-summary-grid"></div>
       </div>
@@ -157,6 +162,7 @@ const AreaCharts = (() => {
       </div>
     `;
 
+    _renderEnvDonut(area, climate);
     _renderSummaryGrid(climate, area);
     if (hasMonthlyChart) _renderClimateChart(climate);
     _renderRiskGauges(area);
@@ -333,6 +339,171 @@ const AreaCharts = (() => {
         scales,
       },
     });
+  }
+
+  // ─────────────────────────────────────────
+  //  同心円ドーナツ — 土地環境4指標一元表示
+  //  内→外: 年均気温 / 土壌pH / 標高 / 年降水量
+  //  各リング: 適合度0〜100%を弧の長さで表現
+  //  色: 適合=緑 / 部分=黄 / 範囲外=赤 / データなし=グレー
+  // ─────────────────────────────────────────
+  function _renderEnvDonut(area, climate) {
+    const wrap = document.getElementById('adpc-env-donut');
+    if (!wrap) return;
+
+    const lp   = area.landProfile || {};
+    const temp = climate?.tempMean ?? lp.avgTemp   ?? null;
+    const rain = climate?.rain     ?? lp.annualRainfall ?? null;
+    const elev = lp.elevation ?? area.meta?.elev   ?? null;
+    const ph   = lp.ph                             ?? null;
+
+    // ── 各指標の定義 ──
+    // score: 0〜100（適合度%）、null=データなし
+    // value: 実測値（表示用）
+    // color: 適合レベル色
+    const rings = [
+      _calcRing('年均気温', temp,  '℃',  -5,  40,  12,  22, C.green, C.amber, C.red),
+      _calcRing('土壌pH',   ph,    '',   3.5,  9,  5.5,   7, C.green, C.amber, C.red),
+      _calcRing('標高',     elev,  'm',    0, 2000, 0,  600, C.green, C.amber, C.red),
+      _calcRing('年降水量', rain,  'mm',   0, 3500, 900, 2200, C.green, C.amber, C.red),
+    ];
+
+    // ── SVGパラメータ ──
+    const SIZE   = 160;   // SVG viewBox幅高さ
+    const CX     = 80;    // 中心X
+    const CY     = 80;    // 中心Y
+    const GAP    = 5;     // リング間ギャップ
+    const THICK  = 13;    // リング太さ
+    const R_BASE = 28;    // 最内リング半径
+
+    // ── SVGパス生成ヘルパー ──
+    function arcPath(cx, cy, r, startDeg, endDeg) {
+      const toRad = d => (d - 90) * Math.PI / 180;
+      const x1 = cx + r * Math.cos(toRad(startDeg));
+      const y1 = cy + r * Math.sin(toRad(startDeg));
+      const x2 = cx + r * Math.cos(toRad(endDeg));
+      const y2 = cy + r * Math.sin(toRad(endDeg));
+      const large = (endDeg - startDeg) > 180 ? 1 : 0;
+      return `M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+    }
+
+    // ── 各リングのSVG要素 ──
+    let ringsSvg = '';
+    rings.forEach((ring, i) => {
+      const r    = R_BASE + i * (THICK + GAP);
+      const pct  = ring.score !== null ? ring.score : 0;
+      const deg  = pct / 100 * 359.9; // 100%でも閉じないよう359.9°上限
+
+      // 背景（グレー全周）
+      ringsSvg += `
+        <circle cx="${CX}" cy="${CY}" r="${r}"
+          fill="none" stroke="#2a3d2c" stroke-width="${THICK}"
+          stroke-linecap="round" opacity="0.55"/>
+      `;
+
+      if (ring.score !== null && pct > 0) {
+        ringsSvg += `
+          <path d="${arcPath(CX, CY, r, 0, deg)}"
+            fill="none" stroke="${ring.color}" stroke-width="${THICK}"
+            stroke-linecap="round"
+            class="adpc-ring-arc" data-idx="${i}"
+            style="filter:drop-shadow(0 0 4px ${ring.color}66)">
+            <animate attributeName="stroke-dashoffset"
+              from="${2 * Math.PI * r}" to="0" dur="0.7s" fill="freeze" calcMode="spline"
+              keySplines="0.4 0 0.2 1" keyTimes="0 1"/>
+          </path>
+        `;
+      }
+    });
+
+    // ── 凡例HTML ──
+    const legendHTML = rings.map((ring, i) => {
+      const dot   = `<span class="adpc-legend-dot" style="background:${ring.score !== null ? ring.color : '#2a3d2c'}"></span>`;
+      const label = `<span class="adpc-legend-label">${ring.name}</span>`;
+      const val   = ring.score !== null
+        ? `<span class="adpc-legend-val" style="color:${ring.color}">${ring.displayVal}</span>`
+        : `<span class="adpc-legend-val" style="color:#5a7a5c">—</span>`;
+      const status = ring.score !== null
+        ? `<span class="adpc-legend-status" style="color:${ring.color}">${ring.statusLabel}</span>`
+        : `<span class="adpc-legend-status" style="color:#5a7a5c">データなし</span>`;
+      return `
+        <div class="adpc-legend-row" data-idx="${i}">
+          ${dot}
+          <div class="adpc-legend-info">
+            <div class="adpc-legend-top">${label}${val}</div>
+            ${status}
+          </div>
+        </div>`;
+    }).join('');
+
+    wrap.innerHTML = `
+      <div class="adpc-donut-layout">
+        <svg class="adpc-donut-svg" viewBox="0 0 ${SIZE} ${SIZE}"
+          xmlns="http://www.w3.org/2000/svg" role="img" aria-label="土地環境ドーナツチャート">
+          ${ringsSvg}
+          <!-- 中央ラベル -->
+          <text x="${CX}" y="${CY - 5}" text-anchor="middle"
+            fill="#5a7a5c" font-size="8" font-family="'DM Mono',monospace"
+            letter-spacing="0.08em">LAND</text>
+          <text x="${CX}" y="${CY + 7}" text-anchor="middle"
+            fill="#5a7a5c" font-size="8" font-family="'DM Mono',monospace"
+            letter-spacing="0.08em">ENV</text>
+        </svg>
+        <div class="adpc-donut-legend">${legendHTML}</div>
+      </div>
+    `;
+  }
+
+  // ─────────────────────────────────────────
+  //  _calcRing — 1指標の適合度・色を計算して返す
+  //  displayMin/Max: スケール全域
+  //  optMin/Max:     適正範囲
+  //  score算出ロジック:
+  //    適正範囲内 → 100%
+  //    適正範囲外 → 外れ幅に応じて線形減少（0%下限）
+  // ─────────────────────────────────────────
+  function _calcRing(name, value, unit, displayMin, displayMax, optMin, optMax, cGood, cWarn, cBad) {
+    const fmt = v => {
+      if (v == null) return '—';
+      if (unit === '℃' || unit === '') return Number(v).toFixed(1) + unit;
+      return Math.round(v) + unit;
+    };
+
+    if (value == null || !isFinite(value)) {
+      return { name, score: null, color: '#2a3d2c', displayVal: '—', statusLabel: 'データなし', unit };
+    }
+
+    let score, color, statusLabel;
+
+    if (value >= optMin && value <= optMax) {
+      // 適正範囲内 → 100
+      score       = 100;
+      color       = cGood;
+      statusLabel = '適合';
+    } else {
+      // 範囲外 → どちら側にどれだけ外れているか
+      const rangeSpan   = optMax - optMin;
+      const displaySpan = displayMax - displayMin;
+      let   overShoot;
+
+      if (value < optMin) {
+        overShoot = (optMin - value) / (optMin - displayMin || 1);
+      } else {
+        overShoot = (value - optMax) / (displayMax - optMax || 1);
+      }
+
+      score = Math.max(0, Math.round((1 - overShoot) * 85)); // 最大85%（範囲外なので100%にはしない）
+
+      if (score >= 50) {
+        color       = cWarn;
+        statusLabel = '近接';
+      } else {
+        color       = cBad;
+        statusLabel = '範囲外';
+      }
+    }
+
+    return { name, score, color, displayVal: fmt(value), statusLabel, unit };
   }
 
   // ─────────────────────────────────────────

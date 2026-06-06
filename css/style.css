@@ -2850,3 +2850,291 @@ html.draw-dialog-active {
   text-align: right;
   flex-shrink: 0;
 }
+/* ═══════════════════════════════════════════
+   CROP RANKING — カテゴリー別2段タブ＋アコーディオンゲージ
+═══════════════════════════════════════════ */
+
+/* ─── 大カテゴリータブ ─── */
+.cr-tabs-major {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.cr-tab-major {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text3);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+
+.cr-tab-major:hover {
+  border-color: var(--green3);
+  color: var(--text2);
+}
+
+.cr-tab-major.active {
+  background: rgba(22,163,74,0.12);
+  border-color: var(--green);
+  color: var(--green);
+}
+
+/* ─── 小カテゴリータブ ─── */
+.cr-tabs-minor {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--border);
+}
+
+.cr-tab-minor {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text3);
+  font-size: 10px;
+  padding: 4px 9px;
+  cursor: pointer;
+  transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+}
+
+.cr-tab-minor:hover {
+  border-color: var(--green3);
+  color: var(--text2);
+}
+
+.cr-tab-minor.active {
+  border-color: var(--green3);
+  color: var(--green);
+  background: rgba(22,163,74,0.08);
+}
+
+/* ─── ランキングアイテム ─── */
+.cr-item {
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  margin-bottom: 6px;
+  background: var(--bg2);
+  cursor: pointer;
+  transition: border-color 0.18s;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+
+.cr-item:hover { border-color: var(--green3); }
+.cr-item.cr-item-open { border-color: var(--green3); }
+.cr-item.cr-item-ng   { opacity: 0.72; border-color: rgba(248,113,113,0.3); }
+
+/* ヘッダー行 */
+.cr-item-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 6px;
+}
+
+.cr-rank {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.cr-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cr-score {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.cr-chevron {
+  color: var(--text3);
+  flex-shrink: 0;
+  transition: transform 0.22s;
+}
+
+.cr-item.cr-item-open .cr-chevron {
+  transform: rotate(180deg);
+}
+
+/* スコアバー */
+.cr-bar-track {
+  height: 3px;
+  background: var(--bg3);
+  border-radius: 99px;
+  overflow: hidden;
+  margin: 0 12px 8px;
+}
+
+.cr-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+
+.cr-bar-fill.score-high { background: var(--green2); }
+.cr-bar-fill.score-mid  { background: var(--amber); }
+.cr-bar-fill.score-low  { background: var(--red); }
+
+/* アラートテキスト */
+.cr-alert {
+  font-size: 10px;
+  color: var(--red);
+  padding: 0 12px 8px;
+  line-height: 1.45;
+}
+
+/* ─── ゲージ展開エリア ─── */
+.cr-gauge-wrap {
+  border-top: 1px solid var(--border);
+  padding: 12px 12px 6px;
+  background: rgba(14,26,18,0.6);
+  animation: crGaugeSlide 0.22s ease both;
+}
+
+@keyframes crGaugeSlide {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.cr-gauge-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* ─── rg-wrap をコンパクトに（ランキング内） ─── */
+.cr-gauge-list .rg-wrap {
+  margin-bottom: 10px;
+}
+
+/* ═══════════════════════════════════════════
+   ENV DONUT — ADPパネル 土地環境同心円ドーナツ
+═══════════════════════════════════════════ */
+
+/* ─── 全体レイアウト（SVG左・凡例右） ─── */
+.adpc-env-donut-wrap {
+  padding: 4px 0 2px;
+}
+
+.adpc-donut-layout {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* ─── SVGコンテナ ─── */
+.adpc-donut-svg {
+  width: 160px;
+  height: 160px;
+  flex-shrink: 0;
+  overflow: visible;
+}
+
+/* ─── 凡例エリア ─── */
+.adpc-donut-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* ─── 凡例1行 ─── */
+.adpc-legend-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: default;
+}
+
+/* カラードット */
+.adpc-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 3px;
+}
+
+/* テキスト群 */
+.adpc-legend-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.adpc-legend-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px;
+  margin-bottom: 1px;
+}
+
+.adpc-legend-label {
+  font-size: 10px;
+  color: var(--text3);
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.adpc-legend-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.adpc-legend-status {
+  font-size: 9px;
+  font-family: var(--mono);
+  letter-spacing: 0.04em;
+}
+
+/* ─── ホバー時リングハイライト ─── */
+.adpc-legend-row:hover .adpc-legend-label {
+  color: var(--text2);
+}
+
+/* モバイル: 幅が狭い場合は縦並び */
+@media (max-width: 360px) {
+  .adpc-donut-layout {
+    flex-direction: column;
+    align-items: center;
+  }
+  .adpc-donut-legend {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    width: 100%;
+  }
+  .adpc-legend-row {
+    flex: 0 0 calc(50% - 7px);
+  }
+}
