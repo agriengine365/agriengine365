@@ -1562,12 +1562,8 @@ function closeAreaDetailPanel() {
   const view = document.getElementById('adp-view');
   if (view) view.classList.remove('open');
 
-  // sheet を復帰
-  const sheet = document.getElementById('sheet');
-  if (sheet) sheet.style.display = '';
-
-  // エリア一覧タブをアクティブに戻す
-  if (typeof switchTab === 'function') switchTab('areas');
+  // fs-pageを復帰・エリアタブを表示
+  if (typeof openPage === 'function') openPage('areas');
 
   // 栽培方式トグルを削除（次回オープン時に再生成）
   const toggle = document.getElementById('adp-cultivation-toggle');

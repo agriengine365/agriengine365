@@ -69,60 +69,7 @@ const _hideDrawUI = () => {
 };
 _hideDrawUI();
 
-// ─── カスタム「圃場を描く」ボタン（右上） ───
-const DrawStartControl = L.Control.extend({
-  options: { position: 'topright' },
-  onAdd() {
-    const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-draw-start');
-    const btn = L.DomUtil.create('a', 'draw-start-btn', container);
-    btn.href = '#';
-    btn.title = '圃場を描く';
-    btn.setAttribute('aria-label', '圃場を描く');
-    btn.innerHTML = `
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-        <polygon points="3 11 22 2 13 21 11 13 3 11"/>
-      </svg>
-      <span>圃場を描く</span>
-    `;
 
-    L.DomEvent.disableClickPropagation(container);
-    L.DomEvent.on(btn, 'click', (e) => {
-      L.DomEvent.preventDefault(e);
-      startPolygonDraw();
-    });
-    return container;
-  },
-});
-
-map.addControl(new DrawStartControl());
-
-// ─── 右側フロート操作群トグル ───
-const ICON_MENU = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>`;
-const ICON_CLOSE = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-
-const FloatToggleControl = L.Control.extend({
-  options: { position: 'bottomright' },
-  onAdd() {
-    const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-float-toggle');
-    const btn = L.DomUtil.create('a', 'float-toggle-btn', container);
-    btn.href = '#';
-    btn.title = '操作パネルを開閉';
-    btn.setAttribute('aria-label', '操作パネルを開閉');
-    btn.innerHTML = ICON_MENU;
-
-    L.DomEvent.disableClickPropagation(container);
-    L.DomEvent.on(btn, 'click', (e) => {
-      L.DomEvent.preventDefault(e);
-      const mapEl = map.getContainer();
-      const isClosed = mapEl.classList.toggle('float-controls-collapsed');
-      btn.innerHTML = isClosed ? ICON_MENU : ICON_CLOSE;
-    });
-    return container;
-  },
-});
-
-map.addControl(new FloatToggleControl());
-// 初期状態：表示済み（collapsed付与なし）
 
 // ─── カスタム描画完了 ───
 async function onDrawPolygonComplete(layer) {

@@ -17,9 +17,9 @@ function openPage(tab) {
   switchFsTab(tab || _currentFsTab);
   page.classList.add('open');
   page.removeAttribute('aria-hidden');
-  // FABを隠す
-  const fab = document.getElementById('fab-group');
-  if (fab) fab.classList.add('hidden');
+  // ナビを隠す
+  const nav = document.getElementById('bottom-nav');
+  if (nav) nav.classList.add('hidden');
 }
 
 function closePage() {
@@ -27,9 +27,9 @@ function closePage() {
   if (!page) return;
   page.classList.remove('open');
   page.setAttribute('aria-hidden', 'true');
-  // FABを戻す
-  const fab = document.getElementById('fab-group');
-  if (fab) fab.classList.remove('hidden');
+  // ナビを戻す
+  const nav = document.getElementById('bottom-nav');
+  if (nav) nav.classList.remove('hidden');
 }
 
 function switchFsTab(tab) {
