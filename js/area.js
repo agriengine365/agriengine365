@@ -298,6 +298,7 @@ function openAreaDetailPanel(area) {
   AreaCharts.render(area);
   _adpRenderCalendar();
   _adpRenderDayRecords();
+  _adpRenderRanking(area);
 
   overlay.classList.add('open');
   panel.classList.add('open');
@@ -341,6 +342,22 @@ function _adpEnsureDOM() {
     </div>
     <div class="adp-body" id="adp-body">
       <div id="adp-charts-wrap"></div>
+
+      <!-- ─── 作物ランキング ─── -->
+      <div class="adp-ranking-section">
+        <div class="adp-section-title">🏆 作物ランキング</div>
+        <div class="cr-tabs-major" id="cr-tabs-major">
+          <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
+          <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
+          <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
+          <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
+          <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
+          <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
+        </div>
+        <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
+        <div id="crop-ranking"><div class="empty-mini">計算中...</div></div>
+      </div>
+
       <div id="adp-calendar-wrap"></div>
       <div id="adp-day-records-wrap"></div>
     </div>
@@ -614,4 +631,105 @@ function _adpDeleteRecord(id) {
 function soilLabel(key) {
   const map = { sandy:'砂質土', loam:'壌土', clay:'粘土質', peat:'泥炭土', volcanic:'火山灰土', unknown:'不明' };
   return map[key] || key;
+}
+
+// ═══════════════════════════════════════════
+//  ADP RANKING — エリア詳細パネル内ランキング
+// ═══════════════════════════════════════════
+
+// ─── ランキング描画（エリア詳細パネルを開いた時に呼ぶ）───
+function _adpRenderRanking(area) {
+  const el = document.getElementById('crop-ranking');
+  if (!el) return;
+
+  if (typeof buildAnalysisResult !== 'function' || !currentAreaData) {
+    el.innerHTML = '<div class="empty-mini">データ不足のためランキングを表示できません</div>';
+    return;
+  }
+
+  const result = buildAnalysisResult(currentAreaData);
+
+  // analysis.js のランキング状態を更新
+  _crScores         = result.cropScores;
+  _crProfile        = result.landProfile;
+  _crMajor          = 'all';
+  _crMinor          = null;
+  _crSelectedCropId = null;
+
+  // 大タブをリセット
+  document.querySelectorAll('.cr-tab-major').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.major === 'all');
+  });
+  _crRenderMinorTabs();
+  _adpRenderRankingList();
+}
+
+// ─── ADP専用ランキングリスト描画 ───
+// crSwitchMajor/Minor から呼ばれる _crRenderList を
+// ADPパネルが開いている間だけこちらに切り替える
+function _adpRenderRankingList() {
+  const el = document.getElementById('crop-ranking');
+  if (!el) return;
+
+  const scores = _crFilteredScores();
+
+  if (!scores.length) {
+    el.innerHTML = '<div class="empty-mini">該当作物なし</div>';
+    return;
+  }
+
+  el.innerHTML = scores.slice(0, 20).map((s, i) => {
+    const scoreCls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
+    const barClass = s.viable ? scoreCls : 'score-low';
+    const barWidth = s.viable ? s.score : 0;
+    return `
+      <div class="cr-item ${s.viable ? '' : 'cr-item-ng'}"
+        onclick="adpCropTap('${s.crop.id}', '${escHtml(s.crop.name)}')">
+        <div class="cr-item-header">
+          <span class="cr-rank">#${i + 1}</span>
+          <span class="cr-name">${escHtml(s.crop.name)}</span>
+          <span class="cr-score ${s.viable ? scoreCls : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>
+          <svg class="cr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+        <div class="cr-bar-track">
+          <div class="cr-bar-fill ${barClass}" style="width:${barWidth}%"></div>
+        </div>
+        ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// ─── _crRenderList をADPパネル開中に差し替え ───
+// analysis.js の crSwitchMajor / crSwitchMinor が _crRenderList() を呼ぶ。
+// ADPパネルが開いている間はADP専用描画に委譲する。
+const _orig_crRenderList = (typeof _crRenderList === 'function') ? _crRenderList : null;
+window._crRenderList = function() {
+  if (document.getElementById('adp-panel')?.classList.contains('open')) {
+    _adpRenderRankingList();
+  } else if (_orig_crRenderList) {
+    _orig_crRenderList();
+  }
+};
+
+// ─── 作物タップ → 確認 → 分析実行 ───
+function adpCropTap(cropId, cropName) {
+  if (!_adpArea) return;
+  const areaName = _adpArea.name || 'このエリア';
+  if (!confirm(`「${cropName}」を「${areaName}」で分析しますか？`)) return;
+
+  // currentAreaData に選択作物をセット
+  currentAreaData.selectedCropId  = cropId;
+  currentAreaData.cultivationMode = currentAreaData.cultivationMode || 'openField';
+  currentAreaData.analysisItems   = [
+    'landProfile', 'matchRange', 'cropRanking', 'profitability', 'fertilizer', 'risk',
+  ];
+
+  closeAreaDetailPanel();
+  if (typeof switchTab === 'function') switchTab('analysis');
+  if (typeof runSingleCropAnalysis === 'function') {
+    runSingleCropAnalysis(areaName);
+  }
 }

@@ -246,28 +246,6 @@
           </div>
         </div>
 
-        <!-- 作物ランキング（アコーディオン） -->
-        <div class="card accordion" id="card-crop-ranking">
-          <div class="accordion-header" onclick="toggleAccordion(this)">
-            <div class="card-title" style="margin:0">作物ランキング</div>
-            <svg class="acc-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-          <div class="accordion-body">
-            <!-- 大カテゴリータブ -->
-            <div class="cr-tabs-major" id="cr-tabs-major">
-              <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
-              <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
-              <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
-              <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
-              <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
-              <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
-            </div>
-            <!-- 小カテゴリータブ（動的表示） -->
-            <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
-            <!-- ランキングリスト -->
-            <div id="crop-ranking"></div>
-          </div>
-        </div>
 
         <!-- 収益概算（アコーディオン） -->
         <div class="card accordion">
