@@ -984,10 +984,21 @@ function _adpRenderTempChart(cropId) {
     });
     ctx.setLineDash([]);
 
-    // 絶対最低限界気温（absTempMin）: 赤い横破線
+    // 絶対最低限界気温（absTempMin）: 危険帯グラデーション＋赤い横破線
     const absMin = crop.conditions.absTempMin;
     if (absMin != null) {
       const yAbsMin = toY(absMin);
+
+      // tCropMin → absMin の間をグリーン→透明で塗る（下へ薄くなる）
+      const yDangerTop = toY(tCropMin);
+      const yDangerBot = yAbsMin;
+      if (yDangerBot > yDangerTop) {
+        const dangerGrad = ctx.createLinearGradient(0, yDangerTop, 0, yDangerBot);
+        dangerGrad.addColorStop(0, 'rgba(74,222,128,0.18)');
+        dangerGrad.addColorStop(1, 'rgba(74,222,128,0.00)');
+        ctx.fillStyle = dangerGrad;
+        ctx.fillRect(PAD.left, yDangerTop, gW, yDangerBot - yDangerTop);
+      }
       ctx.strokeStyle = 'rgba(239,68,68,0.85)';
       ctx.lineWidth   = 1.5;
       ctx.setLineDash([6, 3]);
