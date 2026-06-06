@@ -225,6 +225,7 @@
         エリアを選択して分析を実行してください。
       </div>
       <div id="analysis-result" style="display:none;flex-direction:column;gap:12px;">
+
         <!-- 信頼度 -->
         <div class="card">
           <div class="card-title">データ信頼度</div>
@@ -240,28 +241,24 @@
           <div id="conf-detail" style="font-size:10px;color:var(--text3);margin-top:8px;line-height:1.7;"></div>
         </div>
 
-        <!-- 土地評価 -->
-        <div class="card">
-          <div class="card-title">土地評価</div>
-          <div id="land-eval"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">土地プロフィール</div>
-          <div id="land-profile"></div>
-        </div>
-
-        <div class="card">
-          <div class="card-title">適合レンジ</div>
-          <div id="match-ranges"></div>
-        </div>
-
-        <!-- 作物ランキング -->
-        <div class="card">
-          <div class="card-title">適正作物ランキング</div>
+        <!-- カテゴリー別作物ランキング -->
+        <div class="card" id="card-crop-ranking">
+          <div class="card-title">作物ランキング</div>
+          <!-- 大カテゴリータブ -->
+          <div class="cr-tabs-major" id="cr-tabs-major">
+            <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
+            <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
+            <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
+            <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
+            <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・林産</button>
+          </div>
+          <!-- 小カテゴリータブ（動的表示） -->
+          <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
+          <!-- ランキングリスト -->
           <div id="crop-ranking"></div>
         </div>
 
+        <!-- 収益概算 -->
         <div class="card">
           <div class="card-title">収益概算</div>
           <div id="profit-waterfall"></div>
@@ -270,7 +267,7 @@
         <!-- 施肥概算（アコーディオン） -->
         <div class="card accordion">
           <div class="accordion-header" onclick="toggleAccordion(this)">
-            <div class="card-title" style="margin:0">施肥概算（主要推奨作物）</div>
+            <div class="card-title" style="margin:0">施肥概算（選択作物）</div>
             <svg class="acc-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="accordion-body">

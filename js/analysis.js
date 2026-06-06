@@ -1,22 +1,278 @@
-// ANALYSIS - land profile, crop matching, profitability, export
+// ═══════════════════════════════════════════
+//  ANALYSIS — 作物ランキング・収益・施肥・リスク
+//  土地評価・土地プロフィール・適合レンジはADPパネル側へ移動済み
+// ═══════════════════════════════════════════
 
+// ─── フォーマットヘルパー ───
 function fmtNum(value, digits = 1, empty = '-') {
   return Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : empty;
 }
-
 function fmtInt(value, empty = '-') {
   return Number.isFinite(Number(value)) ? Math.round(Number(value)).toLocaleString() : empty;
 }
-
 function fmtYen(value) {
   if (!Number.isFinite(Number(value))) return '-';
   return Math.round(Number(value)).toLocaleString() + '円';
 }
 
-function riskBadge(level) {
-  const label = level === 'high' ? '高' : level === 'medium' ? '中' : '低';
-  return `<span class="risk-badge risk-${level}">${label}</span>`;
+// ─── カテゴリー定義 ───
+// 大カテゴリー → 小カテゴリーのマッピング
+const CR_MAJOR = {
+  all:       null, // 全件（小タブなし）
+  vegetable: ['leafy', 'root', 'fruit_veg', 'vegetable'],
+  fruit:     null, // fruitのみ（小タブなし）
+  wild:      ['wildveg', 'herb'],
+  grain:     ['grain', 'forest'],
+};
+
+const CR_MINOR_LABELS = {
+  leafy:     '葉菜',
+  root:      '根菜',
+  fruit_veg: '果菜',
+  vegetable: '野菜',
+  wildveg:   '山菜・野草',
+  herb:      'ハーブ',
+  grain:     '穀物',
+  forest:    '林産',
+};
+
+// 大カテゴリーに対応するCROP_DBのcategoryキー一覧
+const CR_MAJOR_TO_CATEGORIES = {
+  all:       null,
+  vegetable: ['leafy', 'root', 'fruit_veg', 'vegetable'],
+  fruit:     ['fruit'],
+  wild:      ['wildveg', 'herb'],
+  grain:     ['grain', 'forest'],
+};
+
+// ─── ランキング状態 ───
+let _crMajor = 'all';
+let _crMinor = null;       // nullは全小カテゴリー表示
+let _crScores = [];        // buildAnalysisResult後のscores全件
+let _crSelectedCropId = null; // アコーディオン展開中のcropId
+let _crProfile = null;     // 現在のlandProfile（ゲージ描画用）
+
+// ─── 大タブ切り替え ───
+function crSwitchMajor(major) {
+  _crMajor = major;
+  _crMinor = null;
+
+  // 大タブUI更新
+  document.querySelectorAll('.cr-tab-major').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.major === major);
+  });
+
+  _crRenderMinorTabs();
+  _crRenderList();
 }
+
+// ─── 小タブ描画 ───
+function _crRenderMinorTabs() {
+  const wrap = document.getElementById('cr-tabs-minor');
+  if (!wrap) return;
+
+  const minors = CR_MAJOR[_crMajor];
+  if (!minors || minors.length <= 1) {
+    wrap.style.display = 'none';
+    wrap.innerHTML = '';
+    return;
+  }
+
+  wrap.style.display = 'flex';
+  wrap.innerHTML = `
+    <button class="cr-tab-minor ${_crMinor === null ? 'active' : ''}" onclick="crSwitchMinor(null)">すべて</button>
+    ${minors.map(key => `
+      <button class="cr-tab-minor ${_crMinor === key ? 'active' : ''}"
+        onclick="crSwitchMinor('${key}')">
+        ${CR_MINOR_LABELS[key] || key}
+      </button>
+    `).join('')}
+  `;
+}
+
+// ─── 小タブ切り替え ───
+function crSwitchMinor(minor) {
+  _crMinor = minor;
+  document.querySelectorAll('.cr-tab-minor').forEach(btn => {
+    const val = btn.getAttribute('onclick').match(/'([^']*)'/) ?
+      btn.getAttribute('onclick').match(/'([^']*)'/)[1] : null;
+    btn.classList.toggle('active', val === minor);
+  });
+  _crRenderList();
+}
+
+// ─── フィルタリングされたスコアを返す ───
+function _crFilteredScores() {
+  if (!_crScores.length) return [];
+
+  // 大カテゴリーフィルター
+  const majorCats = CR_MAJOR_TO_CATEGORIES[_crMajor];
+  let scores = majorCats
+    ? _crScores.filter(s => majorCats.includes(s.crop.category))
+    : _crScores;
+
+  // 小カテゴリーフィルター
+  if (_crMinor) {
+    scores = scores.filter(s => s.crop.category === _crMinor);
+  }
+
+  return scores;
+}
+
+// ─── ランキングリスト描画 ───
+function _crRenderList() {
+  const el = document.getElementById('crop-ranking');
+  if (!el) return;
+
+  const scores = _crFilteredScores();
+
+  if (!scores.length) {
+    el.innerHTML = '<div class="empty-mini">該当作物なし</div>';
+    return;
+  }
+
+  // 上位20件に絞る
+  el.innerHTML = scores.slice(0, 20).map((s, i) => {
+    const isExpanded = _crSelectedCropId === s.crop.id;
+    const scoreClass = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
+    const barClass = s.viable ? scoreClass : 'score-low';
+    const barWidth = s.viable ? s.score : 0;
+
+    return `
+      <div class="cr-item ${s.viable ? '' : 'cr-item-ng'} ${isExpanded ? 'cr-item-open' : ''}"
+        onclick="crToggleItem('${s.crop.id}')">
+        <div class="cr-item-header">
+          <span class="cr-rank">#${i + 1}</span>
+          <span class="cr-name">${s.crop.name}</span>
+          <span class="cr-score ${s.viable ? scoreClass : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>
+          <svg class="cr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+        <div class="cr-bar-track">
+          <div class="cr-bar-fill ${barClass}" style="width:${barWidth}%"></div>
+        </div>
+        ${s.alert ? `<div class="cr-alert">${s.alert}</div>` : ''}
+        ${isExpanded ? `<div class="cr-gauge-wrap">${_crBuildGauges(s.crop, _crProfile)}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// ─── 作物行タップ：アコーディオン展開 ───
+function crToggleItem(cropId) {
+  _crSelectedCropId = (_crSelectedCropId === cropId) ? null : cropId;
+
+  // 選択作物が変わったら収益・施肥・リスクも更新
+  if (_crSelectedCropId) {
+    const s = _crScores.find(s => s.crop.id === _crSelectedCropId);
+    if (s) {
+      renderProfitWaterfall(s);
+      _renderFertResult(s.crop);
+      _renderRiskResult(s.crop);
+    }
+  }
+
+  _crRenderList();
+}
+
+// ─── 作物×土地プロフィールのゲージ生成 ───
+function _crBuildGauges(crop, profile) {
+  if (!profile) return '<div class="empty-mini">プロフィールデータなし</div>';
+
+  const c = crop.conditions || {};
+  const gauges = [];
+
+  // 年均気温
+  if (c.tempMeanMin != null && c.tempMeanMax != null) {
+    const survivalTempMin = c.survivalTempMin ?? (c.tempMeanMin - 3);
+    gauges.push(rangeGauge({
+      label: '年均気温',
+      value: profile.avgTemp,
+      unit: '℃',
+      min: survivalTempMin,
+      max: c.tempMeanMax,
+      displayMin: survivalTempMin - 4,
+      displayMax: c.tempMeanMax + 4,
+      optimalMin: c.tempMeanMin,
+      optimalMax: c.tempMeanMax,
+      survivalMin: survivalTempMin,
+    }));
+  }
+
+  // 土壌pH
+  if (c.phMin != null || c.phMax != null) {
+    const phMin = c.phMin ?? 5.0;
+    const phMax = c.phMax ?? 7.5;
+    gauges.push(rangeGauge({
+      label: '土壌pH',
+      value: profile.ph,
+      unit: '',
+      min: 3.5,
+      max: 9.0,
+      displayMin: 3.5,
+      displayMax: 9.0,
+      optimalMin: phMin,
+      optimalMax: phMax,
+    }));
+  }
+
+  // 標高
+  if (c.elevMax != null) {
+    gauges.push(rangeGauge({
+      label: '標高',
+      value: profile.elevation,
+      unit: 'm',
+      min: 0,
+      max: c.elevMax,
+      displayMin: 0,
+      displayMax: Math.max(c.elevMax * 1.35, 300),
+      optimalMin: 0,
+      optimalMax: c.elevMax,
+    }));
+  }
+
+  // 年降水量
+  if (c.rainfallMin != null || c.rainfallMax != null) {
+    const rainMin = c.rainfallMin ?? 900;
+    const rainMax = c.rainfallMax ?? 2200;
+    gauges.push(rangeGauge({
+      label: '年降水量',
+      value: profile.annualRainfall,
+      unit: 'mm',
+      min: rainMin,
+      max: rainMax,
+      displayMin: Math.max(0, rainMin - 500),
+      displayMax: rainMax + 500,
+      optimalMin: rainMin,
+      optimalMax: rainMax,
+    }));
+  }
+
+  // 緯度
+  if (c.latMin != null && c.latMax != null) {
+    gauges.push(rangeGauge({
+      label: '緯度',
+      value: profile.lat,
+      unit: '°',
+      min: c.latMin,
+      max: c.latMax,
+      displayMin: Math.max(0, c.latMin - 5),
+      displayMax: c.latMax + 5,
+      optimalMin: c.latMin,
+      optimalMax: c.latMax,
+    }));
+  }
+
+  if (!gauges.length) {
+    return '<div class="empty-mini">条件データなし</div>';
+  }
+
+  return `<div class="cr-gauge-list">${gauges.join('')}</div>`;
+}
+
+// ─── rangeGauge（共通） ───
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
 function rangeStatus(value, min, max) {
   if (!Number.isFinite(Number(value))) return 'missing';
@@ -39,13 +295,9 @@ function rangeGauge({ label, value, unit = '', min, max, displayMin, displayMax,
   const valueText = hasValue ? `${fmtNum(value, value % 1 === 0 ? 0 : 1)}${unit}` : '-';
   const minText = `${fmtNum(optimalMin, optimalMin % 1 === 0 ? 0 : 1)}${unit}`;
   const maxText = `${fmtNum(optimalMax, optimalMax % 1 === 0 ? 0 : 1)}${unit}`;
-
-  // survivalMinの赤縦線位置
   const survivalPos = (survivalMin !== null && Number.isFinite(Number(survivalMin)))
     ? clamp((survivalMin - lo) / span * 100, 0, 100)
     : null;
-
-  // マーカーラベルの左右どちらに出すか（端に近い場合は反転）
   const markerLabelAlign = pos !== null && pos > 70 ? 'right' : 'left';
 
   return `
@@ -55,13 +307,9 @@ function rangeGauge({ label, value, unit = '', min, max, displayMin, displayMax,
         <span class="${statusClass}">${statusLabel}</span>
       </div>
       <div class="rg-track-wrap">
-        <!-- グラデーション背景 -->
         <div class="rg-track">
-          <!-- 適正範囲オーバーレイ -->
           <div class="rg-optimal" style="left:${optLeft}%;width:${optWidth}%"></div>
-          <!-- survivalMin 赤縦線 -->
           ${survivalPos !== null ? `<div class="rg-survival-line" style="left:${survivalPos}%"></div>` : ''}
-          <!-- 現在値マーカー（▼） -->
           ${pos !== null ? `
             <div class="rg-marker-wrap" style="left:${pos}%">
               <div class="rg-marker-label rg-marker-label-${markerLabelAlign}">${valueText}</div>
@@ -72,7 +320,7 @@ function rangeGauge({ label, value, unit = '', min, max, displayMin, displayMax,
       </div>
       <div class="rg-scale">
         <span>${fmtNum(lo, lo % 1 === 0 ? 0 : 1)}${unit}</span>
-        <span>適正 ${minText}〜 ${maxText}</span>
+        <span>適正 ${minText}〜${maxText}</span>
         <span>${fmtNum(hi, hi % 1 === 0 ? 0 : 1)}${unit}</span>
       </div>
       ${survivalPos !== null ? `
@@ -84,113 +332,7 @@ function rangeGauge({ label, value, unit = '', min, max, displayMin, displayMax,
   `;
 }
 
-function renderMatchRanges(result, profile) {
-  const el = document.getElementById('match-ranges');
-  if (!el) return;
-  if (!result?.crop) {
-    el.innerHTML = '<div class="empty-mini">作物が選択されていません</div>';
-    return;
-  }
-
-  const c = result.crop.conditions || {};
-  const survivalTempMin = c.survivalTempMin ?? (c.tempMeanMin - 3);
-  const phMin = c.phMin ?? 5.0;
-  const phMax = c.phMax ?? 7.5;
-  const rainMin = c.rainfallMin ?? 900;
-  const rainMax = c.rainfallMax ?? 2200;
-
-  el.innerHTML = `
-    <div class="range-target">
-      <span>対象作物</span>
-      <strong>${result.crop.name}</strong>
-    </div>
-    ${rangeGauge({
-      label: '年均気温',
-      value: profile.avgTemp,
-      unit: 'C',
-      min: survivalTempMin,
-      max: c.tempMeanMax,
-      displayMin: survivalTempMin - 4,
-      displayMax: c.tempMeanMax + 4,
-      optimalMin: c.tempMeanMin,
-      optimalMax: c.tempMeanMax,
-      survivalMin: survivalTempMin,
-    })}
-    ${rangeGauge({
-      label: 'pH',
-      value: profile.ph,
-      min: 3.5,
-      max: 9,
-      displayMin: 3.5,
-      displayMax: 9,
-      optimalMin: phMin,
-      optimalMax: phMax,
-    })}
-    ${rangeGauge({
-      label: '標高',
-      value: profile.elevation,
-      unit: 'm',
-      min: 0,
-      max: c.elevMax,
-      displayMin: 0,
-      displayMax: Math.max(c.elevMax * 1.35, 300),
-      optimalMin: 0,
-      optimalMax: c.elevMax,
-    })}
-    ${rangeGauge({
-      label: '年降水量',
-      value: profile.annualRainfall,
-      unit: 'mm',
-      min: rainMin,
-      max: rainMax,
-      displayMin: Math.max(0, rainMin - 500),
-      displayMax: rainMax + 500,
-      optimalMin: rainMin,
-      optimalMax: rainMax,
-    })}
-  `;
-}
-
-function renderLandProfile(profile) {
-  const el = document.getElementById('land-profile');
-  if (!el) return;
-  el.innerHTML = `
-    <div class="profile-grid">
-      <div class="profile-cell"><span>緯度 / 経度</span><strong>${fmtNum(profile.lat, 5)} / ${fmtNum(profile.lng, 5)}</strong></div>
-      <div class="profile-cell"><span>標高</span><strong>${fmtInt(profile.elevation)} m</strong></div>
-      <div class="profile-cell"><span>傾斜</span><strong>${fmtNum(profile.slope, 1)} deg</strong></div>
-      <div class="profile-cell"><span>土壌</span><strong>${profile.soilType || '不明'}</strong></div>
-      <div class="profile-cell"><span>年均気温</span><strong>${fmtNum(profile.avgTemp, 1)} C</strong></div>
-      <div class="profile-cell"><span>年降水量</span><strong>${fmtInt(profile.annualRainfall)} mm</strong></div>
-      <div class="profile-cell"><span>日照時間</span><strong>${fmtInt(profile.sunshineHours)} h</strong></div>
-      <div class="profile-cell"><span>pH</span><strong>${fmtNum(profile.ph, 1)}</strong></div>
-    </div>
-    <div class="risk-strip">
-      <div>洪水 ${riskBadge(profile.floodRiskLevel)} <strong>${profile.floodRisk}%</strong></div>
-      <div>干ばつ ${riskBadge(profile.droughtRiskLevel)} <strong>${profile.droughtRisk}%</strong></div>
-      <div>積雪 ${riskBadge(profile.snowRiskLevel)} <strong>${profile.snowRisk}%</strong></div>
-    </div>
-  `;
-}
-
-function renderCropRanking(scores) {
-  const rankEl = document.getElementById('crop-ranking');
-  if (!rankEl) return;
-  rankEl.innerHTML = scores.slice(0, 8).map((s, i) => `
-    <div class="crop-item ${s.viable ? '' : 'crop-item-blocked'}">
-      <div class="crop-rank">#${i + 1}</div>
-      <div style="flex:1;min-width:0;">
-        <div class="crop-name">${s.crop.name}</div>
-        <div class="crop-score-bar">
-          <div class="crop-score-bar-fill" style="width:${s.viable ? s.score : 0}%"></div>
-        </div>
-        ${s.alert ? `<div class="crop-alert-mini">${s.alert}</div>` : ''}
-      </div>
-      <div class="crop-score">${s.viable ? s.score + '%' : 'NG'}</div>
-    </div>
-  `).join('');
-}
-
+// ─── 収益ウォーターフォール ───
 function renderProfitWaterfall(result) {
   const el = document.getElementById('profit-waterfall');
   if (!el) return;
@@ -236,6 +378,59 @@ function renderProfitWaterfall(result) {
   `;
 }
 
+// ─── 施肥結果描画 ───
+function _renderFertResult(crop) {
+  const el = document.getElementById('fert-result');
+  if (!el || !currentAreaData) return;
+
+  if (!crop) {
+    el.innerHTML = '<div class="empty-mini">作物未選択</div>';
+    return;
+  }
+
+  if (currentAreaData.areaSqm > 0) {
+    const fert = calcFertilizer(crop, currentAreaData.areaSqm);
+    if (fert) {
+      el.innerHTML = `
+        <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">対象：${crop.name} / ${fert.area10a} 10a</div>
+        <div class="area-stat"><span class="label">N</span><span class="value">${fert.N}<span class="unit">kg</span></span></div>
+        <div class="area-stat"><span class="label">P</span><span class="value">${fert.P}<span class="unit">kg</span></span></div>
+        <div class="area-stat"><span class="label">K</span><span class="value">${fert.K}<span class="unit">kg</span></span></div>
+        <div class="notice notice-info" style="margin-top:8px;">${fert.notes}</div>
+      `;
+    } else {
+      el.innerHTML = '<div style="color:var(--text3);font-size:11px;">施肥データなし（この作物は施肥情報未登録）</div>';
+    }
+  } else {
+    el.innerHTML = '<div style="color:var(--text3);font-size:11px;">面積データなし</div>';
+  }
+}
+
+// ─── リスク結果描画 ───
+function _renderRiskResult(crop) {
+  const el = document.getElementById('risk-result');
+  if (!el) return;
+
+  if (!crop || !crop.risks?.length) {
+    el.innerHTML = '<div class="empty-mini">リスクデータなし</div>';
+    return;
+  }
+
+  el.innerHTML = crop.risks.map(r => {
+    const color = r.level === 'high' ? 'var(--red)' : r.level === 'medium' ? 'var(--amber)' : 'var(--green2)';
+    return `
+      <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);">
+        <span style="color:${color};font-size:10px;font-family:var(--mono);padding-top:2px;flex-shrink:0;">${r.level.toUpperCase()}</span>
+        <div>
+          <div style="font-size:12px;font-weight:500;">${r.name}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px;">${r.note}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─── 分析実行メイン ───
 async function runAnalysis(areaName) {
   if (!currentAreaData) return;
 
@@ -257,6 +452,7 @@ async function runAnalysis(areaName) {
     topProfit:  result.topCrop?.profitability?.averageProfit || null,
   };
 
+  // ─ 信頼度バー ─
   const conf = calcConfidence(areaDataFromLandProfile(ad, profile));
   const confPct = conf.pct;
   const bar = document.getElementById('conf-bar');
@@ -267,56 +463,34 @@ async function runAnalysis(areaName) {
     confPct >= 70 ? '高精度' : confPct >= 40 ? '中精度' : '低精度';
   document.getElementById('conf-detail').innerHTML = conf.items.map(i => `- ${i}`).join('<br>');
 
-  document.getElementById('land-eval').innerHTML = `
-    <div class="area-stat"><span class="label">気候帯</span><span class="value" style="font-size:12px;">${profile.climateName || '-'}</span></div>
-    <div class="area-stat"><span class="label">年均気温</span><span class="value">${fmtNum(profile.avgTemp, 1)}<span class="unit">C</span></span></div>
-    <div class="area-stat"><span class="label">年降水量</span><span class="value">${fmtInt(profile.annualRainfall)}<span class="unit">mm</span></span></div>
-    <div class="area-stat"><span class="label">標高</span><span class="value">${fmtInt(profile.elevation)}<span class="unit">m</span></span></div>
-    <div class="area-stat"><span class="label">土壌</span><span class="value" style="font-size:11px;">${profile.soilType || '不明'}</span></div>
-  `;
+  // ─ ランキング状態を初期化 ─
+  _crScores  = result.cropScores;
+  _crProfile = profile;
+  _crMajor   = 'all';
+  _crMinor   = null;
+  _crSelectedCropId = result.topCrop?.crop?.id || null;
 
-  renderLandProfile(profile);
-  renderMatchRanges(result.topCrop, profile);
-  renderCropRanking(result.cropScores);
-  renderProfitWaterfall(result.topCrop);
+  // 大タブUIをリセット
+  document.querySelectorAll('.cr-tab-major').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.major === 'all');
+  });
+  _crRenderMinorTabs();
+  _crRenderList();
 
+  // ─ 初期選択（トップ1作物）で収益・施肥・リスクを描画 ─
   const top = result.topCrop;
-  const topCrop = top?.crop;
-  if (topCrop && ad.areaSqm > 0) {
-    const fert = calcFertilizer(topCrop, ad.areaSqm);
-    if (fert) {
-      document.getElementById('fert-result').innerHTML = `
-        <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">対象：${topCrop.name} / ${fert.area10a} 10a</div>
-        <div class="area-stat"><span class="label">N</span><span class="value">${fert.N}<span class="unit">kg</span></span></div>
-        <div class="area-stat"><span class="label">P</span><span class="value">${fert.P}<span class="unit">kg</span></span></div>
-        <div class="area-stat"><span class="label">K</span><span class="value">${fert.K}<span class="unit">kg</span></span></div>
-        <div class="notice notice-info" style="margin-top:8px;">${fert.notes}</div>
-      `;
-    } else {
-      // fertilizer データなし（CSV由来作物等）
-      document.getElementById('fert-result').innerHTML =
-        '<div style="color:var(--text3);font-size:11px;">施肥データなし（この作物は施肥情報未登録）</div>';
-    }
+  if (top) {
+    renderProfitWaterfall(top);
+    _renderFertResult(top.crop);
+    _renderRiskResult(top.crop);
   } else {
-    document.getElementById('fert-result').innerHTML =
-      '<div style="color:var(--text3);font-size:11px;">面積データなし</div>';
+    renderProfitWaterfall(null);
+    _renderFertResult(null);
+    _renderRiskResult(null);
   }
-
-  const riskEl = document.getElementById('risk-result');
-  riskEl.innerHTML = topCrop ? topCrop.risks.map(r => {
-    const color = r.level === 'high' ? 'var(--red)' : r.level === 'medium' ? 'var(--amber)' : 'var(--green2)';
-    return `
-      <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);">
-        <span style="color:${color};font-size:10px;font-family:var(--mono);padding-top:2px;flex-shrink:0;">${r.level.toUpperCase()}</span>
-        <div>
-          <div style="font-size:12px;font-weight:500;">${r.name}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px;">${r.note}</div>
-        </div>
-      </div>
-    `;
-  }).join('') : '';
 }
 
+// ─── JSON エクスポート ───
 async function exportJSON() {
   if (!currentAreaData) return;
   const result = await buildAnalysisResult(currentAreaData);
