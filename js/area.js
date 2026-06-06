@@ -983,6 +983,25 @@ function _adpRenderTempChart(cropId) {
       ctx.stroke();
     });
     ctx.setLineDash([]);
+
+    // 絶対最低限界気温（absTempMin）: 赤い横破線
+    const absMin = crop.conditions.absTempMin;
+    if (absMin != null) {
+      const yAbsMin = toY(absMin);
+      ctx.strokeStyle = 'rgba(239,68,68,0.85)';
+      ctx.lineWidth   = 1.5;
+      ctx.setLineDash([6, 3]);
+      ctx.beginPath();
+      ctx.moveTo(PAD.left, yAbsMin);
+      ctx.lineTo(PAD.left + gW, yAbsMin);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // ラベル（右端に値を表示）
+      ctx.fillStyle  = 'rgba(239,68,68,0.9)';
+      ctx.font       = '8px DM Mono, monospace';
+      ctx.textAlign  = 'left';
+      ctx.fillText(`限界${absMin}°`, PAD.left + gW + 2, yAbsMin + 3);
+    }
   }
 
   // ── 最高気温と最低気温の面塗り（fill between） ──
@@ -1078,6 +1097,7 @@ function _adpRenderTempChart(cropId) {
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#38bdf8"></span>最低気温</span>
       ${houseNote}
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(74,222,128,0.5)"></span>適正温度 ${tMin}–${tMax}℃</span>
+      ${crop.conditions.absTempMin != null ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(239,68,68,0.8);border:1px dashed rgba(239,68,68,0.9)"></span>限界最低気温 ${crop.conditions.absTempMin}℃</span>` : ''}
       ${uniqMonths.length ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(34,197,94,0.4)"></span>生育期間 ${uniqMonths.join('/')}</span>` : ''}
     `;
   } else {
