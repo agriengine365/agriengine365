@@ -19,10 +19,13 @@ async function commitSaveArea({ name, memo, soilType }) {
   }
   const landProfile = buildLandProfile({ ...cleanedAreaData, soilType });
 
+  // GeoJSON座標はネスト配列のためFirestore非対応 → 文字列化して保存
+  const geojsonStr = JSON.stringify(geojson);
+
   const payload = {
     name,
     memo,
-    geojson,
+    geojson: geojsonStr,
     landProfile,
     meta: {
       areaSqm:         currentAreaData.areaSqm,
@@ -229,7 +232,8 @@ async function deleteArea(id) {
 // ─── エリア選択（分析へ）───
 function selectArea(area) {
   drawnItems.clearLayers();
-  const layer = L.geoJSON(area.geojson, {
+  const geojsonData = typeof area.geojson === 'string' ? JSON.parse(area.geojson) : area.geojson;
+  const layer = L.geoJSON(geojsonData, {
     style: { color: CONFIG.DRAW_COLOR, weight: 2, fillOpacity: 0.2 },
   });
   layer.addTo(drawnItems);
