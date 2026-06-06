@@ -273,5 +273,10 @@ async function _awExecute() {
   map.fitBounds(layer.getBounds());
 
   switchTab('analysis');
-  runAnalysis(area.name);
+  // 作物指定あり → 単一作物詳細分析、なし → 全件ランキング
+  if (_awCropId) {
+    runSingleCropAnalysis(area.name);
+  } else {
+    runAnalysis(area.name);
+  }
 }

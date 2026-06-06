@@ -3355,6 +3355,39 @@ html.draw-dialog-active {
 }
 
 /* ═══════════════════════════════════════════
+   SINGLE CROP ANALYSIS — 単一作物詳細分析
+═══════════════════════════════════════════ */
+
+/* 選択作物バッジ */
+.sc-selected-badge {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--green);
+  background: rgba(74,222,128,0.08);
+  border: 1px solid rgba(74,222,128,0.2);
+  border-radius: 8px;
+  padding: 7px 12px;
+  margin-bottom: 10px;
+  letter-spacing: 0.02em;
+}
+
+/* スコア詳細セクション */
+.sc-detail-section {
+  border-top: 1px solid var(--border);
+  padding: 10px 12px 6px;
+  background: rgba(14,26,18,0.5);
+}
+
+.sc-detail-title {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text3);
+  margin-bottom: 8px;
+}
+
+/* ═══════════════════════════════════════════
    ADPC ACCORDION — エリアサマリー折り畳み
    ※ display:none を使わず max-height transition で
      Chart.js の canvas サイズ崩れを防ぐ
@@ -3429,9 +3462,6 @@ html.draw-dialog-active {
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.adpc-acc-open .adpc-acc-body {
-  /* JSがscrollHeightをセットするためここでは定義不要 */
 }
 
 /* ── インナーパディング ── */

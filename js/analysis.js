@@ -430,6 +430,122 @@ function _renderRiskResult(crop) {
   }).join('');
 }
 
+// ─── 単一作物 分析実行（ウィザード経由） ───
+/**
+ * runSingleCropAnalysis(areaName)
+ *
+ * currentAreaData.selectedCropId が指定されているときに
+ * ウィザードから呼ばれる。既存UIをそのまま流用し、
+ * 選択作物1件の詳細結果をランキング欄に展開済みで表示する。
+ */
+async function runSingleCropAnalysis(areaName) {
+  if (!currentAreaData?.selectedCropId) {
+    // フォールバック: selectedCropId がなければ全件ランキングへ
+    return runAnalysis(areaName);
+  }
+
+  const ad     = currentAreaData;
+  const result = buildSingleCropAnalysis(ad.selectedCropId, ad);
+  if (!result) return runAnalysis(areaName);
+
+  // ─ 共通UI表示切替 ─
+  document.getElementById('analysis-empty').style.display  = 'none';
+  document.getElementById('analysis-result').style.display = 'flex';
+
+  // ─ 信頼度バー ─
+  const conf    = result.confidence;
+  const confPct = conf.pct;
+  const bar = document.getElementById('conf-bar');
+  bar.style.width = confPct + '%';
+  bar.className = 'conf-bar-fill' + (confPct < 40 ? ' vlow' : confPct < 70 ? ' low' : '');
+  document.getElementById('conf-pct').textContent   = confPct + '%';
+  document.getElementById('conf-label').textContent =
+    confPct >= 70 ? '高精度' : confPct >= 40 ? '中精度' : '低精度';
+  document.getElementById('conf-detail').innerHTML  = conf.items.map(i => `- ${i}`).join('<br>');
+
+  // ─ ランキング欄に選択作物1件を展開済みで描画 ─
+  const s           = result.scoreResult;
+  const lp          = result.landProfile;
+  const scoreClass  = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
+  const modeLabels  = {
+    openField: '露地栽培', greenhouse: 'ハウス栽培', heatedGreenhouse: '加温ハウス栽培',
+  };
+  const modeLabel   = modeLabels[result.cultivationMode] || '露地栽培';
+
+  // ランキング状態をリセット（タブ切替等で全件表示に戻れるように）
+  _crScores  = [];
+  _crProfile = lp;
+  _crMajor   = 'all';
+  _crMinor   = null;
+  _crSelectedCropId = null;
+
+  // 大タブUIをリセット
+  document.querySelectorAll('.cr-tab-major').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.major === 'all');
+  });
+  _crRenderMinorTabs();
+
+  // ランキング欄を単一作物の詳細カードで上書き
+  const rankingEl = document.getElementById('crop-ranking');
+  rankingEl.innerHTML = `
+    <div class="sc-selected-badge">
+      📌 選択作物：${escHtml(result.crop.name)}　／　${escHtml(modeLabel)}
+    </div>
+    <div class="cr-item cr-item-open ${s.viable ? '' : 'cr-item-ng'}"
+      style="cursor:default;">
+      <div class="cr-item-header">
+        <span class="cr-name" style="font-size:14px;font-weight:600;">${escHtml(result.crop.name)}</span>
+        <span class="cr-score ${s.viable ? scoreClass : 'score-low'}" style="font-size:14px;">
+          ${s.viable ? s.score + '%' : 'NG'}
+        </span>
+      </div>
+      <div class="cr-bar-track">
+        <div class="cr-bar-fill ${s.viable ? scoreClass : 'score-low'}"
+          style="width:${s.viable ? s.score : 0}%"></div>
+      </div>
+      ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
+      <div class="cr-gauge-wrap">
+        ${_crBuildGauges(result.crop, lp)}
+      </div>
+    </div>
+    <div class="sc-detail-section">
+      <div class="sc-detail-title">スコア詳細</div>
+      ${s.details.map(d => {
+        const icon = d.ok === true ? '✓' : d.ok === false ? '✗' : '–';
+        const cls  = d.ok === true ? 'det-ok' : d.ok === false ? 'det-ng' : 'det-na';
+        return `<div class="crop-detail-row">
+          <span class="det-icon ${cls}">${icon}</span>
+          <span class="det-text">${escHtml(d.text)}</span>
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+
+  // ─ 収益・施肥・リスク描画 ─
+  renderProfitWaterfall({ crop: result.crop, profitability: result.profitability });
+  _renderFertResultFromData(result.crop, result.fertilizer);
+  _renderRiskResult(result.crop);
+}
+
+// ─── 施肥結果描画（計算済みデータ受取版） ───
+function _renderFertResultFromData(crop, fert) {
+  const el = document.getElementById('fert-result');
+  if (!el) return;
+  if (!fert) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:11px;">施肥データなし（この作物は施肥情報未登録）</div>';
+    return;
+  }
+  el.innerHTML = `
+    <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">
+      対象：${escHtml(crop.name)} / ${fert.area10a} 10a
+    </div>
+    <div class="area-stat"><span class="label">N</span><span class="value">${fert.N}<span class="unit">kg</span></span></div>
+    <div class="area-stat"><span class="label">P</span><span class="value">${fert.P}<span class="unit">kg</span></span></div>
+    <div class="area-stat"><span class="label">K</span><span class="value">${fert.K}<span class="unit">kg</span></span></div>
+    <div class="notice notice-info" style="margin-top:8px;">${fert.notes}</div>
+  `;
+}
+
 // ─── 分析実行メイン ───
 async function runAnalysis(areaName) {
   if (!currentAreaData) return;

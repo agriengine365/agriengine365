@@ -528,3 +528,46 @@ function buildAnalysisResult(areaData) {
     topCrop: cropScores[0] || null,
   };
 }
+
+// ─── 単一作物×エリア 詳細分析エンジン ───
+/**
+ * buildSingleCropAnalysis(cropId, areaData)
+ *
+ * ウィザードで選択した1作物とエリアデータの突合せ結果を返す。
+ * buildAnalysisResult() と同じlandProfile/scoringAreaDataを使いつつ、
+ * 対象作物1件のみをスコアリング・収益計算・施肥計算する。
+ *
+ * @param {string} cropId   - CROP_DB の id
+ * @param {object} areaData - currentAreaData（cultivationMode含む）
+ * @returns {{
+ *   crop, landProfile, scoreResult, profitability,
+ *   fertilizer, confidence, cultivationMode
+ * } | null}
+ */
+function buildSingleCropAnalysis(cropId, areaData) {
+  const crop = (typeof CROP_DB !== 'undefined')
+    ? CROP_DB.find(c => c.id === cropId)
+    : null;
+  if (!crop) return null;
+
+  const landProfile     = buildLandProfile(areaData);
+  const scoringAreaData = areaDataFromLandProfile(areaData, landProfile);
+
+  // cultivationMode を scoringAreaData に確実に反映
+  scoringAreaData.cultivationMode = areaData.cultivationMode || 'openField';
+
+  const scoreResult   = scoreCrop(crop, scoringAreaData);
+  const profitability = calculateProfitability(crop, areaData, scoreResult, landProfile);
+  const fertilizer    = calcFertilizer(crop, areaData.areaSqm || 0);
+  const confidence    = calcConfidence(scoringAreaData);
+
+  return {
+    crop,
+    landProfile,
+    scoreResult,
+    profitability,
+    fertilizer,
+    confidence,
+    cultivationMode: scoringAreaData.cultivationMode,
+  };
+}
