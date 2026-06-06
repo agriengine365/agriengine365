@@ -2691,3 +2691,162 @@ html.draw-dialog-active {
 .mfb-btn svg {
   flex-shrink: 0;
 }
+
+/* ═══════════════════════════════════════════
+   AREA CHARTS — ADPパネル 気候ビジュアライゼーション
+   ═══════════════════════════════════════════ */
+
+/* ─── セクション共通 ─── */
+.adpc-section {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.adpc-section:last-child {
+  border-bottom: none;
+}
+.adpc-section-title {
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  color: var(--text3);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ─── バッジ ─── */
+.adpc-badge-ok {
+  font-size: 9px;
+  background: rgba(74,222,128,0.12);
+  color: var(--green);
+  border: 1px solid rgba(74,222,128,0.25);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  white-space: nowrap;
+}
+.adpc-badge-warn {
+  font-size: 9px;
+  background: rgba(251,191,36,0.12);
+  color: var(--amber);
+  border: 1px solid rgba(251,191,36,0.25);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* ─── ローディング ─── */
+.adpc-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text3);
+  padding: 8px 0;
+}
+.adpc-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: adpc-spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes adpc-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── データなし ─── */
+.adpc-nodata {
+  font-size: 11px;
+  color: var(--text3);
+  padding: 6px 0 4px;
+}
+
+/* ─── 気候サマリーグリッド（2列） ─── */
+.adpc-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+}
+.adpc-summary-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 4px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 9px;
+}
+.adpc-summary-label {
+  font-size: 10px;
+  color: var(--text3);
+  white-space: nowrap;
+}
+.adpc-summary-value {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  font-weight: 500;
+  text-align: right;
+}
+
+/* ─── チャート コンテナ ─── */
+.adpc-chart-wrap {
+  position: relative;
+  height: 200px;
+  width: 100%;
+}
+.adpc-chart-wrap canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ─── 環境リスクゲージ ─── */
+.adpc-risk-gauges {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.adpc-gauge-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.adpc-gauge-label {
+  font-size: 11px;
+  color: var(--text2);
+  width: 78px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.adpc-gauge-track {
+  flex: 1;
+  height: 6px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.adpc-gauge-bar {
+  height: 100%;
+  border-radius: 3px;
+  width: 0%;
+}
+.adpc-gauge-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  width: 18px;
+  text-align: right;
+  flex-shrink: 0;
+}

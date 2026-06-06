@@ -227,6 +227,18 @@ function selectArea(area) {
     areaSqm:  area.meta?.areaSqm          || 0,
     areaHa:   area.meta?.areaHa           || 0,
   };
+
+  // landProfile が未保存 or リスク項目が欠損している場合は buildLandProfile() で補完
+  // （AreaCharts のリスクゲージ・サマリーグリッドが参照するため）
+  if (!area.landProfile ||
+      area.landProfile.floodRisk == null ||
+      area.landProfile.droughtRisk == null) {
+    area.landProfile = buildLandProfile({
+      ...currentAreaData,
+      soilType: currentAreaData.soilType,
+    });
+  }
+
   // 詳細パネルを開く
   openAreaDetailPanel(area);
 }
@@ -260,6 +272,7 @@ function openAreaDetailPanel(area) {
   title.textContent = area.name || '無名エリア';
   meta.textContent  = `${ha} ha　${area.meta?.climateName || ''}`;
 
+  AreaCharts.render(area);
   _adpRenderCalendar();
   _adpRenderDayRecords();
 
@@ -304,6 +317,7 @@ function _adpEnsureDOM() {
       </div>
     </div>
     <div class="adp-body" id="adp-body">
+      <div id="adp-charts-wrap"></div>
       <div id="adp-calendar-wrap"></div>
       <div id="adp-day-records-wrap"></div>
     </div>
