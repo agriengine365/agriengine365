@@ -293,9 +293,14 @@ async function openAreaDetailPanel(area) {
   document.getElementById('adp-title').textContent = area.name || '無名エリア';
   document.getElementById('adp-meta').textContent  = `${ha} ha　${area.meta?.climateName || ''}`;
 
-  // ── sheet を非表示にしてフルビューを表示 ──
-  const sheet = document.getElementById('sheet');
-  if (sheet) sheet.style.display = 'none';
+  // ── fs-page を閉じてフルビューを表示 ──
+  const fsPage = document.getElementById('fs-page');
+  if (fsPage) {
+    fsPage.classList.remove('open');
+    fsPage.setAttribute('aria-hidden', 'true');
+  }
+  const nav = document.getElementById('bottom-nav');
+  if (nav) nav.classList.add('hidden');
   const view = document.getElementById('adp-view');
   view.classList.add('open');
 
@@ -1561,6 +1566,10 @@ document.addEventListener('DOMContentLoaded', () => {
 function closeAreaDetailPanel() {
   const view = document.getElementById('adp-view');
   if (view) view.classList.remove('open');
+
+  // bottom-nav を復帰
+  const nav = document.getElementById('bottom-nav');
+  if (nav) nav.classList.remove('hidden');
 
   // fs-pageを復帰・エリアタブを表示
   if (typeof openPage === 'function') openPage('areas');

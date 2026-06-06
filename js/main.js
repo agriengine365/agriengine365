@@ -19,13 +19,11 @@ function clearDraw() {
   currentSavedAreaId = null;
   selectedSoil       = null;
   resetStats();
-  setDrawStep('idle');
   showToast('描画をリセットしました');
 }
 
 // ─── UI初期化 ───
 initSheet();   // スワイプ閉じ初期化（ui.js）
-setDrawStep('idle');
 
 // ─── 初期ロード ───
 loadAreas();
@@ -37,10 +35,6 @@ loadAreas();
 function mfbAddField() {
   if (typeof PolygonDraw !== 'undefined' && typeof PolygonDraw.start === 'function') {
     PolygonDraw.start();
-  } else if (typeof startPolygonDraw === 'function') {
-    startPolygonDraw();
-  } else if (typeof setDrawStep === 'function') {
-    setDrawStep('drawing');
   } else {
     showToast('描画機能を読み込み中です', 'amber');
   }

@@ -2,30 +2,6 @@
 //  MAP — Leaflet初期化・描画・ジオメトリ
 // ═══════════════════════════════════════════
 
-// ─── Leaflet Draw 日本語化 ───
-L.drawLocal.draw.toolbar.buttons.polygon     = '圃場を描く';
-L.drawLocal.draw.toolbar.finish.text         = '完成';
-L.drawLocal.draw.toolbar.finish.title        = '描画を完成させる';
-L.drawLocal.draw.toolbar.undo.text           = '頂点を戻す';
-L.drawLocal.draw.toolbar.undo.title          = '最後の頂点を削除';
-L.drawLocal.draw.toolbar.actions.text        = 'キャンセル';
-L.drawLocal.draw.toolbar.actions.title       = '描画をキャンセル';
-L.drawLocal.draw.handlers.polygon.tooltip.start  = 'クリックして圃場の頂点を打ってください';
-L.drawLocal.draw.handlers.polygon.tooltip.cont   = 'クリックで頂点を追加します';
-L.drawLocal.draw.handlers.polygon.tooltip.end    = '最初の点をクリックして圃場を完成させてください';
-L.drawLocal.edit.toolbar.buttons.edit        = '頂点を編集';
-L.drawLocal.edit.toolbar.buttons.editDisabled= '編集できるエリアがありません';
-L.drawLocal.edit.toolbar.buttons.remove      = 'エリアを削除';
-L.drawLocal.edit.toolbar.buttons.removeDisabled = '削除できるエリアがありません';
-L.drawLocal.edit.toolbar.actions.save.text   = '編集を保存';
-L.drawLocal.edit.toolbar.actions.save.title  = '編集内容を保存する';
-L.drawLocal.edit.toolbar.actions.cancel.text = 'キャンセル';
-L.drawLocal.edit.toolbar.actions.cancel.title= '編集をキャンセルして元に戻す';
-L.drawLocal.edit.toolbar.actions.clearAll.text  = '全て削除';
-L.drawLocal.edit.toolbar.actions.clearAll.title = '全てのレイヤーを削除する';
-L.drawLocal.edit.handlers.edit.tooltip.text  = '頂点をドラッグして位置を微調整できます';
-L.drawLocal.edit.handlers.remove.tooltip.text= '削除するエリアをクリックしてください';
-
 const map = L.map('map', {
   center:  CONFIG.MAP_CENTER,
   zoom:    CONFIG.MAP_ZOOM,
@@ -43,58 +19,11 @@ L.tileLayer(CONFIG.TILE_URL, {
 
 const drawnItems = new L.FeatureGroup().addTo(map);
 
-// Leaflet Draw インスタンス（UIは非表示、ハンドラのみ利用）
-const drawControl = new L.Control.Draw({
-  position: 'topright',
-  edit: { featureGroup: drawnItems },
-  draw: {
-    polygon: {
-      allowIntersection: false,
-      shapeOptions: { color: CONFIG.DRAW_COLOR, weight: 2, fillOpacity: 0.15 },
-    },
-    polyline:     false,
-    rectangle:    false,
-    circle:       false,
-    marker:       false,
-    circlemarker: false,
-  },
-});
-map.addControl(drawControl);
-
-// Leaflet Draw のデフォルトUIを完全非表示
-const _hideDrawUI = () => {
-  const el = document.querySelector('.leaflet-draw');
-  if (el) { el.style.display = 'none'; }
-  else { requestAnimationFrame(_hideDrawUI); }
-};
-_hideDrawUI();
-
-
-
-// ─── カスタム描画完了 ───
+// ─── カスタム描画完了（polygonDraw.js から呼ばれる）───
 async function onDrawPolygonComplete(layer) {
   await updateAreaStats(layer);
   showWizard();
 }
-
-// ─── Leaflet Draw（編集・削除のみ）───
-map.on(L.Draw.Event.EDITSTART, () => {
-  if (typeof PolygonDraw !== 'undefined' && PolygonDraw.isActive()) {
-    PolygonDraw.cancel();
-    showToast('描画を中断して頂点編集を開始しました', 'amber');
-  }
-});
-
-map.on(L.Draw.Event.EDITSTOP, async () => {
-  if (!currentPolygon) return;
-  await updateAreaStats(currentPolygon);
-});
-
-map.on(L.Draw.Event.DELETED, () => {
-  currentPolygon  = null;
-  currentAreaData = null;
-  resetStats();
-});
 
 // ─── エリア統計（データのみ保持・画面表示なし） ───
 async function updateAreaStats(layer) {

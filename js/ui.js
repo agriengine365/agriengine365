@@ -17,9 +17,9 @@ function openPage(tab) {
   switchFsTab(tab || _currentFsTab);
   page.classList.add('open');
   page.removeAttribute('aria-hidden');
-  // ナビを隠す
+  // ナビを隠す（adp-viewが閉じたあとに復帰済みのため非表示にしない）
   const nav = document.getElementById('bottom-nav');
-  if (nav) nav.classList.add('hidden');
+  if (nav) nav.classList.remove('hidden');
 }
 
 function closePage() {
@@ -27,6 +27,8 @@ function closePage() {
   if (!page) return;
   page.classList.remove('open');
   page.setAttribute('aria-hidden', 'true');
+  // bottom-navアクティブ状態をクリア
+  document.querySelectorAll('.bnav-btn[data-nav]').forEach(btn => btn.classList.remove('active'));
   // ナビを戻す
   const nav = document.getElementById('bottom-nav');
   if (nav) nav.classList.remove('hidden');
@@ -48,6 +50,12 @@ function switchFsTab(tab) {
   // タイトル更新
   const titleEl = document.getElementById('fs-title');
   if (titleEl) titleEl.textContent = FS_TAB_TITLES[tab] || '';
+
+  // bottom-navアクティブ状態を連動
+  const tabToNav = { areas: 'areas', analysis: 'analysis', records: 'records' };
+  document.querySelectorAll('.bnav-btn[data-nav]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.nav === tabToNav[tab]);
+  });
 
   // 記録タブ
   if (tab === 'records' && typeof renderRecordTab === 'function') renderRecordTab();
