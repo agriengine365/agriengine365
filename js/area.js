@@ -962,8 +962,6 @@ function _adpRenderTempChart(cropId) {
     });
     const growthMonths = growthSet.size > 0 ? [...growthSet].sort((a,b)=>a-b) : null;
 
-    const colW = gW / 11; // 列幅（月間隔）
-
     // ── 適正温度帯の基本シェード（濃めに）──
     const yTop = toY(tCropMax);
     const yBot = toY(tCropMin);
@@ -972,25 +970,6 @@ function _adpRenderTempChart(cropId) {
     grad.addColorStop(1, 'rgba(74,222,128,0.22)');
     ctx.fillStyle = grad;
     ctx.fillRect(PAD.left, yTop, gW, yBot - yTop);
-
-    // ── 月ごとに「最高・最低が両方とも適正範囲内」の列をさらに濃く ──
-    for (let i = 0; i < 12; i++) {
-      const vMax = tMaxArr[i];
-      const vMin = isHouse ? (tMinCorrected[i] ?? tMinArr[i]) : tMinArr[i];
-      if (vMax === null || vMin === null) continue;
-      // 最高気温と最低気温（ハウス補正後）が両方とも適正範囲内
-      if (vMax >= tCropMin && vMax <= tCropMax && vMin >= tCropMin && vMin <= tCropMax) {
-        const x1 = toX(i) - colW / 2;
-        const x2 = toX(i) + colW / 2;
-        // クリッピングして適正帯内のみ塗る
-        const yHigh = Math.max(yTop, toY(vMax));
-        const yLow  = Math.min(yBot, toY(vMin));
-        if (yLow > yHigh) {
-          ctx.fillStyle = 'rgba(74,222,128,0.45)';
-          ctx.fillRect(Math.max(PAD.left, x1), yHigh, Math.min(x2, PAD.left + gW) - Math.max(PAD.left, x1), yLow - yHigh);
-        }
-      }
-    }
 
     // 境界線 (tempMeanMin / tempMeanMax)
     ctx.strokeStyle = 'rgba(74,222,128,0.75)';
