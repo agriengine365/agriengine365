@@ -400,25 +400,25 @@ function _adpEnsureDOM() {
         </div>
       </div>
 
-      <!-- ─── 気温グラフ（ランキング上部・常時表示）─── -->
-      <div class="card" id="adp-temp-chart-card">
-        <div class="adp-temp-chart-header">
-          <span class="adp-temp-chart-title">📊 エリア月別気温</span>
-          <span class="adp-temp-chart-sub" id="adp-temp-chart-sub">作物を選択すると適正温度を重畳表示</span>
-        </div>
-        <div class="adp-temp-chart-wrap">
-          <canvas id="adp-temp-canvas"></canvas>
-        </div>
-        <div class="adp-temp-legend" id="adp-temp-legend"></div>
-      </div>
-
-      <!-- ─── 適正作物ランキング（アコーディオン）─── -->
+      <!-- ─── エリア気温適性ランキング（アコーディオン・グラフ内包）─── -->
       <div class="card accordion" id="adp-ranking-accordion">
         <div class="accordion-header" onclick="toggleAccordion(this)">
-          <div class="card-title" style="margin:0">🏆 適正作物ランキング</div>
+          <div class="card-title" style="margin:0">🌡️ エリア気温適性ランキング</div>
           <svg class="acc-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
         <div class="accordion-body">
+
+          <!-- 気温グラフ（ランキング内包） -->
+          <div class="adp-temp-chart-inner">
+            <div class="adp-temp-chart-header">
+              <span class="adp-temp-chart-sub" id="adp-temp-chart-sub">作物を選択すると適正温度を重畳表示</span>
+            </div>
+            <div class="adp-temp-chart-wrap">
+              <canvas id="adp-temp-canvas"></canvas>
+            </div>
+            <div class="adp-temp-legend" id="adp-temp-legend"></div>
+          </div>
+
           <div class="cr-tabs-major" id="cr-tabs-major">
             <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
             <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
