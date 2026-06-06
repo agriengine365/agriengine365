@@ -411,7 +411,7 @@ function _adpEnsureView() {
         </div>
 
         <!-- ▼ 下部スクロール: 栽培方式トグル ＋ タブ ＋ ランキングリスト -->
-        <div class="adp-ranking-scroll">
+        <div class="adp-ranking-scroll" id="adp-ranking-scroll">
           <!-- 栽培方式トグル（_adpEnsureCultivationToggle が挿入） -->
           <div class="cr-tabs-major" id="cr-tabs-major">
             <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
@@ -1159,6 +1159,7 @@ function _adpRenderTempChart(cropId) {
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#38bdf8"></span>月別最低気温</span>
     `;
   }
+} // ─── end _adpRenderTempChart ───
 
 // ─── 生育期間グラフ描画 ───
 function _adpRenderGrowthChart(cropId) {
@@ -1514,8 +1515,6 @@ function _adpRenderGrowthRankingList() {
         </div>
       </div>`;
   }).join('');
-}
-
 }
 
 // ─── crSwitchMajor / crSwitchMinor / _crRenderList をADPビュー開中に差し替え ───
