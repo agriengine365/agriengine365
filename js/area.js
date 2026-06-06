@@ -381,40 +381,44 @@ function _adpEnsureView() {
         onclick="if(_adpArea){openAnalysisWizard(_adpArea);}">分析 →</button>
     </div>
 
-    <!-- サブタブバー -->
+    <!-- サブタブバー（2タブ） -->
     <div class="adp-subtabs">
-      <button class="adp-subtab active" data-subtab="chart"    onclick="_adpSwitchSubTab('chart')">🌡️ 気温グラフ</button>
-      <button class="adp-subtab"        data-subtab="ranking"  onclick="_adpSwitchSubTab('ranking')">📊 ランキング</button>
+      <button class="adp-subtab active" data-subtab="chart"    onclick="_adpSwitchSubTab('chart')">🌡️ 気温適性</button>
       <button class="adp-subtab"        data-subtab="calendar" onclick="_adpSwitchSubTab('calendar')">📅 カレンダー</button>
     </div>
 
     <!-- コンテンツ領域 -->
     <div class="adp-view-body">
 
-      <!-- ペイン: 気温グラフ -->
-      <div class="adp-pane" id="adp-pane-chart">
-        <div class="adp-temp-chart-header">
-          <span class="adp-temp-chart-sub" id="adp-temp-chart-sub">作物を選択すると適正温度を重畳表示</span>
-        </div>
-        <div class="adp-temp-chart-wrap adp-temp-chart-wrap--large">
-          <canvas id="adp-temp-canvas"></canvas>
-        </div>
-        <div class="adp-temp-legend" id="adp-temp-legend"></div>
-        <div class="adp-chart-hint">ランキングで作物を選択するとここに適正温度が表示されます</div>
-      </div>
+      <!-- ペイン: 気温適性（グラフ固定上部 ＋ ランキングリスト下部） -->
+      <div class="adp-pane adp-pane-combined" id="adp-pane-chart">
 
-      <!-- ペイン: ランキング -->
-      <div class="adp-pane" id="adp-pane-ranking" style="display:none;">
-        <div class="cr-tabs-major" id="cr-tabs-major">
-          <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
-          <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
-          <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
-          <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
-          <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
-          <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
+        <!-- ▼ 上部固定: グラフブロック -->
+        <div class="adp-chart-sticky">
+          <div class="adp-temp-chart-header">
+            <span class="adp-temp-chart-sub" id="adp-temp-chart-sub">作物を選択すると適正温度を重畳表示</span>
+          </div>
+          <div class="adp-temp-chart-wrap">
+            <canvas id="adp-temp-canvas"></canvas>
+          </div>
+          <div class="adp-temp-legend" id="adp-temp-legend"></div>
         </div>
-        <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
-        <div id="crop-ranking"><div class="empty-mini">計算中...</div></div>
+
+        <!-- ▼ 下部スクロール: 栽培方式トグル ＋ タブ ＋ ランキングリスト -->
+        <div class="adp-ranking-scroll">
+          <!-- 栽培方式トグル（_adpEnsureCultivationToggle が挿入） -->
+          <div class="cr-tabs-major" id="cr-tabs-major">
+            <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
+            <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
+            <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
+            <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
+            <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
+            <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
+          </div>
+          <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
+          <div id="crop-ranking"><div class="empty-mini">計算中...</div></div>
+        </div>
+
       </div>
 
       <!-- ペイン: カレンダー -->
@@ -431,14 +435,14 @@ function _adpEnsureView() {
   document.body.appendChild(view);
 }
 
-// ─── サブタブ切替 ───
+// ─── サブタブ切替（2タブ構成） ───
 function _adpSwitchSubTab(name) {
   // タブボタン
   document.querySelectorAll('.adp-subtab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.subtab === name);
   });
-  // ペイン
-  ['chart', 'ranking', 'calendar'].forEach(p => {
+  // ペイン（chart / calendar の2つ）
+  ['chart', 'calendar'].forEach(p => {
     const el = document.getElementById('adp-pane-' + p);
     if (el) el.style.display = (p === name) ? 'flex' : 'none';
   });
@@ -755,7 +759,7 @@ function _adpEnsureCultivationToggle() {
   if (document.getElementById('adp-cultivation-toggle')) return;
 
   // ランキングペインの先頭に挿入
-  const rankPane = document.getElementById('adp-pane-ranking');
+  const rankPane = document.getElementById('adp-ranking-scroll');
   if (!rankPane) return;
 
   const modes = [
@@ -777,7 +781,7 @@ function _adpEnsureCultivationToggle() {
     </button>
   `).join('');
 
-  // ランキングペインの先頭（cr-tabs-majorより前）に挿入
+  // adp-ranking-scrollの先頭（cr-tabs-majorより前）に挿入
   rankPane.insertBefore(wrap, rankPane.firstChild);
 }
 
@@ -1121,14 +1125,14 @@ function closeAreaDetailPanel() {
   if (canvas) { canvas.width = 0; canvas.height = 0; }
 }
 
-// ─── 作物タップ → グラフ重畳表示 ＋ 気温グラフペインに切替 ───
+// ─── 作物タップ → グラフ即更新（ペイン切替なし・同一ペイン内） ───
 function adpCropTap(cropId) {
   if (!_adpArea) return;
 
   // 同じ作物を再タップしたら選択解除（トグル）
   _adpSelectedCropId = (_adpSelectedCropId === cropId) ? null : cropId;
 
-  // 気温グラフペインに切替して再描画
-  _adpSwitchSubTab('chart');
-  _adpRenderRankingList(); // ハイライト更新
+  // グラフ再描画 ＋ リストハイライト更新（ペイン移動なし）
+  _adpRenderTempChart(_adpSelectedCropId);
+  _adpRenderRankingList();
 }

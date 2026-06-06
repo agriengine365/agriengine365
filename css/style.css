@@ -3611,3 +3611,48 @@ html.draw-dialog-active {
   border-radius: 50%;
   flex-shrink: 0;
 }
+/* ═══════════════════════════════════════════════════════
+   ADP 統合ペイン（気温適性タブ: グラフ固定上部 + ランキング下部スクロール）
+   ═══════════════════════════════════════════════════════ */
+
+/* 統合ペインはflexで上下分割 */
+.adp-pane-combined {
+  padding: 0 !important;
+  gap: 0 !important;
+  overflow: hidden !important;  /* 自身はスクロールしない */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 上部: グラフブロック（固定、スクロールしない） */
+.adp-chart-sticky {
+  flex-shrink: 0;
+  padding: 12px 16px 8px;
+  background: var(--surface, #fff);
+  border-bottom: 1px solid var(--border, rgba(0,0,0,0.08));
+  z-index: 1;
+}
+
+/* 下部: ランキングリスト（スクロール） */
+.adp-ranking-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0;
+}
+
+/* 統合ペイン内のグラフ高さ（コンパクトに） */
+.adp-pane-combined .adp-temp-chart-wrap {
+  height: 160px;
+}
+
+/* グラフ上部のサブタイトル */
+.adp-chart-sticky .adp-temp-chart-header {
+  margin-bottom: 6px;
+}
+
+/* 統合ペイン内の凡例を少しコンパクトに */
+.adp-chart-sticky .adp-temp-legend {
+  padding: 4px 0 0;
+  gap: 6px;
+}
