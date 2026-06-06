@@ -10,7 +10,14 @@ async function commitSaveArea({ name, memo, soilType }) {
   }
 
   const geojson = currentPolygon.toGeoJSON();
-  const landProfile = buildLandProfile({ ...currentAreaData, soilType });
+
+  // Firestore はネスト配列不可 → climate内の配列フィールドを除去してから landProfile を生成
+  const cleanedAreaData = { ...currentAreaData };
+  if (cleanedAreaData.climate) {
+    const { _tMaxArr, _tMinArr, _sunArr, ...safeClimate } = cleanedAreaData.climate;
+    cleanedAreaData.climate = safeClimate;
+  }
+  const landProfile = buildLandProfile({ ...cleanedAreaData, soilType });
 
   const payload = {
     name,
