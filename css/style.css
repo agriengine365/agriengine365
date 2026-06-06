@@ -3808,3 +3808,51 @@ html.draw-dialog-active {
   z-index: 2;
   background: var(--bg, #0d180f);
 }
+
+/* ══════════════════════════════════════════
+   生育期間グラフペイン (adp-pane-growth)
+   ══════════════════════════════════════════ */
+
+/* グラフ高さ：気温グラフより少し高め（二軸分） */
+.adp-growth-chart-wrap {
+  height: 190px;
+}
+
+/* growthランキングスクロール（chartと同構造） */
+.adp-ranking-scroll-growth {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0;
+}
+.adp-ranking-scroll-growth .cr-tabs-major {
+  padding: 10px 12px 0;
+  margin-bottom: 6px;
+}
+.adp-ranking-scroll-growth #crop-ranking-growth {
+  padding: 0 10px 16px;
+}
+
+/* 生育日数バッジ（ランキングアイテム内）*/
+.adp-cr-gp {
+  display: inline-block;
+  font-size: 9px;
+  color: rgba(96,165,250,0.85);
+  background: rgba(96,165,250,0.10);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 5px;
+  vertical-align: middle;
+  letter-spacing: 0;
+}
+
+/* 凡例：生育期間テキスト（日数表示専用）*/
+.adp-tl-period {
+  font-size: 10px;
+  color: rgba(96,165,250,0.9);
+  background: rgba(96,165,250,0.08);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 2px;
+}

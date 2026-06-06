@@ -381,9 +381,10 @@ function _adpEnsureView() {
         onclick="if(_adpArea){openAnalysisWizard(_adpArea);}">分析 →</button>
     </div>
 
-    <!-- サブタブバー（2タブ） -->
+    <!-- サブタブバー（3タブ） -->
     <div class="adp-subtabs">
       <button class="adp-subtab active" data-subtab="chart"    onclick="_adpSwitchSubTab('chart')">🌡️ 気温適性</button>
+      <button class="adp-subtab"        data-subtab="growth"   onclick="_adpSwitchSubTab('growth')">📈 生育期間</button>
       <button class="adp-subtab"        data-subtab="calendar" onclick="_adpSwitchSubTab('calendar')">📅 カレンダー</button>
     </div>
 
@@ -421,6 +422,35 @@ function _adpEnsureView() {
 
       </div>
 
+
+      <!-- ペイン: 生育期間（グラフ固定上部 ＋ ランキングリスト下部） -->
+      <div class="adp-pane adp-pane-combined" id="adp-pane-growth" style="display:none;">
+
+        <!-- ▼ 上部固定: 生育期間グラフ -->
+        <div class="adp-chart-sticky">
+          <div class="adp-temp-chart-header">
+            <span class="adp-temp-chart-sub" id="adp-growth-chart-sub">作物を選択すると生育期間・降水量適性を重畳表示</span>
+          </div>
+          <div class="adp-temp-chart-wrap adp-growth-chart-wrap">
+            <canvas id="adp-growth-canvas"></canvas>
+          </div>
+          <div class="adp-temp-legend" id="adp-growth-legend"></div>
+        </div>
+
+        <!-- ▼ 下部スクロール: ランキングリスト -->
+        <div class="adp-ranking-scroll adp-ranking-scroll-growth">
+          <div class="cr-tabs-major">
+            <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
+            <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
+            <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
+            <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
+            <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
+            <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
+          </div>
+          <div id="crop-ranking-growth"><div class="empty-mini">計算中...</div></div>
+        </div>
+
+      </div>
       <!-- ペイン: カレンダー -->
       <div class="adp-pane" id="adp-pane-calendar" style="display:none;">
         <div id="adp-calendar-wrap"></div>
@@ -441,14 +471,17 @@ function _adpSwitchSubTab(name) {
   document.querySelectorAll('.adp-subtab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.subtab === name);
   });
-  // ペイン（chart / calendar の2つ）
-  ['chart', 'calendar'].forEach(p => {
+  // ペイン（chart / growth / calendar の3つ）
+  ['chart', 'growth', 'calendar'].forEach(p => {
     const el = document.getElementById('adp-pane-' + p);
     if (el) el.style.display = (p === name) ? 'flex' : 'none';
   });
   // グラフペインを表示したときに再描画（offsetWidth が 0→正常になるため）
   if (name === 'chart') {
     setTimeout(() => _adpRenderTempChart(_adpSelectedCropId), 30);
+  }
+  if (name === 'growth') {
+    setTimeout(() => _adpRenderGrowthChart(_adpSelectedCropId), 30);
   }
 }
 
@@ -752,6 +785,7 @@ function _adpRenderRanking(area) {
   });
   _crRenderMinorTabs();
   _adpRenderRankingList();
+  _adpRenderGrowthRankingList();
 }
 
 // ─── 栽培方式トグル（ランキング上部、初回だけ生成）───
@@ -799,7 +833,9 @@ function _adpSwitchCultivation(mode) {
   const result = buildAnalysisResult(currentAreaData);
   _crScores = result.cropScores;
   _adpRenderRankingList();
+  _adpRenderGrowthRankingList();
   _adpRenderTempChart(_adpSelectedCropId);
+  _adpRenderGrowthChart(_adpSelectedCropId);
 }
 
 // ─── ADP専用ランキングリスト描画 ───
@@ -1118,6 +1154,363 @@ function _adpRenderTempChart(cropId) {
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#38bdf8"></span>月別最低気温</span>
     `;
   }
+
+// ─── 生育期間グラフ描画 ───
+function _adpRenderGrowthChart(cropId) {
+  const canvas = document.getElementById('adp-growth-canvas');
+  if (!canvas) return;
+
+  const MONTH_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const MONTH_LABELS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+
+  // 気温データ
+  const tMaxArr = currentAreaData?.climate?._tMaxArr;
+  const tMinArr = currentAreaData?.climate?._tMinArr;
+  // 降水量データ
+  const rainMonthly = currentAreaData?.climate?.rainMonthly;
+
+  const ctx = canvas.getContext('2d');
+  const W   = canvas.offsetWidth  || 320;
+  const H   = canvas.offsetHeight || 190;
+  canvas.width  = W * (window.devicePixelRatio || 1);
+  canvas.height = H * (window.devicePixelRatio || 1);
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+  ctx.clearRect(0, 0, W, H);
+
+  // データなし
+  if (!tMaxArr || !tMinArr) {
+    ctx.fillStyle = 'rgba(90,122,92,0.8)';
+    ctx.font      = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('月別気温データなし（AMeDAS未取得）', W / 2, H / 2);
+    document.getElementById('adp-growth-legend').innerHTML = '';
+    return;
+  }
+
+  // 作物データ取得
+  let crop = null;
+  if (cropId && typeof CROP_DB !== 'undefined') {
+    crop = CROP_DB.find ? CROP_DB.find(c => c.id === cropId)
+         : Object.values(CROP_DB).flat().find(c => c.id === cropId);
+  }
+  if (!crop && cropId && typeof _crScores !== 'undefined') {
+    const hit = _crScores.find(s => s.crop.id === cropId);
+    if (hit) crop = hit.crop;
+  }
+
+  // レイアウト
+  const PAD = { top: 14, right: 40, bottom: 28, left: 32 };
+  const gW  = W - PAD.left - PAD.right;
+  const gH  = H - PAD.top  - PAD.bottom;
+
+  // ── 左Y軸（気温）範囲 ──
+  const allTemps = [...tMaxArr, ...tMinArr].filter(v => v !== null);
+  const tRawMin  = Math.min(...allTemps);
+  const tRawMax  = Math.max(...allTemps);
+  const tYMin    = Math.floor((tRawMin - 2) / 5) * 5;
+  const tYMax    = Math.ceil ((tRawMax + 2) / 5) * 5;
+  const tRange   = tYMax - tYMin || 1;
+
+  // ── 右Y軸（降水量）範囲 ──
+  const rainVals  = MONTH_KEYS.map(m => rainMonthly?.[m] ?? 0);
+  let rYMax = Math.max(...rainVals, 50);
+  if (crop) {
+    if (crop.conditions.absRainMax) rYMax = Math.max(rYMax, crop.conditions.absRainMax * 0.15);
+  }
+  rYMax = Math.ceil(rYMax / 50) * 50;
+  const rRange = rYMax;
+
+  // 座標変換
+  const toX  = i => PAD.left + (i / 11) * gW;
+  const toTY = v => PAD.top  + (1 - (v - tYMin) / tRange) * gH;
+  const toRY = v => PAD.top  + (1 - v / rRange) * gH;
+
+  // ── カレンダーキー→月index変換（数値配列対応）──
+  const calToIdx = (arr) => {
+    if (!Array.isArray(arr)) return [];
+    return arr.map(v => {
+      if (typeof v === 'number') return v - 1; // 1-based
+      const i = MONTH_KEYS.indexOf(v);
+      return i >= 0 ? i : -1;
+    }).filter(i => i >= 0);
+  };
+
+  // ── 起点月（播種起点の優先順位）──
+  let sowingIdx = null;
+  if (crop?.calendar) {
+    const cal = crop.calendar;
+    for (const key of ['sowing','seedling','transplant','planting','manage']) {
+      const idxs = calToIdx(cal[key]);
+      if (idxs.length > 0) { sowingIdx = Math.min(...idxs); break; }
+    }
+  }
+  const harvestIdxs = crop ? calToIdx(crop.calendar?.harvest) : [];
+  const manageIdxs  = crop ? calToIdx(crop.calendar?.manage)  : [];
+
+  // ── ① 降水量：作物適正帯シェード（背景最初に描画）──
+  if (crop && rainMonthly) {
+    const rMin = crop.conditions.rainfallMin;
+    const rMax = crop.conditions.rainfallMax;
+    const aMin = crop.conditions.absRainMin;
+    const aMax = crop.conditions.absRainMax;
+
+    // absRainMin〜rainfallMin の下限危険帯（薄オレンジ）
+    if (aMin != null && rMin != null && aMin < rMin) {
+      const yTop = toRY(Math.min(rMin, rYMax));
+      const yBot = toRY(Math.max(aMin, 0));
+      const g = ctx.createLinearGradient(0, yTop, 0, yBot);
+      g.addColorStop(0, 'rgba(251,146,60,0.12)');
+      g.addColorStop(1, 'rgba(251,146,60,0.00)');
+      ctx.fillStyle = g;
+      ctx.fillRect(PAD.left, yTop, gW, yBot - yTop);
+    }
+    // rainfallMin〜rainfallMax の適正帯（薄緑）
+    if (rMin != null && rMax != null) {
+      const yTop = toRY(Math.min(rMax, rYMax));
+      const yBot = toRY(Math.max(rMin, 0));
+      ctx.fillStyle = 'rgba(74,222,128,0.13)';
+      ctx.fillRect(PAD.left, yTop, gW, yBot - yTop);
+    }
+    // rainfallMax〜absRainMax の上限危険帯（薄赤）
+    if (rMax != null && aMax != null && aMax > rMax) {
+      const yTop = toRY(Math.min(aMax, rYMax));
+      const yBot = toRY(Math.min(rMax, rYMax));
+      const g = ctx.createLinearGradient(0, yTop, 0, yBot);
+      g.addColorStop(0, 'rgba(239,68,68,0.00)');
+      g.addColorStop(1, 'rgba(239,68,68,0.10)');
+      ctx.fillStyle = g;
+      ctx.fillRect(PAD.left, yTop, gW, yBot - yTop);
+    }
+  }
+
+  // ── ② manage月 縦帯（オレンジ）──
+  manageIdxs.forEach(i => {
+    const x0 = toX(i) - gW / 22;
+    const bw = gW / 11;
+    ctx.fillStyle = 'rgba(251,146,60,0.18)';
+    ctx.fillRect(x0, PAD.top, bw, gH);
+  });
+
+  // ── ③ harvest月 縦帯（緑）──
+  harvestIdxs.forEach(i => {
+    const x0 = toX(i) - gW / 22;
+    const bw = gW / 11;
+    ctx.fillStyle = 'rgba(74,222,128,0.22)';
+    ctx.fillRect(x0, PAD.top, bw, gH);
+  });
+
+  // ── ④ 生育期間帯（播種→収穫）横シェード ──
+  if (sowingIdx !== null && harvestIdxs.length > 0) {
+    const endIdx = Math.max(...harvestIdxs);
+    const x0 = toX(sowingIdx) - gW / 22;
+    const x1 = toX(endIdx)   + gW / 22;
+    const grad = ctx.createLinearGradient(x0, 0, x1, 0);
+    grad.addColorStop(0, 'rgba(56,189,248,0.08)');
+    grad.addColorStop(0.5,'rgba(56,189,248,0.14)');
+    grad.addColorStop(1, 'rgba(56,189,248,0.06)');
+    ctx.fillStyle = grad;
+    if (x1 > x0) {
+      ctx.fillRect(x0, PAD.top, x1 - x0, gH);
+    }
+  }
+
+  // ── ⑤ グリッド線 ──
+  const tSteps = Math.round(tRange / 5);
+  for (let s = 0; s <= tSteps; s++) {
+    const tv = tYMin + s * 5;
+    const y  = toTY(tv);
+    ctx.strokeStyle = 'rgba(42,61,44,0.10)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + gW, y); ctx.stroke();
+    // 左Y軸ラベル（気温）
+    ctx.fillStyle = '#fbbf24';
+    ctx.font      = '9px DM Mono, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(tv + '°', PAD.left - 4, y + 3);
+  }
+  // 縦グリッド
+  for (let i = 0; i < 12; i++) {
+    const x = toX(i);
+    ctx.strokeStyle = 'rgba(42,61,44,0.12)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, PAD.top + gH); ctx.stroke();
+  }
+
+  // ── ⑥ 右Y軸ラベル（降水量）──
+  const rSteps = 4;
+  for (let s = 0; s <= rSteps; s++) {
+    const rv = Math.round(rYMax * s / rSteps);
+    const y  = toRY(rv);
+    ctx.fillStyle = 'rgba(96,165,250,0.85)';
+    ctx.font      = '9px DM Mono, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(rv + 'mm', PAD.left + gW + 3, y + 3);
+  }
+
+  // ── ⑦ 降水量棒グラフ ──
+  if (rainMonthly) {
+    const barW = gW / 13;
+    MONTH_KEYS.forEach((mk, i) => {
+      const rv = rainMonthly[mk] ?? 0;
+      const x  = toX(i) - barW / 2;
+      const y  = toRY(rv);
+      const bH = (PAD.top + gH) - y;
+      if (bH > 0) {
+        const g = ctx.createLinearGradient(0, y, 0, PAD.top + gH);
+        g.addColorStop(0, 'rgba(96,165,250,0.70)');
+        g.addColorStop(1, 'rgba(96,165,250,0.30)');
+        ctx.fillStyle = g;
+        ctx.fillRect(x, y, barW, bH);
+      }
+    });
+  }
+
+  // ── ⑧ 降水量適正ライン（破線）──
+  if (crop && rainMonthly) {
+    const drawRainLine = (v, color) => {
+      if (v == null || v > rYMax) return;
+      const y = toRY(v);
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = 1.2;
+      ctx.setLineDash([4, 3]);
+      ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + gW, y); ctx.stroke();
+      ctx.setLineDash([]);
+    };
+    drawRainLine(crop.conditions.rainfallMin, 'rgba(74,222,128,0.7)');
+    drawRainLine(crop.conditions.rainfallMax, 'rgba(74,222,128,0.7)');
+    drawRainLine(crop.conditions.absRainMin,  'rgba(251,146,60,0.6)');
+    drawRainLine(crop.conditions.absRainMax,  'rgba(239,68,68,0.6)');
+  }
+
+  // ── ⑨ 気温折れ線（月平均=(最高+最低)/2）──
+  const tMeanArr = tMaxArr.map((v, i) =>
+    (v !== null && tMinArr[i] !== null) ? (v + tMinArr[i]) / 2 : null
+  );
+  ctx.strokeStyle = '#fbbf24';
+  ctx.lineWidth   = 2;
+  ctx.lineJoin    = 'round';
+  ctx.setLineDash([]);
+  ctx.beginPath();
+  let moved = false;
+  tMeanArr.forEach((v, i) => {
+    if (v === null) { moved = false; return; }
+    if (!moved) { ctx.moveTo(toX(i), toTY(v)); moved = true; }
+    else        { ctx.lineTo(toX(i), toTY(v)); }
+  });
+  ctx.stroke();
+
+  // 気温ドット
+  tMeanArr.forEach((v, i) => {
+    if (v === null) return;
+    ctx.fillStyle = '#fbbf24';
+    ctx.beginPath();
+    ctx.arc(toX(i), toTY(v), 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // ── ⑩ 播種マーカー（▼）──
+  if (sowingIdx !== null) {
+    const x = toX(sowingIdx);
+    ctx.fillStyle = 'rgba(56,189,248,0.9)';
+    ctx.beginPath();
+    ctx.moveTo(x - 5, PAD.top + 1);
+    ctx.lineTo(x + 5, PAD.top + 1);
+    ctx.lineTo(x,     PAD.top + 8);
+    ctx.closePath();
+    ctx.fill();
+  }
+  // harvest月マーカー（星形省略→◆）
+  harvestIdxs.forEach(i => {
+    const x = toX(i);
+    const y = PAD.top + 3;
+    ctx.fillStyle = 'rgba(74,222,128,0.9)';
+    ctx.beginPath();
+    ctx.moveTo(x,     y - 5);
+    ctx.lineTo(x + 4, y);
+    ctx.lineTo(x,     y + 5);
+    ctx.lineTo(x - 4, y);
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  // ── ⑪ 月ラベル ──
+  ctx.fillStyle = 'rgba(90,122,92,0.8)';
+  ctx.font      = '9px DM Mono, monospace';
+  ctx.textAlign = 'center';
+  MONTH_LABELS.forEach((label, i) => {
+    ctx.fillText(label, toX(i), H - PAD.bottom + 11);
+  });
+
+  // ── ⑫ 凡例更新 ──
+  const subEl    = document.getElementById('adp-growth-chart-sub');
+  const legendEl = document.getElementById('adp-growth-legend');
+
+  if (crop) {
+    if (subEl) subEl.textContent = `${crop.name} の生育期間・降水量を表示中`;
+
+    const gpMin = crop.conditions.growthPeriodMin;
+    const gpMax = crop.conditions.growthPeriodMax;
+    const gpText = (gpMin != null && gpMax != null)
+      ? `播種〜収穫：約${gpMin}〜${gpMax}日`
+      : gpMin != null ? `播種〜収穫：約${gpMin}日〜`
+      : gpMax != null ? `播種〜収穫：〜約${gpMax}日`
+      : null;
+
+    const rMin = crop.conditions.rainfallMin;
+    const rMax = crop.conditions.rainfallMax;
+    const rText = (rMin != null && rMax != null) ? `${rMin}〜${rMax}mm` : null;
+
+    const harvestLabel = harvestIdxs.length
+      ? harvestIdxs.map(i => (i + 1) + '月').join('/')
+      : null;
+
+    if (legendEl) legendEl.innerHTML = `
+      <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#fbbf24"></span>月平均気温</span>
+      <span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(96,165,250,0.7)"></span>月別降水量</span>
+      ${rText ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(74,222,128,0.5)"></span>適正降水 ${rText}</span>` : ''}
+      ${sowingIdx !== null ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(56,189,248,0.85);clip-path:polygon(50% 100%,0 0,100% 0)"></span>播種起点 ${sowingIdx + 1}月</span>` : ''}
+      ${harvestLabel ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(74,222,128,0.85);clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%)"></span>収穫 ${harvestLabel}</span>` : ''}
+      ${gpText ? `<span class="adp-tl-item adp-tl-period">${gpText}</span>` : ''}
+    `;
+  } else {
+    if (subEl) subEl.textContent = '作物を選択すると生育期間・降水量適性を重畳表示';
+    if (legendEl) legendEl.innerHTML = `
+      <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#fbbf24"></span>月平均気温</span>
+      <span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(96,165,250,0.7)"></span>月別降水量</span>
+    `;
+  }
+}
+
+// ─── 生育期間ペイン用ランキングリスト描画 ───
+function _adpRenderGrowthRankingList() {
+  const el = document.getElementById('crop-ranking-growth');
+  if (!el) return;
+
+  const scores = _crFilteredScores ? _crFilteredScores() : (_crScores || []);
+  if (!scores.length) {
+    el.innerHTML = '<div class="empty-mini">データなし</div>';
+    return;
+  }
+
+  el.innerHTML = scores.slice(0, 60).map(s => {
+    const isSelected = s.crop.id === _adpSelectedCropId;
+    const bar = Math.round((s.score / 100) * 100);
+    const gpMin = s.crop.conditions?.growthPeriodMin;
+    const gpMax = s.crop.conditions?.growthPeriodMax;
+    const gpStr = (gpMin != null || gpMax != null)
+      ? `<span class="adp-cr-gp">${gpMin ?? '?'}〜${gpMax ?? '?'}日</span>`
+      : '';
+    return `
+      <div class="adp-cr-item${isSelected ? ' selected' : ''}" onclick="adpCropTap('${s.crop.id}')">
+        <div class="adp-cr-name">${s.crop.name}${gpStr}</div>
+        <div class="adp-cr-bar-wrap">
+          <div class="adp-cr-bar" style="width:${bar}%"></div>
+          <span class="adp-cr-score">${Math.round(s.score)}</span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
 }
 
 // ─── crSwitchMajor / crSwitchMinor / _crRenderList をADPビュー開中に差し替え ───
@@ -1184,6 +1577,8 @@ function closeAreaDetailPanel() {
   _adpSelectedCropId = null;
   const canvas = document.getElementById('adp-temp-canvas');
   if (canvas) { canvas.width = 0; canvas.height = 0; }
+  const gCanvas = document.getElementById('adp-growth-canvas');
+  if (gCanvas) { gCanvas.width = 0; gCanvas.height = 0; }
 }
 
 // ─── 作物タップ → グラフ即更新（ペイン切替なし・同一ペイン内） ───
@@ -1195,5 +1590,6 @@ function adpCropTap(cropId) {
 
   // グラフ再描画 ＋ リストハイライト更新（ペイン移動なし）
   _adpRenderTempChart(_adpSelectedCropId);
+  _adpRenderGrowthChart(_adpSelectedCropId);
   _adpRenderRankingList();
 }
