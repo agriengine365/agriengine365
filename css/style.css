@@ -3563,3 +3563,17 @@ html.draw-dialog-active {
 .mmb-none .mmb-label {
   color: rgba(255,255,255,0.3);
 }
+
+/* 加温ハウス月別バー（補填量3段階） */
+.mmb-heated-low {
+  background: #34d399;
+  box-shadow: 0 0 5px #34d39966;
+}
+.mmb-heated-mid {
+  background: #fb923c;
+  box-shadow: 0 0 5px #fb923c66;
+}
+.mmb-heated-high {
+  background: #e879f9;
+  box-shadow: 0 0 5px #e879f966;
+}

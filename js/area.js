@@ -802,16 +802,48 @@ function _adpRenderRankingList() {
 }
 
 // ─── 月別カラーバー HTML生成 ───
-// monthlyMatch: 12要素配列 null=非生育月, true=適合, 'border'=境界, false=不適合
+// monthlyMatch: 12要素配列
+//   null              = 非生育月
+//   true              = 適合
+//   'border'          = 境界
+//   false             = 不適合
+//   { heated, diff }  = 加温ハウスで補填中
 function _adpBuildMonthBar(monthlyMatch) {
   if (!monthlyMatch || monthlyMatch.every(v => v === null)) return '';
   const labels = ['1','2','3','4','5','6','7','8','9','10','11','12'];
   const cells = monthlyMatch.map((v, i) => {
     let cls, title;
-    if (v === true)     { cls = 'mmb-ok';     title = `${i+1}月: 適合`; }
-    else if (v === 'border') { cls = 'mmb-border'; title = `${i+1}月: 境界`; }
-    else if (v === false)    { cls = 'mmb-ng';     title = `${i+1}月: 不適合`; }
-    else                     { cls = 'mmb-none';   title = `${i+1}月: 非生育月`; }
+    if (v === null) {
+      cls = 'mmb-none';
+      title = `${i+1}月: 非生育月`;
+    } else if (v === true) {
+      cls = 'mmb-ok';
+      title = `${i+1}月: 適合`;
+    } else if (v === 'border') {
+      cls = 'mmb-border';
+      title = `${i+1}月: 境界`;
+    } else if (v === false) {
+      cls = 'mmb-ng';
+      title = `${i+1}月: 不適合`;
+    } else if (v?.heated) {
+      // 加温ハウス: diffに応じて色を変化
+      if (v.diff === 0) {
+        cls = 'mmb-ok';
+        title = `${i+1}月: 適合（加温不要）`;
+      } else if (v.diff <= 5) {
+        cls = 'mmb-heated-low';
+        title = `${i+1}月: 加温 ${v.diff}℃補填`;
+      } else if (v.diff <= 10) {
+        cls = 'mmb-heated-mid';
+        title = `${i+1}月: 加温 ${v.diff}℃補填`;
+      } else {
+        cls = 'mmb-heated-high';
+        title = `${i+1}月: 加温 ${v.diff}℃補填（高コスト）`;
+      }
+    } else {
+      cls = 'mmb-none';
+      title = `${i+1}月`;
+    }
     return `<div class="mmb-cell ${cls}" title="${title}"><span class="mmb-label">${labels[i]}</span></div>`;
   }).join('');
   return `<div class="month-match-bar">${cells}</div>`;
