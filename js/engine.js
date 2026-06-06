@@ -62,9 +62,9 @@ function scoreCrop(crop, areaData) {
   let corrTemp = null;
   if (climate) {
     const base = elev ? elevCorrect(climate.tempMean, elev) : climate.tempMean;
-    // ハウス: +3℃ 補正
+    // ハウス: 最低気温を-4℃補正する効果を年均では+2℃相当で近似
     corrTemp = (cultivationMode === 'greenhouse' || cultivationMode === 'heatedGreenhouse')
-      ? base + 3
+      ? base + 2
       : base;
   }
 
@@ -128,9 +128,11 @@ function scoreCrop(crop, areaData) {
   const hasMonthlyCols = _tMaxArr && _tMinArr &&
     _tMaxArr.length === 12 && _tMinArr.length === 12;
 
-  // ハウス補正量（露地/ハウス用。加温ハウスは月別に個別計算するためここでは0）
-  const houseOffset = cultivationMode === 'greenhouse' ? 3 : 0;
-  const isHeated    = cultivationMode === 'heatedGreenhouse';
+  // ハウス補正:
+  //   greenhouse      → 月別最低気温を -4℃ して計算（保温効果で下限カバー範囲を拡大）
+  //   heatedGreenhouse → 月別に個別計算するためここでは定義しない
+  const houseMinOffset = cultivationMode === 'greenhouse' ? -4 : 0; // tMin に加算（-4 = 4℃分下限を緩和）
+  const isHeated       = cultivationMode === 'heatedGreenhouse';
 
   // 生育月を特定（0-indexed: 0=1月 … 11=12月）
   let growthMonths = null; // null = 特定不能
@@ -160,7 +162,7 @@ function scoreCrop(crop, areaData) {
         if (tMax === null || tMin === null) continue;
         const tMid = isHeated
           ? Math.max((tMax + tMin) / 2, c.tempMeanMin) // 加温で最低温度まで引き上げ
-          : (tMax + tMin) / 2 + houseOffset;
+          : (tMax + (tMin + houseMinOffset)) / 2;       // ハウス: tMinを-4補正して中間値
         if (isHeated || (tMid >= c.tempMeanMin && tMid <= c.tempMeanMax)) {
           candidates.push({ idx: i, tMid });
         }
@@ -218,8 +220,8 @@ function scoreCrop(crop, areaData) {
           totalPts += monthScore;
         }
       } else {
-        // 露地・ハウス
-        const tMid = tMidRaw + houseOffset;
+        // 露地・ハウス: ハウスは月別最低気温を-4℃補正して中間値を計算
+        const tMid = (tMax + (tMin + houseMinOffset)) / 2;
         if (tMid >= tMin2 && tMid <= tMax2) {
           monthlyMatch[i] = true;
           totalPts += 1.0;

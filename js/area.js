@@ -381,8 +381,8 @@ function _adpEnsureDOM() {
         <div class="adp-meta"  id="adp-meta"></div>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-ghost" id="adp-analysis-btn" style="font-size:11px;padding:5px 10px;"
-          onclick="adpRunAnalysis()">分析 →</button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;"
+          onclick="if(_adpArea){openAnalysisWizard(_adpArea);}">分析 →</button>
         <button class="adp-close-btn" onclick="closeAreaDetailPanel()">✕</button>
       </div>
     </div>
@@ -1013,6 +1013,13 @@ function _adpRenderTempChart(cropId) {
   drawLine(tMaxArr, '#fbbf24');       // 最高: 黄
   drawLine(tMinArr, '#38bdf8', []);   // 最低: 水色
 
+  // ハウスモード時: 補正後最低気温（tMin-4）を破線で追加表示
+  const cultivationMode = currentAreaData?.cultivationMode || 'openField';
+  if (cultivationMode === 'greenhouse') {
+    const tMinCorrected = tMinArr.map(v => v !== null ? v - 4 : null);
+    drawLine(tMinCorrected, '#34d399', [4, 3]); // ハウス補正後: 緑破線
+  }
+
   // ── 月ラベル & 目盛り点 ──
   ctx.fillStyle  = 'rgba(90,122,92,0.8)';
   ctx.font       = '9px DM Mono, monospace';
@@ -1052,9 +1059,14 @@ function _adpRenderTempChart(cropId) {
       }) : []
     );
     const uniqMonths = [...new Set(growthLabels)].sort((a,b) => parseInt(a)-parseInt(b));
+    const cultivationMode = currentAreaData?.cultivationMode || 'openField';
+    const houseNote = cultivationMode === 'greenhouse'
+      ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:#34d399;border:1px dashed #34d399"></span>最低気温(ハウス補正-4℃)</span>`
+      : '';
     if (legendEl) legendEl.innerHTML = `
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#fbbf24"></span>最高気温</span>
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#38bdf8"></span>最低気温</span>
+      ${houseNote}
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(74,222,128,0.5)"></span>適正温度 ${tMin}–${tMax}℃</span>
       ${uniqMonths.length ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(34,197,94,0.4)"></span>生育期間 ${uniqMonths.join('/')}</span>` : ''}
     `;
@@ -1091,34 +1103,22 @@ function closeAreaDetailPanel() {
   if (toggle) toggle.remove();
   // 作物選択状態のみリセット（climateキャッシュは維持）
   _adpSelectedCropId = null;
-  const btn = document.getElementById('adp-analysis-btn');
-  if (btn) btn.textContent = '分析 →';
 }
 
-// ─── 作物タップ → グラフ更新のみ（分析は「分析 →」ボタンから）───
+// ─── 作物タップ → グラフ更新 → 確認 → 分析実行 ───
 function adpCropTap(cropId, cropName) {
   if (!_adpArea) return;
 
+  // まずグラフに作物適正温度を重畳表示
   _adpSelectedCropId = cropId;
   _adpRenderTempChart(cropId);
   _adpRenderRankingList(); // 選択状態ハイライト更新
 
-  // 分析ボタンのラベルを選択作物名に更新
-  const btn = document.getElementById('adp-analysis-btn');
-  if (btn) btn.textContent = `「${cropName}」を分析 →`;
-}
-
-// ─── 分析ボタン → 選択中作物で分析実行 ───
-function adpRunAnalysis() {
-  if (!_adpArea) return;
   const areaName = _adpArea.name || 'このエリア';
+  if (!confirm(`「${cropName}」を「${areaName}」で分析しますか？`)) return;
 
-  if (!_adpSelectedCropId) {
-    showToast('作物を選択してください', 'amber');
-    return;
-  }
-
-  currentAreaData.selectedCropId  = _adpSelectedCropId;
+  // currentAreaData に選択作物をセット
+  currentAreaData.selectedCropId  = cropId;
   currentAreaData.cultivationMode = currentAreaData.cultivationMode || 'openField';
   currentAreaData.analysisItems   = [
     'landProfile', 'matchRange', 'cropRanking', 'profitability', 'fertilizer', 'risk',
