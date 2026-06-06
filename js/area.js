@@ -897,13 +897,13 @@ function _adpRenderTempChart(cropId) {
   const toX = i  => PAD.left + (i / 11) * gW;
   const toY = v  => PAD.top  + (1 - (v - yMin) / yRange) * gH;
 
-  // ── グリッド & Y軸ラベル ──
-  ctx.strokeStyle = 'rgba(42,61,44,0.7)';
-  ctx.lineWidth   = 1;
+  // ── 横グリッド線（極薄）& Y軸ラベル ──
   const ySteps = Math.round(yRange / 5);
   for (let s = 0; s <= ySteps; s++) {
     const val = yMin + s * 5;
     const y   = toY(val);
+    ctx.strokeStyle = 'rgba(42,61,44,0.10)';
+    ctx.lineWidth   = 1;
     ctx.beginPath();
     ctx.moveTo(PAD.left, y);
     ctx.lineTo(PAD.left + gW, y);
@@ -912,6 +912,17 @@ function _adpRenderTempChart(cropId) {
     ctx.font      = '9px DM Mono, monospace';
     ctx.textAlign = 'right';
     ctx.fillText(val + '°', PAD.left - 4, y + 3);
+  }
+
+  // ── 縦グリッド線（月ごと、薄め）──
+  for (let i = 0; i < 12; i++) {
+    const x = toX(i);
+    ctx.strokeStyle = 'rgba(42,61,44,0.12)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, PAD.top);
+    ctx.lineTo(x, PAD.top + gH);
+    ctx.stroke();
   }
 
   // ── 0℃ラインを強調 ──
@@ -926,6 +937,13 @@ function _adpRenderTempChart(cropId) {
     ctx.stroke();
     ctx.setLineDash([]);
   }
+
+  // ── 栽培方式・適正温度帯の計算 ──
+  const cultivationMode = currentAreaData?.cultivationMode || 'openField';
+  const isHouse = cultivationMode === 'greenhouse' || cultivationMode === 'heatedGreenhouse';
+  // ハウス補正値: greenhouse→+4, heatedGreenhouse→+8（冬の加温想定）
+  const houseOffset = cultivationMode === 'heatedGreenhouse' ? 8 : 4;
+  const tMinCorrected = isHouse ? tMinArr.map(v => v !== null ? v + houseOffset : null) : null;
 
   // ── 作物適正温度帯（帯シェーディング + 境界線）──
   if (crop && crop.conditions.tempMeanMin != null && crop.conditions.tempMeanMax != null) {
@@ -944,37 +962,39 @@ function _adpRenderTempChart(cropId) {
     });
     const growthMonths = growthSet.size > 0 ? [...growthSet].sort((a,b)=>a-b) : null;
 
-    // 生育期間の縦帯（薄い緑）
-    if (growthMonths && growthMonths.length > 0) {
-      // 連続区間をグループ化
-      const ranges = [];
-      let start = growthMonths[0], prev = growthMonths[0];
-      for (let k = 1; k < growthMonths.length; k++) {
-        if (growthMonths[k] === prev + 1) { prev = growthMonths[k]; }
-        else { ranges.push([start, prev]); start = prev = growthMonths[k]; }
-      }
-      ranges.push([start, prev]);
+    const colW = gW / 11; // 列幅（月間隔）
 
-      ctx.fillStyle = 'rgba(34,197,94,0.08)';
-      ranges.forEach(([s, e]) => {
-        const x1 = toX(s) - (s > 0 ? gW/22 : 0);
-        const x2 = toX(e) + (e < 11 ? gW/22 : 0);
-        ctx.fillRect(x1, PAD.top, x2 - x1, gH);
-      });
-    }
-
-    // 適正温度帯（黄緑シェード）
+    // ── 適正温度帯の基本シェード（濃めに）──
     const yTop = toY(tCropMax);
     const yBot = toY(tCropMin);
     const grad = ctx.createLinearGradient(0, yTop, 0, yBot);
-    grad.addColorStop(0, 'rgba(74,222,128,0.18)');
-    grad.addColorStop(1, 'rgba(74,222,128,0.05)');
+    grad.addColorStop(0, 'rgba(74,222,128,0.38)');
+    grad.addColorStop(1, 'rgba(74,222,128,0.22)');
     ctx.fillStyle = grad;
     ctx.fillRect(PAD.left, yTop, gW, yBot - yTop);
 
+    // ── 月ごとに「最高・最低が両方とも適正範囲内」の列をさらに濃く ──
+    for (let i = 0; i < 12; i++) {
+      const vMax = tMaxArr[i];
+      const vMin = isHouse ? (tMinCorrected[i] ?? tMinArr[i]) : tMinArr[i];
+      if (vMax === null || vMin === null) continue;
+      // 最高気温と最低気温（ハウス補正後）が両方とも適正範囲内
+      if (vMax >= tCropMin && vMax <= tCropMax && vMin >= tCropMin && vMin <= tCropMax) {
+        const x1 = toX(i) - colW / 2;
+        const x2 = toX(i) + colW / 2;
+        // クリッピングして適正帯内のみ塗る
+        const yHigh = Math.max(yTop, toY(vMax));
+        const yLow  = Math.min(yBot, toY(vMin));
+        if (yLow > yHigh) {
+          ctx.fillStyle = 'rgba(74,222,128,0.45)';
+          ctx.fillRect(Math.max(PAD.left, x1), yHigh, Math.min(x2, PAD.left + gW) - Math.max(PAD.left, x1), yLow - yHigh);
+        }
+      }
+    }
+
     // 境界線 (tempMeanMin / tempMeanMax)
-    ctx.strokeStyle = 'rgba(74,222,128,0.6)';
-    ctx.lineWidth   = 1;
+    ctx.strokeStyle = 'rgba(74,222,128,0.75)';
+    ctx.lineWidth   = 1.5;
     ctx.setLineDash([5, 3]);
     [tCropMin, tCropMax].forEach(v => {
       const y = toY(v);
@@ -1025,10 +1045,8 @@ function _adpRenderTempChart(cropId) {
   drawLine(tMaxArr, '#fbbf24');       // 最高: 黄
   drawLine(tMinArr, '#38bdf8', []);   // 最低: 水色
 
-  // ハウスモード時: 補正後最低気温（tMin-4）を破線で追加表示
-  const cultivationMode = currentAreaData?.cultivationMode || 'openField';
-  if (cultivationMode === 'greenhouse') {
-    const tMinCorrected = tMinArr.map(v => v !== null ? v - 4 : null);
+  // ハウスモード時: 補正後気温（+offset）を実線で追加表示
+  if (isHouse) {
     drawLine(tMinCorrected, '#34d399', [4, 3]); // ハウス補正後: 緑破線
   }
 
@@ -1071,9 +1089,10 @@ function _adpRenderTempChart(cropId) {
       }) : []
     );
     const uniqMonths = [...new Set(growthLabels)].sort((a,b) => parseInt(a)-parseInt(b));
-    const cultivationMode = currentAreaData?.cultivationMode || 'openField';
-    const houseNote = cultivationMode === 'greenhouse'
-      ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:#34d399;border:1px dashed #34d399"></span>最低気温(ハウス補正-4℃)</span>`
+    const _mode = currentAreaData?.cultivationMode || 'openField';
+    const _offset = _mode === 'heatedGreenhouse' ? 8 : 4;
+    const houseNote = (_mode === 'greenhouse' || _mode === 'heatedGreenhouse')
+      ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:#34d399;border:1px dashed #34d399"></span>最低気温(ハウス+${_offset}℃補正)</span>`
       : '';
     if (legendEl) legendEl.innerHTML = `
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#fbbf24"></span>最高気温</span>

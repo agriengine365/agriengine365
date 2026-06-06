@@ -2451,9 +2451,9 @@ html.draw-dialog-active {
   display: flex;
 }
 
-/* 気温グラフペイン専用 */
+/* 気温グラフペイン専用（統合ペイン: 内部で padding 管理） */
 #adp-pane-chart {
-  padding: 16px;
+  padding: 0;
 }
 .adp-temp-chart-wrap--large {
   height: 240px !important;
@@ -3615,44 +3615,67 @@ html.draw-dialog-active {
    ADP 統合ペイン（気温適性タブ: グラフ固定上部 + ランキング下部スクロール）
    ═══════════════════════════════════════════════════════ */
 
-/* 統合ペインはflexで上下分割 */
+/* 統合ペインはflexで上下分割・自身はスクロールしない */
 .adp-pane-combined {
   padding: 0 !important;
   gap: 0 !important;
-  overflow: hidden !important;  /* 自身はスクロールしない */
-  display: flex;
+  overflow: hidden !important;
+  display: flex !important;
   flex-direction: column;
+  /* position:absolute; inset:0 は .adp-pane から継承 */
 }
 
-/* 上部: グラフブロック（固定、スクロールしない） */
+/* 上部固定グラフブロック */
 .adp-chart-sticky {
   flex-shrink: 0;
-  padding: 12px 16px 8px;
-  background: var(--surface, #fff);
-  border-bottom: 1px solid var(--border, rgba(0,0,0,0.08));
+  padding: 10px 14px 6px;
+  background: var(--bg, #0d180f);
+  border-bottom: 1px solid var(--border, #2a3d2c);
   z-index: 1;
 }
 
-/* 下部: ランキングリスト（スクロール） */
+/* 下部スクロール領域（栽培方式トグル＋タブ＋リスト） */
 .adp-ranking-scroll {
   flex: 1;
+  min-height: 0;          /* flex子要素がはみ出さないようにする必須指定 */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 0;
 }
 
-/* 統合ペイン内のグラフ高さ（コンパクトに） */
+/* 統合ペイン内のグラフ高さ */
 .adp-pane-combined .adp-temp-chart-wrap {
-  height: 160px;
+  height: 155px;
 }
 
-/* グラフ上部のサブタイトル */
+/* グラフ上部サブタイトル */
 .adp-chart-sticky .adp-temp-chart-header {
+  margin-bottom: 4px;
+}
+
+/* 凡例コンパクト */
+.adp-chart-sticky .adp-temp-legend {
+  padding: 3px 0 0;
+  gap: 5px;
+}
+
+/* adp-ranking-scroll内のタブ・リストにpadding付与 */
+.adp-ranking-scroll .cr-tabs-major {
+  padding: 10px 12px 0;
   margin-bottom: 6px;
 }
+.adp-ranking-scroll .cr-tabs-minor {
+  padding: 6px 12px 0;
+  margin-bottom: 4px;
+}
+.adp-ranking-scroll #crop-ranking {
+  padding: 0 10px 16px;
+}
 
-/* 統合ペイン内の凡例を少しコンパクトに */
-.adp-chart-sticky .adp-temp-legend {
-  padding: 4px 0 0;
-  gap: 6px;
+/* 栽培方式トグルが ranking-scroll の sticky 先頭として正しく機能するよう */
+.adp-ranking-scroll .adp-cult-toggle {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg, #0d180f);
 }
