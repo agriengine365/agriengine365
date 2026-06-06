@@ -3138,3 +3138,218 @@ html.draw-dialog-active {
     flex: 0 0 calc(50% - 7px);
   }
 }
+
+/* ═══════════════════════════════════════════
+   AREA CHARTS v2 — 気候サマリーカード・特徴日数・降水ヒートバー
+═══════════════════════════════════════════ */
+
+/* ─── サマリーカード 2×2グリッド ─── */
+.adpc-cards-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.adpc-stat-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 11px;
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.adpc-stat-card-icon {
+  font-size: 18px;
+  line-height: 1;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.adpc-stat-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.adpc-stat-card-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+
+.adpc-stat-card-value {
+  font-family: var(--mono);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.adpc-stat-card-unit {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text3);
+  margin-left: 2px;
+}
+
+.adpc-stat-card-sub {
+  font-size: 9px;
+  color: var(--text3);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+
+/* ─── 気候帯ラベル行 ─── */
+.adpc-climate-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.adpc-climate-zone-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.adpc-climate-zone-value {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+  flex: 1;
+}
+
+.adpc-climate-zone-dist {
+  font-size: 9px;
+  color: var(--text3);
+  flex-shrink: 0;
+}
+
+/* ─── 特徴日数バッジ ─── */
+.adpc-badge-row {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.adpc-day-badge {
+  flex: 1;
+  min-width: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 9px 6px 8px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.adpc-day-badge-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.adpc-day-badge-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--text3);
+  letter-spacing: 0.04em;
+}
+
+.adpc-day-badge-value {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.adpc-day-badge-unit {
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--text3);
+  margin-left: 1px;
+}
+
+/* ─── チャートコンテナ（小） ─── */
+.adpc-chart-wrap-sm {
+  height: 140px !important;
+}
+
+/* ─── 月別降水量ヒートバー ─── */
+.adpc-rain-table {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.adpc-rain-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adpc-rain-month {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text3);
+  width: 26px;
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.adpc-rain-track {
+  flex: 1;
+  height: 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.adpc-rain-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+  min-width: 2px;
+}
+
+.adpc-rain-val {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text2);
+  width: 42px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.adpc-rain-unit {
+  font-size: 9px;
+  color: var(--text3);
+  margin-left: 1px;
+}
+
+/* ─── リスクゲージ（パーセント追加） ─── */
+.adpc-gauge-pct {
+  font-family: var(--mono);
+  font-size: 10px;
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ─── ローディング ─── */
+.adpc-loading-section {
+  padding: 16px 0;
+}

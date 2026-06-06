@@ -361,14 +361,20 @@ function estimateSunshineHours(lat) {
 }
 
 function estimateEnvironmentalRisk(areaData, correctedTemp) {
-  const rain = areaData.climate?.rain ?? areaData.annualRainfall ?? null;
-  const slope = toNum(areaData.slope, 0);
-  const elev = toNum(areaData.elev ?? areaData.elevation, 0);
-  const temp = toNum(correctedTemp, null);
+  const rain      = areaData.climate?.rain ?? areaData.annualRainfall ?? null;
+  const slope     = toNum(areaData.slope, 0);
+  const elev      = toNum(areaData.elev ?? areaData.elevation, 0);
+  const temp      = toNum(correctedTemp, null);
+  // AMeDAS実データがあれば真冬日日数でsnowRiskを補正
+  const snowDays  = toNum(areaData.climate?.snowDays ?? areaData.meta?.amSnowDays, null);
 
-  const floodRisk = rain == null ? 25 : clamp((rain - 1100) / 9 + Math.max(0, 4 - slope) * 5, 0, 100);
+  const floodRisk   = rain == null ? 25 : clamp((rain - 1100) / 9 + Math.max(0, 4 - slope) * 5, 0, 100);
   const droughtRisk = rain == null ? 25 : clamp((1150 - rain) / 8 + Math.max(0, slope - 8) * 3, 0, 100);
-  const snowRisk = temp == null ? 20 : clamp((10 - temp) * 8 + elev / 25, 0, 100);
+  // 推定値: 気温・標高ベース。AMeDAS真冬日日数があれば重み付きで補正
+  const snowEstimate = temp == null ? 20 : clamp((10 - temp) * 8 + elev / 25, 0, 100);
+  const snowRisk     = snowDays != null
+    ? clamp(snowEstimate * 0.5 + clamp(snowDays / 60 * 100, 0, 100) * 0.5, 0, 100)
+    : snowEstimate;
 
   return {
     floodRisk: Math.round(floodRisk),
