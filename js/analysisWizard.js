@@ -249,14 +249,10 @@ function _awExecute() {
 
   closeAnalysisWizard();
 
-  // ─ currentAreaData 組み立て ─
-  // area オブジェクトはフィールドの保存形式によって
-  // landProfile / meta / トップレベル のいずれかにデータが入っている
   const area = _awArea;
   const lp   = area.landProfile  || {};
   const meta = area.meta         || {};
 
-  // 各値を3段階フォールバックで安全に取得
   function _pick(...vals) {
     for (const v of vals) {
       if (v !== undefined && v !== null && v !== '') return v;
@@ -294,7 +290,6 @@ function _awExecute() {
   if (typeof switchTab === 'function') {
     switchTab('analysis');
   } else {
-    // switchTab が未定義の場合は data-tab ベースのタブ切替を直接実行
     document.querySelectorAll('.tab').forEach(t =>
       t.classList.toggle('active', t.dataset.tab === 'analysis')
     );
@@ -309,4 +304,12 @@ function _awExecute() {
   } else {
     runAnalysis(area.name || 'エリア');
   }
+}
+// ─── DEBUG: area構造をコンソールに出力（問題解決後に削除） ───
+const _origOpenAnalysisWizard = openAnalysisWizard;
+function openAnalysisWizard(area) {
+  console.group('[AnalysisWizard] openAnalysisWizard called');
+  console.log('area:', JSON.stringify(area, null, 2));
+  console.groupEnd();
+  _origOpenAnalysisWizard(area);
 }
