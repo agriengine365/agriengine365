@@ -3,6 +3,26 @@
 //  土地評価・土地プロフィール・適合レンジはADPパネル側へ移動済み
 // ═══════════════════════════════════════════
 
+// ─── scoreClass ガード（engine.js未ロード時のフォールバック） ───
+if (typeof scoreClass === 'undefined') {
+  window.scoreClass = function(score) {
+    if (score >= 80) return 'score-high';
+    if (score >= 55) return 'score-mid';
+    return 'score-low';
+  };
+}
+
+// ─── escHtml ガード（ui.js未ロード時のフォールバック） ───
+if (typeof escHtml === 'undefined') {
+  window.escHtml = function(str) {
+    return String(str ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  };
+}
+
 // ─── フォーマットヘルパー ───
 function fmtNum(value, digits = 1, empty = '-') {
   return Number.isFinite(Number(value)) ? Number(value).toFixed(digits) : empty;
@@ -134,8 +154,8 @@ function _crRenderList() {
   // 上位20件に絞る
   el.innerHTML = scores.slice(0, 20).map((s, i) => {
     const isExpanded = _crSelectedCropId === s.crop.id;
-    const scoreClass = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
-    const barClass = s.viable ? scoreClass : 'score-low';
+    const scoreCls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
+    const barClass = s.viable ? scoreCls : 'score-low';
     const barWidth = s.viable ? s.score : 0;
 
     return `
@@ -144,7 +164,7 @@ function _crRenderList() {
         <div class="cr-item-header">
           <span class="cr-rank">#${i + 1}</span>
           <span class="cr-name">${s.crop.name}</span>
-          <span class="cr-score ${s.viable ? scoreClass : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>
+          <span class="cr-score ${s.viable ? scoreCls : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>
           <svg class="cr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
@@ -438,7 +458,7 @@ function _renderRiskResult(crop) {
  * ウィザードから呼ばれる。既存UIをそのまま流用し、
  * 選択作物1件の詳細結果をランキング欄に展開済みで表示する。
  */
-async function runSingleCropAnalysis(areaName) {
+function runSingleCropAnalysis(areaName) {
   if (!currentAreaData?.selectedCropId) {
     // フォールバック: selectedCropId がなければ全件ランキングへ
     return runAnalysis(areaName);
@@ -466,7 +486,7 @@ async function runSingleCropAnalysis(areaName) {
   // ─ ランキング欄に選択作物1件を展開済みで描画 ─
   const s           = result.scoreResult;
   const lp          = result.landProfile;
-  const scoreClass  = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
+  const scoreCls    = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
   const modeLabels  = {
     openField: '露地栽培', greenhouse: 'ハウス栽培', heatedGreenhouse: '加温ハウス栽培',
   };
@@ -495,12 +515,12 @@ async function runSingleCropAnalysis(areaName) {
       style="cursor:default;">
       <div class="cr-item-header">
         <span class="cr-name" style="font-size:14px;font-weight:600;">${escHtml(result.crop.name)}</span>
-        <span class="cr-score ${s.viable ? scoreClass : 'score-low'}" style="font-size:14px;">
+        <span class="cr-score ${s.viable ? scoreCls : 'score-low'}" style="font-size:14px;">
           ${s.viable ? s.score + '%' : 'NG'}
         </span>
       </div>
       <div class="cr-bar-track">
-        <div class="cr-bar-fill ${s.viable ? scoreClass : 'score-low'}"
+        <div class="cr-bar-fill ${s.viable ? scoreCls : 'score-low'}"
           style="width:${s.viable ? s.score : 0}%"></div>
       </div>
       ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
@@ -547,18 +567,14 @@ function _renderFertResultFromData(crop, fert) {
 }
 
 // ─── 分析実行メイン ───
-async function runAnalysis(areaName) {
+function runAnalysis(areaName) {
   if (!currentAreaData) return;
 
   document.getElementById('analysis-empty').style.display  = 'none';
   document.getElementById('analysis-result').style.display = 'flex';
 
-  // ローディング表示
-  document.getElementById('crop-ranking').innerHTML =
-    '<div style="color:var(--text3);font-size:12px;padding:8px 0;">AMeDASデータ取得中…</div>';
-
   const ad = currentAreaData;
-  const result = await buildAnalysisResult(ad);
+  const result = buildAnalysisResult(ad);
   const profile = result.landProfile;
   ad.landProfile = profile;
   ad.analysisSnapshot = {
@@ -607,9 +623,9 @@ async function runAnalysis(areaName) {
 }
 
 // ─── JSON エクスポート ───
-async function exportJSON() {
+function exportJSON() {
   if (!currentAreaData) return;
-  const result = await buildAnalysisResult(currentAreaData);
+  const result = buildAnalysisResult(currentAreaData);
   const data = {
     exportedAt: new Date().toISOString(),
     areaData: currentAreaData,

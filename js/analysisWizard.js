@@ -182,8 +182,8 @@ function _awRenderItems() {
     </div>
     <div class="aw-check-list">
       ${ANALYSIS_ITEMS.map(item => `
-        <label class="aw-check-item ${_awItems.has(item.key) ? 'checked' : ''}">
-          <input type="checkbox" class="aw-hidden-check"
+        <label class="aw-check-item ${_awItems.has(item.key) ? 'checked' : ''}" data-key="${item.key}">
+          <input type="checkbox" class="aw-hidden-check" data-key="${item.key}"
             ${_awItems.has(item.key) ? 'checked' : ''}
             onchange="_awToggleItem('${item.key}', this.checked)">
           <span class="aw-check-icon">${item.icon}</span>
@@ -205,17 +205,15 @@ function _awToggleItem(key, checked) {
   if (checked) _awItems.add(key);
   else         _awItems.delete(key);
   // チェックマーク・スタイルだけ更新（再描画なし）
-  const labels = document.querySelectorAll('.aw-check-item');
-  labels.forEach(lbl => {
-    const input = lbl.querySelector('.aw-hidden-check');
-    if (!input) return;
-    const k = input.getAttribute('onchange').match(/'(\w+)'/)[1];
+  document.querySelectorAll('.aw-check-item').forEach(lbl => {
+    const k = lbl.dataset.key;
+    if (!k) return;
     lbl.classList.toggle('checked', _awItems.has(k));
     const mark = lbl.querySelector('.aw-check-mark');
     if (mark) mark.textContent = _awItems.has(k) ? '✓' : '';
   });
   // 実行ボタンの活性状態を更新
-  const runBtn = document.querySelector('.aw-btn-next');
+  const runBtn = document.getElementById('aw-btn-next');
   if (runBtn) runBtn.disabled = _awItems.size === 0;
 }
 
@@ -232,51 +230,83 @@ function _awToggleAll() {
 function _awRenderFooter({ back, onBack, next, nextLabel, nextClass = '', onNext }) {
   const footer = document.getElementById('aw-footer');
   footer.innerHTML = `
-    ${back ? `<button class="aw-btn aw-btn-back" onclick="(${onBack.toString()})()">← 戻る</button>` : '<div></div>'}
-    <button class="aw-btn aw-btn-next ${nextClass}" ${!next ? 'disabled' : ''}
-      onclick="(${onNext.toString()})()">
+    ${back ? `<button class="aw-btn aw-btn-back" id="aw-btn-back">← 戻る</button>` : '<div></div>'}
+    <button class="aw-btn aw-btn-next ${nextClass}" id="aw-btn-next" ${!next ? 'disabled' : ''}>
       ${nextLabel}
     </button>
   `;
+  if (back && onBack) {
+    const backEl = document.getElementById('aw-btn-back');
+    if (backEl) backEl.addEventListener('click', onBack);
+  }
+  const nextEl = document.getElementById('aw-btn-next');
+  if (nextEl && onNext) nextEl.addEventListener('click', onNext);
 }
 
 // ─── 分析実行 ───
-async function _awExecute() {
-  const crop = getCropById(_awCropId);
-  if (!crop || !_awArea) return;
+function _awExecute() {
+  if (!_awArea) return;
 
   closeAnalysisWizard();
 
-  // currentAreaData を組み立て（area.js の selectArea と同形式）
+  // ─ currentAreaData 組み立て ─
+  // area オブジェクトはフィールドの保存形式によって
+  // landProfile / meta / トップレベル のいずれかにデータが入っている
   const area = _awArea;
+  const lp   = area.landProfile  || {};
+  const meta = area.meta         || {};
+
+  // 各値を3段階フォールバックで安全に取得
+  function _pick(...vals) {
+    for (const v of vals) {
+      if (v !== undefined && v !== null && v !== '') return v;
+    }
+    return null;
+  }
+
   currentAreaData = {
-    lat:             area.landProfile?.lat       ?? area.meta?.lat      ?? null,
-    lng:             area.landProfile?.lng       ?? area.meta?.lng      ?? null,
-    elev:            area.landProfile?.elevation ?? area.meta?.elev     ?? null,
-    soilType:        area.landProfile?.soilType  ?? area.meta?.soilType ?? null,
-    ph:              area.landProfile?.ph        ?? null,
-    slope:           area.landProfile?.slope     ?? 0,
-    areaSqm:         area.meta?.areaSqm          || 0,
-    areaHa:          area.meta?.areaHa           || 0,
-    selectedCropId:  _awCropId,
-    cultivationMode: _awMode,
+    lat:             _pick(lp.lat,       meta.lat,      area.lat),
+    lng:             _pick(lp.lng,       meta.lng,      area.lng),
+    elev:            _pick(lp.elevation, meta.elev,     area.elev),
+    soilType:        _pick(lp.soilType,  meta.soilType, area.soilType) || 'unknown',
+    ph:              _pick(lp.ph,        meta.ph,       area.ph),
+    slope:           _pick(lp.slope,     meta.slope,    area.slope)    ?? 0,
+    areaSqm:         _pick(meta.areaSqm, area.areaSqm)                 || 0,
+    areaHa:          _pick(meta.areaHa,  area.areaHa)                  || 0,
+    selectedCropId:  _awCropId  || null,
+    cultivationMode: _awMode    || 'openField',
     analysisItems:   Array.from(_awItems),
+    landProfile:     Object.keys(lp).length ? lp : null,
   };
-  currentAreaData.landProfile = area.landProfile || null;
 
-  // 地図にポリゴンを表示
-  drawnItems.clearLayers();
-  const layer = L.geoJSON(area.geojson, {
-    style: { color: CONFIG.DRAW_COLOR, weight: 2, fillOpacity: 0.2 },
-  });
-  layer.addTo(drawnItems);
-  map.fitBounds(layer.getBounds());
+  // ─ 地図にポリゴンを表示 ─
+  if (area.geojson && typeof drawnItems !== 'undefined' && typeof map !== 'undefined') {
+    drawnItems.clearLayers();
+    const drawColor = (typeof CONFIG !== 'undefined' && CONFIG.DRAW_COLOR) ? CONFIG.DRAW_COLOR : '#4ade80';
+    const layer = L.geoJSON(area.geojson, {
+      style: { color: drawColor, weight: 2, fillOpacity: 0.2 },
+    });
+    layer.addTo(drawnItems);
+    map.fitBounds(layer.getBounds());
+  }
 
-  switchTab('analysis');
-  // 作物指定あり → 単一作物詳細分析、なし → 全件ランキング
-  if (_awCropId) {
-    runSingleCropAnalysis(area.name);
+  // ─ 分析タブへ切替 ─
+  if (typeof switchTab === 'function') {
+    switchTab('analysis');
   } else {
-    runAnalysis(area.name);
+    // switchTab が未定義の場合は data-tab ベースのタブ切替を直接実行
+    document.querySelectorAll('.tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.tab === 'analysis')
+    );
+    document.querySelectorAll('.tab-content').forEach(c =>
+      c.classList.toggle('active', c.id === 'tab-analysis')
+    );
+  }
+
+  // ─ 分析実行 ─
+  if (_awCropId) {
+    runSingleCropAnalysis(area.name || 'エリア');
+  } else {
+    runAnalysis(area.name || 'エリア');
   }
 }
