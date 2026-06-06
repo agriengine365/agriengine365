@@ -289,9 +289,12 @@ async function openAreaDetailPanel(area) {
   _adpEnsureView();
 
   // ── ヘッダー更新 ──
-  const ha = area.meta?.areaSqm ? (area.meta.areaSqm / 10000).toFixed(3) : '—';
+  const ha       = area.meta?.areaSqm ? (area.meta.areaSqm / 10000).toFixed(3) : '—';
+  const climate  = area.meta?.climateName || '—';
+  const soil     = area.meta?.soilType ? soilLabel(area.meta.soilType) : '土壌未設定';
+  const elev     = area.meta?.elev != null ? `${Math.round(area.meta.elev)}m` : '—';
   document.getElementById('adp-title').textContent = area.name || '無名エリア';
-  document.getElementById('adp-meta').textContent  = `${ha} ha　${area.meta?.climateName || ''}`;
+  document.getElementById('adp-meta').textContent  = `${ha} ha　${climate}　${soil}　標高${elev}`;
 
   // ── fs-page を閉じてフルビューを表示 ──
   const fsPage = document.getElementById('fs-page');
@@ -375,15 +378,17 @@ function _adpEnsureView() {
     <!-- ヘッダー -->
     <div class="adp-view-header">
       <button class="adp-back-btn" onclick="closeAreaDetailPanel()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-        戻る
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        <span>戻る</span>
       </button>
       <div class="adp-view-title-wrap">
         <div class="adp-title" id="adp-title"></div>
         <div class="adp-meta"  id="adp-meta"></div>
       </div>
-      <button class="btn btn-primary adp-analyze-btn"
-        onclick="if(_adpArea){openAnalysisWizard(_adpArea);}">分析 →</button>
+      <button class="adp-analyze-btn" onclick="if(_adpArea){openAnalysisWizard(_adpArea);}">
+        <span>分析</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
     </div>
 
     <!-- サブタブバー（3タブ） -->

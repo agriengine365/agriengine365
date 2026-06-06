@@ -2361,24 +2361,26 @@ html.draw-dialog-active #draw-scope {
 /* ── ヘッダー ── */
 .adp-view-header {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 12px 10px;
+  align-items: stretch;
+  gap: 8px;
+  padding: 8px 10px;
   flex-shrink: 0;
   border-bottom: 1px solid var(--border);
   background: var(--bg2);
 }
 .adp-back-btn {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 2px;
   background: none;
   border: none;
   color: var(--green);
-  font-size: 13px;
+  font-size: 10px;
   font-weight: 600;
   cursor: pointer;
-  padding: 6px 8px;
+  padding: 4px 6px;
   border-radius: 8px;
   flex-shrink: 0;
   white-space: nowrap;
@@ -2389,9 +2391,13 @@ html.draw-dialog-active #draw-scope {
 .adp-view-title-wrap {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
 }
 .adp-title {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
@@ -2400,15 +2406,30 @@ html.draw-dialog-active #draw-scope {
 }
 .adp-meta {
   font-family: var(--mono);
-  font-size: 10px;
+  font-size: 9px;
   color: var(--text3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .adp-analyze-btn {
-  font-size: 12px;
-  padding: 7px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 4px 8px;
   flex-shrink: 0;
   white-space: nowrap;
+  background: var(--green);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
 }
+.adp-analyze-btn:hover { opacity: 0.85; }
 
 /* ── サブタブバー ── */
 .adp-subtabs {
