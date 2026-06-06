@@ -381,8 +381,8 @@ function _adpEnsureDOM() {
         <div class="adp-meta"  id="adp-meta"></div>
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
-        <button class="btn btn-ghost" style="font-size:11px;padding:5px 10px;"
-          onclick="if(_adpArea){openAnalysisWizard(_adpArea);}">分析 →</button>
+        <button class="btn btn-ghost" id="adp-analysis-btn" style="font-size:11px;padding:5px 10px;"
+          onclick="adpRunAnalysis()">分析 →</button>
         <button class="adp-close-btn" onclick="closeAreaDetailPanel()">✕</button>
       </div>
     </div>
@@ -1091,22 +1091,34 @@ function closeAreaDetailPanel() {
   if (toggle) toggle.remove();
   // 作物選択状態のみリセット（climateキャッシュは維持）
   _adpSelectedCropId = null;
+  const btn = document.getElementById('adp-analysis-btn');
+  if (btn) btn.textContent = '分析 →';
 }
 
-// ─── 作物タップ → グラフ更新 → 確認 → 分析実行 ───
+// ─── 作物タップ → グラフ更新のみ（分析は「分析 →」ボタンから）───
 function adpCropTap(cropId, cropName) {
   if (!_adpArea) return;
 
-  // まずグラフに作物適正温度を重畳表示
   _adpSelectedCropId = cropId;
   _adpRenderTempChart(cropId);
   _adpRenderRankingList(); // 選択状態ハイライト更新
 
-  const areaName = _adpArea.name || 'このエリア';
-  if (!confirm(`「${cropName}」を「${areaName}」で分析しますか？`)) return;
+  // 分析ボタンのラベルを選択作物名に更新
+  const btn = document.getElementById('adp-analysis-btn');
+  if (btn) btn.textContent = `「${cropName}」を分析 →`;
+}
 
-  // currentAreaData に選択作物をセット
-  currentAreaData.selectedCropId  = cropId;
+// ─── 分析ボタン → 選択中作物で分析実行 ───
+function adpRunAnalysis() {
+  if (!_adpArea) return;
+  const areaName = _adpArea.name || 'このエリア';
+
+  if (!_adpSelectedCropId) {
+    showToast('作物を選択してください', 'amber');
+    return;
+  }
+
+  currentAreaData.selectedCropId  = _adpSelectedCropId;
   currentAreaData.cultivationMode = currentAreaData.cultivationMode || 'openField';
   currentAreaData.analysisItems   = [
     'landProfile', 'matchRange', 'cropRanking', 'profitability', 'fertilizer', 'risk',
