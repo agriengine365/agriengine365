@@ -276,7 +276,7 @@ let _adpMonth    = 0;
 let _adpSelDate  = null;   // 選択中の日付文字列 'YYYY-MM-DD'
 let _adpEditId   = null;   // 編集中レコードID
 
-function openAreaDetailPanel(area) {
+async function openAreaDetailPanel(area) {
   _adpArea    = area;
   const now   = new Date();
   _adpYear    = now.getFullYear();
@@ -295,22 +295,52 @@ function openAreaDetailPanel(area) {
   title.textContent = area.name || '無名エリア';
   meta.textContent  = `${ha} ha　${area.meta?.climateName || ''}`;
 
+  overlay.classList.add('open');
+  panel.classList.add('open');
+
   AreaCharts.render(area);
   _adpRenderCalendar();
   _adpRenderDayRecords();
+
+  // ランキング: まずプレースホルダー表示
+  const rankEl = document.getElementById('crop-ranking');
+  if (rankEl) rankEl.innerHTML = '<div class="empty-mini"><span class="spinner"></span> 気候データ取得中...</div>';
+
+  // AMeDAS月別データを取得してcurrentAreaDataにマージ
+  const lat = area.landProfile?.lat ?? area.meta?.lat ?? null;
+  const lng = area.landProfile?.lng ?? area.meta?.lng ?? null;
+  if (lat !== null && lng !== null && typeof AmedasLoader !== 'undefined') {
+    try {
+      const climateData = await AmedasLoader.getClimateAt(lat, lng);
+      // _tMaxArr / _tMinArr を月別JSONから再構築
+      const res = await fetch(`data/monthly/${climateData.stationNo}.json`);
+      if (res.ok) {
+        const monthly = await res.json();
+        const MK = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+        const tMaxArr = MK.map(m => {
+          const e = monthly['temp_mean']?.data?.[m];
+          return (e && e.q !== 0) ? Math.round(e.v / 10 * 10) / 10 : null;
+        });
+        const tMinArr = MK.map(m => {
+          const e = monthly['temp_min_mean']?.data?.[m];
+          return (e && e.q !== 0) ? Math.round(e.v / 10 * 10) / 10 : null;
+        });
+        currentAreaData.climate = {
+          ...(currentAreaData.climate || {}),
+          ...climateData,
+          _tMaxArr: tMaxArr.some(v => v !== null) ? tMaxArr : null,
+          _tMinArr: tMinArr.some(v => v !== null) ? tMinArr : null,
+        };
+      }
+    } catch(e) {
+      console.warn('[ADP] AMeDAS取得失敗（ランキングは年均気温で評価）:', e);
+    }
+  }
+
   _adpRenderRanking(area);
-
-  overlay.classList.add('open');
-  panel.classList.add('open');
 }
 
-function closeAreaDetailPanel() {
-  const panel   = document.getElementById('adp-panel');
-  const overlay = document.getElementById('adp-overlay');
-  if (!panel) return;
-  panel.classList.remove('open');
-  overlay.classList.remove('open');
-}
+
 
 // ─── DOM を初回だけ生成 ───
 function _adpEnsureDOM() {
@@ -662,6 +692,9 @@ function _adpRenderRanking(area) {
     return;
   }
 
+  // 栽培方式トグルを描画（初回のみ）
+  _adpEnsureCultivationToggle();
+
   const result = buildAnalysisResult(currentAreaData);
 
   // analysis.js のランキング状態を更新
@@ -676,6 +709,55 @@ function _adpRenderRanking(area) {
     btn.classList.toggle('active', btn.dataset.major === 'all');
   });
   _crRenderMinorTabs();
+  _adpRenderRankingList();
+}
+
+// ─── 栽培方式トグル（ランキング上部、初回だけ生成）───
+function _adpEnsureCultivationToggle() {
+  if (document.getElementById('adp-cultivation-toggle')) return;
+
+  const accordion = document.getElementById('adp-ranking-accordion');
+  if (!accordion) return;
+
+  const body = accordion.querySelector('.accordion-body');
+  if (!body) return;
+
+  const modes = [
+    { id: 'openField',        label: '露地' },
+    { id: 'greenhouse',       label: 'ハウス' },
+    { id: 'heatedGreenhouse', label: '加温ハウス' },
+  ];
+
+  const current = currentAreaData?.cultivationMode || 'openField';
+
+  const wrap = document.createElement('div');
+  wrap.id        = 'adp-cultivation-toggle';
+  wrap.className = 'adp-cult-toggle';
+  wrap.innerHTML = modes.map(m => `
+    <button class="adp-cult-btn${m.id === current ? ' active' : ''}"
+      data-mode="${m.id}"
+      onclick="_adpSwitchCultivation('${m.id}')">
+      ${m.label}
+    </button>
+  `).join('');
+
+  // accordion-body の先頭に挿入（タブより前）
+  body.insertBefore(wrap, body.firstChild);
+}
+
+// ─── 栽培方式切替 ───
+function _adpSwitchCultivation(mode) {
+  if (!currentAreaData) return;
+  currentAreaData.cultivationMode = mode;
+
+  // トグルUI更新
+  document.querySelectorAll('.adp-cult-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+
+  // スコア再計算 → リスト再描画
+  const result = buildAnalysisResult(currentAreaData);
+  _crScores = result.cropScores;
   _adpRenderRankingList();
 }
 
@@ -697,6 +779,7 @@ function _adpRenderRankingList() {
     const scoreCls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
     const barClass = s.viable ? scoreCls : 'score-low';
     const barWidth = s.viable ? s.score : 0;
+    const monthBar = s.monthlyMatch ? _adpBuildMonthBar(s.monthlyMatch) : '';
     return `
       <div class="cr-item ${s.viable ? '' : 'cr-item-ng'}"
         onclick="adpCropTap('${s.crop.id}', '${escHtml(s.crop.name)}')">
@@ -712,9 +795,26 @@ function _adpRenderRankingList() {
           <div class="cr-bar-fill ${barClass}" style="width:${barWidth}%"></div>
         </div>
         ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
+        ${monthBar}
       </div>
     `;
   }).join('');
+}
+
+// ─── 月別カラーバー HTML生成 ───
+// monthlyMatch: 12要素配列 null=非生育月, true=適合, 'border'=境界, false=不適合
+function _adpBuildMonthBar(monthlyMatch) {
+  if (!monthlyMatch || monthlyMatch.every(v => v === null)) return '';
+  const labels = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+  const cells = monthlyMatch.map((v, i) => {
+    let cls, title;
+    if (v === true)     { cls = 'mmb-ok';     title = `${i+1}月: 適合`; }
+    else if (v === 'border') { cls = 'mmb-border'; title = `${i+1}月: 境界`; }
+    else if (v === false)    { cls = 'mmb-ng';     title = `${i+1}月: 不適合`; }
+    else                     { cls = 'mmb-none';   title = `${i+1}月: 非生育月`; }
+    return `<div class="mmb-cell ${cls}" title="${title}"><span class="mmb-label">${labels[i]}</span></div>`;
+  }).join('');
+  return `<div class="month-match-bar">${cells}</div>`;
 }
 
 // ─── _crRenderList をADPパネル開中に差し替え ───
@@ -728,6 +828,18 @@ window._crRenderList = function() {
     _orig_crRenderList();
   }
 };
+
+// ─── パネルを閉じたとき栽培方式トグルをリセット ───
+function closeAreaDetailPanel() {
+  const panel   = document.getElementById('adp-panel');
+  const overlay = document.getElementById('adp-overlay');
+  if (!panel) return;
+  panel.classList.remove('open');
+  overlay.classList.remove('open');
+  // トグルを削除（次回パネル開時に再生成）
+  const toggle = document.getElementById('adp-cultivation-toggle');
+  if (toggle) toggle.remove();
+}
 
 // ─── 作物タップ → 確認 → 分析実行 ───
 function adpCropTap(cropId, cropName) {

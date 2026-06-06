@@ -132,10 +132,99 @@ function scoreCrop(crop, areaData) {
 
   // ════════════════════════════════════════
   //  3. 気温スコア (25点)
-  //     栽培方式補正済みの corrTemp を使用
+  //     月別データがあれば生育期間と突合せ、なければ年均気温フォールバック
   // ════════════════════════════════════════
   maxScore += 25;
-  if (corrTemp !== null) {
+
+  // 月別気温配列（areaData.climate から取得）
+  const _tMaxArr = climate?._tMaxArr ?? null;  // 月別日最高気温 [12]
+  const _tMinArr = climate?._tMinArr ?? null;  // 月別日最低気温 [12]
+  const hasMonthlyCols = _tMaxArr && _tMinArr &&
+    _tMaxArr.length === 12 && _tMinArr.length === 12;
+
+  // ハウス補正量
+  const houseOffset = (cultivationMode === 'greenhouse' || cultivationMode === 'heatedGreenhouse') ? 3 : 0;
+
+  // 生育月を特定（0-indexed: 0=1月 … 11=12月）
+  let growthMonths = null; // null = 特定不能
+  const cal = crop.calendar;
+  if (cal) {
+    // calendar.manage + harvest が存在する月を生育月とみなす
+    const monthKeys = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const flagged = new Set();
+    ['manage','harvest'].forEach(phase => {
+      if (!Array.isArray(cal[phase])) return;
+      cal[phase].forEach(mk => {
+        const idx = monthKeys.indexOf(mk);
+        if (idx >= 0) flagged.add(idx);
+      });
+    });
+    if (flagged.size > 0) growthMonths = [...flagged].sort((a,b) => a-b);
+  }
+
+  if (!growthMonths && hasMonthlyCols) {
+    // growthPeriodMin/Max から生育可能月を推定（月均気温が適正範囲に入る月）
+    const c = crop.conditions;
+    if (c.tempMeanMin != null && c.tempMeanMax != null) {
+      const candidates = [];
+      for (let i = 0; i < 12; i++) {
+        const tMax = _tMaxArr[i], tMin = _tMinArr[i];
+        if (tMax === null || tMin === null) continue;
+        const tMid = (tMax + tMin) / 2 + houseOffset;
+        if (tMid >= c.tempMeanMin && tMid <= c.tempMeanMax) {
+          candidates.push({ idx: i, tMid });
+        }
+      }
+      // growthPeriodMin/Maxで月数を絞る（気温の高い月優先）
+      const gpMin = c.growthPeriodMin ?? 0;
+      const gpMax = c.growthPeriodMax ?? 12;
+      const targetMonths = Math.round((gpMin + gpMax) / 2 / 30); // 日数→月数
+      if (candidates.length > 0) {
+        const sorted = [...candidates].sort((a,b) => b.tMid - a.tMid);
+        const picked = sorted.slice(0, Math.max(targetMonths, candidates.length));
+        growthMonths = picked.map(p => p.idx).sort((a,b) => a-b);
+      }
+    }
+  }
+
+  // monthlyMatch: 12要素 null=非生育月, true=適合, 'border'=境界, false=不適合
+  let monthlyMatch = null;
+
+  if (hasMonthlyCols && growthMonths && growthMonths.length > 0) {
+    const c = crop.conditions;
+    monthlyMatch = new Array(12).fill(null);
+    let matchCount = 0, borderCount = 0;
+
+    growthMonths.forEach(i => {
+      const tMax = _tMaxArr[i], tMin = _tMinArr[i];
+      if (tMax === null || tMin === null) { monthlyMatch[i] = null; return; }
+      const tMid = (tMax + tMin) / 2 + houseOffset;
+      const tMin2 = c.tempMeanMin ?? -Infinity;
+      const tMax2 = c.tempMeanMax ??  Infinity;
+      if (tMid >= tMin2 && tMid <= tMax2) {
+        monthlyMatch[i] = true;
+        matchCount++;
+      } else if (tMid >= tMin2 - 2 && tMid <= tMax2 + 2) {
+        monthlyMatch[i] = 'border';
+        borderCount++;
+      } else {
+        monthlyMatch[i] = false;
+      }
+    });
+
+    // スコア計算: 適合=1点, 境界=0.5点
+    const total = growthMonths.length;
+    const pts   = (matchCount + borderCount * 0.5) / total;
+    score += Math.round(25 * pts);
+
+    const matchLabel = `${matchCount}/${total}ヶ月適合`;
+    details.push({
+      ok:   matchCount >= total * 0.6,
+      text: `生育期気温 — ${matchLabel}（${modeLabel}）`,
+      monthlyMatch,
+    });
+  } else if (corrTemp !== null) {
+    // フォールバック: 年均気温
     const c = crop.conditions;
     if (corrTemp >= c.tempMeanMin && corrTemp <= c.tempMeanMax) {
       score += 25;
@@ -222,7 +311,11 @@ function scoreCrop(crop, areaData) {
   // ════════════════════════════════════════
   const pct = maxScore > 0 ? Math.round(score / maxScore * 100) : 0;
 
-  return { crop, score: pct, details, viable, alert, cultivationMode };
+  // monthlyMatch を details から抽出してトップレベルに昇格
+  const _mmDetail = details.find(d => d.monthlyMatch);
+  const _monthlyMatch = _mmDetail ? _mmDetail.monthlyMatch : monthlyMatch;
+
+  return { crop, score: pct, details, viable, alert, cultivationMode, monthlyMatch: _monthlyMatch ?? null };
 }
 
 function calcConfidence(areaData) {

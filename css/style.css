@@ -3469,4 +3469,97 @@ html.draw-dialog-active {
 /* ── インナーパディング ── */
 .adpc-acc-inner {
   padding: 0 16px 14px;
+}/* ═══════════════════════════════════════════
+   栽培方式トグル（ADPランキング上部）
+═══════════════════════════════════════════ */
+.adp-cult-toggle {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px 6px;
+  background: var(--bg2, #162019);
+  border-bottom: 1px solid var(--border, #2a3d2c);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.adp-cult-btn {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1.5px solid var(--border, #2a3d2c);
+  background: transparent;
+  color: var(--text3, #5a7a5c);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  letter-spacing: 0.02em;
+}
+
+.adp-cult-btn:hover {
+  border-color: var(--green, #4ade80);
+  color: var(--text, #e2ede3);
+}
+
+.adp-cult-btn.active {
+  background: var(--green, #4ade80);
+  border-color: var(--green, #4ade80);
+  color: #0a1a0c;
+}
+
+/* ═══════════════════════════════════════════
+   月別カラーバー（ランキング作物カード内）
+═══════════════════════════════════════════ */
+.month-match-bar {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 2px;
+  margin-top: 6px;
+  padding: 0 2px 4px;
+}
+
+.mmb-cell {
+  position: relative;
+  border-radius: 3px;
+  height: 20px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 2px;
+  cursor: default;
+  transition: opacity 0.15s;
+}
+
+.mmb-cell:hover { opacity: 0.85; }
+
+.mmb-label {
+  font-size: 9px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.75);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* 適合: 緑 */
+.mmb-ok {
+  background: #22c55e;
+  box-shadow: 0 0 5px #22c55e66;
+}
+/* 境界: 黄 */
+.mmb-border {
+  background: #fbbf24;
+  box-shadow: 0 0 5px #fbbf2466;
+}
+/* 不適合: 赤 */
+.mmb-ng {
+  background: #f87171;
+  box-shadow: 0 0 5px #f8717166;
+}
+/* 非生育月: グレー */
+.mmb-none {
+  background: #2a3d2c;
+}
+.mmb-none .mmb-label {
+  color: rgba(255,255,255,0.3);
 }
