@@ -341,25 +341,40 @@ function _adpEnsureDOM() {
       </div>
     </div>
     <div class="adp-body" id="adp-body">
-      <div id="adp-charts-wrap"></div>
 
-      <!-- ─── 作物ランキング ─── -->
-      <div class="adp-ranking-section">
-        <div class="adp-section-title">🏆 作物ランキング</div>
-        <div class="cr-tabs-major" id="cr-tabs-major">
-          <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
-          <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
-          <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
-          <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
-          <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
-          <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
+      <!-- ─── カレンダー（アコーディオン）─── -->
+      <div class="card accordion" id="adp-calendar-accordion">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <div class="card-title" style="margin:0">📅 作業カレンダー</div>
+          <svg class="acc-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
-        <div id="crop-ranking"><div class="empty-mini">計算中...</div></div>
+        <div class="accordion-body">
+          <div id="adp-calendar-wrap"></div>
+          <div id="adp-day-records-wrap"></div>
+        </div>
       </div>
 
-      <div id="adp-calendar-wrap"></div>
-      <div id="adp-day-records-wrap"></div>
+      <!-- ─── 適正作物ランキング（アコーディオン）─── -->
+      <div class="card accordion" id="adp-ranking-accordion">
+        <div class="accordion-header" onclick="toggleAccordion(this)">
+          <div class="card-title" style="margin:0">🏆 適正作物ランキング</div>
+          <svg class="acc-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="accordion-body">
+          <div class="cr-tabs-major" id="cr-tabs-major">
+            <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
+            <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
+            <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
+            <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
+            <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
+            <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
+          </div>
+          <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
+          <div id="crop-ranking"><div class="empty-mini">計算中...</div></div>
+        </div>
+      </div>
+
+      <div id="adp-charts-wrap"></div>
     </div>
   `;
   document.body.appendChild(panel);
