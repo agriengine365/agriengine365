@@ -11,15 +11,10 @@ if (typeof scoreClass === 'undefined') {
     return 'score-low';
   };
 }
-
 // ─── escHtml ガード（ui.js未ロード時のフォールバック） ───
 if (typeof escHtml === 'undefined') {
   window.escHtml = function(str) {
-    return String(str ?? '')
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   };
 }
 
@@ -568,30 +563,13 @@ function _renderFertResultFromData(crop, fert) {
 
 // ─── 分析実行メイン ───
 function runAnalysis(areaName) {
-  console.group('[runAnalysis] called');
-  console.log('currentAreaData:', JSON.stringify(currentAreaData, null, 2));
-  if (!currentAreaData) { console.warn('currentAreaData is null/undefined'); console.groupEnd(); return; }
+  if (!currentAreaData) return;
 
-  const emptyEl  = document.getElementById('analysis-empty');
-  const resultEl = document.getElementById('analysis-result');
-  console.log('analysis-empty el:', emptyEl);
-  console.log('analysis-result el:', resultEl);
-  if (!emptyEl || !resultEl) { console.error('DOM要素が見つかりません'); console.groupEnd(); return; }
-
-  emptyEl.style.display  = 'none';
-  resultEl.style.display = 'flex';
+  document.getElementById('analysis-empty').style.display  = 'none';
+  document.getElementById('analysis-result').style.display = 'flex';
 
   const ad = currentAreaData;
-  let result;
-  try {
-    result = buildAnalysisResult(ad);
-    console.log('buildAnalysisResult OK, topCrop:', result.topCrop?.crop?.name);
-  } catch(e) {
-    console.error('buildAnalysisResult error:', e);
-    console.groupEnd();
-    return;
-  }
-  console.groupEnd();
+  const result = buildAnalysisResult(ad);
   const profile = result.landProfile;
   ad.landProfile = profile;
   ad.analysisSnapshot = {

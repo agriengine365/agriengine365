@@ -204,7 +204,6 @@ function _awRenderItems() {
 function _awToggleItem(key, checked) {
   if (checked) _awItems.add(key);
   else         _awItems.delete(key);
-  // チェックマーク・スタイルだけ更新（再描画なし）
   document.querySelectorAll('.aw-check-item').forEach(lbl => {
     const k = lbl.dataset.key;
     if (!k) return;
@@ -212,7 +211,6 @@ function _awToggleItem(key, checked) {
     const mark = lbl.querySelector('.aw-check-mark');
     if (mark) mark.textContent = _awItems.has(k) ? '✓' : '';
   });
-  // 実行ボタンの活性状態を更新
   const runBtn = document.getElementById('aw-btn-next');
   if (runBtn) runBtn.disabled = _awItems.size === 0;
 }
@@ -260,10 +258,15 @@ function _awExecute() {
     return null;
   }
 
+  const lat = _pick(lp.lat, meta.lat, area.lat);
+
   currentAreaData = {
-    lat:             _pick(lp.lat,       meta.lat,      area.lat),
+    lat,
     lng:             _pick(lp.lng,       meta.lng,      area.lng),
     elev:            _pick(lp.elevation, meta.elev,     area.elev),
+    // ★ climate を必ず補完（scoreCrop が参照するため必須）
+    climate:         (typeof getClimate === 'function' && lat != null)
+                       ? getClimate(lat) : null,
     soilType:        _pick(lp.soilType,  meta.soilType, area.soilType) || 'unknown',
     ph:              _pick(lp.ph,        meta.ph,       area.ph),
     slope:           _pick(lp.slope,     meta.slope,    area.slope)    ?? 0,
@@ -277,13 +280,21 @@ function _awExecute() {
 
   // ─ 地図にポリゴンを表示 ─
   if (area.geojson && typeof drawnItems !== 'undefined' && typeof map !== 'undefined') {
-    drawnItems.clearLayers();
-    const drawColor = (typeof CONFIG !== 'undefined' && CONFIG.DRAW_COLOR) ? CONFIG.DRAW_COLOR : '#4ade80';
-    const layer = L.geoJSON(area.geojson, {
-      style: { color: drawColor, weight: 2, fillOpacity: 0.2 },
-    });
-    layer.addTo(drawnItems);
-    map.fitBounds(layer.getBounds());
+    try {
+      drawnItems.clearLayers();
+      // ★ geojsonはFirestoreではJSON文字列で保存されているためパースが必要
+      const geojsonData = typeof area.geojson === 'string'
+        ? JSON.parse(area.geojson) : area.geojson;
+      const drawColor = (typeof CONFIG !== 'undefined' && CONFIG.DRAW_COLOR)
+        ? CONFIG.DRAW_COLOR : '#4ade80';
+      const layer = L.geoJSON(geojsonData, {
+        style: { color: drawColor, weight: 2, fillOpacity: 0.2 },
+      });
+      layer.addTo(drawnItems);
+      map.fitBounds(layer.getBounds());
+    } catch(e) {
+      console.warn('[_awExecute] geojson parse error:', e);
+    }
   }
 
   // ─ 分析タブへ切替 ─
@@ -304,12 +315,4 @@ function _awExecute() {
   } else {
     runAnalysis(area.name || 'エリア');
   }
-}
-// ─── DEBUG: area構造をコンソールに出力（問題解決後に削除） ───
-const _origOpenAnalysisWizard = openAnalysisWizard;
-function openAnalysisWizard(area) {
-  console.group('[AnalysisWizard] openAnalysisWizard called');
-  console.log('area:', JSON.stringify(area, null, 2));
-  console.groupEnd();
-  _origOpenAnalysisWizard(area);
 }
