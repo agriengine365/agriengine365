@@ -155,7 +155,9 @@ async function updateAreaStats(layer) {
   const areaSqm  = calcPolygonArea(latlngs);
   const centroid = calcCentroid(latlngs);
   const { lat, lng } = centroid;
-  const climate = getClimate(lat);
+
+  // まず緯度テーブルで初期値をセット（AMeDAS失敗時のフォールバック）
+  let climate = getClimate(lat);
 
   let elev = null;
   try {
@@ -163,6 +165,35 @@ async function updateAreaStats(layer) {
     const json = await res.json();
     elev = json.elevation ?? null;
   } catch(e) { /* offline ok */ }
+
+  // AMeDAS実データ取得（失敗してもフォールバックのclimateを使い続ける）
+  let amData = null;
+  try {
+    amData = await AmedasLoader.getClimateAt(lat, lng);
+    if (amData) {
+      // engine.js の getClimate() 互換形式に変換しつつ実値で上書き
+      climate = {
+        name:          amData.name,
+        tempMean:      amData.tempMean      ?? climate.tempMean,
+        rain:          amData.rain          ?? climate.rain,
+        // AMeDAS拡張フィールド（エリアパネル表示・保存用）
+        stationNo:     amData.stationNo,
+        stationName:   amData.stationName,
+        distKm:        amData.distKm,
+        tempMaxMean:   amData.tempMaxMean,
+        tempMinMean:   amData.tempMinMean,
+        tempMinJan:    amData.tempMinJan,
+        sunshineHours: amData.sunshineHours,
+        daysBelow0:    amData.daysBelow0,
+        rainDays50:    amData.rainDays50,
+        snowDays:      amData.snowDays,
+        rainMonthly:   amData.rainMonthly,
+        source:        'amedas',
+      };
+    }
+  } catch(e) {
+    console.warn('AMeDAS取得失敗、緯度テーブルで代替:', e);
+  }
 
   const perimeter   = calcPerimeter(latlngs);
   const vertexCount = latlngs.length;
