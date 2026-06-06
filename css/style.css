@@ -3619,10 +3619,13 @@ html.draw-dialog-active {
 .adp-pane-combined {
   padding: 0 !important;
   gap: 0 !important;
-  overflow: hidden !important;
-  display: flex !important;
+  /* display は style属性（flex/none）で制御するため !important 禁止 */
   flex-direction: column;
   /* position:absolute; inset:0 は .adp-pane から継承 */
+}
+/* display:flex のとき overflow:hidden を保証（!important なし） */
+.adp-pane-combined[style*="display: flex"] {
+  overflow: hidden;
 }
 
 /* 上部固定グラフブロック */

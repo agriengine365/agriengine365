@@ -1106,7 +1106,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const _orig_crSwitchMajor = (typeof crSwitchMajor === 'function') ? crSwitchMajor : null;
   window.crSwitchMajor = function(major) {
     if (document.getElementById('adp-view')?.classList.contains('open')) {
-      // タブUI更新
       document.querySelectorAll('.cr-tab-major').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.major === major);
       });
