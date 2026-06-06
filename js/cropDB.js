@@ -96,7 +96,7 @@ const CROP_DB = [
   {
     id: 'soybean',
     name: '大豆',
-    category: 'grain',
+    category: 'legume',
     variety: '一般品種',
     conditions: {
       latMin: 33,
@@ -182,7 +182,7 @@ const CROP_DB = [
   {
     id: 'black_soybean',
     name: '黒大豆',
-    category: 'grain',
+    category: 'legume',
     variety: '丹波黒等',
     conditions: {
       latMin: 33,
@@ -262,7 +262,7 @@ const CROP_DB = [
   {
     id: 'adzuki',
     name: '小豆',
-    category: 'grain',
+    category: 'legume',
     variety: '一般品種',
     conditions: {
       latMin: 33,
@@ -1142,7 +1142,7 @@ const CROP_DB = [
   {
     id: 'rapeseed',
     name: '菜種（ナタネ）',
-    category: 'grain',
+    category: 'leafy',
     variety: '一般品種',
     conditions: {
       latMin: 33,

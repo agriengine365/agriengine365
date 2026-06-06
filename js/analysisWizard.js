@@ -4,7 +4,8 @@
 // ═══════════════════════════════════════════
 
 const CATEGORY_LABELS = {
-  grain:     { label: '穀物・豆類',   icon: '🌾' },
+  grain:     { label: '穀物',         icon: '🌾' },
+  legume:    { label: '豆類',         icon: '🫘' },
   leafy:     { label: '葉菜類',       icon: '🥬' },
   fruit_veg: { label: '果菜類',       icon: '🍅' },
   root:      { label: '根菜類',       icon: '🥕' },

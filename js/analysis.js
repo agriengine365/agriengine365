@@ -33,31 +33,33 @@ function fmtYen(value) {
 // ─── カテゴリー定義 ───
 // 大カテゴリー → 小カテゴリーのマッピング
 const CR_MAJOR = {
-  all:       null, // 全件（小タブなし）
-  vegetable: ['leafy', 'root', 'fruit_veg', 'vegetable'],
-  fruit:     null, // fruitのみ（小タブなし）
-  wild:      ['wildveg', 'herb'],
-  grain:     ['grain', 'forest'],
+  all:       null,                                        // 全件（小タブなし）
+  grain:     ['grain', 'legume'],                         // 穀物・豆類（小タブあり）
+  vegetable: ['leafy', 'root', 'fruit_veg', 'vegetable'], // 野菜（小タブあり）
+  fruit:     null,                                        // 果物（小タブなし）
+  wild:      ['wildveg', 'herb'],                         // 山菜・草（小タブあり）
+  forest:    null,                                        // 林産（小タブなし）
 };
 
 const CR_MINOR_LABELS = {
+  grain:     '穀物',
+  legume:    '豆類',
   leafy:     '葉菜',
   root:      '根菜',
   fruit_veg: '果菜',
   vegetable: '野菜',
   wildveg:   '山菜・野草',
   herb:      'ハーブ',
-  grain:     '穀物',
-  forest:    '林産',
 };
 
 // 大カテゴリーに対応するCROP_DBのcategoryキー一覧
 const CR_MAJOR_TO_CATEGORIES = {
   all:       null,
+  grain:     ['grain', 'legume'],
   vegetable: ['leafy', 'root', 'fruit_veg', 'vegetable'],
   fruit:     ['fruit'],
   wild:      ['wildveg', 'herb'],
-  grain:     ['grain', 'forest'],
+  forest:    ['forest'],
 };
 
 // ─── ランキング状態 ───
