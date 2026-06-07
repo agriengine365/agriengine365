@@ -336,62 +336,117 @@ function vmDelete(id) {
 
 // ─────────────────────────────────────────
 //  Web Speech API
+//  continuous=true + 自前2.5秒無音タイマーで余裕を確保
 // ─────────────────────────────────────────
 
-let _vmRecognition = null;
-let _vmListening   = false;
+let _vmRecognition  = null;
+let _vmListening    = false;
+let _vmSilenceTimer = null;   // 無音タイムアウトタイマー
+let _vmFinalText    = '';     // 確定テキスト蓄積
+let _vmInterimText  = '';     // 途中テキスト
+let _vmCallback     = null;   // 認識完了コールバック（通常 or ダイアログ内）
 
-function vmStartListening(areaId) {
+const VM_SILENCE_MS = 2500;   // 無音検出閾値（ms）
+
+// ─── 無音タイマーリセット ───
+function _vmResetSilenceTimer() {
+  clearTimeout(_vmSilenceTimer);
+  _vmSilenceTimer = setTimeout(() => {
+    // 無音2.5秒 → 認識確定
+    if (_vmRecognition) _vmRecognition.stop();
+  }, VM_SILENCE_MS);
+}
+
+// ─── メイン録音開始 ───
+// areaId: 通常呼び出し時のエリアID
+// onDone: (finalText) => void  省略時は vmShowConfirmDialog を呼ぶ
+function vmStartListening(areaId, onDone) {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
     showToast('このブラウザは音声認識に対応していません', 'amber');
     return;
   }
   if (_vmListening) { vmStopListening(); return; }
 
+  _vmFinalText   = '';
+  _vmInterimText = '';
+  _vmCallback    = onDone || null;
+
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   _vmRecognition = new SR();
-  _vmRecognition.lang           = 'ja-JP';
-  _vmRecognition.interimResults = true;
+  _vmRecognition.lang            = 'ja-JP';
+  _vmRecognition.interimResults  = true;
   _vmRecognition.maxAlternatives = 1;
-  _vmRecognition.continuous     = false;
+  _vmRecognition.continuous      = true;   // ← 連続認識でマイクを切らさない
 
-  // 録音中UI
-  _vmSetRecordingUI(true);
   _vmListening = true;
+  _vmSetRecordingUI(true, 'ready');        // 「準備中…」表示
+
+  // 準備アニメ後に「話してください」表示
+  setTimeout(() => _vmSetRecordingUI(true, 'listening'), 800);
+
+  _vmRecognition.onstart = () => {
+    _vmResetSilenceTimer();                // 開始時点からタイマー開始
+  };
 
   _vmRecognition.onresult = (e) => {
-    let interim = '', final = '';
+    _vmResetSilenceTimer();                // 発話があるたびリセット
+
+    let interim = '';
     for (let i = e.resultIndex; i < e.results.length; i++) {
       const t = e.results[i][0].transcript;
-      e.results[i].isFinal ? (final += t) : (interim += t);
+      if (e.results[i].isFinal) {
+        _vmFinalText += t;
+      } else {
+        interim += t;
+      }
     }
-    // 途中結果をオーバーレイに表示
-    const el = document.getElementById('vm-interim-text');
-    if (el) el.textContent = interim || final;
+    _vmInterimText = interim;
 
-    if (final) {
-      _vmListening = false;
-      _vmSetRecordingUI(false);
-      vmShowConfirmDialog(final, areaId);
+    // リアルタイム表示（途中 or 確定済み+途中）
+    const display = (_vmFinalText + interim).trim();
+    const el = document.getElementById('vm-interim-text');
+    if (el) el.textContent = display || '話してください…';
+
+    // ダイアログが開いている場合はリアルタイムでフィールドにも反映
+    if (document.getElementById('vm-confirm-overlay') && _vmFinalText) {
+      _vmApplyParsedToDialog(_vmFinalText + interim);
     }
   };
 
   _vmRecognition.onerror = (e) => {
+    if (e.error === 'no-speech') {
+      // no-speech はタイマー側で制御するので無視
+      return;
+    }
+    clearTimeout(_vmSilenceTimer);
     _vmListening = false;
     _vmSetRecordingUI(false);
     const msgs = {
-      'no-speech':        '音声を検出できませんでした',
-      'not-allowed':      'マイクの使用を許可してください',
-      'network':          'ネットワークエラーが発生しました',
-      'audio-capture':    'マイクが使用できません',
+      'not-allowed':   'マイクの使用を許可してください',
+      'network':       'ネットワークエラーが発生しました',
+      'audio-capture': 'マイクが使用できません',
     };
     showToast(msgs[e.error] || `音声認識エラー: ${e.error}`, 'amber');
   };
 
   _vmRecognition.onend = () => {
-    if (_vmListening) {
-      _vmListening = false;
-      _vmSetRecordingUI(false);
+    clearTimeout(_vmSilenceTimer);
+    _vmListening = false;
+    _vmSetRecordingUI(false);
+
+    const result = (_vmFinalText + _vmInterimText).trim();
+    if (!result) {
+      showToast('音声が取得できませんでした', 'amber');
+      return;
+    }
+
+    if (_vmCallback) {
+      // ダイアログ内追加録音コールバック
+      _vmCallback(result);
+      _vmCallback = null;
+    } else {
+      // 通常フロー → 確認ダイアログ
+      vmShowConfirmDialog(result, areaId);
     }
   };
 
@@ -399,35 +454,74 @@ function vmStartListening(areaId) {
 }
 
 function vmStopListening() {
-  if (_vmRecognition) { _vmRecognition.stop(); }
+  clearTimeout(_vmSilenceTimer);
+  if (_vmRecognition) _vmRecognition.stop();
   _vmListening = false;
   _vmSetRecordingUI(false);
 }
 
 // ─────────────────────────────────────────
 //  録音中UI切替
+//  phase: 'ready' | 'listening' | false
 // ─────────────────────────────────────────
 
-function _vmSetRecordingUI(on) {
+function _vmSetRecordingUI(on, phase) {
   const btn     = document.getElementById('vm-mic-btn');
   const overlay = document.getElementById('vm-recording-overlay');
+  const el      = document.getElementById('vm-interim-text');
+
   if (btn) {
     btn.classList.toggle('recording', on);
     btn.title = on ? '停止' : '音声メモを録音';
   }
   if (overlay) overlay.style.display = on ? 'flex' : 'none';
-  const el = document.getElementById('vm-interim-text');
-  if (el) el.textContent = '';
+
+  if (on && el) {
+    if (phase === 'ready') {
+      el.textContent = '準備中…';
+      el.style.opacity = '0.6';
+    } else if (phase === 'listening') {
+      el.textContent = '話してください…';
+      el.style.opacity = '1';
+    }
+  } else if (el) {
+    el.textContent = '';
+    el.style.opacity = '1';
+  }
+
+  // ダイアログ内マイクボタンの状態も同期
+  const dlgBtn = document.getElementById('vm-dlg-mic-btn');
+  if (dlgBtn) {
+    dlgBtn.classList.toggle('recording', on);
+    dlgBtn.textContent = on ? '⏹ 停止' : '🎤 追加録音';
+  }
 }
 
 // ─────────────────────────────────────────
 //  確認ダイアログ
 // ─────────────────────────────────────────
 
+// ダイアログの現在タブ状態
+let _vmDlgTab = 'work'; // 'work' | 'ship'
+
 function vmShowConfirmDialog(rawText, areaId) {
+  _vmDlgTab = 'work';
   const parsed = vmParseText(rawText);
   if (areaId) parsed.areaId = areaId;
 
+  document.getElementById('vm-confirm-overlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'vm-confirm-overlay';
+  overlay.className = 'vm-confirm-overlay';
+  overlay.innerHTML = _vmBuildDialogHTML(parsed, rawText, areaId);
+  document.body.appendChild(overlay);
+
+  _vmBindMonthPickers(parsed);
+  _vmCheckScheduleBanner(parsed.workDate);
+}
+
+// ─── ダイアログHTML組み立て ───
+function _vmBuildDialogHTML(parsed, rawText, areaId) {
   const tagOptions = VM_TAG_DICT.map(e =>
     `<option value="${e.tag}"${e.tag === parsed.tag ? ' selected' : ''}>${e.tag}</option>`
   ).join('');
@@ -435,7 +529,7 @@ function vmShowConfirmDialog(rawText, areaId) {
   // タグ曖昧時：候補ボタン（最大3件）
   const tagCandidateHTML = (parsed.tagAmbiguous && parsed.tagCandidates.length > 1)
     ? `<div class="vm-tag-candidates">
-        <span class="vm-tag-hint">⚠️ 判定が曖昧です。候補から選んでください：</span>
+        <span class="vm-tag-hint">⚠️ 判定が曖昧です。候補を選んでください：</span>
         ${parsed.tagCandidates.map(t =>
           `<button type="button" class="vm-tag-cand-btn${t === parsed.tag ? ' active' : ''}"
             onclick="vmSelectTagCandidate('${t}')">${t}</button>`
@@ -443,7 +537,7 @@ function vmShowConfirmDialog(rawText, areaId) {
       </div>`
     : '';
 
-  // 月選択UI（workDateのmonthUnknown時）
+  // 月選択UI
   const now = new Date();
   const monthOpts = Array.from({length: 12}, (_, i) => {
     const m = i + 1;
@@ -454,32 +548,17 @@ function vmShowConfirmDialog(rawText, areaId) {
     ? `<div class="vm-month-picker">
         <span class="vm-tag-hint">📅 何月の作業ですか？</span>
         <select class="vm-select vm-month-sel" id="vm-work-month">${monthOpts}</select>
-      </div>`
-    : '';
-
-  // 出荷日フィールド
-  const shipDateHTML = `
-    <div class="vm-field">
-      <label class="vm-label">出荷日</label>
-      <input class="vm-input" type="date" id="vm-ship-date" value="${parsed.shipDate || ''}">
-    </div>`;
+      </div>` : '';
 
   const shipMonthPickerHTML = parsed.shipMonthUnknown
     ? `<div class="vm-month-picker">
         <span class="vm-tag-hint">📅 何月の出荷ですか？</span>
         <select class="vm-select vm-month-sel" id="vm-ship-month">${monthOpts}</select>
-      </div>`
-    : '';
+      </div>` : '';
 
-  // 出荷記録ボタン
-  const shippingBtnHTML = parsed.hasShippingWord
-    ? `<button type="button" class="btn btn-shipping" id="vm-shipping-toggle"
-        onclick="vmToggleShippingSection()">📦 出荷記録にも保存</button>`
-    : '';
-
-  // 出荷先タイプ選択（折りたたみ）
+  // 出荷先タイプ
   const shippingTypes = [
-    { key: 'ja',          label: '🌾 JA（農協）' },
+    { key: 'ja',          label: '🌾 JA' },
     { key: 'market',      label: '🏪 卸売市場' },
     { key: 'supermarket', label: '🛒 スーパー' },
     { key: 'farmstand',   label: '🏡 直売所' },
@@ -490,79 +569,215 @@ function vmShowConfirmDialog(rawText, areaId) {
       data-type="${t.key}" onclick="vmSelectShipType('${t.key}')">${t.label}</button>`
   ).join('');
 
-  const shippingSectionHTML = parsed.hasShippingWord
-    ? `<div class="vm-shipping-section" id="vm-shipping-section" style="display:none;">
-        <div class="vm-field">
-          <label class="vm-label">出荷先</label>
-          <div class="vm-ship-type-grid">${shippingTypeOpts}</div>
-          <input type="hidden" id="vm-ship-type" value="${parsed.shipping || 'ja'}">
-        </div>
-      </div>`
-    : '';
-
-  document.getElementById('vm-confirm-overlay')?.remove();
-
-  const overlay = document.createElement('div');
-  overlay.id = 'vm-confirm-overlay';
-  overlay.className = 'vm-confirm-overlay';
-  overlay.innerHTML = `
+  return `
     <div class="vm-confirm-dialog">
+
+      <!-- ヘッダー -->
       <div class="vm-confirm-header">
         <span class="vm-confirm-title">🎤 音声メモ確認</span>
         <button class="vm-confirm-close" onclick="vmCloseConfirmDialog()">✕</button>
       </div>
-      <div class="vm-confirm-body">
-        <div class="vm-field">
-          <label class="vm-label">認識テキスト</label>
-          <textarea class="vm-textarea" id="vm-raw-text" rows="2">${escHtml(rawText)}</textarea>
-        </div>
-        <div class="vm-field-row">
-          <div class="vm-field">
-            <label class="vm-label">作業日</label>
-            <input class="vm-input" type="date" id="vm-work-date" value="${parsed.workDate}">
-            ${workMonthPickerHTML}
-          </div>
-          ${shipDateHTML}
-        </div>
-        ${shipMonthPickerHTML}
-        <div class="vm-field">
-          <label class="vm-label">作業タグ</label>
-          <select class="vm-select" id="vm-tag">${tagOptions}</select>
-          ${tagCandidateHTML}
-        </div>
-        <div class="vm-field-row">
-          <div class="vm-field">
-            <label class="vm-label">作物</label>
-            <input class="vm-input" type="text" id="vm-crop" value="${escHtml(parsed.crop || '')}" placeholder="例：トマト">
-          </div>
-          <div class="vm-field">
-            <label class="vm-label">資材</label>
-            <input class="vm-input" type="text" id="vm-material" value="${escHtml(parsed.material || '')}" placeholder="例：液肥">
-          </div>
-        </div>
-        <div class="vm-field-row">
-          <div class="vm-field">
-            <label class="vm-label">数量・単位</label>
-            <input class="vm-input" type="text" id="vm-quantity" value="${escHtml(parsed.quantity || '')}" placeholder="例：200倍">
-          </div>
-          <div class="vm-field">
-            <label class="vm-label">メモ（任意）</label>
-            <input class="vm-input" type="text" id="vm-note" placeholder="補足など">
-          </div>
-        </div>
-        ${shippingSectionHTML}
+
+      <!-- タブ -->
+      <div class="vm-dlg-tabs">
+        <button class="vm-dlg-tab active" id="vm-tab-work"
+          onclick="vmSwitchDlgTab('work')">📋 作業メモ</button>
+        <button class="vm-dlg-tab" id="vm-tab-ship"
+          onclick="vmSwitchDlgTab('ship')">📦 出荷記録</button>
       </div>
+
+      <!-- 予定バナー（未来日付検出時に表示） -->
+      <div class="vm-schedule-banner" id="vm-schedule-banner" style="display:none;">
+        <span>📅 これは<strong>予定</strong>ですか？</span>
+        <button type="button" class="vm-banner-yes" onclick="vmSetSchedule(true)">はい・予定</button>
+        <button type="button" class="vm-banner-no"  onclick="vmSetSchedule(false)">いいえ・実績</button>
+      </div>
+      <input type="hidden" id="vm-is-schedule" value="0">
+
+      <!-- ボディ -->
+      <div class="vm-confirm-body">
+
+        <!-- 認識テキスト + 追加録音 -->
+        <div class="vm-field vm-field-mic-row">
+          <label class="vm-label">認識テキスト</label>
+          <div class="vm-raw-row">
+            <textarea class="vm-textarea" id="vm-raw-text" rows="2">${escHtml(rawText)}</textarea>
+            <button type="button" class="vm-dlg-mic-btn" id="vm-dlg-mic-btn"
+              onclick="vmDlgAddRecording('${areaId || ''}')">🎤 追加録音</button>
+          </div>
+        </div>
+
+        <!-- 作業メモタブ -->
+        <div id="vm-panel-work">
+          <div class="vm-field-row">
+            <div class="vm-field">
+              <label class="vm-label">作業日</label>
+              <input class="vm-input" type="date" id="vm-work-date" value="${parsed.workDate}">
+              ${workMonthPickerHTML}
+            </div>
+            <div class="vm-field">
+              <label class="vm-label">出荷日</label>
+              <input class="vm-input" type="date" id="vm-ship-date" value="${parsed.shipDate || ''}">
+              ${shipMonthPickerHTML}
+            </div>
+          </div>
+          <div class="vm-field">
+            <label class="vm-label">作業タグ</label>
+            <select class="vm-select" id="vm-tag">${tagOptions}</select>
+            ${tagCandidateHTML}
+          </div>
+          <div class="vm-field-row">
+            <div class="vm-field">
+              <label class="vm-label">作物</label>
+              <input class="vm-input" type="text" id="vm-crop"
+                value="${escHtml(parsed.crop || '')}" placeholder="例：トマト">
+            </div>
+            <div class="vm-field">
+              <label class="vm-label">資材</label>
+              <input class="vm-input" type="text" id="vm-material"
+                value="${escHtml(parsed.material || '')}" placeholder="例：液肥">
+            </div>
+          </div>
+          <div class="vm-field-row">
+            <div class="vm-field">
+              <label class="vm-label">数量・単位</label>
+              <input class="vm-input" type="text" id="vm-quantity"
+                value="${escHtml(parsed.quantity || '')}" placeholder="例：200kg">
+            </div>
+            <div class="vm-field">
+              <label class="vm-label">メモ（任意）</label>
+              <input class="vm-input" type="text" id="vm-note" placeholder="補足など">
+            </div>
+          </div>
+        </div>
+
+        <!-- 出荷記録タブ -->
+        <div id="vm-panel-ship" style="display:none;">
+          <div class="vm-field">
+            <label class="vm-label">出荷先</label>
+            <div class="vm-ship-type-grid">${shippingTypeOpts}</div>
+            <input type="hidden" id="vm-ship-type" value="${parsed.shipping || 'ja'}">
+          </div>
+          <div class="vm-field-row">
+            <div class="vm-field">
+              <label class="vm-label">出荷日</label>
+              <input class="vm-input" type="date" id="vm-ship-date2"
+                value="${parsed.shipDate || parsed.workDate || ''}">
+            </div>
+            <div class="vm-field">
+              <label class="vm-label">品目</label>
+              <input class="vm-input" type="text" id="vm-ship-item"
+                value="${escHtml(parsed.crop || '')}" placeholder="例：トマト">
+            </div>
+          </div>
+          <div class="vm-field-row">
+            <div class="vm-field">
+              <label class="vm-label">数量</label>
+              <input class="vm-input" type="text" id="vm-ship-qty"
+                value="${escHtml(parsed.quantity || '')}" placeholder="例：20kg">
+            </div>
+            <div class="vm-field">
+              <label class="vm-label">メモ</label>
+              <input class="vm-input" type="text" id="vm-ship-note" placeholder="補足など">
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /body -->
+
+      <!-- フッター -->
       <div class="vm-confirm-footer">
-        ${shippingBtnHTML}
         <button class="btn btn-ghost" onclick="vmCloseConfirmDialog()">キャンセル</button>
         <button class="btn btn-primary" onclick="vmCommit('${areaId || ''}')">保存する</button>
       </div>
+
     </div>
   `;
-  document.body.appendChild(overlay);
+}
 
-  // 月選択UIが出ている場合、月変更で日付を更新
-  _vmBindMonthPickers(parsed);
+// ─── タブ切替（データ保持） ───
+function vmSwitchDlgTab(tab) {
+  _vmDlgTab = tab;
+  document.getElementById('vm-panel-work').style.display = tab === 'work' ? '' : 'none';
+  document.getElementById('vm-panel-ship').style.display = tab === 'ship' ? '' : 'none';
+  document.getElementById('vm-tab-work').classList.toggle('active', tab === 'work');
+  document.getElementById('vm-tab-ship').classList.toggle('active', tab === 'ship');
+}
+
+// ─── 予定バナー制御 ───
+function _vmCheckScheduleBanner(workDate) {
+  if (!workDate) return;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(workDate);
+  if (target > today) {
+    const banner = document.getElementById('vm-schedule-banner');
+    if (banner) banner.style.display = 'flex';
+  }
+}
+
+function vmSetSchedule(isSchedule) {
+  document.getElementById('vm-is-schedule').value = isSchedule ? '1' : '0';
+  const banner = document.getElementById('vm-schedule-banner');
+  if (banner) {
+    banner.innerHTML = isSchedule
+      ? `<span class="vm-schedule-confirmed">📅 予定として保存します</span>`
+      : `<span class="vm-schedule-confirmed">✅ 実績として保存します</span>`;
+  }
+}
+
+// ─── ダイアログ内追加録音 ───
+function vmDlgAddRecording(areaId) {
+  if (_vmListening) { vmStopListening(); return; }
+  vmStartListening(areaId, (addedText) => {
+    // 認識テキストに追記
+    const ta = document.getElementById('vm-raw-text');
+    if (ta) {
+      ta.value = (ta.value ? ta.value + '　' : '') + addedText;
+    }
+    // 追加テキストを解析してフィールドに反映
+    _vmApplyParsedToDialog(addedText, true);
+    showToast('🎤 テキストを追加しました', 'green');
+  });
+}
+
+// ─── 解析結果をダイアログフィールドに反映 ───
+// additive=true のとき空フィールドのみ補完（既存値は保持）
+function _vmApplyParsedToDialog(text, additive) {
+  const p = vmParseText(text);
+  const fill = (id, val) => {
+    if (!val) return;
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (additive && el.value.trim()) return; // 入力済みは保持
+    el.value = val;
+    // 反映アニメーション
+    el.classList.add('vm-field-updated');
+    setTimeout(() => el.classList.remove('vm-field-updated'), 1500);
+  };
+
+  fill('vm-work-date', p.workDate);
+  fill('vm-ship-date',  p.shipDate);
+  fill('vm-ship-date2', p.shipDate || p.workDate);
+  fill('vm-crop',      p.crop);
+  fill('vm-material',  p.material);
+  fill('vm-quantity',  p.quantity);
+  fill('vm-ship-item', p.crop);
+  fill('vm-ship-qty',  p.quantity);
+
+  if (p.tag && p.tag !== 'その他') {
+    const sel = document.getElementById('vm-tag');
+    if (sel && (!additive || !sel.value || sel.value === 'その他')) {
+      sel.value = p.tag;
+    }
+  }
+  if (p.shipping) {
+    const hidden = document.getElementById('vm-ship-type');
+    if (hidden && (!additive || !hidden.value)) vmSelectShipType(p.shipping);
+  }
+
+  // 予定バナー再チェック
+  const wd = document.getElementById('vm-work-date')?.value;
+  if (wd) _vmCheckScheduleBanner(wd);
 }
 
 function vmCloseConfirmDialog() {
@@ -588,15 +803,6 @@ function vmSelectShipType(type) {
 }
 
 // ─── 「出荷記録にも保存」セクション開閉 ───
-function vmToggleShippingSection() {
-  const sec = document.getElementById('vm-shipping-section');
-  const btn = document.getElementById('vm-shipping-toggle');
-  if (!sec) return;
-  const open = sec.style.display !== 'none';
-  sec.style.display = open ? 'none' : 'block';
-  if (btn) btn.classList.toggle('active', !open);
-}
-
 // ─── 月選択UIのバインド（月変更 → date input を更新） ───
 function _vmBindMonthPickers(parsed) {
   const workMonthSel = document.getElementById('vm-work-month');
@@ -622,47 +828,56 @@ function _vmBindMonthPickers(parsed) {
 }
 
 function vmCommit(areaId) {
-  const rawText  = document.getElementById('vm-raw-text')?.value.trim() || '';
-  const workDate = document.getElementById('vm-work-date')?.value || '';
-  const shipDate = document.getElementById('vm-ship-date')?.value || null;
-  const tag      = document.getElementById('vm-tag')?.value || 'その他';
-  const crop     = document.getElementById('vm-crop')?.value.trim() || null;
-  const material = document.getElementById('vm-material')?.value.trim() || null;
-  const quantity = document.getElementById('vm-quantity')?.value.trim() || null;
-  const note     = document.getElementById('vm-note')?.value.trim() || null;
+  const rawText    = document.getElementById('vm-raw-text')?.value.trim() || '';
+  const workDate   = document.getElementById('vm-work-date')?.value || '';
+  const shipDate   = document.getElementById('vm-ship-date')?.value || null;
+  const tag        = document.getElementById('vm-tag')?.value || 'その他';
+  const crop       = document.getElementById('vm-crop')?.value.trim() || null;
+  const material   = document.getElementById('vm-material')?.value.trim() || null;
+  const quantity   = document.getElementById('vm-quantity')?.value.trim() || null;
+  const note       = document.getElementById('vm-note')?.value.trim() || null;
+  const isSchedule = document.getElementById('vm-is-schedule')?.value === '1';
 
-  const memo = {
-    id:        'vm_' + Date.now(),
-    areaId:    areaId || null,
-    workDate,
-    shipDate:  shipDate || null,
-    createdAt: new Date().toISOString(),
-    tag,
-    crop:      crop || null,
-    material:  material || null,
-    quantity:  quantity || null,
-    note:      note || null,
-    rawText,
-  };
+  // 作業メモ保存（作業タブが対象）
+  if (_vmDlgTab === 'work' || true) {
+    const memo = {
+      id:         'vm_' + Date.now(),
+      areaId:     areaId || null,
+      workDate,
+      shipDate:   shipDate || null,
+      isSchedule,
+      createdAt:  new Date().toISOString(),
+      tag,
+      crop:       crop || null,
+      material:   material || null,
+      quantity:   quantity || null,
+      note:       note || null,
+      rawText,
+    };
+    vmAdd(memo);
+  }
 
-  vmAdd(memo);
-
-  // 出荷記録連携（セクションが開いている場合）
-  const shippingSec = document.getElementById('vm-shipping-section');
-  const shipType    = document.getElementById('vm-ship-type')?.value;
-  if (shippingSec && shippingSec.style.display !== 'none' && shipType) {
+  // 出荷記録タブが選択されている場合 → records に連携
+  if (_vmDlgTab === 'ship') {
+    const shipType  = document.getElementById('vm-ship-type')?.value || 'ja';
+    const shipItem  = document.getElementById('vm-ship-item')?.value.trim() || crop;
+    const shipQty   = document.getElementById('vm-ship-qty')?.value.trim() || quantity;
+    const shipDate2 = document.getElementById('vm-ship-date2')?.value || shipDate || workDate;
+    const shipNote  = document.getElementById('vm-ship-note')?.value.trim() || null;
     if (typeof recordsFillFromVoice === 'function') {
       recordsFillFromVoice({
-        shipDate: shipDate || workDate,
-        item:     crop,
-        quantity,
+        shipDate: shipDate2,
+        item:     shipItem,
+        quantity: shipQty,
+        note:     shipNote,
         rawText,
       }, shipType);
     }
   }
 
   vmCloseConfirmDialog();
-  showToast(`📝 音声メモを保存しました（${workDate} / ${tag}）`);
+  const label = isSchedule ? '予定' : '実績';
+  showToast(`📝 音声メモを保存しました（${workDate} / ${tag} / ${label}）`);
 
   if (typeof _adpRenderCalendar === 'function')    _adpRenderCalendar();
   if (typeof _adpRenderDayRecords === 'function')  _adpRenderDayRecords();
