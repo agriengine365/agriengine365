@@ -469,6 +469,7 @@ function _adpEnsureView() {
       </div>
       <!-- ペイン: カレンダー -->
       <div class="adp-pane" id="adp-pane-calendar" style="display:none;">
+        <div class="vm-cal-header" id="vm-cal-header-wrap"></div>
         <div id="adp-calendar-wrap"></div>
         <div id="adp-day-records-wrap"></div>
       </div>
@@ -504,6 +505,15 @@ function _adpSwitchSubTab(name) {
     });
     setTimeout(() => _adpRenderGrowthChart(_adpSelectedCropId), 30);
   }
+  if (name === 'calendar') {
+    // マイクボタン注入（voiceMemo.js）
+    const hdr = document.getElementById('vm-cal-header-wrap');
+    if (hdr && typeof vmMicButtonHTML === 'function' && !document.getElementById('vm-mic-btn')) {
+      hdr.innerHTML = vmMicButtonHTML();
+    }
+    _adpRenderCalendar();
+    _adpRenderDayRecords();
+  }
 }
 
 // ─── カレンダー描画 ───
@@ -520,8 +530,17 @@ function _adpRenderCalendar() {
     const d = r.shipDate || r.harvestDate || r.createdAt?.slice(0, 10);
     if (!d) return;
     if (!byDate[d]) byDate[d] = [];
-    byDate[d].push(r);
+    byDate[d].push({ _type: 'record', ...r });
   });
+  // 音声メモを統合
+  if (typeof vmLoadByArea === 'function') {
+    vmLoadByArea(areaId).forEach(m => {
+      const d = m.workDate;
+      if (!d) return;
+      if (!byDate[d]) byDate[d] = [];
+      byDate[d].push({ _type: 'voiceMemo', ...m });
+    });
+  }
 
   const y = _adpYear, m = _adpMonth;
   const monthLabel = `${y}年 ${m + 1}月`;
@@ -608,9 +627,13 @@ function _adpRenderDayRecords() {
     return d === _adpSelDate;
   });
 
+  // 音声メモ取得
+  const voiceMemos = (typeof vmLoadByDate === 'function')
+    ? vmLoadByDate(areaId, _adpSelDate) : [];
+
   const label = `${parseInt(_adpSelDate.slice(5,7))}月${parseInt(_adpSelDate.slice(8,10))}日の記録`;
 
-  if (!dayRecs.length) {
+  if (!dayRecs.length && !voiceMemos.length) {
     wrap.innerHTML = `
       <div class="adp-day-records">
         <div class="adp-day-records-title">${label}</div>
@@ -619,7 +642,8 @@ function _adpRenderDayRecords() {
     return;
   }
 
-  const cardsHTML = dayRecs.map(r => {
+  // 通常記録カード
+  const recCardsHTML = dayRecs.map(r => {
     const item = r.productName || r.item || '—';
     const dest = r.shippingTypeLabel || r.shippingType || '—';
     const isEditing = r.id === _adpEditId;
@@ -642,11 +666,43 @@ function _adpRenderDayRecords() {
     `;
   }).join('');
 
+  // 音声メモカード
+  const vmCardsHTML = voiceMemos.map(m => {
+    const details = [
+      m.crop     ? `🌱 ${escHtml(m.crop)}`     : '',
+      m.material ? `📦 ${escHtml(m.material)}` : '',
+      m.quantity ? `⚖️ ${escHtml(m.quantity)}` : '',
+      m.note     ? `📝 ${escHtml(m.note)}`     : '',
+    ].filter(Boolean).join('　');
+    return `
+      <div class="adp-rec-card vm-memo-card" id="adp-rec-${m.id}">
+        <div class="adp-rec-card-top">
+          <span class="vm-tag-badge">${escHtml(m.tag)}</span>
+          <span class="vm-memo-time">${m.createdAt ? m.createdAt.slice(11,16) : ''}</span>
+        </div>
+        <div class="adp-rec-item">${escHtml(m.rawText || '')}</div>
+        ${details ? `<div class="vm-memo-details">${details}</div>` : ''}
+        <div class="adp-rec-actions">
+          <button class="btn btn-danger" style="font-size:11px;padding:5px 10px;"
+            onclick="vmDeleteAndRefresh('${m.id}')">削除</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
   wrap.innerHTML = `
     <div class="adp-day-records">
       <div class="adp-day-records-title">${label}</div>
-      ${cardsHTML}
+      ${recCardsHTML}
+      ${vmCardsHTML}
     </div>`;
+}
+
+// 音声メモ削除→カレンダー再描画
+function vmDeleteAndRefresh(id) {
+  if (typeof vmDelete === 'function') vmDelete(id);
+  _adpRenderCalendar();
+  _adpRenderDayRecords();
 }
 
 // ─── 編集パネル HTML ───

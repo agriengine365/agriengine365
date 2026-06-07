@@ -3833,3 +3833,196 @@ html.draw-dialog-active .bottom-nav {
   opacity: 0;
   pointer-events: none;
 }
+
+
+/* ═══════════════════════════════════════════
+   VOICE MEMO UI
+═══════════════════════════════════════════ */
+
+/* ─── カレンダーペインヘッダー ─── */
+.vm-cal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px 4px;
+  flex-wrap: wrap;
+}
+
+/* ─── マイクボタン ─── */
+.vm-mic-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--accent, #4ADE80);
+  color: #0a0f0a;
+  border: none;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+.vm-mic-btn:active { transform: scale(0.96); }
+.vm-mic-btn.recording {
+  background: #EF4444;
+  color: #fff;
+  animation: vm-pulse 1.2s ease-in-out infinite;
+}
+@keyframes vm-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.5); }
+  50%      { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+}
+
+/* ─── 録音中オーバーレイ ─── */
+.vm-recording-overlay {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(239,68,68,0.12);
+  border: 1px solid rgba(239,68,68,0.35);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #fca5a5;
+  flex: 1;
+}
+.vm-rec-dot {
+  width: 8px; height: 8px;
+  background: #EF4444;
+  border-radius: 50%;
+  animation: vm-pulse 0.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.vm-interim-text {
+  flex: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: #fff;
+  font-size: 12px;
+}
+.vm-stop-btn {
+  background: none;
+  border: 1px solid rgba(239,68,68,0.5);
+  border-radius: 6px;
+  color: #fca5a5;
+  font-size: 11px;
+  padding: 3px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ─── 確認ダイアログ ─── */
+.vm-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 9000;
+  display: flex;
+  align-items: flex-end;
+  padding: 0;
+}
+.vm-confirm-dialog {
+  width: 100%;
+  max-height: 90vh;
+  background: var(--surface, #1a1f2e);
+  border-radius: 16px 16px 0 0;
+  overflow-y: auto;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+.vm-confirm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.vm-confirm-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text1, #fff);
+}
+.vm-confirm-close {
+  background: none;
+  border: none;
+  color: var(--text3, #6b7280);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.vm-confirm-body {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.vm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.vm-field-row {
+  display: flex;
+  gap: 8px;
+}
+.vm-label {
+  font-size: 10px;
+  color: var(--text3, #6b7280);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.vm-input, .vm-select, .vm-textarea {
+  background: var(--surface2, #0f1117);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  color: var(--text1, #fff);
+  font-size: 13px;
+  padding: 8px 10px;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+.vm-input:focus, .vm-select:focus, .vm-textarea:focus {
+  outline: none;
+  border-color: var(--accent, #4ADE80);
+}
+.vm-textarea { resize: none; }
+.vm-confirm-footer {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px 16px;
+  justify-content: flex-end;
+}
+
+/* ─── カレンダードット（音声メモ用） ─── */
+.adp-cal-day.has-voice .adp-cal-dot:last-child {
+  background: #818cf8; /* インジゴ：音声メモ識別色 */
+}
+
+/* ─── 音声メモカード ─── */
+.vm-memo-card {
+  border-left: 3px solid #818cf8;
+}
+.vm-tag-badge {
+  display: inline-block;
+  background: rgba(129,140,248,0.18);
+  color: #a5b4fc;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.vm-memo-time {
+  font-size: 10px;
+  color: var(--text3, #6b7280);
+  margin-left: auto;
+}
+.vm-memo-details {
+  font-size: 11px;
+  color: var(--text2, #9ca3af);
+  margin-top: 4px;
+  line-height: 1.6;
+}
