@@ -141,34 +141,74 @@ const AmedasLoader = (() => {
     const dist    = haversine(lat, lon, nearest.lat, nearest.lon);
 
     const months  = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const parts   = ['early','mid','late'];
 
-    // 気温: 0600(temp_mean)=日最高平均, 0700(temp_min_mean)=日最低平均
-    const tMaxArr = months.map(m => val(monthly, 'temp_mean',     m, 10)).filter(v => v !== null);
-    const tMinArr = months.map(m => val(monthly, 'temp_min_mean', m, 10)).filter(v => v !== null);
+    // ── 旬キーで月平均を計算するヘルパー ──
+    // 各月3旬の平均を返す（nullは除外、全nullなら null）
+    const monthAvgByDecade = (key, divisor = 10) => {
+      return months.map(m => {
+        const vs = parts.map(p => {
+          const e = monthly[key]?.data[`${m}_${p}`];
+          return (e && e.q !== 0) ? e.v / divisor : null;
+        }).filter(v => v !== null);
+        return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null;
+      });
+    };
 
-    // 年平均気温 = 月ごとに(最高+最低)/2 して12ヶ月平均
-    let tempMean = null;
-    if (tMaxArr.length === 12 && tMinArr.length === 12) {
-      tempMean = tMaxArr.map((h, i) => (h + tMinArr[i]) / 2)
-                        .reduce((a, b) => a + b, 0) / 12;
-    }
+    // 旬キーで月合計を計算するヘルパー（降水量など）
+    const monthSumByDecade = (key, divisor = 10) => {
+      return months.map(m => {
+        const vs = parts.map(p => {
+          const e = monthly[key]?.data[`${m}_${p}`];
+          return (e && e.q !== 0) ? e.v / divisor : null;
+        }).filter(v => v !== null);
+        return vs.length ? vs.reduce((a, b) => a + b, 0) : null;
+      });
+    };
 
-    // 月別降水量（mm、as-is）
+    // 気温: temp_max_mean=日最高気温平均, temp_min_mean=日最低気温平均, temp_mean=旬平均気温
+    const tMaxMonthly = monthAvgByDecade('temp_max_mean', 10); // 12要素（月平均日最高気温）
+    const tMinMonthly = monthAvgByDecade('temp_min_mean', 10); // 12要素（月平均日最低気温）
+    const tMeanMonthly = monthAvgByDecade('temp_mean',    10); // 12要素（月旬平均気温の平均）
+
+    // 年平均気温 = temp_mean の月平均から12ヶ月平均
+    const tMeanValid = tMeanMonthly.filter(v => v !== null);
+    const tempMean = tMeanValid.length
+      ? tMeanValid.reduce((a, b) => a + b, 0) / tMeanValid.length
+      : null;
+
+    // tempMaxMean / tempMinMean（年平均値）
+    const tMaxValid = tMaxMonthly.filter(v => v !== null);
+    const tMinValid = tMinMonthly.filter(v => v !== null);
+
+    // 月別降水量: rain_total（旬合計 0.1mm → mm）
+    const rainByDecadeSum = monthSumByDecade('rain_total', 10); // 月合計mm
     const rainMonthly = {};
     let rainSum = null;
-    const rainVals = months.map(m => val(monthly, 'precipitation_total', m, 1));
-    if (rainVals.some(v => v !== null)) {
-      months.forEach((m, i) => { rainMonthly[m] = rainVals[i] ?? 0; });
-      rainSum = rainVals.reduce((a, b) => a + (b ?? 0), 0);
+    if (rainByDecadeSum.some(v => v !== null)) {
+      months.forEach((m, i) => { rainMonthly[m] = rainByDecadeSum[i] ?? 0; });
+      rainSum = rainByDecadeSum.reduce((a, b) => a + (b ?? 0), 0);
     }
 
-    // 日照時間（0.1h単位 → h）
-    const sunshine = monthlySum(monthly, 'sunshine_hours', 10);
+    // 日照時間: sunshine_hours（旬合計 0.1h → h）
+    const sunByDecadeSum = monthSumByDecade('sunshine_hours', 10);
+    const sunshine = sunByDecadeSum.some(v => v !== null)
+      ? sunByDecadeSum.reduce((a, b) => a + (b ?? 0), 0)
+      : null;
 
-    // 冬日日数・豪雨日数（as-is = 日数）
+    // 冬日日数・真冬日（annual キーがあれば使用、なければ null）
     const daysBelow0 = val(monthly, 'days_temp_lt0',  'annual', 1);
     const rainDays50 = val(monthly, 'rain_days_50',   'annual', 1);
-    const snowDays   = val(monthly, 'days_tmax_lt0',  'annual', 1); // 真冬日
+    const snowDays   = val(monthly, 'days_tmax_lt0',  'annual', 1);
+
+    // 1月最低気温（3旬平均）
+    const tempMinJanVals = parts.map(p => {
+      const e = monthly['temp_min_mean']?.data[`jan_${p}`];
+      return (e && e.q !== 0) ? e.v / 10 : null;
+    }).filter(v => v !== null);
+    const tempMinJan = tempMinJanVals.length
+      ? tempMinJanVals.reduce((a, b) => a + b, 0) / tempMinJanVals.length
+      : null;
 
     // 気候帯名（engine互換用: tempMeanから推定）
     const name = _climateName(tempMean);
@@ -183,9 +223,9 @@ const AmedasLoader = (() => {
       stationName:   nearest.name_kanji,
       distKm:        Math.round(dist * 10) / 10,
       tempMean:      tempMean !== null ? Math.round(tempMean * 10) / 10 : null,
-      tempMaxMean:   tMaxArr.length ? Math.round(tMaxArr.reduce((a,b)=>a+b,0)/tMaxArr.length*10)/10 : null,
-      tempMinMean:   tMinArr.length ? Math.round(tMinArr.reduce((a,b)=>a+b,0)/tMinArr.length*10)/10 : null,
-      tempMinJan:    val(monthly, 'temp_min_mean', 'jan', 10),
+      tempMaxMean:   tMaxValid.length ? Math.round(tMaxValid.reduce((a,b)=>a+b,0)/tMaxValid.length*10)/10 : null,
+      tempMinMean:   tMinValid.length ? Math.round(tMinValid.reduce((a,b)=>a+b,0)/tMinValid.length*10)/10 : null,
+      tempMinJan:    tempMinJan !== null ? Math.round(tempMinJan * 10) / 10 : null,
       rain:          rainSum,
       rainMonthly,
       sunshineHours: sunshine !== null ? Math.round(sunshine) : null,
