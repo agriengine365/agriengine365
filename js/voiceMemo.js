@@ -108,13 +108,25 @@ const VM_SHIPPING_DICT = {
   // スーパー・量販
   'スーパー': 'supermarket', '量販店': 'supermarket', 'イオン': 'supermarket',
   'コープ': 'supermarket', '生協': 'supermarket',
+  // 道の駅（直売所より先に判定）
+  '道の駅': 'roadside',
   // 直売
-  '直売': 'farmstand', '直売所': 'farmstand', '道の駅': 'farmstand',
+  '直売': 'farmstand', '直売所': 'farmstand',
   '産直': 'farmstand', '朝市': 'farmstand', 'マルシェ': 'farmstand',
   // その他
   'レストラン': 'wholesale', '飲食店': 'wholesale', '給食': 'wholesale',
   'ネット': 'farmstand', '通販': 'farmstand',
 };
+
+// タグスコアリング：出荷系タグのボーナスウェイト
+const VM_TAG_BONUS = {
+  '出荷':     3,
+  '出荷調整': 3,
+  '収穫':     1,
+};
+
+// 出荷系ワード（確認ダイアログに「出荷記録にも保存」ボタンを出す判定用）
+const VM_SHIPPING_WORDS = ['出荷','荷造り','梱包','JA','農協','市場','配送','出した','道の駅','直売','伝票','選果','選別','等級','規格','袋詰め','箱詰め'];
 
 // 数量・単位パターン（重い単位から順に判定）
 const VM_UNIT_PATTERN = /(\d+(?:\.\d+)?)\s*(トン|t(?:on)?|ｔ|kg|ｋｇ|キログラム|キロ|g|ｇ|グラム|kl|ｋｌ|キロリットル|L|ℓ|リットル|ml|ｍｌ|cc|俵|袋|本|株|粒|個|玉|房|束|枚|枚組|箱|ケース|コンテナ|パック|トレー|反|畝|坪|平米|㎡|アール|ha|ヘクタール|倍|回|時間|日)/;
@@ -123,64 +135,103 @@ const VM_UNIT_PATTERN = /(\d+(?:\.\d+)?)\s*(トン|t(?:on)?|ｔ|kg|ｋｇ|キロ
 //  日付解析
 // ─────────────────────────────────────────
 
-function vmParseDate(text) {
+// ─── 単一日付フラグメントを解析 ───
+// 戻り値: { date: 'YYYY-MM-DD', monthUnknown: bool }
+function _vmParseDateFragment(text) {
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
   const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 
-  // 今日・本日
-  if (/今日|本日|きょう/.test(text)) return fmt(now);
-  // 昨日
+  if (/今日|本日|きょう/.test(text)) return { date: fmt(now), monthUnknown: false };
   if (/昨日|きのう/.test(text)) {
-    const d = new Date(now); d.setDate(d.getDate() - 1); return fmt(d);
+    const d = new Date(now); d.setDate(d.getDate() - 1);
+    return { date: fmt(d), monthUnknown: false };
   }
-  // 明後日（明日より先に判定）
   if (/明後日|あさって/.test(text)) {
-    const d = new Date(now); d.setDate(d.getDate() + 2); return fmt(d);
+    const d = new Date(now); d.setDate(d.getDate() + 2);
+    return { date: fmt(d), monthUnknown: false };
   }
-  // 明日
   if (/明日|あした|あす/.test(text)) {
-    const d = new Date(now); d.setDate(d.getDate() + 1); return fmt(d);
+    const d = new Date(now); d.setDate(d.getDate() + 1);
+    return { date: fmt(d), monthUnknown: false };
   }
   // 来週〇曜
   const weekMatch = text.match(/来週\s*(月|火|水|木|金|土|日)/);
   if (weekMatch) {
     const dowMap = { '月':1,'火':2,'水':3,'木':4,'金':5,'土':6,'日':0 };
-    const target = dowMap[weekMatch[1]];
     const d = new Date(now);
-    const diff = ((target - d.getDay() + 7) % 7) || 7; // 同じ曜日なら来週
+    const diff = ((dowMap[weekMatch[1]] - d.getDay() + 7) % 7) || 7;
     d.setDate(d.getDate() + diff + 7);
-    return fmt(d);
+    return { date: fmt(d), monthUnknown: false };
   }
   // 今週〇曜 / 〇曜日
   const thiswMatch = text.match(/(今週\s*)?(月|火|水|木|金|土|日)曜/);
   if (thiswMatch) {
     const dowMap = { '月':1,'火':2,'水':3,'木':4,'金':5,'土':6,'日':0 };
-    const target = dowMap[thiswMatch[2]];
     const d = new Date(now);
-    let diff = (target - d.getDay() + 7) % 7;
-    if (diff === 0) diff = 7; // 当日同曜日は来週扱い
+    let diff = (dowMap[thiswMatch[2]] - d.getDay() + 7) % 7;
+    if (diff === 0) diff = 7;
     d.setDate(d.getDate() + diff);
-    return fmt(d);
+    return { date: fmt(d), monthUnknown: false };
   }
-  // 〇月〇日
+  // 〇月〇日（月が明示されている）
   const mdMatch = text.match(/(\d{1,2})月\s*(\d{1,2})日/);
   if (mdMatch) {
     const d = new Date(now.getFullYear(), parseInt(mdMatch[1])-1, parseInt(mdMatch[2]));
-    // 過去日付なら翌年
     if (d < now && (now - d) > 86400000) d.setFullYear(d.getFullYear() + 1);
-    return fmt(d);
+    return { date: fmt(d), monthUnknown: false };
   }
-  // 〇日
-  const dayMatch = text.match(/(\d{1,2})日/);
+  // 〇日のみ（月が不明）→ monthUnknown フラグを立てて今月の日付を仮置き
+  const dayMatch = text.match(/(?<![月\d])(\d{1,2})日/);
   if (dayMatch) {
     const day = parseInt(dayMatch[1]);
+    // 今月の日付として仮置き（ダイアログで月を確認する）
     const d = new Date(now.getFullYear(), now.getMonth(), day);
-    if (d < now && now.getDate() > day) d.setMonth(d.getMonth() + 1);
-    return fmt(d);
+    return { date: fmt(d), monthUnknown: true };
   }
-  // 日付なし → 当日
-  return fmt(now);
+  return { date: fmt(now), monthUnknown: false };
+}
+
+// ─── テキスト全体から作業日・出荷日を分離して解析 ───
+// 戻り値: { workDate, shipDate, workMonthUnknown, shipMonthUnknown }
+function vmParseDate(text) {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+
+  // 出荷日コンテキスト：「出荷は〇日」「〇日に出荷」パターン
+  const shipCtxPatterns = [
+    /出荷(?:は|が|を|日)?[はがをに]?\s*([今昨明あ来今週\d〇].{0,10}?(?:日|曜))/,
+    /([今昨明あ来今週\d〇].{0,10}?(?:日|曜))[にはがを]?出荷/,
+  ];
+  // 作業日コンテキスト：「収穫は〇日」「〇日に定植」など
+  const workCtxPatterns = [
+    /(?:収穫|定植|播種|作業|耕起|施肥|防除|除草|灌水|乾燥|籾摺り)(?:は|が|を|日)?[はがをに]?\s*([今昨明あ来今週\d〇].{0,10}?(?:日|曜))/,
+    /([今昨明あ来今週\d〇].{0,10}?(?:日|曜))[にはがを]?(?:収穫|定植|播種|作業|耕起|施肥|防除|除草|灌水)/,
+  ];
+
+  let shipRaw = null, workRaw = null;
+  for (const p of shipCtxPatterns) {
+    const m = text.match(p);
+    if (m) { shipRaw = m[1]; break; }
+  }
+  for (const p of workCtxPatterns) {
+    const m = text.match(p);
+    if (m) { workRaw = m[1]; break; }
+  }
+
+  const shipResult = shipRaw ? _vmParseDateFragment(shipRaw) : null;
+  const workResult = workRaw ? _vmParseDateFragment(workRaw) : null;
+
+  // どちらも取れなかった場合はテキスト全体から1つ取得
+  const fallback = _vmParseDateFragment(text);
+
+  return {
+    workDate:         workResult ? workResult.date  : fallback.date,
+    shipDate:         shipResult ? shipResult.date  : null,
+    workMonthUnknown: workResult ? workResult.monthUnknown : fallback.monthUnknown,
+    shipMonthUnknown: shipResult ? shipResult.monthUnknown : false,
+  };
 }
 
 // ─────────────────────────────────────────
@@ -190,19 +241,31 @@ function vmParseDate(text) {
 function vmParseText(rawText) {
   const text = rawText;
 
-  // 日付
-  const workDate = vmParseDate(text);
+  // 日付（作業日・出荷日を分離）
+  const dateResult = vmParseDate(text);
+  const workDate         = dateResult.workDate;
+  const shipDate         = dateResult.shipDate;
+  const workMonthUnknown = dateResult.workMonthUnknown;
+  const shipMonthUnknown = dateResult.shipMonthUnknown;
 
-  // 作業タグ
-  let tag = 'その他';
-  for (const entry of VM_TAG_DICT) {
-    if (entry.keywords.some(kw => text.includes(kw))) {
-      tag = entry.tag;
-      break;
-    }
-  }
+  // ─── タグ：スコアリング方式 ───
+  const scores = VM_TAG_DICT
+    .filter(e => e.keywords.length > 0)
+    .map(e => {
+      const hits = e.keywords.filter(kw => text.includes(kw)).length;
+      const bonus = VM_TAG_BONUS[e.tag] || 0;
+      return { tag: e.tag, score: hits + (hits > 0 ? bonus : 0) };
+    })
+    .filter(s => s.score > 0)
+    .sort((a, b) => b.score - a.score);
 
-  // 作物（cropDBから動的取得 → なければ辞書）
+  // 上位3件を候補に
+  const tagCandidates = scores.slice(0, 3).map(s => s.tag);
+  // 1位と2位のスコア差が1以下なら「曖昧」フラグ
+  const tagAmbiguous = scores.length >= 2 && (scores[0].score - scores[1].score) <= 1;
+  const tag = tagCandidates[0] || 'その他';
+
+  // 作物（cropDBから動的取得）
   let crop = null;
   if (typeof cropDB !== 'undefined' && Array.isArray(cropDB)) {
     for (const c of cropDB) {
@@ -236,7 +299,16 @@ function vmParseText(rawText) {
     if (text.includes(kw)) { shipping = type; break; }
   }
 
-  return { workDate, tag, crop, material, quantity, shipping };
+  // 出荷系ワード検出
+  const hasShippingWord = VM_SHIPPING_WORDS.some(w => text.includes(w));
+
+  return {
+    workDate, shipDate,
+    workMonthUnknown, shipMonthUnknown,
+    tag, tagCandidates, tagAmbiguous,
+    crop, material, quantity, shipping, hasShippingWord,
+    areaId,
+  };
 }
 
 // ─────────────────────────────────────────
@@ -354,14 +426,80 @@ function _vmSetRecordingUI(on) {
 
 function vmShowConfirmDialog(rawText, areaId) {
   const parsed = vmParseText(rawText);
-  // areaIdは呼び出し元から渡す（エリア詳細パネル）
   if (areaId) parsed.areaId = areaId;
 
   const tagOptions = VM_TAG_DICT.map(e =>
     `<option value="${e.tag}"${e.tag === parsed.tag ? ' selected' : ''}>${e.tag}</option>`
   ).join('');
 
-  // 既存overlay削除
+  // タグ曖昧時：候補ボタン（最大3件）
+  const tagCandidateHTML = (parsed.tagAmbiguous && parsed.tagCandidates.length > 1)
+    ? `<div class="vm-tag-candidates">
+        <span class="vm-tag-hint">⚠️ 判定が曖昧です。候補から選んでください：</span>
+        ${parsed.tagCandidates.map(t =>
+          `<button type="button" class="vm-tag-cand-btn${t === parsed.tag ? ' active' : ''}"
+            onclick="vmSelectTagCandidate('${t}')">${t}</button>`
+        ).join('')}
+      </div>`
+    : '';
+
+  // 月選択UI（workDateのmonthUnknown時）
+  const now = new Date();
+  const monthOpts = Array.from({length: 12}, (_, i) => {
+    const m = i + 1;
+    return `<option value="${m}"${m === now.getMonth()+1 ? ' selected' : ''}>${m}月</option>`;
+  }).join('');
+
+  const workMonthPickerHTML = parsed.workMonthUnknown
+    ? `<div class="vm-month-picker">
+        <span class="vm-tag-hint">📅 何月の作業ですか？</span>
+        <select class="vm-select vm-month-sel" id="vm-work-month">${monthOpts}</select>
+      </div>`
+    : '';
+
+  // 出荷日フィールド
+  const shipDateHTML = `
+    <div class="vm-field">
+      <label class="vm-label">出荷日</label>
+      <input class="vm-input" type="date" id="vm-ship-date" value="${parsed.shipDate || ''}">
+    </div>`;
+
+  const shipMonthPickerHTML = parsed.shipMonthUnknown
+    ? `<div class="vm-month-picker">
+        <span class="vm-tag-hint">📅 何月の出荷ですか？</span>
+        <select class="vm-select vm-month-sel" id="vm-ship-month">${monthOpts}</select>
+      </div>`
+    : '';
+
+  // 出荷記録ボタン
+  const shippingBtnHTML = parsed.hasShippingWord
+    ? `<button type="button" class="btn btn-shipping" id="vm-shipping-toggle"
+        onclick="vmToggleShippingSection()">📦 出荷記録にも保存</button>`
+    : '';
+
+  // 出荷先タイプ選択（折りたたみ）
+  const shippingTypes = [
+    { key: 'ja',          label: '🌾 JA（農協）' },
+    { key: 'market',      label: '🏪 卸売市場' },
+    { key: 'supermarket', label: '🛒 スーパー' },
+    { key: 'farmstand',   label: '🏡 直売所' },
+    { key: 'roadside',    label: '🚗 道の駅' },
+  ];
+  const shippingTypeOpts = shippingTypes.map(t =>
+    `<button type="button" class="vm-ship-type-btn${parsed.shipping === t.key ? ' active' : ''}"
+      data-type="${t.key}" onclick="vmSelectShipType('${t.key}')">${t.label}</button>`
+  ).join('');
+
+  const shippingSectionHTML = parsed.hasShippingWord
+    ? `<div class="vm-shipping-section" id="vm-shipping-section" style="display:none;">
+        <div class="vm-field">
+          <label class="vm-label">出荷先</label>
+          <div class="vm-ship-type-grid">${shippingTypeOpts}</div>
+          <input type="hidden" id="vm-ship-type" value="${parsed.shipping || 'ja'}">
+        </div>
+      </div>`
+    : '';
+
   document.getElementById('vm-confirm-overlay')?.remove();
 
   const overlay = document.createElement('div');
@@ -382,11 +520,15 @@ function vmShowConfirmDialog(rawText, areaId) {
           <div class="vm-field">
             <label class="vm-label">作業日</label>
             <input class="vm-input" type="date" id="vm-work-date" value="${parsed.workDate}">
+            ${workMonthPickerHTML}
           </div>
-          <div class="vm-field">
-            <label class="vm-label">作業タグ</label>
-            <select class="vm-select" id="vm-tag">${tagOptions}</select>
-          </div>
+          ${shipDateHTML}
+        </div>
+        ${shipMonthPickerHTML}
+        <div class="vm-field">
+          <label class="vm-label">作業タグ</label>
+          <select class="vm-select" id="vm-tag">${tagOptions}</select>
+          ${tagCandidateHTML}
         </div>
         <div class="vm-field-row">
           <div class="vm-field">
@@ -408,23 +550,81 @@ function vmShowConfirmDialog(rawText, areaId) {
             <input class="vm-input" type="text" id="vm-note" placeholder="補足など">
           </div>
         </div>
+        ${shippingSectionHTML}
       </div>
       <div class="vm-confirm-footer">
+        ${shippingBtnHTML}
         <button class="btn btn-ghost" onclick="vmCloseConfirmDialog()">キャンセル</button>
         <button class="btn btn-primary" onclick="vmCommit('${areaId || ''}')">保存する</button>
       </div>
     </div>
   `;
   document.body.appendChild(overlay);
+
+  // 月選択UIが出ている場合、月変更で日付を更新
+  _vmBindMonthPickers(parsed);
 }
 
 function vmCloseConfirmDialog() {
   document.getElementById('vm-confirm-overlay')?.remove();
 }
 
+// ─── タグ候補ボタン選択 ───
+function vmSelectTagCandidate(tag) {
+  const sel = document.getElementById('vm-tag');
+  if (sel) sel.value = tag;
+  document.querySelectorAll('.vm-tag-cand-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent === tag);
+  });
+}
+
+// ─── 出荷先タイプ選択 ───
+function vmSelectShipType(type) {
+  const hidden = document.getElementById('vm-ship-type');
+  if (hidden) hidden.value = type;
+  document.querySelectorAll('.vm-ship-type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === type);
+  });
+}
+
+// ─── 「出荷記録にも保存」セクション開閉 ───
+function vmToggleShippingSection() {
+  const sec = document.getElementById('vm-shipping-section');
+  const btn = document.getElementById('vm-shipping-toggle');
+  if (!sec) return;
+  const open = sec.style.display !== 'none';
+  sec.style.display = open ? 'none' : 'block';
+  if (btn) btn.classList.toggle('active', !open);
+}
+
+// ─── 月選択UIのバインド（月変更 → date input を更新） ───
+function _vmBindMonthPickers(parsed) {
+  const workMonthSel = document.getElementById('vm-work-month');
+  const workDateInput = document.getElementById('vm-work-date');
+  if (workMonthSel && workDateInput && parsed.workMonthUnknown) {
+    workMonthSel.addEventListener('change', () => {
+      const d = new Date(workDateInput.value);
+      d.setMonth(parseInt(workMonthSel.value) - 1);
+      const pad = n => String(n).padStart(2,'0');
+      workDateInput.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    });
+  }
+  const shipMonthSel = document.getElementById('vm-ship-month');
+  const shipDateInput = document.getElementById('vm-ship-date');
+  if (shipMonthSel && shipDateInput && parsed.shipMonthUnknown) {
+    shipMonthSel.addEventListener('change', () => {
+      const d = new Date(shipDateInput.value || new Date());
+      d.setMonth(parseInt(shipMonthSel.value) - 1);
+      const pad = n => String(n).padStart(2,'0');
+      shipDateInput.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    });
+  }
+}
+
 function vmCommit(areaId) {
   const rawText  = document.getElementById('vm-raw-text')?.value.trim() || '';
   const workDate = document.getElementById('vm-work-date')?.value || '';
+  const shipDate = document.getElementById('vm-ship-date')?.value || null;
   const tag      = document.getElementById('vm-tag')?.value || 'その他';
   const crop     = document.getElementById('vm-crop')?.value.trim() || null;
   const material = document.getElementById('vm-material')?.value.trim() || null;
@@ -435,6 +635,7 @@ function vmCommit(areaId) {
     id:        'vm_' + Date.now(),
     areaId:    areaId || null,
     workDate,
+    shipDate:  shipDate || null,
     createdAt: new Date().toISOString(),
     tag,
     crop:      crop || null,
@@ -445,10 +646,24 @@ function vmCommit(areaId) {
   };
 
   vmAdd(memo);
+
+  // 出荷記録連携（セクションが開いている場合）
+  const shippingSec = document.getElementById('vm-shipping-section');
+  const shipType    = document.getElementById('vm-ship-type')?.value;
+  if (shippingSec && shippingSec.style.display !== 'none' && shipType) {
+    if (typeof recordsFillFromVoice === 'function') {
+      recordsFillFromVoice({
+        shipDate: shipDate || workDate,
+        item:     crop,
+        quantity,
+        rawText,
+      }, shipType);
+    }
+  }
+
   vmCloseConfirmDialog();
   showToast(`📝 音声メモを保存しました（${workDate} / ${tag}）`);
 
-  // カレンダー再描画
   if (typeof _adpRenderCalendar === 'function')    _adpRenderCalendar();
   if (typeof _adpRenderDayRecords === 'function')  _adpRenderDayRecords();
 }

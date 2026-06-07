@@ -145,7 +145,25 @@ const SHIPPING_TYPES = {
         ]
       }
     ]
-  }
+  },
+  roadside: {
+    label: '道の駅',
+    icon: '🚗',
+    sections: [
+      {
+        title: '出荷情報',
+        fields: [
+          { id: 'producerNo',   label: '生産者番号', type: 'text',   placeholder: '例：A-042' },
+          { id: 'stationName',  label: '道の駅名',   type: 'text',   placeholder: '例：道の駅○○' },
+          { id: 'productName',  label: '商品名',     type: 'text',   placeholder: '例：トマト' },
+          { id: 'quantity',     label: '数量',       type: 'number', placeholder: '例：20', unit: '個' },
+          { id: 'weight',       label: '重量',       type: 'number', placeholder: '例：5', unit: 'kg' },
+          { id: 'price',        label: '価格',       type: 'number', placeholder: '例：300', unit: '円' },
+          { id: 'shipDate',     label: '出荷日',     type: 'date' },
+        ]
+      }
+    ]
+  },
 };
 
 // ─── ストレージ操作 ───
@@ -380,4 +398,39 @@ function toggleRecSection(header) {
   const isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'block';
   if (icon) icon.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+
+// ─── 音声メモからの自動マッピング ───
+// voiceMemo.js の vmCommit() から呼ばれる
+// parsed: { shipDate, item, quantity, rawText }
+// type:   SHIPPING_TYPES のキー（'ja' | 'market' | 'supermarket' | 'farmstand' | 'roadside'）
+function recordsFillFromVoice(parsed, type) {
+  if (!SHIPPING_TYPES[type]) return;
+
+  // 出荷記録タブを対象タイプで描画
+  const container = document.getElementById('tab-records');
+  if (container) {
+    container.dataset.type = type;
+    renderRecordTab();
+  }
+
+  // フォームフィールドに値を注入（存在するフィールドのみ）
+  const fillField = (name, value) => {
+    if (!value) return;
+    const el = document.querySelector(`#rec-form [name="${name}"]`);
+    if (el) el.value = value;
+  };
+
+  fillField('shipDate',    parsed.shipDate || '');
+  fillField('item',        parsed.item || '');
+  fillField('productName', parsed.item || '');
+  fillField('quantity',    parsed.quantity ? parseFloat(parsed.quantity) : '');
+
+  // 重量：数量に kg/g/トン が含まれていれば weight にも流す
+  if (parsed.quantity) {
+    const wMatch = parsed.quantity.match(/^([\d.]+)\s*(kg|ｋｇ|キロ|キログラム|g|ｇ|グラム|トン|t)$/);
+    if (wMatch) fillField('weight', wMatch[1]);
+  }
+
+  showToast(`📦 出荷記録フォームに反映しました（${SHIPPING_TYPES[type].label}）`);
 }
