@@ -173,6 +173,11 @@ const AmedasLoader = (() => {
     // 気候帯名（engine互換用: tempMeanから推定）
     const name = _climateName(tempMean);
 
+    // 旬配列（phenology.js が必要）
+    const decadeArr = (typeof Phenology !== 'undefined')
+      ? Phenology.buildDecadeArray(monthly)
+      : null;
+
     return {
       stationNo:     nearest.station_no,
       stationName:   nearest.name_kanji,
@@ -188,6 +193,7 @@ const AmedasLoader = (() => {
       rainDays50:    rainDays50,
       snowDays:      snowDays,
       name,
+      decadeArr,     // 旬36点データ {tMax, tMin, tMean, sun, keys}
     };
   }
 

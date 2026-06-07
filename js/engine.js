@@ -122,144 +122,154 @@ function scoreCrop(crop, areaData) {
   // ════════════════════════════════════════
   maxScore += 25;
 
-  // 月別気温配列（areaData.climate から取得）
-  const _tMaxArr = climate?._tMaxArr ?? null;  // 月別日最高気温 [12]
-  const _tMinArr = climate?._tMinArr ?? null;  // 月別日最低気温 [12]
-  const hasMonthlyCols = _tMaxArr && _tMinArr &&
-    _tMaxArr.length === 12 && _tMinArr.length === 12;
+  // 旬配列（areaData.climate.decadeArr から取得）
+  const _decadeArr = climate?.decadeArr ?? null; // { tMax[36], tMin[36], tMean[36], sun[36] }
+  const hasDecadeCols = _decadeArr &&
+    Array.isArray(_decadeArr.tMean) && _decadeArr.tMean.length === 36;
 
   // ハウス補正:
-  //   greenhouse      → 月別最低気温を -4℃ して計算（保温効果で下限カバー範囲を拡大）
-  //   heatedGreenhouse → 月別に個別計算するためここでは定義しない
-  const houseMinOffset = cultivationMode === 'greenhouse' ? -4 : 0; // tMin に加算（-4 = 4℃分下限を緩和）
+  //   greenhouse      → 旬別最低気温を -4℃ として計算（保温効果で下限カバー範囲を拡大）
+  //   heatedGreenhouse → 旬別に個別計算するためここでは定義しない
+  const houseMinOffset = cultivationMode === 'greenhouse' ? -4 : 0;
   const isHeated       = cultivationMode === 'heatedGreenhouse';
 
-  // 生育月を特定（0-indexed: 0=1月 … 11=12月）
-  let growthMonths = null; // null = 特定不能
+  // ── 生育旬を特定（0-indexed: 0=1月上旬 … 35=12月下旬）──
+  let growthDecades = null; // null = 特定不能
   const cal = crop.calendar;
-  if (cal) {
-    // calendar.manage + harvest が存在する月を生育月とみなす
+  if (cal && hasDecadeCols) {
+    // calendar.manage + harvest の月キーから旬インデックスへ変換（月×3旬）
     const monthKeys = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
     const flagged = new Set();
     ['manage','harvest'].forEach(phase => {
       if (!Array.isArray(cal[phase])) return;
       cal[phase].forEach(mk => {
-        const idx = monthKeys.indexOf(mk);
-        if (idx >= 0) flagged.add(idx);
+        const mi = monthKeys.indexOf(mk);
+        if (mi >= 0) { flagged.add(mi*3); flagged.add(mi*3+1); flagged.add(mi*3+2); }
       });
     });
-    if (flagged.size > 0) growthMonths = [...flagged].sort((a,b) => a-b);
+    if (flagged.size > 0) growthDecades = [...flagged].sort((a,b) => a-b);
   }
 
-  if (!growthMonths && hasMonthlyCols) {
-    // growthPeriodMin/Max から生育可能月を推定
-    // 加温ハウスは全月を候補とし growthPeriod で絞る
+  if (!growthDecades && hasDecadeCols) {
+    // growthPeriodMin/Max から生育可能旬を推定
     const c = crop.conditions;
     if (c.tempMeanMin != null && c.tempMeanMax != null) {
       const candidates = [];
-      for (let i = 0; i < 12; i++) {
-        const tMax = _tMaxArr[i], tMin = _tMinArr[i];
-        if (tMax === null || tMin === null) continue;
-        const tMid = isHeated
-          ? Math.max((tMax + tMin) / 2, c.tempMeanMin) // 加温で最低温度まで引き上げ
-          : (tMax + (tMin + houseMinOffset)) / 2;       // ハウス: tMinを-4補正して中間値
-        if (isHeated || (tMid >= c.tempMeanMin && tMid <= c.tempMeanMax)) {
-          candidates.push({ idx: i, tMid });
+      for (let i = 0; i < 36; i++) {
+        const tMean = _decadeArr.tMean[i];
+        if (tMean === null) continue;
+        const tMin = _decadeArr.tMin[i];
+        const tAdjusted = isHeated
+          ? Math.max(tMean, c.tempMeanMin)
+          : tMean + (houseMinOffset / 2);
+        if (isHeated || (tAdjusted >= c.tempMeanMin && tAdjusted <= c.tempMeanMax)) {
+          candidates.push({ idx: i, tMean: tAdjusted });
         }
       }
       const gpMin = c.growthPeriodMin ?? 0;
-      const gpMax = c.growthPeriodMax ?? 12;
-      const targetMonths = Math.round((gpMin + gpMax) / 2 / 30);
+      const gpMax = c.growthPeriodMax ?? 120;
+      const targetDecades = Math.round((gpMin + gpMax) / 2 / 10);
       if (candidates.length > 0) {
-        const sorted = [...candidates].sort((a,b) => b.tMid - a.tMid);
-        const picked = sorted.slice(0, Math.max(targetMonths, candidates.length));
-        growthMonths = picked.map(p => p.idx).sort((a,b) => a-b);
+        const sorted = [...candidates].sort((a,b) => b.tMean - a.tMean);
+        const picked = sorted.slice(0, Math.max(targetDecades, candidates.length));
+        growthDecades = picked.map(p => p.idx).sort((a,b) => a-b);
       }
     }
   }
 
-  // 加温ハウス: growthMonthsが特定できない場合は全月を生育月とみなす
-  if (isHeated && !growthMonths) {
-    growthMonths = [0,1,2,3,4,5,6,7,8,9,10,11];
+  // 加温ハウス: 特定不能なら全旬を生育旬とみなす
+  if (isHeated && !growthDecades) {
+    growthDecades = Array.from({length: 36}, (_, i) => i);
   }
 
-  // monthlyMatch: 12要素
-  //   null        = 非生育月
+  // decadeMatch: 36要素
+  //   null        = 非生育旬
   //   true        = 適合
   //   'border'    = 境界（±2℃以内）
   //   false       = 不適合
-  //   { heated, diff } = 加温ハウスで補填中（燃料代計算用）
+  //   { heated, diff } = 加温ハウスで補填中
+  let decadeMatch = null;
+  // monthlyMatch: area.js の既存カラーバー互換（12要素）
   let monthlyMatch = null;
 
-  if (hasMonthlyCols && growthMonths && growthMonths.length > 0) {
+  if (hasDecadeCols && growthDecades && growthDecades.length > 0) {
     const c = crop.conditions;
+    decadeMatch  = new Array(36).fill(null);
     monthlyMatch = new Array(12).fill(null);
     let totalPts = 0;
 
-    growthMonths.forEach(i => {
-      const tMax = _tMaxArr[i], tMin = _tMinArr[i];
-      if (tMax === null || tMin === null) { monthlyMatch[i] = null; return; }
-      const tMidRaw = (tMax + tMin) / 2;
-      const tMin2   = c.tempMeanMin ?? -Infinity;
-      const tMax2   = c.tempMeanMax ??  Infinity;
+    growthDecades.forEach(i => {
+      const tMean = _decadeArr.tMean[i];
+      const tMin  = _decadeArr.tMin[i];
+      const tMax  = _decadeArr.tMax[i];
+      if (tMean === null) { decadeMatch[i] = null; return; }
+      const tMin2 = c.tempMeanMin ?? -Infinity;
+      const tMax2 = c.tempMeanMax ??  Infinity;
 
       if (isHeated) {
-        // 加温ハウス: 気温差を計算してスコアに反映
-        // 上限超えは加温で解決できないため通常判定
-        if (tMidRaw > tMax2 + 2) {
-          monthlyMatch[i] = false;
+        if (tMean > tMax2 + 2) {
+          decadeMatch[i] = false;
           totalPts += 0;
         } else {
-          const diff = Math.max(0, tMin2 - tMidRaw); // 不足℃（0なら補填不要）
-          // 減点カーブ: diff=0→1.0, diff=5→0.7, diff=10→0.4, diff=15+→0.1
+          const diff = Math.max(0, tMin2 - tMean);
           const monthScore = diff === 0 ? 1.0
             : diff <= 5  ? 1.0 - diff * 0.06
             : diff <= 10 ? 0.7 - (diff - 5) * 0.06
             : Math.max(0.1, 0.4 - (diff - 10) * 0.06);
-          monthlyMatch[i] = { heated: true, diff: Math.round(diff * 10) / 10, score: monthScore };
+          decadeMatch[i] = { heated: true, diff: Math.round(diff * 10) / 10, score: monthScore };
           totalPts += monthScore;
         }
       } else {
-        // 露地・ハウス: ハウスは月別最低気温を-4℃補正して中間値を計算
-        const tMid = (tMax + (tMin + houseMinOffset)) / 2;
-        if (tMid >= tMin2 && tMid <= tMax2) {
-          monthlyMatch[i] = true;
+        const tAdj = tMean + (houseMinOffset / 2);
+        if (tAdj >= tMin2 && tAdj <= tMax2) {
+          decadeMatch[i] = true;
           totalPts += 1.0;
-        } else if (tMid >= tMin2 - 2 && tMid <= tMax2 + 2) {
-          monthlyMatch[i] = 'border';
+        } else if (tAdj >= tMin2 - 2 && tAdj <= tMax2 + 2) {
+          decadeMatch[i] = 'border';
           totalPts += 0.5;
         } else {
-          monthlyMatch[i] = false;
+          decadeMatch[i] = false;
           totalPts += 0;
         }
       }
     });
 
-    const total = growthMonths.length;
+    // monthlyMatch: 各月3旬の多数決で月判定を生成（既存カラーバー互換）
+    for (let m = 0; m < 12; m++) {
+      const trio = [decadeMatch[m*3], decadeMatch[m*3+1], decadeMatch[m*3+2]];
+      const nonNull = trio.filter(v => v !== null);
+      if (nonNull.length === 0) { monthlyMatch[m] = null; continue; }
+      if (nonNull.every(v => v === true))   { monthlyMatch[m] = true; continue; }
+      if (nonNull.every(v => v === false))  { monthlyMatch[m] = false; continue; }
+      if (nonNull.some(v => v?.heated))     { monthlyMatch[m] = nonNull.find(v => v?.heated); continue; }
+      monthlyMatch[m] = 'border';
+    }
+
+    const total = growthDecades.length;
     score += Math.round(25 * (totalPts / total));
 
-    // details テキスト
     if (isHeated) {
-      const heatingMonths = monthlyMatch.filter(v => v?.heated && v.diff > 0);
-      const maxDiff = heatingMonths.length
-        ? Math.max(...heatingMonths.map(v => v.diff))
+      const heatingDecades = decadeMatch.filter(v => v?.heated && v.diff > 0);
+      const maxDiff = heatingDecades.length
+        ? Math.max(...heatingDecades.map(v => v.diff))
         : 0;
-      const label = heatingMonths.length === 0
+      const label = heatingDecades.length === 0
         ? '加温不要（外気温で適合）'
         : `最大${maxDiff}℃補填が必要`;
       details.push({
         ok:   maxDiff < 10,
         text: `生育期気温（加温ハウス）— ${label}`,
         monthlyMatch,
+        decadeMatch,
       });
     } else {
-      const matchCount  = monthlyMatch.filter(v => v === true).length;
-      const borderCount = monthlyMatch.filter(v => v === 'border').length;
-      const matchLabel  = `${matchCount}/${total}ヶ月適合`;
+      const matchCount = decadeMatch.filter(v => v === true).length;
+      const matchLabel = `${matchCount}/${total}旬適合`;
       details.push({
         ok:   matchCount >= total * 0.6,
         text: `生育期気温 — ${matchLabel}（${modeLabel}）`,
         monthlyMatch,
+        decadeMatch,
       });
     }
   } else if (corrTemp !== null) {
@@ -359,11 +369,16 @@ function scoreCrop(crop, areaData) {
   // ════════════════════════════════════════
   const pct = maxScore > 0 ? Math.round(score / maxScore * 100) : 0;
 
-  // monthlyMatch を details から抽出してトップレベルに昇格
-  const _mmDetail = details.find(d => d.monthlyMatch);
-  const _monthlyMatch = _mmDetail ? _mmDetail.monthlyMatch : monthlyMatch;
+  // decadeMatch / monthlyMatch を details から抽出してトップレベルに昇格
+  const _mmDetail      = details.find(d => d.monthlyMatch || d.decadeMatch);
+  const _monthlyMatch  = _mmDetail?.monthlyMatch  ?? monthlyMatch  ?? null;
+  const _decadeMatch   = _mmDetail?.decadeMatch   ?? decadeMatch   ?? null;
 
-  return { crop, score: pct, details, viable, alert, cultivationMode, monthlyMatch: _monthlyMatch ?? null };
+  return {
+    crop, score: pct, details, viable, alert, cultivationMode,
+    monthlyMatch: _monthlyMatch,
+    decadeMatch:  _decadeMatch,
+  };
 }
 
 function calcConfidence(areaData) {
@@ -570,8 +585,8 @@ function buildLandProfile(areaData = {}, soilInput = {}) {
 
 function areaDataFromLandProfile(areaData, landProfile) {
   const baseClimate = landProfile.lat != null ? getClimate(landProfile.lat) : areaData.climate;
-  // AMeDAS月別データ・実測値を元のclimateから引き継ぐ
-  // (getClimate()の静的テーブルで上書きすると _tMaxArr/_tMinArr 等が消えるため)
+  // AMeDAS実測値を元のclimateから引き継ぐ
+  // (getClimate()の静的テーブルで上書きすると decadeArr 等が消えるため)
   const mergedClimate = {
     ...baseClimate,
     ...(areaData.climate ? {
@@ -582,9 +597,7 @@ function areaDataFromLandProfile(areaData, landProfile) {
       stationNo:     areaData.climate.stationNo     ?? null,
       stationName:   areaData.climate.stationName   ?? null,
       distKm:        areaData.climate.distKm        ?? null,
-      _tMaxArr:      areaData.climate._tMaxArr      ?? null,
-      _tMinArr:      areaData.climate._tMinArr      ?? null,
-      _sunArr:       areaData.climate._sunArr        ?? null,
+      decadeArr:     areaData.climate.decadeArr      ?? null, // 旬36点 {tMax,tMin,tMean,sun,keys}
     } : {}),
   };
   return {
