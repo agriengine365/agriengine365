@@ -28,9 +28,15 @@ const PolygonDraw = (() => {
     if (el) el.classList.toggle('active', visible);
   }
 
-  // ─── 地図中心の LatLng を取得 ───
+  // ─── スコープ中心の LatLng を取得（ダイアログ表示時のズレを補正）───
   function getCenter() {
-    return map.getCenter();
+    const scope = document.getElementById('draw-scope');
+    if (!scope) return map.getCenter();
+    const sr = scope.getBoundingClientRect();
+    const mr = map.getContainer().getBoundingClientRect();
+    const cx = sr.left + sr.width  / 2 - mr.left;
+    const cy = sr.top  + sr.height / 2 - mr.top;
+    return map.containerPointToLatLng(L.point(cx, cy));
   }
 
   // ─── ライブライン（スコープ中心 ↔ 最終確定点）を更新 ───
@@ -164,7 +170,7 @@ const PolygonDraw = (() => {
     setScopeVisible(true);
     setControlsVisible(true);
     updateControls();
-    updateMapDrawHint('地図を動かして中央に合わせ「確定」');
+    updateMapDrawHint('地図を動かして中央を頂点に合わせて「確定」');
     showDrawToast('地図をドラッグして1点目を中央に合わせてください');
   }
 
@@ -218,7 +224,7 @@ const PolygonDraw = (() => {
     updateLiveLine();
     updateControls();
     const n = confirmed.length;
-    updateMapDrawHint(n ? `${n}点確定 — 次の頂点を合わせて確定` : '地図を動かして中央に合わせ「確定」');
+    updateMapDrawHint(n ? `${n}点確定 — 次の頂点を合わせて確定` : '地図を動かして中央を頂点に合わせて「確定」');
     showDrawToast('1つ前の頂点に戻しました');
   }
 
@@ -255,7 +261,7 @@ const PolygonDraw = (() => {
     updateConfirmedPreview();
     if (liveLayer) { map.removeLayer(liveLayer); liveLayer = null; }
     updateControls();
-    updateMapDrawHint('地図を動かして中央に合わせ「確定」');
+    updateMapDrawHint('地図を動かして中央を頂点に合わせて「確定」');
     showDrawToast('リセットしました');
   }
 

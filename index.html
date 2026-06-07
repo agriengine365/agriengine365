@@ -60,6 +60,7 @@
   <div class="draw-phase" id="draw-phase-drawing">
     <p class="map-draw-dialog-hint" id="map-draw-dialog-hint">地図をタップして頂点を配置</p>
     <div class="map-draw-dialog-actions">
+      <button type="button" class="map-draw-btn map-draw-btn-cancel"  id="btn-draw-cancel"   onclick="PolygonDraw.cancel()">キャンセル</button>
       <button type="button" class="map-draw-btn map-draw-btn-sub"     id="btn-draw-back"     onclick="polygonDrawBack()"     disabled>戻る</button>
       <button type="button" class="map-draw-btn map-draw-btn-confirm" id="btn-draw-confirm"  onclick="polygonDrawConfirm()" disabled>確定</button>
       <button type="button" class="map-draw-btn map-draw-btn-complete" id="btn-draw-complete" onclick="polygonDrawComplete()" disabled>完了</button>
