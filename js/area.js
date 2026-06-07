@@ -447,8 +447,14 @@ function _adpEnsureView() {
           <div class="adp-temp-legend" id="adp-growth-legend"></div>
         </div>
 
-        <!-- ▼ 下部スクロール: ランキングリスト -->
+        <!-- ▼ 下部スクロール: 栽培方式トグル ＋ タブ ＋ ランキングリスト -->
         <div class="adp-ranking-scroll adp-ranking-scroll-growth">
+          <!-- 栽培方式トグル（気温適性ペインと連動） -->
+          <div class="adp-cult-toggle" id="adp-cultivation-toggle-growth">
+            <button class="adp-cult-btn active" data-mode="openField"        onclick="_adpSwitchCultivation('openField')">露地</button>
+            <button class="adp-cult-btn"        data-mode="greenhouse"       onclick="_adpSwitchCultivation('greenhouse')">ハウス</button>
+            <button class="adp-cult-btn"        data-mode="heatedGreenhouse" onclick="_adpSwitchCultivation('heatedGreenhouse')">加温ハウス</button>
+          </div>
           <div class="cr-tabs-major">
             <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
             <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
@@ -491,6 +497,11 @@ function _adpSwitchSubTab(name) {
     setTimeout(() => _adpRenderTempChart(_adpSelectedCropId), 30);
   }
   if (name === 'growth') {
+    // 生育期間ペインのトグルを現在の cultivationMode に同期
+    const currentMode = currentAreaData?.cultivationMode || 'openField';
+    document.querySelectorAll('.adp-cult-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === currentMode);
+    });
     setTimeout(() => _adpRenderGrowthChart(_adpSelectedCropId), 30);
   }
 }
@@ -780,6 +791,12 @@ function _adpRenderRanking(area) {
   // 栽培方式トグルを描画（初回のみ）
   _adpEnsureCultivationToggle();
 
+  // 生育期間ペインのトグルを初期状態（openField）にリセット
+  currentAreaData.cultivationMode = 'openField';
+  document.querySelectorAll('.adp-cult-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === 'openField');
+  });
+
   const result = buildAnalysisResult(currentAreaData);
 
   // analysis.js のランキング状態を更新
@@ -829,17 +846,17 @@ function _adpEnsureCultivationToggle() {
   rankPane.prepend(wrap);
 }
 
-// ─── 栽培方式切替 ───
+// ─── 栽培方式切替（気温適性・生育期間ペイン共通） ───
 function _adpSwitchCultivation(mode) {
   if (!currentAreaData) return;
   currentAreaData.cultivationMode = mode;
 
-  // トグルUI更新
+  // 両ペインのトグルUI連動更新（.adp-cult-btn すべて対象）
   document.querySelectorAll('.adp-cult-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.mode === mode);
   });
 
-  // スコア再計算 → リスト再描画 → グラフ再描画
+  // スコア再計算 → 両リスト再描画 → 両グラフ再描画
   const result = buildAnalysisResult(currentAreaData);
   _crScores = result.cropScores;
   _adpRenderRankingList();
@@ -863,12 +880,17 @@ function _adpRenderRankingList() {
   el.innerHTML = scores.slice(0, 20).map((s, i) => {
     const scoreCls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
     const isSelected = s.crop.id === _adpSelectedCropId;
+    const gpMin = s.crop.conditions?.growthPeriodMin;
+    const gpMax = s.crop.conditions?.growthPeriodMax;
+    const gpStr = (gpMin != null || gpMax != null)
+      ? `<span class="cr-gp-badge">${gpMin ?? '?'}〜${gpMax ?? '?'}日</span>`
+      : '';
     return `
       <div class="cr-item${isSelected ? ' cr-item-open' : ''}"
         onclick="adpCropTap('${s.crop.id}')">
         <div class="cr-item-header">
           <span class="cr-rank">#${i + 1}</span>
-          <span class="cr-name">${escHtml(s.crop.name)}</span>
+          <span class="cr-name">${escHtml(s.crop.name)}${gpStr}</span>
           <span class="cr-score ${scoreCls}">${s.score}%</span>
           <svg class="cr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"/>
