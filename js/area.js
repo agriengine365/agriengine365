@@ -276,7 +276,8 @@ let _adpMonth         = 0;
 let _adpSelDate       = null;   // 選択中の日付文字列 'YYYY-MM-DD'
 let _adpEditId        = null;   // 編集中レコードID
 let _adpClimateCache  = null;   // AMeDAS取得済み climate（再オープン用キャッシュ）
-let _adpSelectedCropId = null;  // 気温グラフで強調表示中の作物ID
+let _adpSelectedCropId   = null;
+let _crOpenFieldScores   = null;  // 露地スコアキャッシュ（補正比較用）  // 気温グラフで強調表示中の作物ID
 
 async function openAreaDetailPanel(area) {
   _adpArea    = area;
@@ -837,6 +838,9 @@ function _adpRenderRanking(area) {
 
   const result = buildAnalysisResult(currentAreaData);
 
+  // 露地スコアをキャッシュ（補正比較用）
+  _crOpenFieldScores = result.cropScores.map(s => ({ id: s.crop.id, score: s.score }));
+
   // analysis.js のランキング状態を更新
   _crScores         = result.cropScores;
   _crProfile        = result.landProfile;
@@ -899,10 +903,73 @@ function _adpSwitchCultivation(mode) {
   // スコア再計算 → 両リスト再描画 → 両グラフ再描画
   const result = buildAnalysisResult(currentAreaData);
   _crScores = result.cropScores;
+  // 露地に戻ったらキャッシュも更新
+  if (mode === 'openField') {
+    _crOpenFieldScores = result.cropScores.map(s => ({ id: s.crop.id, score: s.score }));
+  }
   _adpRenderRankingList();
   _adpRenderGrowthRankingList();
   _adpRenderTempChart(_adpSelectedCropId);
   _adpRenderGrowthChart(_adpSelectedCropId);
+}
+
+// ─── 補正比較ヘルパー ───
+
+// 補正サマリーHTML（露地以外のモード時だけ中身あり）
+function _adpBuildCorrectionSummary(mode, filteredScores) {
+  if (mode === 'openField' || !_crOpenFieldScores || !_crOpenFieldScores.length) return '';
+
+  const modeLabel = mode === 'greenhouse' ? '🏠 ハウス補正中' : '🔥 加温ハウス補正中';
+
+  // filteredScoresに対して露地スコアとの差を計算
+  const diffs = filteredScores.map(s => {
+    const base = _crOpenFieldScores.find(b => b.id === s.crop.id);
+    return base != null ? s.score - base.score : 0;
+  });
+
+  const upCount   = diffs.filter(d => d > 0).length;
+  const downCount = diffs.filter(d => d < 0).length;
+  const avgDiff   = diffs.length
+    ? Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length)
+    : 0;
+  const avgSign   = avgDiff >= 0 ? '+' : '';
+
+  return `
+    <div class="adp-corr-summary">
+      <span class="adp-corr-mode">${modeLabel}</span>
+      <span class="adp-corr-stats">
+        ${upCount > 0 ? `<span class="adp-corr-up">▲${upCount}件上昇</span>` : ''}
+        ${downCount > 0 ? `<span class="adp-corr-down">▼${downCount}件低下</span>` : ''}
+        <span class="adp-corr-avg">平均${avgSign}${avgDiff}pt</span>
+      </span>
+    </div>`;
+}
+
+// 各アイテムの補正比較HTML
+function _adpBuildScoreCompare(cropId, currentScore, mode) {
+  if (mode === 'openField' || !_crOpenFieldScores) return { compareHtml: '', rankDiff: null };
+
+  const base = _crOpenFieldScores.find(b => b.id === cropId);
+  if (base == null) return { compareHtml: '', rankDiff: null };
+
+  const diff    = Math.round(currentScore - base.score);
+  const diffSign = diff >= 0 ? '+' : '';
+  const diffCls  = diff > 0 ? 'adp-diff-up' : diff < 0 ? 'adp-diff-down' : 'adp-diff-zero';
+
+  const compareHtml = `
+    <span class="adp-score-base">${Math.round(base.score)}%</span>
+    <span class="adp-score-arrow">→</span>
+    <span class="adp-diff-badge ${diffCls}">${diffSign}${diff}pt</span>`;
+
+  return { compareHtml };
+}
+
+// 順位変動計算（filteredOpenFieldScores: 露地側の同フィルタ済み配列が必要）
+function _adpCalcRankDiff(cropId, currentRank, openFieldScores) {
+  if (!openFieldScores) return null;
+  const baseRank = openFieldScores.findIndex(s => s.crop.id === cropId);
+  if (baseRank < 0) return null;
+  return baseRank - currentRank; // 正=上昇, 負=低下
 }
 
 // ─── ADP専用ランキングリスト描画 ───
@@ -911,13 +978,24 @@ function _adpRenderRankingList() {
   if (!el) return;
 
   const scores = _crFilteredScores();
+  const mode   = currentAreaData?.cultivationMode || 'openField';
 
   if (!scores.length) {
     el.innerHTML = '<div class="empty-mini">該当作物なし</div>';
     return;
   }
 
-  el.innerHTML = scores.slice(0, 20).map((s, i) => {
+  // 露地側の同フィルタ済みスコア（順位変動用）
+  const ofScores = (mode !== 'openField' && _crOpenFieldScores)
+    ? scores.map(s => {
+        const base = _crOpenFieldScores.find(b => b.id === s.crop.id);
+        return base ? { crop: s.crop, score: base.score } : null;
+      }).filter(Boolean).sort((a, b) => b.score - a.score)
+    : null;
+
+  const summaryHtml = _adpBuildCorrectionSummary(mode, scores);
+
+  const itemsHtml = scores.slice(0, 20).map((s, i) => {
     const scoreCls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
     const isSelected = s.crop.id === _adpSelectedCropId;
     const gpMin = s.crop.conditions?.growthPeriodMin;
@@ -925,11 +1003,20 @@ function _adpRenderRankingList() {
     const gpStr = (gpMin != null || gpMax != null)
       ? `<span class="cr-gp-badge">${gpMin ?? '?'}〜${gpMax ?? '?'}日</span>`
       : '';
+
+    // 補正比較
+    const { compareHtml } = _adpBuildScoreCompare(s.crop.id, s.score, mode);
+    const rankDiff = ofScores ? _adpCalcRankDiff(s.crop.id, i, ofScores) : null;
+    const rankDiffHtml = rankDiff != null && rankDiff !== 0
+      ? `<span class="adp-rank-diff ${rankDiff > 0 ? 'adp-diff-up' : 'adp-diff-down'}">`
+        + (rankDiff > 0 ? `▲${rankDiff}` : `▼${Math.abs(rankDiff)}`) + `</span>`
+      : '';
+
     return `
       <div class="cr-item${isSelected ? ' cr-item-open' : ''}"
         onclick="adpCropTap('${s.crop.id}')">
         <div class="cr-item-header">
-          <span class="cr-rank">#${i + 1}</span>
+          <span class="cr-rank">#${i + 1}${rankDiffHtml}</span>
           <span class="cr-name">${escHtml(s.crop.name)}${gpStr}</span>
           <span class="cr-score ${scoreCls}">${s.score}%</span>
           <svg class="cr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -939,10 +1026,13 @@ function _adpRenderRankingList() {
         <div class="cr-bar-track">
           <div class="cr-bar-fill ${scoreCls}" style="width:${s.score}%"></div>
         </div>
+        ${compareHtml ? `<div class="adp-score-compare">${compareHtml}</div>` : ''}
         ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
       </div>
     `;
   }).join('');
+
+  el.innerHTML = summaryHtml + itemsHtml;
 }
 
 // ─── 気温折れ線グラフ描画 ───
@@ -1660,6 +1750,7 @@ function _adpRenderGrowthRankingList() {
   if (!el) return;
 
   const scores = _crFilteredScores ? _crFilteredScores() : (_crScores || []);
+  const mode   = currentAreaData?.cultivationMode || 'openField';
   if (!scores.length) {
     el.innerHTML = '<div class="empty-mini">データなし</div>';
     return;
@@ -1668,7 +1759,17 @@ function _adpRenderGrowthRankingList() {
   // Phenology用: decadeArrをこのスコープで取得
   const decadeArr = currentAreaData?.climate?.decadeArr;
 
-  el.innerHTML = scores.slice(0, 60).map(s => {
+  // 露地側の同フィルタ済みスコア（順位変動用）
+  const ofScores = (mode !== 'openField' && _crOpenFieldScores)
+    ? scores.map(s => {
+        const base = _crOpenFieldScores.find(b => b.id === s.crop.id);
+        return base ? { crop: s.crop, score: base.score } : null;
+      }).filter(Boolean).sort((a, b) => b.score - a.score)
+    : null;
+
+  const summaryHtml = _adpBuildCorrectionSummary(mode, scores);
+
+  const itemsHtml = scores.slice(0, 60).map((s, i) => {
     const isSelected = s.crop.id === _adpSelectedCropId;
     const bar = Math.round((s.score / 100) * 100);
     const gpMin = s.crop.conditions?.growthPeriodMin;
@@ -1687,16 +1788,28 @@ function _adpRenderGrowthRankingList() {
         phenoStr = `<span class="adp-cr-pheno">▼${sLabel} → ◆${eLabel}</span>`;
       }
     }
+
+    // 補正比較
+    const { compareHtml } = _adpBuildScoreCompare(s.crop.id, s.score, mode);
+    const rankDiff = ofScores ? _adpCalcRankDiff(s.crop.id, i, ofScores) : null;
+    const rankDiffHtml = rankDiff != null && rankDiff !== 0
+      ? `<span class="adp-rank-diff ${rankDiff > 0 ? 'adp-diff-up' : 'adp-diff-down'}">`
+        + (rankDiff > 0 ? `▲${rankDiff}` : `▼${Math.abs(rankDiff)}`) + `</span>`
+      : '';
+
     return `
       <div class="adp-cr-item${isSelected ? ' selected' : ''}" onclick="adpCropTap('${s.crop.id}')">
-        <div class="adp-cr-name">${s.crop.name}${gpStr}</div>
+        <div class="adp-cr-name">${s.crop.name}${gpStr}${rankDiffHtml}</div>
         ${phenoStr ? `<div class="adp-cr-pheno-wrap">${phenoStr}</div>` : ''}
         <div class="adp-cr-bar-wrap">
           <div class="adp-cr-bar" style="width:${bar}%"></div>
           <span class="adp-cr-score">${Math.round(s.score)}</span>
+          ${compareHtml ? `<span class="adp-score-compare-g">${compareHtml}</span>` : ''}
         </div>
       </div>`;
   }).join('');
+
+  el.innerHTML = summaryHtml + itemsHtml;
 }
 
 // ─── crSwitchMajor / crSwitchMinor / _crRenderList をADPビュー開中に差し替え ───

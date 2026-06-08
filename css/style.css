@@ -3752,6 +3752,112 @@ html.draw-dialog-active #draw-scope {
   padding: 0 10px 16px;
 }
 
+
+/* ═══════════════════════════════════════════
+   補正比較UI（ハウス・加温ハウス時）
+═══════════════════════════════════════════ */
+
+/* サマリーバー */
+.adp-corr-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  background: rgba(74, 222, 128, 0.07);
+  border-bottom: 1px solid rgba(74, 222, 128, 0.2);
+  flex-wrap: wrap;
+}
+
+.adp-corr-mode {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--green, #4ade80);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.adp-corr-stats {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.adp-corr-up {
+  font-size: 10px;
+  color: #4ade80;
+  font-weight: 600;
+}
+
+.adp-corr-down {
+  font-size: 10px;
+  color: #f87171;
+  font-weight: 600;
+}
+
+.adp-corr-avg {
+  font-size: 10px;
+  color: var(--text2, #8aaa8c);
+}
+
+/* 各アイテムの比較行（気温適性ペイン） */
+.adp-score-compare {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0 4px 32px;
+  font-size: 10px;
+}
+
+.adp-score-base {
+  color: var(--text3, #5a7a5c);
+}
+
+.adp-score-arrow {
+  color: var(--text3, #5a7a5c);
+  font-size: 9px;
+}
+
+/* 差分バッジ共通 */
+.adp-diff-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.adp-diff-up {
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.adp-diff-down {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.adp-diff-zero {
+  color: var(--text3, #5a7a5c);
+  background: transparent;
+}
+
+/* 順位変動バッジ */
+.adp-rank-diff {
+  font-size: 9px;
+  font-weight: 700;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* 生育期間ペインのバー右側の比較テキスト */
+.adp-score-compare-g {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  font-size: 9px;
+  white-space: nowrap;
+}
 /* 生育日数バッジ（ランキングアイテム内）*/
 .adp-cr-gp {
   display: inline-block;
