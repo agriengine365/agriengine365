@@ -14,6 +14,8 @@ const CATEGORY_LABELS = {
   wildveg:   { label: '山菜・きのこ', icon: '🍄' },
   forest:    { label: '林産きのこ',   icon: '🌲' },
   herb:      { label: 'ハーブ・薬草', icon: '🌿' },
+  oil:       { label: '油脂作物',     icon: '🫙' },
+  fiber:     { label: '繊維作物',     icon: '🧵' },
 };
 
 const CULTIVATION_MODES = [

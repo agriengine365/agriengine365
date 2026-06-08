@@ -39,6 +39,8 @@ const CR_MAJOR = {
   fruit:     null,                                        // 果物（小タブなし）
   wild:      ['wildveg', 'herb'],                         // 山菜・草（小タブあり）
   forest:    null,                                        // 林産（小タブなし）
+  oil:       null,                                        // 油脂作物（小タブなし）
+  fiber:     null,                                        // 繊維作物（小タブなし）
 };
 
 const CR_MINOR_LABELS = {
@@ -60,6 +62,8 @@ const CR_MAJOR_TO_CATEGORIES = {
   fruit:     ['fruit'],
   wild:      ['wildveg', 'herb'],
   forest:    ['forest'],
+  oil:       ['oil'],
+  fiber:     ['fiber'],
 };
 
 // ─── ランキング状態 ───

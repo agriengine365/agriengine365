@@ -649,12 +649,22 @@ function calculateProfitability(crop, areaData, scoreResult, landProfile) {
   const predictedYield = baseYield * suitabilityRate;
   const marketableYieldRate = clamp(0.72 + suitabilityRate * 0.22, 0.45, 0.96);
   const marketableYield = predictedYield * marketableYieldRate;
-  const demandScore = crop.category === 'fruit' || crop.category === 'wildveg' ? 1.08 : 1.0;
+  const demandScore = crop.category === 'fruit'   || crop.category === 'wildveg' ? 1.08
+                    : crop.category === 'oil'    || crop.category === 'fiber'   ? 1.05
+                    : 1.0;
   const revenue = marketableYield * cropPricePerKg(crop) * demandScore;
   const fertilizer = crop.fertilizer || { N: 0, P: 0, K: 0 };
   const annualCost = area10a * (45000 + (fertilizer.N + fertilizer.P + fertilizer.K) * 1200);
-  const initialCost = area10a * (crop.category === 'fruit' ? 120000 : crop.category === 'wildveg' ? 70000 : 35000);
-  const laborCost = area10a * (crop.category === 'fruit' ? 90000 : crop.category === 'vegetable' ? 75000 : 48000);
+  const initialCost = area10a * (crop.category === 'fruit'   ? 120000
+                               : crop.category === 'wildveg' ?  70000
+                               : crop.category === 'oil'     ?  45000
+                               : crop.category === 'fiber'   ?  50000
+                               : 35000);
+  const laborCost = area10a * (crop.category === 'fruit'      ? 90000
+                              : crop.category === 'vegetable' ? 75000
+                              : crop.category === 'oil'       ? 55000
+                              : crop.category === 'fiber'     ? 60000
+                              : 48000);
   const riskDeductionRate = calculateRiskDeductionRate(crop, landProfile);
   const riskDeduction = revenue * riskDeductionRate;
   const averageProfit = revenue - annualCost - initialCost - laborCost - riskDeduction;
