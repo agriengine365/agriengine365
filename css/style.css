@@ -3723,7 +3723,7 @@ html.draw-dialog-active #draw-scope {
   height: 190px;
 }
 
-/* growthランキングスクロール（chartと同構造） */
+/* growthランキングスクロール：chartと完全同構造 */
 .adp-ranking-scroll-growth {
   flex: 1;
   min-height: 0;
@@ -3731,9 +3731,22 @@ html.draw-dialog-active #draw-scope {
   -webkit-overflow-scrolling: touch;
   padding: 0;
 }
+
+/* 栽培方式トグルのstickyをgrowthペインでも有効化 */
+.adp-ranking-scroll-growth .adp-cult-toggle {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--bg, #0d180f);
+}
+
 .adp-ranking-scroll-growth .cr-tabs-major {
   padding: 10px 12px 0;
   margin-bottom: 6px;
+}
+.adp-ranking-scroll-growth .cr-tabs-minor {
+  padding: 6px 12px 0;
+  margin-bottom: 4px;
 }
 .adp-ranking-scroll-growth #crop-ranking-growth {
   padding: 0 10px 16px;

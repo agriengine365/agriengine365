@@ -434,14 +434,9 @@ function _adpEnsureView() {
         </div>
 
         <!-- ▼ 下部スクロール: 栽培方式トグル ＋ タブ ＋ ランキングリスト -->
-        <div class="adp-ranking-scroll adp-ranking-scroll-growth">
-          <!-- 栽培方式トグル（気温適性ペインと連動） -->
-          <div class="adp-cult-toggle" id="adp-cultivation-toggle-growth">
-            <button class="adp-cult-btn active" data-mode="openField"        onclick="_adpSwitchCultivation('openField')">露地</button>
-            <button class="adp-cult-btn"        data-mode="greenhouse"       onclick="_adpSwitchCultivation('greenhouse')">ハウス</button>
-            <button class="adp-cult-btn"        data-mode="heatedGreenhouse" onclick="_adpSwitchCultivation('heatedGreenhouse')">加温ハウス</button>
-          </div>
-          <div class="cr-tabs-major">
+        <div class="adp-ranking-scroll adp-ranking-scroll-growth" id="adp-ranking-scroll-growth">
+          <!-- 栽培方式トグル（_adpEnsureGrowthCultivationToggle が挿入） -->
+          <div class="cr-tabs-major" id="cr-tabs-major-growth">
             <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
             <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
             <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
@@ -484,7 +479,8 @@ function _adpSwitchSubTab(name) {
     setTimeout(() => _adpRenderTempChart(_adpSelectedCropId), 30);
   }
   if (name === 'growth') {
-    // 生育期間ペインのトグルを現在の cultivationMode に同期
+    // 生育期間ペイン用トグルを確実に生成してからモードを同期
+    _adpEnsureCultivationToggle();
     const currentMode = currentAreaData?.cultivationMode || 'openField';
     document.querySelectorAll('.adp-cult-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.mode === currentMode);
@@ -859,10 +855,13 @@ function _adpRenderRanking(area) {
 
 // ─── 栽培方式トグル（ランキング上部、初回だけ生成）───
 function _adpEnsureCultivationToggle() {
-  if (document.getElementById('adp-cultivation-toggle')) return;
+  _adpInsertCultivationToggle('adp-ranking-scroll',        'adp-cultivation-toggle');
+  _adpInsertCultivationToggle('adp-ranking-scroll-growth', 'adp-cultivation-toggle-growth');
+}
 
-  // ランキングペインの先頭に挿入
-  const rankPane = document.getElementById('adp-ranking-scroll');
+function _adpInsertCultivationToggle(paneId, toggleId) {
+  if (document.getElementById(toggleId)) return;
+  const rankPane = document.getElementById(paneId);
   if (!rankPane) return;
 
   const modes = [
@@ -874,7 +873,7 @@ function _adpEnsureCultivationToggle() {
   const current = currentAreaData?.cultivationMode || 'openField';
 
   const wrap = document.createElement('div');
-  wrap.id        = 'adp-cultivation-toggle';
+  wrap.id        = toggleId;
   wrap.className = 'adp-cult-toggle';
   wrap.innerHTML = modes.map(m => `
     <button class="adp-cult-btn${m.id === current ? ' active' : ''}"
@@ -884,7 +883,6 @@ function _adpEnsureCultivationToggle() {
     </button>
   `).join('');
 
-  // adp-ranking-scrollの先頭（cr-tabs-majorより前）に挿入
   rankPane.prepend(wrap);
 }
 
@@ -1760,6 +1758,8 @@ function closeAreaDetailPanel() {
   // 栽培方式トグルを削除（次回オープン時に再生成）
   const toggle = document.getElementById('adp-cultivation-toggle');
   if (toggle) toggle.remove();
+  const toggleG = document.getElementById('adp-cultivation-toggle-growth');
+  if (toggleG) toggleG.remove();
 
   // 作物選択状態・canvasをリセット
   _adpSelectedCropId = null;
