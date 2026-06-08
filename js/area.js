@@ -1051,7 +1051,7 @@ function _adpRenderTempChart(cropId) {
   ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
   ctx.clearRect(0, 0, W, H);
 
-  const PAD = { top: 14, right: 12, bottom: 28, left: 32 };
+  const PAD = { top: 14, right: 40, bottom: 34, left: 32 };
   const gW  = W - PAD.left - PAD.right;
   const gH  = H - PAD.top  - PAD.bottom;
   const N   = 36; // 旬数
@@ -1134,9 +1134,12 @@ function _adpRenderTempChart(cropId) {
 
   // ── 栽培方式・適正温度帯の計算 ──
   const cultivationMode = currentAreaData?.cultivationMode || 'openField';
-  const isHouse  = cultivationMode === 'greenhouse' || cultivationMode === 'heatedGreenhouse';
-  const houseOffset = cultivationMode === 'heatedGreenhouse' ? 8 : 4;
-  const tMinCorrected = isHouse ? tMinArr.map(v => v !== null ? v - houseOffset : null) : null;
+  const isHouse    = cultivationMode === 'greenhouse' || cultivationMode === 'heatedGreenhouse';
+  const isHeated   = cultivationMode === 'heatedGreenhouse';
+  // engine.jsと合わせる: greenhouse=4反映、heatedGreenhouse=engineが旬別個別計算のため定数補正線は描画しない
+  const tMinCorrected = (isHouse && !isHeated)
+    ? tMinArr.map(v => v !== null ? v - 4 : null)
+    : null;
 
   // ── 作物適正温度帯：旬別 decadeMatch カラーバー ──
   if (crop) {
@@ -1169,9 +1172,13 @@ function _adpRenderTempChart(cropId) {
         else if (m?.heated)      color = 'rgba(167,139,250,0.75)';
         else                     continue;
 
-        const x0 = toX(i) - decadeW / 2;
+        const x0   = toX(i) - decadeW / 2;
+        const xL   = Math.max(x0, PAD.left);              // 左端クリップ
+        const xR   = Math.min(x0 + decadeW, PAD.left + gW); // 右端クリップ
+        const bW   = xR - xL;
+        if (bW <= 0) continue;
         ctx.fillStyle = color;
-        ctx.fillRect(Math.max(x0, PAD.left), barY, decadeW, BAR_H);
+        ctx.fillRect(xL, barY, bW, BAR_H);
       }
 
       // 適正温度帯（tempMeanMin〜Max）を横破線で表示
@@ -1208,7 +1215,8 @@ function _adpRenderTempChart(cropId) {
     // 絶対最低限界気温（absTempMin）ライン
     const absMin = crop.conditions.absTempMin;
     if (absMin != null) {
-      const absMinEffective = isHouse ? absMin - houseOffset : absMin;
+      // greenhouse: engineと合わせ-4補正、heatedGreenhouse: engine旬別個別計算のため表示および補正なし
+      const absMinEffective = (isHouse && !isHeated) ? absMin - 4 : absMin;
       const yAbsMin = toY(absMinEffective);
       ctx.strokeStyle = 'rgba(239,68,68,0.85)';
       ctx.lineWidth   = 1.5;
@@ -1258,7 +1266,7 @@ function _adpRenderTempChart(cropId) {
 
   drawLine(tMaxArr, '#fbbf24');
   drawLine(tMinArr, '#38bdf8');
-  if (isHouse) drawLine(tMinCorrected, '#34d399', [4, 3]);
+  if (isHouse && !isHeated) drawLine(tMinCorrected, '#34d399', [4, 3]);
 
   // ── 旬ドット（3旬ごとに小さめ）──
   for (let i = 0; i < N; i++) {
@@ -1308,13 +1316,14 @@ function _adpRenderTempChart(cropId) {
     const tCMin = crop.conditions.tempMeanMin ?? '—';
     const tCMax = crop.conditions.tempMeanMax ?? '—';
     const _mode    = currentAreaData?.cultivationMode || 'openField';
-    const _offset  = _mode === 'heatedGreenhouse' ? 8 : 4;
-    const houseNote = (_mode === 'greenhouse' || _mode === 'heatedGreenhouse')
-      ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:#34d399;border:1px dashed #34d399"></span>最低気温(ハウス-${_offset}℃補正)</span>`
+    const _isHeated = _mode === 'heatedGreenhouse';
+    // greenhouse: -4補正を表示、heatedGreenhouse: engineが旬別個別計算のため表示なし
+    const houseNote = (_mode === 'greenhouse')
+      ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:#34d399;border:1px dashed #34d399"></span>最低気温(ハウス-4℃補正)</span>`
       : '';
     const _absMin    = crop.conditions.absTempMin;
-    const _absMinEff = (_absMin != null && (_mode === 'greenhouse' || _mode === 'heatedGreenhouse'))
-      ? _absMin - _offset : _absMin;
+    const _absMinEff = (_absMin != null && _mode === 'greenhouse')
+      ? _absMin - 4 : _absMin;
 
     const matchStr  = totalGrowth > 0 ? `適合${matchCount}` + (borderCount ? `・境界${borderCount}` : '') + (missCount ? `・不適${missCount}` : '') + (heatedCount ? `・加温${heatedCount}` : '') + `旬 / ${totalGrowth}旬` : '';
 
@@ -1385,7 +1394,7 @@ function _adpRenderGrowthChart(cropId) {
   }
 
   // レイアウト
-  const PAD = { top: 14, right: 40, bottom: 28, left: 32 };
+  const PAD = { top: 14, right: 40, bottom: 34, left: 32 };
   const gW  = W - PAD.left - PAD.right;
   const gH  = H - PAD.top  - PAD.bottom;
 
@@ -1413,7 +1422,7 @@ function _adpRenderGrowthChart(cropId) {
   const toTY = v => PAD.top  + (1 - (v - tYMin) / tRange) * gH;
   const toRY = v => PAD.top  + (1 - v / rRange) * gH;
   // 月別→旬X: 月ラベルは各月中旬（旬1）の位置
-  const toMonthX = m => toX(m * 3 + 1);
+  const toMonthX = m => toX(m * 3); // 縦グリッドと月境界が一致するよう、上旬位置に統一
 
   // ── カレンダーキー→月index変換 ──
   const calToIdx = (arr) => {
@@ -1438,7 +1447,7 @@ function _adpRenderGrowthChart(cropId) {
   const manageIdxs  = crop ? calToIdx(crop.calendar?.manage)  : [];
 
   // 月幅（旬換算で3旬分）
-  const barW_m = gW / 11; // 月1つ分の幅（グリッド間隔）
+  const barW_m = gW / 12; // 月1つ分の幅（12�ヶ月）
 
   // ── Phenology播種ウィンドウ計算（crop+decadeArr両方ある時のみ）──
   let sowingWindows = [];
@@ -1652,8 +1661,9 @@ function _adpRenderGrowthChart(cropId) {
     ctx.fillStyle = 'rgba(167,139,250,0.85)';
     ctx.font      = '8px DM Mono, monospace';
     ctx.textAlign = 'left';
-    ctx.fillText(`${Math.round(gddMax)}GDD`, PAD.left + gW + 3, PAD.top + 3);
-    ctx.fillText('0', PAD.left + gW + 3, PAD.top + gH + 3);
+    // GDDラベル: 降水量ラベル(PAD.top+3, PAD.top+gH+3)と重ならないよう13pxずらす
+    ctx.fillText(`${Math.round(gddMax)}GDD`, PAD.left + gW + 3, PAD.top + 16);
+    ctx.fillText('0GDD', PAD.left + gW + 3, PAD.top + gH - 4);
     ctx.restore();
   }
 
