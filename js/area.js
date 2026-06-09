@@ -347,6 +347,8 @@ async function openAreaDetailPanel(area) {
       };
       currentAreaData.climate = merged;
       _adpClimateCache = merged;
+      // AMeDAS取得完了 → 気候推定キャッシュをリセット（次回トグル時に再生成）
+      _adpClimateRanking = null;
     } catch(e) {
       console.warn('[ADP] AMeDAS取得失敗（ランキングは年均気温で評価）:', e);
     }
@@ -496,10 +498,16 @@ function _adpSetClimateMode(isClimate) {
 
   // 気候推定モード時はランキングキャッシュを生成
   if (isClimate && !_adpClimateRanking) {
-    const decadeArr = currentAreaData?.climate?.decadeArr;
+    // climate.decadeArr → _adpClimateCache.decadeArr の順でフォールバック
+    const decadeArr = currentAreaData?.climate?.decadeArr
+                   ?? _adpClimateCache?.decadeArr
+                   ?? null;
     if (decadeArr && typeof cropDB !== 'undefined' && typeof computeClimateRanking === 'function') {
       const allCrops = Object.values(cropDB);
       _adpClimateRanking = computeClimateRanking(decadeArr, allCrops);
+    } else if (!decadeArr) {
+      // AMeDAS未取得の場合はユーザーに通知
+      console.warn('[ClimateMode] decadeArr未取得 — AMeDASデータ待ち');
     }
   }
 
@@ -1019,7 +1027,7 @@ function _adpCalcRankDiff(cropId, currentRank, openFieldScores) {
 // ─── 気候推定ランキングリスト描画（chart / growth 共通） ───
 function _adpRenderClimateRankingList(el, pane) {
   if (!_adpClimateRanking) {
-    el.innerHTML = '<div class="empty-mini">気候データなし</div>';
+    el.innerHTML = '<div class="empty-mini">気候データ取得中です。しばらくしてから再度タップしてください。</div>';
     return;
   }
 
