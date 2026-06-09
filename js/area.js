@@ -1032,8 +1032,8 @@ function _adpRenderClimateRankingList(el, pane) {
     return;
   }
 
-  // カテゴリフィルタ（_crCurrentMajor があれば適用）
-  const major = typeof _crCurrentMajor !== 'undefined' ? _crCurrentMajor : 'all';
+  // カテゴリフィルタ
+  const major = (typeof _crMajor !== 'undefined' && _crMajor) ? _crMajor : 'all';
   const MAJOR_MAP = {
     grain:     ['grain'],
     vegetable: ['leaf_veg','fruit_veg','root_veg'],
@@ -1984,6 +1984,7 @@ document.addEventListener('DOMContentLoaded', () => {
       _crMinor = null;
       _crRenderMinorTabs();
       _adpRenderRankingList();
+      _adpRenderGrowthRankingList();
     } else if (_orig_crSwitchMajor) {
       _orig_crSwitchMajor(major);
     }
@@ -1998,6 +1999,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       _crMinor = minor;
       _adpRenderRankingList();
+      _adpRenderGrowthRankingList();
     } else if (_orig_crSwitchMinor) {
       _orig_crSwitchMinor(minor);
     }
@@ -2041,4 +2043,5 @@ function adpCropTap(cropId) {
   _adpRenderTempChart(_adpSelectedCropId);
   _adpRenderGrowthChart(_adpSelectedCropId);
   _adpRenderRankingList();
+  _adpRenderGrowthRankingList();
 }
