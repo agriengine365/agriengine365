@@ -503,8 +503,8 @@ function _adpSetClimateMode(isClimate) {
     const decadeArr = currentAreaData?.climate?.decadeArr
                    ?? _adpClimateCache?.decadeArr
                    ?? null;
-    if (decadeArr && typeof cropDB !== 'undefined' && typeof computeClimateRanking === 'function') {
-      const allCrops = Object.values(cropDB);
+    if (decadeArr && typeof CROP_DB !== 'undefined' && typeof computeClimateRanking === 'function') {
+      const allCrops = CROP_DB;
       _adpClimateRanking = computeClimateRanking(decadeArr, allCrops);
     } else if (!decadeArr) {
       // AMeDAS未取得の場合はユーザーに通知
