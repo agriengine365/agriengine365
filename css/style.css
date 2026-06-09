@@ -4145,3 +4145,45 @@ html.draw-dialog-active .bottom-nav {
   margin-top: 4px;
   line-height: 1.6;
 }
+
+/* ─── 評価モードトグル（気候推定 / DB評価） ─── */
+.adp-eval-mode-wrap {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px 4px;
+}
+
+.adp-eval-mode-btn {
+  flex: 1;
+  padding: 6px 0;
+  border: 1.5px solid var(--border, #ddd);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--text-muted, #888);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.adp-eval-mode-btn.active {
+  background: var(--accent, #2d7a4f);
+  color: #fff;
+  border-color: var(--accent, #2d7a4f);
+}
+
+/* 気候推定モードの説明ノート */
+.adp-climate-mode-note {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  padding: 6px 12px 4px;
+  border-bottom: 1px solid var(--border, #eee);
+  margin-bottom: 4px;
+}
+
+/* 播種適期なし */
+.adp-cr-pheno-none {
+  color: var(--text-muted, #aaa);
+  font-style: italic;
+}

@@ -278,6 +278,8 @@ let _adpEditId        = null;   // 編集中レコードID
 let _adpClimateCache  = null;   // AMeDAS取得済み climate（再オープン用キャッシュ）
 let _adpSelectedCropId   = null;
 let _crOpenFieldScores   = null;  // 露地スコアキャッシュ（補正比較用）  // 気温グラフで強調表示中の作物ID
+let _adpClimateMode   = false;  // true=気候推定モード / false=DBモード
+let _adpClimateRanking = null;  // computeClimateRanking キャッシュ
 
 async function openAreaDetailPanel(area) {
   _adpArea    = area;
@@ -286,6 +288,8 @@ async function openAreaDetailPanel(area) {
   _adpMonth   = now.getMonth();
   _adpSelDate = null;
   _adpEditId  = null;
+  _adpClimateMode    = false;
+  _adpClimateRanking = null;
 
   _adpEnsureView();
 
@@ -404,6 +408,13 @@ function _adpEnsureView() {
 
         <!-- ▼ 下部スクロール: 栽培方式トグル ＋ タブ ＋ ランキングリスト -->
         <div class="adp-ranking-scroll" id="adp-ranking-scroll">
+          <!-- 評価モードトグル -->
+          <div class="adp-eval-mode-wrap" id="adp-eval-mode-wrap">
+            <button class="adp-eval-mode-btn active" id="adp-eval-btn-db"
+              onclick="_adpSetClimateMode(false)">📊 DB評価</button>
+            <button class="adp-eval-mode-btn" id="adp-eval-btn-climate"
+              onclick="_adpSetClimateMode(true)">🌿 気候推定</button>
+          </div>
           <!-- 栽培方式トグル（_adpEnsureCultivationToggle が挿入） -->
           <div class="cr-tabs-major" id="cr-tabs-major">
             <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
@@ -436,6 +447,13 @@ function _adpEnsureView() {
 
         <!-- ▼ 下部スクロール: 栽培方式トグル ＋ タブ ＋ ランキングリスト -->
         <div class="adp-ranking-scroll adp-ranking-scroll-growth" id="adp-ranking-scroll-growth">
+          <!-- 評価モードトグル -->
+          <div class="adp-eval-mode-wrap" id="adp-eval-mode-wrap-growth">
+            <button class="adp-eval-mode-btn active" id="adp-eval-btn-db-growth"
+              onclick="_adpSetClimateMode(false)">📊 DB評価</button>
+            <button class="adp-eval-mode-btn" id="adp-eval-btn-climate-growth"
+              onclick="_adpSetClimateMode(true)">🌿 気候推定</button>
+          </div>
           <!-- 栽培方式トグル（_adpEnsureGrowthCultivationToggle が挿入） -->
           <div class="cr-tabs-major" id="cr-tabs-major-growth">
             <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
@@ -462,6 +480,32 @@ function _adpEnsureView() {
     <div id="adp-charts-wrap" style="display:none;"></div>
   `;
   document.body.appendChild(view);
+}
+
+// ─── 評価モード切替（DB ↔ 気候推定） ───
+function _adpSetClimateMode(isClimate) {
+  _adpClimateMode = isClimate;
+
+  // トグルボタン active 同期（chartペイン・growthペイン両方）
+  ['', '-growth'].forEach(suffix => {
+    const dbBtn  = document.getElementById(`adp-eval-btn-db${suffix}`);
+    const clBtn  = document.getElementById(`adp-eval-btn-climate${suffix}`);
+    if (dbBtn)  dbBtn.classList.toggle('active',  !isClimate);
+    if (clBtn)  clBtn.classList.toggle('active',   isClimate);
+  });
+
+  // 気候推定モード時はランキングキャッシュを生成
+  if (isClimate && !_adpClimateRanking) {
+    const decadeArr = currentAreaData?.climate?.decadeArr;
+    if (decadeArr && typeof cropDB !== 'undefined' && typeof computeClimateRanking === 'function') {
+      const allCrops = Object.values(cropDB);
+      _adpClimateRanking = computeClimateRanking(decadeArr, allCrops);
+    }
+  }
+
+  // ランキング再描画
+  _adpRenderRankingList();
+  _adpRenderGrowthRankingList();
 }
 
 // ─── サブタブ切替（2タブ構成） ───
@@ -972,11 +1016,89 @@ function _adpCalcRankDiff(cropId, currentRank, openFieldScores) {
   return baseRank - currentRank; // 正=上昇, 負=低下
 }
 
+// ─── 気候推定ランキングリスト描画（chart / growth 共通） ───
+function _adpRenderClimateRankingList(el, pane) {
+  if (!_adpClimateRanking) {
+    el.innerHTML = '<div class="empty-mini">気候データなし</div>';
+    return;
+  }
+
+  // カテゴリフィルタ（_crCurrentMajor があれば適用）
+  const major = typeof _crCurrentMajor !== 'undefined' ? _crCurrentMajor : 'all';
+  const MAJOR_MAP = {
+    grain:     ['grain'],
+    vegetable: ['leaf_veg','fruit_veg','root_veg'],
+    fruit:     ['fruit'],
+    wild:      ['wildveg'],
+    forest:    ['forest'],
+  };
+  const allowedCats = major !== 'all' ? (MAJOR_MAP[major] || []) : null;
+
+  let list = _adpClimateRanking;
+  if (allowedCats) {
+    list = list.filter(r => allowedCats.includes(r.crop.category));
+  }
+
+  if (!list.length) {
+    el.innerHTML = '<div class="empty-mini">該当作物なし</div>';
+    return;
+  }
+
+  const itemsHtml = list.slice(0, 60).map((r, i) => {
+    const scoreCls = r.score >= 70 ? 'score-high' : r.score >= 40 ? 'score-mid' : 'score-low';
+    const isSelected = r.crop.id === _adpSelectedCropId;
+
+    // 播種〜収穫旬ラベル
+    let phenoStr = '';
+    if (r.startDecade !== null) {
+      const sLabel = Phenology.decadeLabel(r.startDecade);
+      const eLabel = Phenology.decadeLabel(r.endDecade);
+      phenoStr = `<span class="adp-cr-pheno">▼${sLabel} → ◆${eLabel}</span>`;
+    } else {
+      phenoStr = '<span class="adp-cr-pheno adp-cr-pheno-none">播種適期なし</span>';
+    }
+
+    const gpMin = r.crop.conditions?.growthPeriodMin;
+    const gpMax = r.crop.conditions?.growthPeriodMax;
+    const gpStr = (gpMin != null || gpMax != null)
+      ? `<span class="cr-gp-badge">${gpMin ?? '?'}〜${gpMax ?? '?'}日</span>`
+      : '';
+
+    const idAttr = pane === 'growth' ? `adp-cr-item` : `cr-item`;
+    return `
+      <div class="${idAttr}${isSelected ? ' selected' : ''}" onclick="adpCropTap('${r.crop.id}')">
+        <div class="cr-item-header">
+          <span class="cr-rank">#${i + 1}</span>
+          <span class="cr-name">${escHtml(r.crop.name)}${gpStr}</span>
+          <span class="cr-score ${scoreCls}">${r.score}%</span>
+          <svg class="cr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+        <div class="cr-bar-track">
+          <div class="cr-bar-fill ${scoreCls}" style="width:${r.score}%"></div>
+        </div>
+        <div class="adp-cr-pheno-wrap">${phenoStr}</div>
+      </div>`;
+  }).join('');
+
+  el.innerHTML =
+    '<div class="adp-climate-mode-note">🌿 気候推定モード：旬別気温・日照から播種適期を算出</div>' +
+    itemsHtml;
+}
+
 // ─── ADP専用ランキングリスト描画 ───
 function _adpRenderRankingList() {
   const el = document.getElementById('crop-ranking');
   if (!el) return;
 
+  // ── 気候推定モード ──
+  if (_adpClimateMode) {
+    _adpRenderClimateRankingList(el, 'chart');
+    return;
+  }
+
+  // ── DBモード（従来） ──
   const scores = _crFilteredScores();
   const mode   = currentAreaData?.cultivationMode || 'openField';
 
@@ -1759,6 +1881,13 @@ function _adpRenderGrowthRankingList() {
   const el = document.getElementById('crop-ranking-growth');
   if (!el) return;
 
+  // ── 気候推定モード ──
+  if (_adpClimateMode) {
+    _adpRenderClimateRankingList(el, 'growth');
+    return;
+  }
+
+  // ── DBモード（従来） ──
   const scores = _crFilteredScores ? _crFilteredScores() : (_crScores || []);
   const mode   = currentAreaData?.cultivationMode || 'openField';
   if (!scores.length) {

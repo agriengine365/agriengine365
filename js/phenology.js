@@ -8,6 +8,22 @@
 const Phenology = (() => {
 
   // ── 定数 ──────────────────────────────────
+
+  // カテゴリ別 旬あたり日照時間デフォルト（時間）
+  // cropDB.conditions に sunDecadeMin/Opt があればそちらを優先
+  const SUNSHINE_DEFAULT = {
+    grain:      { min: 4.5, opt: 6.5 },
+    fruit:      { min: 5.5, opt: 7.5 },
+    leafy:      { min: 3.0, opt: 5.0 },
+    herb:       { min: 3.0, opt: 5.0 },
+    root:       { min: 4.0, opt: 6.0 },
+    legume:     { min: 4.5, opt: 6.5 },
+    vegetable:  { min: 4.0, opt: 6.0 },
+    mushroom:   { min: 1.0, opt: 2.0 }, // 菌茸類は低日照
+    specialty:  { min: 3.5, opt: 5.5 },
+    _default:   { min: 3.5, opt: 5.5 },
+  };
+
   const DECADE_KEYS = (() => {
     const months = ['jan','feb','mar','apr','may','jun',
                     'jul','aug','sep','oct','nov','dec'];
@@ -96,18 +112,48 @@ const Phenology = (() => {
 
   function _windowScore(decadeArr, s, e, cond) {
     const tOpt = ((cond.tempMeanMin ?? 15) + (cond.tempMeanMax ?? 25)) / 2;
-    let score = 0, n = 0;
+
+    // 日照デフォルト: cond に sunDecadeMin/Opt があれば優先、なければカテゴリデフォルト
+    const sunDef = SUNSHINE_DEFAULT[cond.category] || SUNSHINE_DEFAULT._default;
+    const sunMin = cond.sunDecadeMin ?? sunDef.min;
+    const sunOpt = cond.sunDecadeOpt ?? sunDef.opt;
+
+    let tempScore = 0, sunScore = 0;
+    let tempN = 0, sunN = 0;
     const len = ((e - s + 36) % 36) + 1;
+
     for (let i = 0; i < len; i++) {
       const idx = (s + i) % 36;
+
+      // 気温スコア
       const t = decadeArr.tMean[idx];
       if (t !== null) {
         const diff = Math.abs(t - tOpt);
-        score += Math.max(0, 1 - diff / 10);
-        n++;
+        tempScore += Math.max(0, 1 - diff / 10);
+        tempN++;
+      }
+
+      // 日照スコア（sun[36] が null の旬はスキップ、ペナルティなし）
+      const sun = decadeArr.sun?.[idx];
+      if (sun !== null && sun !== undefined) {
+        if (sun >= sunOpt) {
+          sunScore += 1.0;
+        } else if (sun >= sunMin) {
+          // min〜opt の間は線形補間
+          sunScore += (sun - sunMin) / (sunOpt - sunMin);
+        } else {
+          // min 未満: 不足量に応じて減点（最低0）
+          sunScore += Math.max(0, sun / sunMin * 0.5);
+        }
+        sunN++;
       }
     }
-    return n > 0 ? score / n : 0;
+
+    const tNorm   = tempN > 0 ? tempScore / tempN : 0;
+    const sNorm   = sunN  > 0 ? sunScore  / sunN  : tNorm; // 日照データなしは気温スコアで代替
+
+    // 気温60% + 日照40%
+    return tNorm * 0.6 + sNorm * 0.4;
   }
 
   // ── 旬ラベル生成（表示用）─────────────────
@@ -124,6 +170,7 @@ const Phenology = (() => {
   // ── 公開API ───────────────────────────────
   return {
     DECADE_KEYS,
+    SUNSHINE_DEFAULT,
     buildDecadeArray,
     accumulateGDD,
     sowingWindows,

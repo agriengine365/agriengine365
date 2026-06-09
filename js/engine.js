@@ -25,6 +25,21 @@ function elevCorrect(tempMean, elev) {
 
 // ─── SCORING ───
 
+// カテゴリ別 旬あたり日照時間デフォルト（時間）
+// phenology.js の SUNSHINE_DEFAULT と同値を維持すること
+const SUNSHINE_DEFAULT_ENGINE = {
+  grain:      { min: 4.5, opt: 6.5 },
+  fruit:      { min: 5.5, opt: 7.5 },
+  leafy:      { min: 3.0, opt: 5.0 },
+  herb:       { min: 3.0, opt: 5.0 },
+  root:       { min: 4.0, opt: 6.0 },
+  legume:     { min: 4.5, opt: 6.5 },
+  vegetable:  { min: 4.0, opt: 6.0 },
+  mushroom:   { min: 1.0, opt: 2.0 },
+  specialty:  { min: 3.5, opt: 5.5 },
+  _default:   { min: 3.5, opt: 5.5 },
+};
+
 /**
  * scoreCrop(crop, areaData)
  *
@@ -339,7 +354,71 @@ function scoreCrop(crop, areaData) {
   }
 
   // ════════════════════════════════════════
-  //  6. pH スコア (15点)
+  //  6. 日照スコア (10点)
+  //     旬別 sun[36] があれば生育旬の積算で評価
+  //     なければ estimateSunshineHours(lat) フォールバック
+  // ════════════════════════════════════════
+  {
+    const sunDef = SUNSHINE_DEFAULT_ENGINE[crop.conditions.category]
+      || SUNSHINE_DEFAULT_ENGINE._default;
+    const sunDecadeMin = crop.conditions.sunDecadeMin ?? sunDef.min;
+    const sunDecadeOpt = crop.conditions.sunDecadeOpt ?? sunDef.opt;
+
+    const hasSunDecade = hasDecadeCols &&
+      Array.isArray(_decadeArr.sun) && _decadeArr.sun.length === 36;
+
+    if (hasSunDecade && growthDecades && growthDecades.length > 0) {
+      // 生育旬の日照を積算評価
+      let sunScore = 0;
+      let sunN = 0;
+      growthDecades.forEach(i => {
+        const s = _decadeArr.sun[i];
+        if (s === null || s === undefined) return;
+        if (s >= sunDecadeOpt) {
+          sunScore += 1.0;
+        } else if (s >= sunDecadeMin) {
+          sunScore += (s - sunDecadeMin) / (sunDecadeOpt - sunDecadeMin);
+        } else {
+          sunScore += Math.max(0, s / sunDecadeMin * 0.5);
+        }
+        sunN++;
+      });
+
+      if (sunN > 0) {
+        maxScore += 10;
+        const pts  = Math.round(10 * (sunScore / sunN));
+        score += pts;
+        const pctStr = Math.round((sunScore / sunN) * 100);
+        details.push({
+          ok: pctStr >= 60,
+          text: `生育期日照 — 充足度${pctStr}%（旬別実測値）`,
+        });
+      } else {
+        details.push({ ok: null, text: '生育期日照データなし — 日照軸は評価対象外' });
+      }
+    } else if (lat !== null) {
+      // フォールバック: 緯度推定年間日照時間
+      const estSun = estimateSunshineHours(lat);
+      // 年間日照 → 旬平均に換算（36旬）
+      const estPerDecade = estSun / 36;
+      maxScore += 10;
+      if (estPerDecade >= sunDecadeOpt) {
+        score += 10;
+        details.push({ ok: true,  text: `推定年間日照 ${Math.round(estSun)}h — 十分（緯度推定値）` });
+      } else if (estPerDecade >= sunDecadeMin) {
+        const pts = Math.round(10 * (estPerDecade - sunDecadeMin) / (sunDecadeOpt - sunDecadeMin));
+        score += pts;
+        details.push({ ok: pts >= 5, text: `推定年間日照 ${Math.round(estSun)}h — やや不足（緯度推定値）` });
+      } else {
+        details.push({ ok: false, text: `推定年間日照 ${Math.round(estSun)}h — 不足（緯度推定値）` });
+      }
+    } else {
+      details.push({ ok: null, text: '日照データなし — 日照軸は評価対象外' });
+    }
+  }
+
+  // ════════════════════════════════════════
+  //  7. pH スコア (15点)
   //     null のとき: maxScore から除外（評価不能）
   //     フォールバック: phMin=5.0 / phMax=7.5
   // ════════════════════════════════════════
@@ -751,4 +830,28 @@ function buildSingleCropAnalysis(cropId, areaData) {
     confidence,
     cultivationMode: scoringAreaData.cultivationMode,
   };
+}
+
+// ─── 気候推定ランキング（Phenologyベース・DBスコアと独立） ───
+//  decadeArr : Phenology.buildDecadeArray() の返却値
+//  crops     : cropDB の全作物配列
+//  返却: [{ crop, score(0-100), startDecade, endDecade }] スコア降順
+function computeClimateRanking(decadeArr, crops) {
+  if (!decadeArr || !crops?.length) return [];
+
+  return crops
+    .map(crop => {
+      const wins = Phenology.sowingWindows(decadeArr, crop);
+      if (!wins.length) {
+        return { crop, score: 0, startDecade: null, endDecade: null };
+      }
+      const best = wins[0];
+      return {
+        crop,
+        score:        Math.round(best.score * 100),
+        startDecade:  best.startDecade,
+        endDecade:    best.endDecade,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
 }
