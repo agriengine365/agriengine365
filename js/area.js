@@ -347,8 +347,9 @@ async function openAreaDetailPanel(area) {
       };
       currentAreaData.climate = merged;
       _adpClimateCache = merged;
-      // AMeDAS取得完了 → 気候推定キャッシュをリセット（次回トグル時に再生成）
+      // AMeDAS取得完了 → 気候推定キャッシュをリセット＆モードがオンなら即再描画
       _adpClimateRanking = null;
+      if (_adpClimateMode) _adpSetClimateMode(true);
     } catch(e) {
       console.warn('[ADP] AMeDAS取得失敗（ランキングは年均気温で評価）:', e);
     }
