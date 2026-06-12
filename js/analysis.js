@@ -184,13 +184,24 @@ function _crRenderList() {
 function crToggleItem(cropId) {
   _crSelectedCropId = (_crSelectedCropId === cropId) ? null : cropId;
 
-  // 選択作物が変わったら収益・施肥・リスクも更新
+  // 選択作物が変わったら収益・施肥・リスク・カレンダーも更新
   if (_crSelectedCropId) {
     const s = _crScores.find(s => s.crop.id === _crSelectedCropId);
     if (s) {
       renderProfitWaterfall(s);
       _renderFertResult(s.crop);
       _renderRiskResult(s.crop);
+      renderWorkCalendar(s.crop);
+      // サマリーバーも更新
+      if (typeof anUpdateSummary === 'function') {
+        const ad = window.currentAreaData || {};
+        const modeLabels = { openField:'露地栽培', greenhouse:'ハウス', heatedGreenhouse:'加温ハウス' };
+        anUpdateSummary({
+          cropName: s.crop.name,
+          score:    s.viable ? s.score : 0,
+          mode:     modeLabels[ad.cultivationMode] || '露地',
+        });
+      }
     }
   }
 
@@ -542,10 +553,24 @@ function runSingleCropAnalysis(areaName) {
     </div>
   `;
 
-  // ─ 収益・施肥・リスク描画 ─
+  // ─ 収益・施肥・リスク・カレンダー描画 ─
   renderProfitWaterfall({ crop: result.crop, profitability: result.profitability });
   _renderFertResultFromData(result.crop, result.fertilizer);
   _renderRiskResult(result.crop);
+  renderWorkCalendar(result.crop);
+
+  // ─ サマリーバー更新 ─
+  const modeLabels2 = { openField:'露地栽培', greenhouse:'ハウス', heatedGreenhouse:'加温ハウス' };
+  if (typeof anUpdateSummary === 'function') {
+    anUpdateSummary({
+      cropName:  result.crop.name,
+      areaName:  area.name || 'エリア',
+      score:     s.viable ? s.score : 0,
+      mode:      modeLabels2[result.cultivationMode] || '露地',
+      confPct:   conf.pct + '%',
+      confLabel: conf.pct >= 70 ? '高精度' : conf.pct >= 40 ? '中精度' : '低精度',
+    });
+  }
 }
 
 // ─── 施肥結果描画（計算済みデータ受取版） ───
@@ -616,11 +641,173 @@ function runAnalysis(areaName) {
     renderProfitWaterfall(top);
     _renderFertResult(top.crop);
     _renderRiskResult(top.crop);
+    renderWorkCalendar(top.crop);
   } else {
     renderProfitWaterfall(null);
     _renderFertResult(null);
     _renderRiskResult(null);
+    renderWorkCalendar(null);
   }
+
+  // ─ サマリーバー更新 ─
+  const modeLabels = { openField:'露地栽培', greenhouse:'ハウス', heatedGreenhouse:'加温ハウス' };
+  if (typeof anUpdateSummary === 'function') {
+    anUpdateSummary({
+      cropName:  top?.crop?.name ?? '—',
+      areaName:  areaName,
+      score:     top?.score ?? null,
+      mode:      modeLabels[ad.cultivationMode] || '露地',
+      confPct:   confPct + '%',
+      confLabel: confPct >= 70 ? '高精度' : confPct >= 40 ? '中精度' : '低精度',
+    });
+  }
+}
+
+// ─── 月別作業カレンダー ───
+/**
+ * renderWorkCalendar(crop)
+ * crop.calendar の sow / manage / harvest / order を月グリッドで可視化する
+ */
+function renderWorkCalendar(crop) {
+  const el = document.getElementById('calendar-result');
+  if (!el) return;
+
+  if (!crop || !crop.calendar) {
+    el.innerHTML = '<div class="empty-mini">カレンダーデータなし</div>';
+    return;
+  }
+
+  const cal   = crop.calendar;
+  const MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const KEYS   = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+
+  // フェーズ定義
+  const phases = [
+    { key: 'sow',     label: '播種',   color: 'var(--green3)',  icon: '🌱' },
+    { key: 'manage',  label: '管理',   color: 'var(--amber)',   icon: '🌿' },
+    { key: 'harvest', label: '収穫',   color: 'var(--green)',   icon: '🌾' },
+    { key: 'order',   label: '注文',   color: 'var(--text2)',   icon: '📦' },
+  ];
+
+  // 各フェーズの月セットを作成
+  const phaseSets = phases.map(p => ({
+    ...p,
+    months: new Set(Array.isArray(cal[p.key]) ? cal[p.key] : []),
+  }));
+
+  // ヘッダー行（月名）
+  const headerCells = MONTHS.map((m, i) => {
+    const isActive = phaseSets.some(p => p.months.has(KEYS[i]));
+    return `<div class="wc-head-cell ${isActive ? 'wc-head-active' : ''}">${m}</div>`;
+  }).join('');
+
+  // 各フェーズ行
+  const phaseRows = phaseSets.filter(p => p.months.size > 0).map(p => {
+    const cells = KEYS.map(k => {
+      const on = p.months.has(k);
+      return `<div class="wc-cell ${on ? 'wc-cell-on' : ''}"
+        style="${on ? `background:${p.color};opacity:0.85` : ''}"></div>`;
+    }).join('');
+    return `
+      <div class="wc-row">
+        <div class="wc-phase-label">
+          <span class="wc-phase-icon">${p.icon}</span>
+          <span>${p.label}</span>
+        </div>
+        <div class="wc-cells">${cells}</div>
+      </div>
+    `;
+  }).join('');
+
+  if (!phaseRows) {
+    el.innerHTML = '<div class="empty-mini">カレンダーデータなし</div>';
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="wc-wrap">
+      <div class="wc-title">${crop.name} — 作業カレンダー</div>
+      <div class="wc-header">
+        <div class="wc-phase-label"></div>
+        <div class="wc-cells">${headerCells}</div>
+      </div>
+      ${phaseRows}
+      <div class="wc-legend">
+        ${phaseSets.filter(p => p.months.size > 0).map(p =>
+          `<span class="wc-legend-item">
+            <span class="wc-legend-dot" style="background:${p.color}"></span>${p.label}
+          </span>`
+        ).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ─── 比較テーブル ───
+/**
+ * renderCompareTable(scoreResults)
+ * scoreResults: scoreCrop() の返り値配列（複数作物）
+ */
+function renderCompareTable(scoreResults) {
+  const el = document.getElementById('compare-result');
+  if (!el) return;
+
+  if (!scoreResults || scoreResults.length < 2) {
+    el.innerHTML = '<div class="empty-mini">比較するには2作物以上選択してください。</div>';
+    // 比較タブを非表示
+    const compareTab = document.querySelector('.an-itab-compare');
+    if (compareTab) compareTab.style.display = 'none';
+    return;
+  }
+
+  // 比較タブを表示
+  const compareTab = document.querySelector('.an-itab-compare');
+  if (compareTab) compareTab.style.display = '';
+
+  const COLS = [
+    { key: 'name',          label: '作物名' },
+    { key: 'score',         label: 'スコア' },
+    { key: 'profit',        label: '収益概算' },
+    { key: 'laborCost',     label: '人件費' },
+    { key: 'riskLevel',     label: 'リスク' },
+    { key: 'period',        label: '栽培期間' },
+  ];
+
+  const rows = scoreResults.map(s => {
+    const p = s.profitability || {};
+    const risks = s.crop.risks || [];
+    const highRisk = risks.filter(r => r.level === 'high').length;
+    const riskLabel = highRisk > 0 ? `高${highRisk}件` : risks.length > 0 ? '中〜低' : 'なし';
+    const riskClass = highRisk > 0 ? 'cmp-risk-high' : risks.length > 0 ? 'cmp-risk-mid' : 'cmp-risk-low';
+    const period = s.crop.conditions
+      ? `${s.crop.conditions.growthPeriodMin ?? '?'}〜${s.crop.conditions.growthPeriodMax ?? '?'}日`
+      : '—';
+    const scoreCls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
+
+    return `
+      <tr>
+        <td class="cmp-name">${s.crop.name}</td>
+        <td class="cmp-score ${scoreCls}">${s.viable ? s.score + '%' : 'NG'}</td>
+        <td class="cmp-profit ${(p.averageProfit ?? 0) >= 0 ? 'profit-plus' : 'profit-minus'}">
+          ${fmtYen(p.averageProfit)}
+        </td>
+        <td>${fmtYen(p.laborCost)}</td>
+        <td class="${riskClass}">${riskLabel}</td>
+        <td>${period}</td>
+      </tr>
+    `;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="cmp-wrap">
+      <table class="cmp-table">
+        <thead>
+          <tr>${COLS.map(c => `<th>${c.label}</th>`).join('')}</tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 // ─── JSON エクスポート ───

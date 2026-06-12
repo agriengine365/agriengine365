@@ -765,20 +765,187 @@ function calculateProfitability(crop, areaData, scoreResult, landProfile) {
   };
 }
 
+// ─── 営農条件スコア（最大20点） ───
+/**
+ * calcFarmingConditionScore(crop, conditions)
+ *
+ * ウィザードで入力した営農条件と作物特性の一致度を0〜20点で返す。
+ * areaData.farmingConditions に格納された条件オブジェクトを受け取る。
+ *
+ * conditions shape:
+ *   {
+ *     priority:   'profit' | 'easywork' | 'lowrisk'   // 優先軸
+ *     equipment:  'openField' | 'greenhouse' | 'paddy' // 設備
+ *     period:     'short' | 'mid' | 'long'             // 栽培期間
+ *     sales:      'direct' | 'ja' | 'roadside' | 'processing' | 'self' // 販売先
+ *     scale:      'solo' | 'family' | 'hired'          // 規模
+ *     experience: 'beginner' | 'mid' | 'expert'        // 経験
+ *   }
+ *
+ * 返却: { score(0-20), details[{text,pts}] }
+ */
+function calcFarmingConditionScore(crop, conditions) {
+  if (!conditions) return { score: 0, details: [] };
+
+  const c   = crop.conditions || {};
+  const cat = crop.category   || '';
+  let pts   = 0;
+  const details = [];
+
+  // ── 1. 優先軸（最大5点） ──
+  const priority = conditions.priority;
+  if (priority === 'profit') {
+    // 収益重視：価格レンジが広い・収量が多い作物を優遇
+    const priceRange = crop.price ? (crop.price.max || 0) - (crop.price.min || 0) : 0;
+    const yieldMid   = crop.yield ? ((crop.yield.min || 0) + (crop.yield.max || 0)) / 2 : 0;
+    const p = priceRange > 200 || yieldMid > 3000 ? 5 : priceRange > 80 || yieldMid > 1000 ? 3 : 1;
+    pts += p;
+    details.push({ text: `優先軸(収益)`, pts: p });
+  } else if (priority === 'easywork') {
+    // 手間最小：管理期間が短い・リスクが少ない作物を優遇
+    const riskCount = (crop.risks || []).length;
+    const gpMid = c.growthPeriodMax ? (c.growthPeriodMin || 0 + c.growthPeriodMax) / 2 : 180;
+    const p = riskCount <= 1 && gpMid <= 120 ? 5 : riskCount <= 2 ? 3 : 1;
+    pts += p;
+    details.push({ text: `優先軸(手間最小)`, pts: p });
+  } else if (priority === 'lowrisk') {
+    // リスク分散：high リスクが少ない作物を優遇
+    const highRisks = (crop.risks || []).filter(r => r.level === 'high').length;
+    const p = highRisks === 0 ? 5 : highRisks === 1 ? 2 : 0;
+    pts += p;
+    details.push({ text: `優先軸(低リスク)`, pts: p });
+  }
+
+  // ── 2. 設備（最大4点） ──
+  const equipment = conditions.equipment;
+  if (equipment === 'paddy') {
+    // 水田可：水稲・蓮根など水田系を優遇
+    const p = ['grain', 'root'].includes(cat) ? 4 : 1;
+    pts += p;
+    details.push({ text: `設備(水田)`, pts: p });
+  } else if (equipment === 'greenhouse') {
+    // ハウスあり：果菜・ハーブ・葉菜を優遇
+    const p = ['fruit_veg', 'herb', 'leafy', 'fruit'].includes(cat) ? 4 : 2;
+    pts += p;
+    details.push({ text: `設備(ハウス)`, pts: p });
+  } else {
+    // 露地のみ：露地向き作物を優遇
+    const p = ['grain', 'legume', 'root', 'wildveg', 'oil', 'fiber'].includes(cat) ? 4 : 2;
+    pts += p;
+    details.push({ text: `設備(露地)`, pts: p });
+  }
+
+  // ── 3. 栽培期間（最大4点） ──
+  const period  = conditions.period;
+  const gpMin   = c.growthPeriodMin ?? 60;
+  const gpMax   = c.growthPeriodMax ?? 180;
+  const gpMid   = (gpMin + gpMax) / 2;
+  if (period === 'short') {
+    const p = gpMid <= 90 ? 4 : gpMid <= 150 ? 2 : 0;
+    pts += p;
+    details.push({ text: `栽培期間(短期)`, pts: p });
+  } else if (period === 'mid') {
+    const p = gpMid > 90 && gpMid <= 240 ? 4 : 2;
+    pts += p;
+    details.push({ text: `栽培期間(中期)`, pts: p });
+  } else if (period === 'long') {
+    // 長期・樹木可：果樹・林産を優遇
+    const p = ['fruit', 'forest'].includes(cat) || gpMid > 240 ? 4 : 2;
+    pts += p;
+    details.push({ text: `栽培期間(長期)`, pts: p });
+  }
+
+  // ── 4. 販売先（最大4点） ──
+  const sales = conditions.sales;
+  if (sales === 'direct' || sales === 'roadside') {
+    // 直売・道の駅：付加価値の高い野菜・果物・ハーブ向き
+    const p = ['fruit', 'herb', 'leafy', 'fruit_veg', 'wildveg'].includes(cat) ? 4 : 2;
+    pts += p;
+    details.push({ text: `販売先(直売)`, pts: p });
+  } else if (sales === 'ja') {
+    // JA出荷：大量生産向き穀物・根菜
+    const p = ['grain', 'legume', 'root', 'oil', 'fiber'].includes(cat) ? 4 : 2;
+    pts += p;
+    details.push({ text: `販売先(JA)`, pts: p });
+  } else if (sales === 'processing') {
+    // 加工業者：油脂・繊維・豆類向き
+    const p = ['oil', 'fiber', 'legume', 'grain'].includes(cat) ? 4 : 2;
+    pts += p;
+    details.push({ text: `販売先(加工)`, pts: p });
+  } else {
+    // 自家消費：何でも2点
+    pts += 2;
+    details.push({ text: `販売先(自家消費)`, pts: 2 });
+  }
+
+  // ── 5. 規模・経験（最大3点、合算） ──
+  const scale      = conditions.scale;
+  const experience = conditions.experience;
+  const riskCount  = (crop.risks || []).length;
+  const gpMid2     = (gpMin + gpMax) / 2;
+
+  // 規模：一人なら手間が少ない作物を優遇
+  if (scale === 'solo') {
+    const p = riskCount <= 1 && gpMid2 <= 150 ? 2 : 1;
+    pts += p;
+    details.push({ text: `規模(一人)`, pts: p });
+  } else if (scale === 'family') {
+    pts += 1;
+    details.push({ text: `規模(家族)`, pts: 1 });
+  } else {
+    // 雇用あり：手間のかかる果樹・野菜を優遇
+    const p = ['fruit', 'fruit_veg', 'leafy'].includes(cat) ? 2 : 1;
+    pts += p;
+    details.push({ text: `規模(雇用)`, pts: p });
+  }
+
+  // 経験：初心者はリスクが少ない作物を優遇
+  if (experience === 'beginner') {
+    const highRisks = (crop.risks || []).filter(r => r.level === 'high').length;
+    const p = highRisks === 0 ? 1 : 0;
+    pts += p;
+    details.push({ text: `経験(初心者)`, pts: p });
+  } else {
+    pts += 1;
+    details.push({ text: `経験(中〜上級)`, pts: 1 });
+  }
+
+  return { score: Math.min(20, Math.round(pts)), details };
+}
+
 function buildAnalysisResult(areaData) {
-  const landProfile = buildLandProfile(areaData);
+  const landProfile     = buildLandProfile(areaData);
   const scoringAreaData = areaDataFromLandProfile(areaData, landProfile);
+  const farmCond        = areaData.farmingConditions || null;
+
   const cropScores = CROP_DB
     .map(crop => {
-      const score = scoreCrop(crop, scoringAreaData);
+      const scoreResult = scoreCrop(crop, scoringAreaData);
+
+      // 営農条件スコアを合算（条件がある場合のみ）
+      let totalScore      = scoreResult.score;
+      let farmingScore    = null;
+      let farmingDetails  = [];
+      if (farmCond) {
+        const fs        = calcFarmingConditionScore(crop, farmCond);
+        farmingScore    = fs.score;
+        farmingDetails  = fs.details;
+        // 既存スコア(0-100)に対して最大+20点加算後、100点満点に正規化
+        totalScore = Math.min(100, Math.round(scoreResult.score * (100 / 120) + farmingScore * (100 / 120)));
+      }
+
       return {
-        ...score,
-        profitability: calculateProfitability(crop, areaData, score, landProfile),
+        ...scoreResult,
+        score:          totalScore,
+        baseScore:      scoreResult.score,  // 元の気候・土壌スコア
+        farmingScore,                        // 営農条件スコア（null=未入力）
+        farmingDetails,
+        profitability:  calculateProfitability(crop, areaData, scoreResult, landProfile),
       };
     })
     .sort((a, b) => {
       if (a.viable !== b.viable) return a.viable ? -1 : 1;
-      if (b.score !== a.score) return b.score - a.score;
+      if (b.score  !== a.score)  return b.score - a.score;
       return b.profitability.averageProfit - a.profitability.averageProfit;
     });
 
@@ -817,14 +984,35 @@ function buildSingleCropAnalysis(cropId, areaData) {
   scoringAreaData.cultivationMode = areaData.cultivationMode || 'openField';
 
   const scoreResult   = scoreCrop(crop, scoringAreaData);
-  const profitability = calculateProfitability(crop, areaData, scoreResult, landProfile);
+
+  // 営農条件スコア合算
+  const farmCond = areaData.farmingConditions || null;
+  let totalScore     = scoreResult.score;
+  let farmingScore   = null;
+  let farmingDetails = [];
+  if (farmCond) {
+    const fs       = calcFarmingConditionScore(crop, farmCond);
+    farmingScore   = fs.score;
+    farmingDetails = fs.details;
+    totalScore     = Math.min(100, Math.round(scoreResult.score * (100 / 120) + farmingScore * (100 / 120)));
+  }
+
+  const adjustedScoreResult = {
+    ...scoreResult,
+    score:         totalScore,
+    baseScore:     scoreResult.score,
+    farmingScore,
+    farmingDetails,
+  };
+
+  const profitability = calculateProfitability(crop, areaData, adjustedScoreResult, landProfile);
   const fertilizer    = calcFertilizer(crop, areaData.areaSqm || 0);
   const confidence    = calcConfidence(scoringAreaData);
 
   return {
     crop,
     landProfile,
-    scoreResult,
+    scoreResult:    adjustedScoreResult,
     profitability,
     fertilizer,
     confidence,
