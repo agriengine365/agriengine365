@@ -22,11 +22,22 @@ async function commitSaveArea({ name, memo, soilType }) {
   // GeoJSON座標はネスト配列のためFirestore非対応 → 文字列化して保存
   const geojsonStr = JSON.stringify(geojson);
 
+  // ─── env フィールドを気候データから生成 ───
+  // AMeDAS取得済みの場合は buildEnvFromClimate で変換、なければ空スキーマ
+  let envPayload = null;
+  if (typeof buildEnvFromClimate === 'function') {
+    const climateForEnv = currentAreaData.climate || null;
+    envPayload = buildEnvFromClimate(climateForEnv);
+    // soilType はウィザードで選択したものを優先
+    if (soilType) envPayload.soilType = soilType;
+  }
+
   const payload = {
     name,
     memo,
     geojson: geojsonStr,
     landProfile,
+    env: envPayload || (typeof createEmptyEnv === 'function' ? createEmptyEnv() : {}),
     meta: {
       areaSqm:         currentAreaData.areaSqm,
       areaHa:          currentAreaData.areaHa,
@@ -108,28 +119,135 @@ async function loadAreas() {
   areas.forEach(area => renderAreaItem(area, list));
 }
 
-// ─── エリアアイテム描画 ───
+// ─── エリアアイテム描画（2段構成: サマリー＋展開詳細） ───
 function renderAreaItem(area, container) {
-  const ha  = area.meta?.areaSqm ? (area.meta.areaSqm / 10000).toFixed(3) : '—';
+  const ha       = area.meta?.areaSqm ? (area.meta.areaSqm / 10000).toFixed(3) : '—';
+  const env      = area.env || {};
+  const climate  = area.meta?.climateName || '—';
+  const soil     = area.meta?.soilType ? soilLabel(area.meta.soilType) : '—';
+  const tempMean = env.tempMean    != null ? env.tempMean.toFixed(1)    : (area.meta?.climateTempMean != null ? Number(area.meta.climateTempMean).toFixed(1) : '—');
+  const rain     = env.rain        != null ? Math.round(env.rain)       : (area.meta?.climateRain     != null ? Math.round(area.meta.climateRain)            : '—');
+  const ph       = env.ph          != null ? env.ph                     : '—';
+  const gdd      = env.gdd         != null ? Math.round(env.gdd)        : '—';
+  const ffDays   = env.frostFreeDays != null ? Math.round(env.frostFreeDays) : '—';
+  const irrigSrc = { well:'井戸', river:'河川', pond:'溜池', none:'なし' }[env.irrigationSource] || '—';
+  const roadW    = env.roadWidthM  != null ? env.roadWidthM + 'm'       : '—';
+  const power    = env.hasPower === true ? 'あり' : env.hasPower === false ? 'なし' : '—';
+  const wildlife = { low:'低', medium:'中', high:'高' }[env.wildlifeRisk] || '—';
+  const hasEnv   = Object.keys(env).some(k => env[k] != null && k !== 'monthlyJson' && k !== 'decadeJson');
+
+  // 詳細フィールド表示ヘルパー
+  function envRow(label, value) {
+    return value != null && value !== ''
+      ? `<div class="env-detail-row"><span class="env-detail-label">${label}</span><span class="env-detail-value">${value}</span></div>`
+      : `<div class="env-detail-row env-detail-null"><span class="env-detail-label">${label}</span><span class="env-detail-value">—</span></div>`;
+  }
+  const lmap = { low:'低', medium:'中', high:'高' };
+  const srcLabels = { well:'井戸', river:'河川', pond:'溜池', none:'なし' };
+
   const div = document.createElement('div');
   div.className = 'area-item';
   div.dataset.id = area.id;
   div.innerHTML = `
+    <!-- ▲ サマリー行（常時表示） -->
     <div class="area-item-header">
       <div class="area-item-name" data-field="name">${escHtml(area.name)}</div>
-      <div style="display:flex;gap:6px;align-items:center;">
+      <div class="area-item-actions">
         <button class="pill-btn edit-btn" onclick="event.stopPropagation();toggleInlineEdit('${area.id}')">編集</button>
-        <button class="btn btn-danger" onclick="event.stopPropagation();deleteArea('${area.id}')">削除</button>
+        <button class="btn btn-danger"    onclick="event.stopPropagation();deleteArea('${area.id}')">削除</button>
       </div>
     </div>
-    <div class="area-item-meta">
-      <span>${ha} ha</span>
-      <span>${area.meta?.climateName || '—'}</span>
-      <span class="soil-meta">${area.meta?.soilType ? soilLabel(area.meta.soilType) : '土壌未設定'}</span>
+
+    <!-- サマリーバッジ行 -->
+    <div class="area-summary-badges">
+      <span class="area-badge">📐 ${ha}ha</span>
+      <span class="area-badge">📍 ${climate}</span>
+      <span class="area-badge">🌡️ ${tempMean}°C</span>
+      <span class="area-badge">☔ ${rain}mm</span>
+      <span class="area-badge">🌱 ${soil}</span>
+      ${env.irrigationSource ? `<span class="area-badge">💧 ${irrigSrc}</span>` : ''}
+    </div>
+    <div class="area-summary-badges area-summary-badges-2">
+      ${env.frostFreeDays != null ? `<span class="area-badge area-badge-sub">❄️ 無霜${ffDays}日</span>` : ''}
+      ${env.gdd           != null ? `<span class="area-badge area-badge-sub">🌿 GDD ${gdd}</span>` : ''}
+      ${env.ph            != null ? `<span class="area-badge area-badge-sub">🧪 pH ${ph}</span>` : ''}
+      ${env.roadWidthM    != null ? `<span class="area-badge area-badge-sub">🚜 農道${roadW}</span>` : ''}
+      ${env.hasPower      != null ? `<span class="area-badge area-badge-sub">⚡ 電源${power}</span>` : ''}
+      ${env.wildlifeRisk  != null ? `<span class="area-badge area-badge-sub">🐗 獣害${wildlife}</span>` : ''}
     </div>
     ${area.memo ? `<div class="area-memo-display">${escHtml(area.memo)}</div>` : ''}
 
-    <!-- インラインエディット -->
+    <!-- ▼ 詳細展開ボタン -->
+    <button class="area-detail-toggle" id="detail-toggle-${area.id}"
+      onclick="event.stopPropagation();toggleAreaDetail('${area.id}')">
+      <span>▼ 詳細</span>
+    </button>
+
+    <!-- ▼ 詳細展開パネル -->
+    <div class="area-detail-panel" id="detail-panel-${area.id}" style="display:none;">
+
+      <div class="env-detail-section">
+        <div class="env-detail-section-title">🌡️ 気象</div>
+        ${envRow('年均気温',       env.tempMean     != null ? env.tempMean.toFixed(1)+'°C' : null)}
+        ${envRow('1月最低気温',    env.tempMinJan   != null ? env.tempMinJan.toFixed(1)+'°C' : null)}
+        ${envRow('8月最高気温',    env.tempMax8     != null ? env.tempMax8.toFixed(1)+'°C' : null)}
+        ${envRow('年降水量',       env.rain         != null ? Math.round(env.rain)+'mm' : null)}
+        ${envRow('年日照時間',     env.sunshineHours!= null ? Math.round(env.sunshineHours)+'h' : null)}
+        ${envRow('無霜期間',       env.frostFreeDays!= null ? Math.round(env.frostFreeDays)+'日' : null)}
+        ${envRow('有効積算温度',   env.gdd          != null ? Math.round(env.gdd)+'GDD' : null)}
+        ${envRow('最大積雪深',     env.maxSnowDepth != null ? env.maxSnowDepth+'cm' : null)}
+        ${envRow('平均風速',       env.windSpeedMean!= null ? env.windSpeedMean+'m/s' : null)}
+        ${envRow('冷気湖リスク',   lmap[env.coldLakeRisk] || null)}
+        ${env.stationName ? envRow('観測局', env.stationName + (env.distKm != null ? ` (${env.distKm.toFixed(1)}km)` : '')) : ''}
+      </div>
+
+      <div class="env-detail-section">
+        <div class="env-detail-section-title">🏔️ 地形・土壌</div>
+        ${envRow('傾斜',           env.slope        != null ? env.slope+'°' : null)}
+        ${envRow('斜面向き',       env.aspect       || null)}
+        ${envRow('遮蔽リスク',     lmap[env.shadingRisk] || null)}
+        ${envRow('pH',             env.ph           != null ? env.ph : null)}
+        ${envRow('有機物含量',     { high:'高', medium:'中', low:'低' }[env.organicMatter] || null)}
+        ${envRow('保水性',         { high:'高', medium:'中', low:'低' }[env.waterRetention] || null)}
+        ${envRow('塩類リスク',     lmap[env.salinityRisk] || null)}
+        ${envRow('作付け履歴',     env.croppingHistory || null)}
+      </div>
+
+      <div class="env-detail-section">
+        <div class="env-detail-section-title">💧 水利</div>
+        ${envRow('灌漑水源',       srcLabels[env.irrigationSource] || null)}
+        ${envRow('灌漑距離',       env.irrigationDistM != null ? env.irrigationDistM+'m' : null)}
+        ${envRow('排水設備',       { good:'良好', moderate:'普通', poor:'不良' }[env.drainageFacility] || null)}
+        ${envRow('地下水位',       { deep:'深い', medium:'中程度', shallow:'浅い' }[env.groundwaterLevel] || null)}
+      </div>
+
+      <div class="env-detail-section">
+        <div class="env-detail-section-title">🚜 営農条件</div>
+        ${envRow('圃場形状',       { regular:'整形', irregular:'不整形' }[env.fieldShapeScore] || null)}
+        ${envRow('農道幅',         env.roadWidthM   != null ? env.roadWidthM+'m' : null)}
+        ${envRow('電源',           env.hasPower === true ? 'あり' : env.hasPower === false ? 'なし' : null)}
+        ${envRow('集荷場距離',     env.distToCollectionKm != null ? env.distToCollectionKm+'km' : null)}
+      </div>
+
+      <div class="env-detail-section">
+        <div class="env-detail-section-title">🏘️ 地域環境</div>
+        ${envRow('農業振興地域',   env.agriculturalZone === true ? 'あり' : env.agriculturalZone === false ? 'なし' : env.agriculturalZone === 'unknown' ? '不明' : null)}
+        ${envRow('獣害リスク',     lmap[env.wildlifeRisk] || null)}
+        ${envRow('周辺土地利用',   { farmland:'農地', forest:'山林', residential:'住宅地', mixed:'混在' }[env.surroundingLandUse] || null)}
+      </div>
+
+      <!-- 環境情報編集・再取得ボタン -->
+      <div class="env-detail-actions">
+        <button class="env-action-btn" onclick="event.stopPropagation();openEnvEditDialog(${JSON.stringify(JSON.stringify(area))})">
+          ✏️ 環境情報を編集
+        </button>
+        <button class="env-action-btn env-action-btn-refresh" onclick="event.stopPropagation();_refreshEnvForArea('${area.id}')">
+          🔄 AMeDAS更新
+        </button>
+      </div>
+    </div>
+
+    <!-- インラインエディット（名前・土壌・メモ） -->
     <div class="inline-edit" id="edit-${area.id}" style="display:none;">
       <div class="field">
         <label>エリア名</label>
@@ -149,7 +267,7 @@ function renderAreaItem(area, container) {
       </div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-primary" style="flex:1;" onclick="saveInlineEdit('${area.id}')">保存</button>
-        <button class="btn btn-ghost" style="flex:1;" onclick="toggleInlineEdit('${area.id}')">キャンセル</button>
+        <button class="btn btn-ghost"   style="flex:1;" onclick="toggleInlineEdit('${area.id}')">キャンセル</button>
       </div>
     </div>
   `;
@@ -158,6 +276,25 @@ function renderAreaItem(area, container) {
     selectArea(area);
   });
   container.appendChild(div);
+}
+
+// ─── 詳細パネル開閉 ───
+function toggleAreaDetail(id) {
+  const panel  = document.getElementById('detail-panel-' + id);
+  const toggle = document.getElementById('detail-toggle-' + id);
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (toggle) toggle.querySelector('span').textContent = isOpen ? '▼ 詳細' : '▲ 閉じる';
+}
+
+// ─── AMeDAS更新（エリアカードから呼び出し） ───
+async function _refreshEnvForArea(areaId) {
+  const stored = JSON.parse(localStorage.getItem(CONFIG.AREAS_KEY) || '[]');
+  const area   = stored.find(a => a.id === areaId);
+  if (!area) { showToast('エリアが見つかりません', 'amber'); return; }
+  await refreshEnv(area);
+  loadAreas();
 }
 
 // ─── インラインエディット開閉 ───
@@ -239,17 +376,20 @@ function selectArea(area) {
   layer.addTo(drawnItems);
   map.fitBounds(layer.getBounds());
 
-  currentAreaData = {
-    lat:      area.landProfile?.lat       ?? area.meta?.lat      ?? null,
-    lng:      area.landProfile?.lng       ?? area.meta?.lng      ?? null,
-    elev:     area.landProfile?.elevation ?? area.meta?.elev     ?? null,
-    climate:  getClimate(area.landProfile?.lat ?? area.meta?.lat ?? 35),
-    soilType: area.landProfile?.soilType  ?? area.meta?.soilType ?? null,
-    ph:       area.landProfile?.ph        ?? null,
-    slope:    area.landProfile?.slope     ?? 0,
-    areaSqm:  area.meta?.areaSqm          || 0,
-    areaHa:   area.meta?.areaHa           || 0,
-  };
+  // normalizeAreaData が env 含む全フィールドを正規化（areaEnv.js）
+  currentAreaData = (typeof normalizeAreaData === 'function')
+    ? normalizeAreaData(area)
+    : {
+        lat:      area.landProfile?.lat       ?? area.meta?.lat      ?? null,
+        lng:      area.landProfile?.lng       ?? area.meta?.lng      ?? null,
+        elev:     area.landProfile?.elevation ?? area.meta?.elev     ?? null,
+        climate:  getClimate(area.landProfile?.lat ?? area.meta?.lat ?? 35),
+        soilType: area.landProfile?.soilType  ?? area.meta?.soilType ?? null,
+        ph:       area.landProfile?.ph        ?? null,
+        slope:    area.landProfile?.slope     ?? 0,
+        areaSqm:  area.meta?.areaSqm          || 0,
+        areaHa:   area.meta?.areaHa           || 0,
+      };
 
   // landProfile が未保存 or リスク項目が欠損している場合は buildLandProfile() で補完
   // （AreaCharts のリスクゲージ・サマリーグリッドが参照するため）

@@ -261,25 +261,35 @@ function _awExecute() {
     return null;
   }
 
-  const lat = _pick(lp.lat, meta.lat, area.lat);
-
-  currentAreaData = {
-    lat,
-    lng:             _pick(lp.lng,       meta.lng,      area.lng),
-    elev:            _pick(lp.elevation, meta.elev,     area.elev),
-    // ★ climate を必ず補完（scoreCrop が参照するため必須）
-    climate:         (typeof getClimate === 'function' && lat != null)
-                       ? getClimate(lat) : null,
-    soilType:        _pick(lp.soilType,  meta.soilType, area.soilType) || 'unknown',
-    ph:              _pick(lp.ph,        meta.ph,       area.ph),
-    slope:           _pick(lp.slope,     meta.slope,    area.slope)    ?? 0,
-    areaSqm:         _pick(meta.areaSqm, area.areaSqm)                 || 0,
-    areaHa:          _pick(meta.areaHa,  area.areaHa)                  || 0,
-    selectedCropId:  _awCropId  || null,
-    cultivationMode: _awMode    || 'openField',
-    analysisItems:   Array.from(_awItems),
-    landProfile:     Object.keys(lp).length ? lp : null,
-  };
+  // normalizeAreaData が env 含む全フィールドを正規化（areaEnv.js）
+  // ウィザード固有の選択値（作物・栽培方式・分析項目）は options で上書き
+  if (typeof normalizeAreaData === 'function') {
+    currentAreaData = normalizeAreaData(area, {
+      selectedCropId:  _awCropId          || null,
+      cultivationMode: _awMode            || 'openField',
+      analysisItems:   Array.from(_awItems),
+    });
+  } else {
+    // フォールバック（areaEnv.js 未読込時）
+    const lat = _pick(lp.lat, meta.lat, area.lat);
+    currentAreaData = {
+      lat,
+      lng:             _pick(lp.lng,       meta.lng,      area.lng),
+      elev:            _pick(lp.elevation, meta.elev,     area.elev),
+      climate:         (typeof getClimate === 'function' && lat != null)
+                         ? getClimate(lat) : null,
+      soilType:        _pick(lp.soilType,  meta.soilType, area.soilType) || 'unknown',
+      ph:              _pick(lp.ph,        meta.ph,       area.ph),
+      slope:           _pick(lp.slope,     meta.slope,    area.slope)    ?? 0,
+      areaSqm:         _pick(meta.areaSqm, area.areaSqm)                 || 0,
+      areaHa:          _pick(meta.areaHa,  area.areaHa)                  || 0,
+      selectedCropId:  _awCropId  || null,
+      cultivationMode: _awMode    || 'openField',
+      analysisItems:   Array.from(_awItems),
+      landProfile:     Object.keys(lp).length ? lp : null,
+      env:             {},
+    };
+  }
 
   // ─ 地図にポリゴンを表示 ─
   if (area.geojson && typeof drawnItems !== 'undefined' && typeof map !== 'undefined') {
