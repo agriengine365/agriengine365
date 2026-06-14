@@ -3089,6 +3089,12 @@ function _awBuildAreaData() {
   ad.farmingConditions = { ..._awFarmCond };
   ad.cultivationMode   = cultivationMode;
 
+  // AMeDASキャッシュ（decadeArr等）を復元してから上書き
+  // normalizeAreaData() は素のareaから組み立てるため decadeArr が消えてしまう
+  if (_adpClimateCache) {
+    ad.climate = { ...(ad.climate || {}), ..._adpClimateCache };
+  }
+
   currentAreaData = ad;
   return ad;
 }
