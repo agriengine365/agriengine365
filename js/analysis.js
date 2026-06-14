@@ -92,6 +92,8 @@ function crSwitchMajor(major) {
   } else {
     _crRenderList();
   }
+}
+
 function _crRenderMinorTabs() {
   const wrap = document.getElementById('cr-tabs-minor');
   if (!wrap) return;
