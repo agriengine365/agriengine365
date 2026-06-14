@@ -70,8 +70,6 @@ const CR_MAJOR_TO_CATEGORIES = {
 let _crMajor = 'all';
 let _crMinor = null;       // nullは全小カテゴリー表示
 let _crScores = [];        // buildAnalysisResult後のscores全件
-let _crSelectedCropId = null; // アコーディオン展開中のcropId
-let _crProfile = null;     // 現在のlandProfile（ゲージ描画用）
 
 // ─── 大タブ切り替え ───
 function crSwitchMajor(major) {
@@ -84,7 +82,14 @@ function crSwitchMajor(major) {
   });
 
   _crRenderMinorTabs();
-  _crRenderList();
+
+  // adp-view開中は_adpRenderRankingList（area.js）で描画
+  if (document.getElementById('adp-view')?.classList.contains('open')) {
+    if (typeof _adpRenderRankingList  === 'function') _adpRenderRankingList();
+    if (typeof _adpRenderGrowthRankingList === 'function') _adpRenderGrowthRankingList();
+  } else {
+    _crRenderList();
+  }
 }
 
 // ─── 小タブ描画 ───
@@ -119,7 +124,14 @@ function crSwitchMinor(minor) {
       btn.getAttribute('onclick').match(/'([^']*)'/)[1] : null;
     btn.classList.toggle('active', val === minor);
   });
-  _crRenderList();
+
+  // adp-view開中は_adpRenderRankingList（area.js）で描画
+  if (document.getElementById('adp-view')?.classList.contains('open')) {
+    if (typeof _adpRenderRankingList  === 'function') _adpRenderRankingList();
+    if (typeof _adpRenderGrowthRankingList === 'function') _adpRenderGrowthRankingList();
+  } else {
+    _crRenderList();
+  }
 }
 
 // ─── フィルタリングされたスコアを返す ───
@@ -141,71 +153,37 @@ function _crFilteredScores() {
 }
 
 // ─── ランキングリスト描画 ───
+// Phase3以降: adp-view開中はcrSwitchMajor/crSwitchMinor/runAnalysis内の分岐により
+// _adpRenderRankingList() / _adpRenderGrowthRankingList()（area.js）が直接呼ばれ、
+// この_crRenderList()自体は呼び出されない（adp-view非展開時のみ使われる経路）。
 function _crRenderList() {
   const el = document.getElementById('crop-ranking');
   if (!el) return;
-
   const scores = _crFilteredScores();
-
   if (!scores.length) {
     el.innerHTML = '<div class="empty-mini">該当作物なし</div>';
     return;
   }
-
-  // 上位20件に絞る
   el.innerHTML = scores.slice(0, 20).map((s, i) => {
-    const isExpanded = _crSelectedCropId === s.crop.id;
     const scoreCls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
-    const barClass = s.viable ? scoreCls : 'score-low';
-    const barWidth = s.viable ? s.score : 0;
-
     return `
-      <div class="cr-item ${s.viable ? '' : 'cr-item-ng'} ${isExpanded ? 'cr-item-open' : ''}"
-        onclick="crToggleItem('${s.crop.id}')">
+      <div class="cr-item ${s.viable ? '' : 'cr-item-ng'}"
+        onclick="adpCropTap('${s.crop.id}')">
         <div class="cr-item-header">
           <span class="cr-rank">#${i + 1}</span>
-          <span class="cr-name">${s.crop.name}</span>
+          <span class="cr-name">${escHtml(s.crop.name)}</span>
           <span class="cr-score ${s.viable ? scoreCls : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>
           <svg class="cr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </div>
         <div class="cr-bar-track">
-          <div class="cr-bar-fill ${barClass}" style="width:${barWidth}%"></div>
+          <div class="cr-bar-fill ${s.viable ? scoreCls : 'score-low'}" style="width:${s.viable ? s.score : 0}%"></div>
         </div>
-        ${s.alert ? `<div class="cr-alert">${s.alert}</div>` : ''}
-        ${isExpanded ? `<div class="cr-gauge-wrap">${_crBuildGauges(s.crop, _crProfile)}</div>` : ''}
+        ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
       </div>
     `;
   }).join('');
-}
-
-// ─── 作物行タップ：アコーディオン展開 ───
-function crToggleItem(cropId) {
-  _crSelectedCropId = (_crSelectedCropId === cropId) ? null : cropId;
-
-  // 選択作物が変わったら収益・施肥・リスク・カレンダーも更新
-  if (_crSelectedCropId) {
-    const s = _crScores.find(s => s.crop.id === _crSelectedCropId);
-    if (s) {
-      renderProfitWaterfall(s);
-      _renderFertResult(s.crop);
-      _renderRiskResult(s.crop);
-      renderWorkCalendar(s.crop);
-      // サマリーバーも更新
-      if (typeof anUpdateSummary === 'function') {
-        const ad = window.currentAreaData || {};
-        const modeLabels = { openField:'露地栽培', greenhouse:'ハウス', heatedGreenhouse:'加温ハウス' };
-        anUpdateSummary({
-          cropName: s.crop.name,
-          score:    s.viable ? s.score : 0,
-          mode:     modeLabels[ad.cultivationMode] || '露地',
-        });
-      }
-    }
-  }
-
-  _crRenderList();
 }
 
 // ─── 作物×土地プロフィールのゲージ生成 ───
@@ -480,20 +458,13 @@ function runSingleCropAnalysis(areaName) {
   const result = buildSingleCropAnalysis(ad.selectedCropId, ad);
   if (!result) return runAnalysis(areaName);
 
-  // ─ 共通UI表示切替 ─
-  document.getElementById('analysis-empty').style.display  = 'none';
-  document.getElementById('analysis-result').style.display = 'flex';
-
-  // ─ 信頼度バー ─
+  // ─ 信頼度 ─
   const conf    = result.confidence;
   const confPct = conf.pct;
-  const bar = document.getElementById('conf-bar');
-  bar.style.width = confPct + '%';
-  bar.className = 'conf-bar-fill' + (confPct < 40 ? ' vlow' : confPct < 70 ? ' low' : '');
-  document.getElementById('conf-pct').textContent   = confPct + '%';
-  document.getElementById('conf-label').textContent =
-    confPct >= 70 ? '高精度' : confPct >= 40 ? '中精度' : '低精度';
-  document.getElementById('conf-detail').innerHTML  = conf.items.map(i => `- ${i}`).join('<br>');
+  // 適合度ペイン(conf-detail)を更新
+  const confDetailEl = document.getElementById('conf-detail');
+  if (confDetailEl) confDetailEl.innerHTML = conf.items.map(i => `- ${i}`).join('<br>');
+  // サマリーバー信頼度はanUpdateSummary経由で更新
 
   // ─ ランキング欄に選択作物1件を展開済みで描画 ─
   const s           = result.scoreResult;
@@ -506,10 +477,8 @@ function runSingleCropAnalysis(areaName) {
 
   // ランキング状態をリセット（タブ切替等で全件表示に戻れるように）
   _crScores  = [];
-  _crProfile = lp;
   _crMajor   = 'all';
   _crMinor   = null;
-  _crSelectedCropId = null;
 
   // 大タブUIをリセット
   document.querySelectorAll('.cr-tab-major').forEach(btn => {
@@ -559,14 +528,14 @@ function runSingleCropAnalysis(areaName) {
   _renderRiskResult(result.crop);
   renderWorkCalendar(result.crop);
 
-  // ─ サマリーバー更新 ─
+  // ─ サマリーバー更新（adp-view統合後は_adpUpdateSummaryBar経由） ─
   const modeLabels2 = { openField:'露地栽培', greenhouse:'ハウス', heatedGreenhouse:'加温ハウス' };
-  if (typeof anUpdateSummary === 'function') {
-    anUpdateSummary({
+  if (typeof _adpUpdateSummaryBar === 'function') {
+    _adpUpdateSummaryBar({
       cropName:  result.crop.name,
-      areaName:  area.name || 'エリア',
+      areaName:  _awArea?.name || null,
       score:     s.viable ? s.score : 0,
-      mode:      modeLabels2[result.cultivationMode] || '露地',
+      mode:      modeLabels2[result.cultivationMode] || '露地栽培',
       confPct:   conf.pct + '%',
       confLabel: conf.pct >= 70 ? '高精度' : conf.pct >= 40 ? '中精度' : '低精度',
     });
@@ -596,9 +565,6 @@ function _renderFertResultFromData(crop, fert) {
 function runAnalysis(areaName) {
   if (!currentAreaData) return;
 
-  document.getElementById('analysis-empty').style.display  = 'none';
-  document.getElementById('analysis-result').style.display = 'flex';
-
   const ad = currentAreaData;
   const result = buildAnalysisResult(ad);
   const profile = result.landProfile;
@@ -610,30 +576,30 @@ function runAnalysis(areaName) {
     topProfit:  result.topCrop?.profitability?.averageProfit || null,
   };
 
-  // ─ 信頼度バー ─
+  // ─ 信頼度計算 ─
   const conf = calcConfidence(areaDataFromLandProfile(ad, profile));
   const confPct = conf.pct;
-  const bar = document.getElementById('conf-bar');
-  bar.style.width = confPct + '%';
-  bar.className = 'conf-bar-fill' + (confPct < 40 ? ' vlow' : confPct < 70 ? ' low' : '');
-  document.getElementById('conf-pct').textContent = confPct + '%';
-  document.getElementById('conf-label').textContent =
-    confPct >= 70 ? '高精度' : confPct >= 40 ? '中精度' : '低精度';
-  document.getElementById('conf-detail').innerHTML = conf.items.map(i => `- ${i}`).join('<br>');
+  // 適合度ペイン(adp-pane-match内のconf-detail)を更新
+  const confDetailEl = document.getElementById('conf-detail');
+  if (confDetailEl) confDetailEl.innerHTML = conf.items.map(i => `- ${i}`).join('<br>');
 
   // ─ ランキング状態を初期化 ─
   _crScores  = result.cropScores;
-  _crProfile = profile;
   _crMajor   = 'all';
   _crMinor   = null;
-  _crSelectedCropId = result.topCrop?.crop?.id || null;
 
   // 大タブUIをリセット
   document.querySelectorAll('.cr-tab-major').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.major === 'all');
   });
   _crRenderMinorTabs();
-  _crRenderList();
+  // adp-view内では_adpRenderRankingList()(area.js)が担当
+  if (typeof _adpRenderRankingList === 'function') {
+    _adpRenderRankingList();
+    if (typeof _adpRenderGrowthRankingList === 'function') _adpRenderGrowthRankingList();
+  } else {
+    _crRenderList();
+  }
 
   // ─ 初期選択（トップ1作物）で収益・施肥・リスクを描画 ─
   const top = result.topCrop;
@@ -649,14 +615,14 @@ function runAnalysis(areaName) {
     renderWorkCalendar(null);
   }
 
-  // ─ サマリーバー更新 ─
+  // ─ サマリーバー更新（adp-view統合後は_adpUpdateSummaryBar経由） ─
   const modeLabels = { openField:'露地栽培', greenhouse:'ハウス', heatedGreenhouse:'加温ハウス' };
-  if (typeof anUpdateSummary === 'function') {
-    anUpdateSummary({
-      cropName:  top?.crop?.name ?? '—',
+  if (typeof _adpUpdateSummaryBar === 'function') {
+    _adpUpdateSummaryBar({
+      cropName:  top?.crop?.name ?? null,
       areaName:  areaName,
       score:     top?.score ?? null,
-      mode:      modeLabels[ad.cultivationMode] || '露地',
+      mode:      modeLabels[ad.cultivationMode] || '露地栽培',
       confPct:   confPct + '%',
       confLabel: confPct >= 70 ? '高精度' : confPct >= 40 ? '中精度' : '低精度',
     });
@@ -755,13 +721,13 @@ function renderCompareTable(scoreResults) {
   if (!scoreResults || scoreResults.length < 2) {
     el.innerHTML = '<div class="empty-mini">比較するには2作物以上選択してください。</div>';
     // 比較タブを非表示
-    const compareTab = document.querySelector('.an-itab-compare');
+    const compareTab = document.querySelector('.adp-subtab-compare');
     if (compareTab) compareTab.style.display = 'none';
     return;
   }
 
   // 比較タブを表示
-  const compareTab = document.querySelector('.an-itab-compare');
+  const compareTab = document.querySelector('.adp-subtab-compare');
   if (compareTab) compareTab.style.display = '';
 
   const COLS = [

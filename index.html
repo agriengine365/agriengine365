@@ -43,10 +43,6 @@
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
     <span>エリア</span>
   </button>
-  <button class="bnav-btn" data-nav="analysis" onclick="openPage('analysis')" title="分析">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-    <span>分析</span>
-  </button>
   <button class="bnav-btn" data-nav="records"  onclick="openPage('records')"  title="記録">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
     <span>記録</span>
@@ -176,7 +172,6 @@
     <!-- タブ -->
     <div class="fs-tabs" id="fs-tabs">
       <button class="fs-tab active" data-tab="areas"    onclick="switchFsTab('areas')">エリア</button>
-      <button class="fs-tab"        data-tab="analysis" onclick="switchFsTab('analysis')">分析</button>
       <button class="fs-tab"        data-tab="records"  onclick="switchFsTab('records')">記録</button>
     </div>
   </div>
@@ -197,113 +192,6 @@
         </div>
       </div>
     </div>
-
-    <!-- TAB: 分析 -->
-    <div class="tab-content" id="tab-analysis">
-
-      <!-- 未実行：空状態 -->
-      <div id="analysis-empty" class="empty">
-        <div class="icon">🌾</div>
-        エリアを選択して分析を実行してください。
-      </div>
-
-      <!-- 実行後：新レイアウト -->
-      <div id="analysis-result" style="display:none;flex-direction:column;gap:0;">
-
-        <!-- ① 作物サマリーバー（固定） -->
-        <div class="an-summary-bar" id="an-summary-bar">
-          <div class="an-summary-left">
-            <span class="an-crop-name" id="an-crop-name">—</span>
-            <span class="an-area-name" id="an-area-name">—</span>
-          </div>
-          <div class="an-summary-right">
-            <div class="an-score-wrap">
-              <span class="an-score-val" id="an-score-val">—</span>
-              <span class="an-score-label">総合スコア</span>
-            </div>
-            <div class="an-mode-badge" id="an-mode-badge">露地</div>
-            <!-- 信頼度バー（コンパクト） -->
-            <div class="an-conf-wrap">
-              <div class="conf-bar-track an-conf-track">
-                <div class="conf-bar-fill" id="conf-bar" style="width:0%"></div>
-              </div>
-              <span id="conf-pct" class="an-conf-pct">0%</span>
-              <span id="conf-label" class="an-conf-label">—</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- ② 項目タブ（横スクロール） -->
-        <div class="an-item-tabs" id="an-item-tabs">
-          <button class="an-itab active" data-itab="ranking"  onclick="anSwitchTab('ranking')">🏆 ランキング</button>
-          <button class="an-itab"        data-itab="profit"   onclick="anSwitchTab('profit')">💴 収益</button>
-          <button class="an-itab"        data-itab="fert"     onclick="anSwitchTab('fert')">🧪 施肥</button>
-          <button class="an-itab"        data-itab="risk"     onclick="anSwitchTab('risk')">⚠️ リスク</button>
-          <button class="an-itab"        data-itab="calendar" onclick="anSwitchTab('calendar')">📅 カレンダー</button>
-          <button class="an-itab"        data-itab="match"    onclick="anSwitchTab('match')">📊 適合度</button>
-          <button class="an-itab an-itab-compare" data-itab="compare" onclick="anSwitchTab('compare')" style="display:none;">⚖️ 比較</button>
-        </div>
-
-        <!-- ③ コンテンツエリア（タブ切替） -->
-        <div class="an-content" id="an-content">
-
-          <!-- ランキング -->
-          <div class="an-pane active" id="an-pane-ranking">
-            <!-- 大タブ -->
-            <div class="cr-tabs-major" id="cr-tabs-major-wrap">
-              <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
-              <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物</button>
-              <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
-              <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
-              <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜</button>
-              <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
-              <button class="cr-tab-major"        data-major="oil"       onclick="crSwitchMajor('oil')">油脂</button>
-              <button class="cr-tab-major"        data-major="fiber"     onclick="crSwitchMajor('fiber')">繊維</button>
-            </div>
-            <!-- 小タブ -->
-            <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
-            <!-- リスト -->
-            <div id="crop-ranking"></div>
-          </div>
-
-          <!-- 収益 -->
-          <div class="an-pane" id="an-pane-profit">
-            <div id="profit-waterfall"></div>
-          </div>
-
-          <!-- 施肥 -->
-          <div class="an-pane" id="an-pane-fert">
-            <div id="fert-result"></div>
-          </div>
-
-          <!-- リスク -->
-          <div class="an-pane" id="an-pane-risk">
-            <div id="risk-result"></div>
-          </div>
-
-          <!-- カレンダー -->
-          <div class="an-pane" id="an-pane-calendar">
-            <div id="calendar-result" class="empty-mini">作物を選択するとカレンダーが表示されます。</div>
-          </div>
-
-          <!-- 適合度 -->
-          <div class="an-pane" id="an-pane-match">
-            <div id="conf-detail" style="font-size:11px;color:var(--text2);line-height:1.8;"></div>
-          </div>
-
-          <!-- 比較（複数選択時のみ表示） -->
-          <div class="an-pane" id="an-pane-compare">
-            <div id="compare-result" class="empty-mini">複数の作物を選択すると比較テーブルが表示されます。</div>
-          </div>
-
-        </div><!-- /an-content -->
-
-        <div style="padding:12px 16px;">
-          <button class="btn btn-ghost" onclick="exportJSON()">JSONエクスポート</button>
-        </div>
-
-      </div><!-- /analysis-result -->
-    </div><!-- /tab-analysis -->
 
     <!-- TAB: 記録 -->
     <div class="tab-content" id="tab-records">
@@ -333,37 +221,6 @@
   </div>
 </div>
 
-<!-- 分析ウィザードダイアログ -->
-<div class="aw-overlay" id="aw-overlay">
-  <div class="aw-dialog">
-
-    <!-- ヘッダー -->
-    <div class="aw-header">
-      <div class="aw-header-top">
-        <span class="aw-title">分析ウィザード</span>
-        <button class="aw-close-btn" onclick="closeAnalysisWizard()">✕</button>
-      </div>
-      <div class="aw-area-name" id="aw-area-name"></div>
-      <!-- プログレス -->
-      <div class="aw-progress">
-        <div class="aw-prog-dot active" id="awdot-0"></div>
-        <div class="aw-prog-line"></div>
-        <div class="aw-prog-dot" id="awdot-1"></div>
-        <div class="aw-prog-line"></div>
-        <div class="aw-prog-dot" id="awdot-2"></div>
-      </div>
-      <div class="aw-step-title" id="aw-step-title">営農条件入力</div>
-    </div>
-
-    <!-- ボディ（動的描画） -->
-    <div class="aw-body" id="aw-body"></div>
-
-    <!-- フッター（動的描画） -->
-    <div class="aw-footer" id="aw-footer"></div>
-
-  </div>
-</div>
-
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -381,40 +238,9 @@
 <script src="js/firebase.js"></script>
 <script src="js/map.js"></script>
 <script src="js/polygonDraw.js"></script>
-<script src="js/areaCharts.js"></script>
 <script src="js/areaEnv.js"></script>
 <script src="js/area.js"></script>
 <script src="js/analysis.js"></script>
-<script src="js/analysisWizard.js"></script>
-<script>
-// ─── 分析タブ項目切替（Phase 1） ───
-function anSwitchTab(key) {
-  document.querySelectorAll('.an-itab').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.itab === key);
-  });
-  document.querySelectorAll('.an-pane').forEach(pane => {
-    pane.classList.toggle('active', pane.id === 'an-pane-' + key);
-  });
-}
-
-// ─── サマリーバー更新ヘルパー（Phase 2以降で上書き可） ───
-function anUpdateSummary({ cropName, areaName, score, mode, confPct, confLabel } = {}) {
-  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.textContent = val; };
-  set('an-crop-name',  cropName  ?? '—');
-  set('an-area-name',  areaName  ?? '—');
-  set('an-score-val',  score != null ? score + '%' : '—');
-  set('an-mode-badge', mode      ?? '');
-  set('conf-pct',      confPct   ?? '0%');
-  set('conf-label',    confLabel ?? '—');
-  const bar = document.getElementById('conf-bar');
-  if (bar && confPct != null) bar.style.width = confPct;
-  // スコアの色分け
-  const scoreEl = document.getElementById('an-score-val');
-  if (scoreEl && score != null) {
-    scoreEl.style.color = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--amber)' : 'var(--red)';
-  }
-}
-</script>
 <script src="js/records.js"></script>
 <script src="js/voiceMemo.js"></script>
 <script src="js/main.js"></script>

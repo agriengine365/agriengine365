@@ -392,7 +392,7 @@ function selectArea(area) {
       };
 
   // landProfile が未保存 or リスク項目が欠損している場合は buildLandProfile() で補完
-  // （AreaCharts のリスクゲージ・サマリーグリッドが参照するため）
+  // （_adpRenderLandRiskGauges / _adpRenderEnvDonut が参照するため）
   if (!area.landProfile ||
       area.landProfile.floodRisk == null ||
       area.landProfile.droughtRisk == null) {
@@ -420,6 +420,7 @@ let _adpSelectedCropId   = null;
 let _crOpenFieldScores   = null;  // 露地スコアキャッシュ（補正比較用）  // 気温グラフで強調表示中の作物ID
 let _adpClimateMode   = false;  // true=気候推定モード / false=DBモード
 let _adpClimateRanking = null;  // computeClimateRanking キャッシュ
+let _adpClimateLoaded  = false; // true=AMeDAS取得試行済み（成功/失敗問わず）
 
 async function openAreaDetailPanel(area) {
   _adpArea    = area;
@@ -430,6 +431,7 @@ async function openAreaDetailPanel(area) {
   _adpEditId  = null;
   _adpClimateMode    = false;
   _adpClimateRanking = null;
+  _adpClimateLoaded  = false;
 
   _adpEnsureView();
 
@@ -453,9 +455,14 @@ async function openAreaDetailPanel(area) {
   view.classList.add('open');
 
   // ── 最初のサブタブ（気温グラフ）を表示 ──
-  _adpSwitchSubTab('chart');
+  _adpSwitchSubTab('ranking');
 
-  AreaCharts.render(area);
+  // 🌿 土地環境系（landProfile依存・AMeDAS不要・常時表示）
+  _adpRenderEnvDonut(area);
+  _adpRenderLandRiskGauges(area);
+  // 🌤️ 気候サマリー（AMeDAS取得前はローディング表示）
+  _adpRenderClimateSummary(area);
+
   _adpRenderCalendar();
   _adpRenderDayRecords();
 
@@ -466,8 +473,11 @@ async function openAreaDetailPanel(area) {
   const areaKey = area.id || area.name;
   if (_adpClimateCache && _adpClimateCache._areaKey === areaKey) {
     currentAreaData.climate = _adpClimateCache;
+    _adpClimateLoaded = true;
     _adpRenderRanking(area);
     _adpRenderTempChart();
+    _adpRenderSunshineChart();
+    _adpRenderClimateSummary(area);
     return;
   }
 
@@ -495,8 +505,11 @@ async function openAreaDetailPanel(area) {
     }
   }
 
+  _adpClimateLoaded = true;
   _adpRenderRanking(area);
   _adpRenderTempChart();
+  _adpRenderSunshineChart();
+  _adpRenderClimateSummary(area);
 }
 
 
@@ -519,27 +532,71 @@ function _adpEnsureView() {
         <div class="adp-title" id="adp-title"></div>
         <div class="adp-meta"  id="adp-meta"></div>
       </div>
-      <button class="adp-analyze-btn" onclick="if(_adpArea){openAnalysisWizard(_adpArea);}">
-        <span>分析</span>
+      <button class="adp-analyze-btn" onclick="_adpToggleWizardPanel()">
+        <span>条件設定</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
     </div>
 
-    <!-- サブタブバー（3タブ） -->
-    <div class="adp-subtabs">
-      <button class="adp-subtab active" data-subtab="chart"    onclick="_adpSwitchSubTab('chart')">🌡️ 気温適性</button>
+    <!-- サマリーバー（常時表示） -->
+    <div class="adp-summary-bar" id="adp-summary-bar">
+      <div class="adp-summary-left">
+        <span class="adp-summary-crop" id="adp-summary-crop">—</span>
+        <span class="adp-summary-area" id="adp-summary-area">—</span>
+      </div>
+      <div class="adp-summary-right">
+        <div class="adp-summary-score-wrap">
+          <span class="adp-summary-score" id="adp-summary-score">—</span>
+          <span class="adp-summary-score-label">総合スコア</span>
+        </div>
+        <div class="adp-summary-mode" id="adp-summary-mode">露地</div>
+        <div class="adp-summary-conf-wrap">
+          <div class="conf-bar-track adp-summary-conf-track">
+            <div class="conf-bar-fill" id="adp-conf-bar" style="width:0%"></div>
+          </div>
+          <span id="adp-conf-pct" class="adp-summary-conf-pct">0%</span>
+          <span id="adp-conf-label" class="adp-summary-conf-label">—</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 分析ウィザード（インラインアコーディオン） -->
+    <div class="adp-wizard-panel" id="adp-wizard-panel" hidden>
+      <div class="adp-wizard-progress">
+        <div class="aw-prog-dot active" id="awdot-0"></div>
+        <div class="aw-prog-line"></div>
+        <div class="aw-prog-dot" id="awdot-1"></div>
+        <div class="aw-prog-line"></div>
+        <div class="aw-prog-dot" id="awdot-2"></div>
+      </div>
+      <div class="aw-step-title" id="aw-step-title">営農条件入力</div>
+      <div class="aw-body" id="aw-body"></div>
+      <div class="aw-footer" id="aw-footer"></div>
+    </div>
+
+    <!-- サブタブバー（8タブ＋比較は条件付き） -->
+    <div class="adp-subtabs" id="adp-subtabs">
+      <button class="adp-subtab active" data-subtab="ranking"  onclick="_adpSwitchSubTab('ranking')">🏆 ランキング</button>
       <button class="adp-subtab"        data-subtab="growth"   onclick="_adpSwitchSubTab('growth')">📈 生育期間</button>
+      <button class="adp-subtab"        data-subtab="profit"   onclick="_adpSwitchSubTab('profit')">💴 収益</button>
+      <button class="adp-subtab"        data-subtab="fert"     onclick="_adpSwitchSubTab('fert')">🧪 施肥</button>
+      <button class="adp-subtab"        data-subtab="risk"     onclick="_adpSwitchSubTab('risk')">⚠️ リスク</button>
       <button class="adp-subtab"        data-subtab="calendar" onclick="_adpSwitchSubTab('calendar')">📅 カレンダー</button>
+      <button class="adp-subtab"        data-subtab="match"    onclick="_adpSwitchSubTab('match')">📊 適合度</button>
+      <button class="adp-subtab adp-subtab-compare" data-subtab="compare" onclick="_adpSwitchSubTab('compare')" style="display:none;">⚖️ 比較</button>
     </div>
 
     <!-- コンテンツ領域 -->
     <div class="adp-view-body">
 
-      <!-- ペイン: 気温適性（グラフ固定上部 ＋ ランキングリスト下部） -->
-      <div class="adp-pane adp-pane-combined" id="adp-pane-chart">
+      <!-- ① ランキング（旧chart流用：気温適性チャート固定上部 ＋ ランキングリスト下部） -->
+      <div class="adp-pane adp-pane-combined" id="adp-pane-ranking">
 
         <!-- ▼ 上部固定: グラフブロック -->
         <div class="adp-chart-sticky">
+          <!-- 🌤️ 気候サマリー（年均気温・年降水量・年間日照・標高+pH／気候帯） -->
+          <div id="adpc-climate-summary" class="adpc-climate-summary-wrap"></div>
+
           <div class="adp-temp-chart-header">
             <span class="adp-temp-chart-sub" id="adp-temp-chart-sub">作物を選択すると適正温度を重畳表示</span>
           </div>
@@ -547,9 +604,18 @@ function _adpEnsureView() {
             <canvas id="adp-temp-canvas"></canvas>
           </div>
           <div class="adp-temp-legend" id="adp-temp-legend"></div>
+
+          <!-- ☀️ 旬別日照チャート -->
+          <div class="adp-temp-chart-header">
+            <span class="adp-temp-chart-sub" id="adp-sun-chart-sub">旬別日照時間</span>
+          </div>
+          <div class="adp-temp-chart-wrap adp-sun-chart-wrap">
+            <canvas id="adp-sun-canvas"></canvas>
+          </div>
+          <div class="adp-temp-legend" id="adp-sun-legend"></div>
         </div>
 
-        <!-- ▼ 下部スクロール: 栽培方式トグル ＋ タブ ＋ ランキングリスト -->
+        <!-- ▼ 下部スクロール: 評価モード ＋ カテゴリタブ ＋ ランキングリスト -->
         <div class="adp-ranking-scroll" id="adp-ranking-scroll">
           <!-- 評価モードトグル -->
           <div class="adp-eval-mode-wrap" id="adp-eval-mode-wrap">
@@ -574,7 +640,7 @@ function _adpEnsureView() {
       </div>
 
 
-      <!-- ペイン: 生育期間（グラフ固定上部 ＋ ランキングリスト下部） -->
+      <!-- ② 生育期間（旧growth流用：チャート固定上部 ＋ ランキングリスト下部） -->
       <div class="adp-pane adp-pane-combined" id="adp-pane-growth" style="display:none;">
 
         <!-- ▼ 上部固定: 生育期間グラフ -->
@@ -588,7 +654,7 @@ function _adpEnsureView() {
           <div class="adp-temp-legend" id="adp-growth-legend"></div>
         </div>
 
-        <!-- ▼ 下部スクロール: 栽培方式トグル ＋ タブ ＋ ランキングリスト -->
+        <!-- ▼ 下部スクロール: 評価モード ＋ カテゴリタブ ＋ ランキングリスト -->
         <div class="adp-ranking-scroll adp-ranking-scroll-growth" id="adp-ranking-scroll-growth">
           <!-- 評価モードトグル -->
           <div class="adp-eval-mode-wrap" id="adp-eval-mode-wrap-growth">
@@ -597,7 +663,7 @@ function _adpEnsureView() {
             <button class="adp-eval-mode-btn" id="adp-eval-btn-climate-growth"
               onclick="_adpSetClimateMode(true)">🌿 気候推定</button>
           </div>
-          <!-- 栽培方式トグル（_adpEnsureGrowthCultivationToggle が挿入） -->
+          <!-- 栽培方式トグル（_adpEnsureCultivationToggle が挿入） -->
           <div class="cr-tabs-major" id="cr-tabs-major-growth">
             <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
             <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
@@ -610,17 +676,49 @@ function _adpEnsureView() {
         </div>
 
       </div>
-      <!-- ペイン: カレンダー -->
+
+      <!-- ③ 収益（Phase3で実装） -->
+      <div class="adp-pane" id="adp-pane-profit" style="display:none;">
+        <div id="profit-waterfall" class="empty-mini">作物を選択すると収益概算が表示されます。</div>
+      </div>
+
+      <!-- ④ 施肥（Phase3で実装） -->
+      <div class="adp-pane" id="adp-pane-fert" style="display:none;">
+        <div id="fert-result" class="empty-mini">作物を選択すると施肥概算が表示されます。</div>
+      </div>
+
+      <!-- ⑤ リスク（Phase3で実装） -->
+      <div class="adp-pane" id="adp-pane-risk" style="display:none;">
+        <!-- ⚠️ 土地環境リスク（浸水・干ばつ・積雪／作物選択なしでも常時表示） -->
+        <div id="adpc-risk-gauges-fixed" class="adpc-fixed-section"></div>
+        <div id="risk-result" class="empty-mini">作物を選択するとリスク・注意点が表示されます。</div>
+      </div>
+
+      <!-- ⑥ カレンダー（訪問記録カレンダー＋生育カレンダーを1コンテナ内に上下併記） -->
       <div class="adp-pane" id="adp-pane-calendar" style="display:none;">
-        <div class="vm-cal-header" id="vm-cal-header-wrap"></div>
-        <div id="adp-calendar-wrap"></div>
-        <div id="adp-day-records-wrap"></div>
+        <div class="adp-cal-visit-wrap" id="adp-cal-visit-wrap">
+          <div class="vm-cal-header" id="vm-cal-header-wrap"></div>
+          <div id="adp-calendar-wrap"></div>
+          <div id="adp-day-records-wrap"></div>
+        </div>
+        <div class="adp-cal-growth-wrap" id="adp-cal-growth-wrap">
+          <div id="calendar-result" class="empty-mini">作物を選択すると生育カレンダーが表示されます。</div>
+        </div>
+      </div>
+
+      <!-- ⑦ 適合度（Phase3で実装） -->
+      <div class="adp-pane" id="adp-pane-match" style="display:none;">
+        <!-- 🌿 土地環境適合度ドーナツ（作物選択なしでも常時表示） -->
+        <div id="adpc-env-donut-fixed" class="adpc-fixed-section"></div>
+        <div id="conf-detail" class="empty-mini" style="font-size:11px;color:var(--text2);line-height:1.8;">作物を選択するとエリア適合度の詳細が表示されます。</div>
+      </div>
+
+      <!-- ⑧ 比較（複数作物選択時のみ表示・Phase3で実装） -->
+      <div class="adp-pane" id="adp-pane-compare" style="display:none;">
+        <div id="compare-result" class="empty-mini">複数の作物を選択すると比較テーブルが表示されます。</div>
       </div>
 
     </div>
-
-    <!-- areaCharts用（非表示） -->
-    <div id="adp-charts-wrap" style="display:none;"></div>
   `;
   document.body.appendChild(view);
 }
@@ -657,19 +755,27 @@ function _adpSetClimateMode(isClimate) {
   _adpRenderGrowthRankingList();
 }
 
-// ─── サブタブ切替（2タブ構成） ───
+// ─── サブタブ切替（8タブ構成） ───
+const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'profit', 'fert', 'risk', 'calendar', 'match', 'compare'];
+
 function _adpSwitchSubTab(name) {
   // タブボタン
   document.querySelectorAll('.adp-subtab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.subtab === name);
   });
-  // ペイン（chart / growth / calendar の3つ）
-  ['chart', 'growth', 'calendar'].forEach(p => {
+  // ペイン
+  ADP_SUBTAB_KEYS.forEach(p => {
     const el = document.getElementById('adp-pane-' + p);
-    if (el) el.style.display = (p === name) ? 'flex' : 'none';
+    if (!el) return;
+    const visible = (p === name);
+    if (el.classList.contains('adp-pane-combined')) {
+      el.style.display = visible ? 'flex' : 'none';
+    } else {
+      el.style.display = visible ? '' : 'none';
+    }
   });
   // グラフペインを表示したときに再描画（offsetWidth が 0→正常になるため）
-  if (name === 'chart') {
+  if (name === 'ranking') {
     setTimeout(() => _adpRenderTempChart(_adpSelectedCropId), 30);
   }
   if (name === 'growth') {
@@ -689,6 +795,36 @@ function _adpSwitchSubTab(name) {
     }
     _adpRenderCalendar();
     _adpRenderDayRecords();
+  }
+}
+
+// ─── ウィザードパネルの開閉 ───
+function _adpToggleWizardPanel() {
+  const panel = document.getElementById('adp-wizard-panel');
+  if (!panel) return;
+  const willOpen = panel.hasAttribute('hidden');
+  if (willOpen) {
+    panel.removeAttribute('hidden');
+    if (typeof _awInitPanel === 'function') _awInitPanel(_adpArea);
+  } else {
+    panel.setAttribute('hidden', '');
+  }
+}
+
+// ─── サマリーバー更新 ───
+function _adpUpdateSummaryBar({ cropName, areaName, score, mode, confPct, confLabel } = {}) {
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.textContent = val; };
+  set('adp-summary-crop',  cropName  ?? '—');
+  set('adp-summary-area',  areaName  ?? '—');
+  set('adp-summary-score', score != null ? score + '%' : '—');
+  set('adp-summary-mode',  mode      ?? '');
+  set('adp-conf-pct',      confPct   ?? '0%');
+  set('adp-conf-label',    confLabel ?? '—');
+  const bar = document.getElementById('adp-conf-bar');
+  if (bar && confPct != null) bar.style.width = confPct;
+  const scoreEl = document.getElementById('adp-summary-score');
+  if (scoreEl && score != null) {
+    scoreEl.style.color = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--amber)' : 'var(--red)';
   }
 }
 
@@ -1036,10 +1172,8 @@ function _adpRenderRanking(area) {
 
   // analysis.js のランキング状態を更新
   _crScores         = result.cropScores;
-  _crProfile        = result.landProfile;
   _crMajor          = 'all';
   _crMinor          = null;
-  _crSelectedCropId = null;
 
   // 大タブをリセット
   document.querySelectorAll('.cr-tab-major').forEach(btn => {
@@ -1243,7 +1377,7 @@ function _adpRenderRankingList() {
 
   // ── 気候推定モード ──
   if (_adpClimateMode) {
-    _adpRenderClimateRankingList(el, 'chart');
+    _adpRenderClimateRankingList(el, 'ranking');
     return;
   }
 
@@ -1304,6 +1438,319 @@ function _adpRenderRankingList() {
   }).join('');
 
   el.innerHTML = summaryHtml + itemsHtml;
+}
+
+// ═══════════════════════════════════════════
+//  Phase6: 固定セクション描画
+//  （旧 areaCharts.js のロジックを移植・常時表示化）
+// ═══════════════════════════════════════════
+
+// ─── 🌤️ 気候サマリー（ランキング上部固定・4枚カード＋気候帯） ───
+// AMeDAS取得前は「データ取得中」、取得後は観測局/推定値バッジを表示
+function _adpRenderClimateSummary(area) {
+  const el = document.getElementById('adpc-climate-summary');
+  if (!el) return;
+
+  if (!_adpClimateLoaded) {
+    el.innerHTML = `<div class="adpc-loading"><span class="adpc-spinner"></span><span>気候データ取得中...</span></div>`;
+    return;
+  }
+
+  const climate = currentAreaData?.climate || {};
+  const lp       = area.landProfile || {};
+  const elev     = lp.elevation ?? area.meta?.elev ?? null;
+  const ph       = lp.ph ?? null;
+  const sunshine = climate.sunshineHours ?? lp.sunshineHours ?? null;
+  const isStation = climate.stationName != null;
+
+  const cards = [
+    {
+      icon:  '🌡️',
+      label: '年均気温',
+      value: climate.tempMean != null ? climate.tempMean.toFixed(1) : '—',
+      unit:  '℃',
+      color: _adpTempColor(climate.tempMean),
+    },
+    {
+      icon:  '🌧️',
+      label: '年降水量',
+      value: climate.rain != null ? Math.round(climate.rain).toLocaleString() : '—',
+      unit:  'mm',
+      color: '#60a5fa',
+    },
+    {
+      icon:  '☀️',
+      label: '年間日照',
+      value: sunshine != null ? Math.round(sunshine).toLocaleString() : '—',
+      unit:  'h',
+      color: '#fbbf24',
+    },
+    {
+      icon:  '🏔️',
+      label: '標高/pH',
+      value: elev != null ? Math.round(elev).toLocaleString() : '—',
+      unit:  'm',
+      sub:   ph != null ? `pH ${ph.toFixed(1)}` : null,
+      color: 'var(--text2)',
+    },
+  ];
+
+  const badge = isStation
+    ? `<span class="adpc-badge-ok">${climate.stationName}${climate.distKm != null ? '&nbsp;' + climate.distKm + 'km' : ''}</span>`
+    : `<span class="adpc-badge-warn">推定値</span>`;
+
+  el.innerHTML = `
+    <div class="adpc-mini-summary">
+      ${cards.map(c => `
+        <div class="adpc-mini-stat">
+          <span class="adpc-mini-stat-icon">${c.icon}</span>
+          <div class="adpc-mini-stat-body">
+            <span class="adpc-mini-stat-label">${c.label}</span>
+            <span class="adpc-mini-stat-value" style="color:${c.color}">${c.value}<span class="adpc-mini-stat-unit">${c.unit}</span></span>
+            ${c.sub ? `<span class="adpc-mini-stat-sub">${c.sub}</span>` : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <div class="adpc-mini-zone">
+      <span class="adpc-mini-zone-name">${climate.name || lp.climateName || '—'}</span>
+      ${badge}
+    </div>
+  `;
+}
+
+function _adpTempColor(t) {
+  if (t == null) return 'var(--text2)';
+  if (t >= 20) return '#f87171';
+  if (t >= 15) return '#fbbf24';
+  if (t >= 10) return '#4ade80';
+  return '#2dd4bf';
+}
+
+// ─── ☀️ 旬別日照チャート（気温グラフの下・Canvas2D） ───
+function _adpRenderSunshineChart() {
+  const canvas  = document.getElementById('adp-sun-canvas');
+  const subEl   = document.getElementById('adp-sun-chart-sub');
+  const legendEl = document.getElementById('adp-sun-legend');
+  if (!canvas) return;
+
+  const decadeArr = currentAreaData?.climate?.decadeArr; // {..., sun?[36]}
+
+  const ctx = canvas.getContext('2d');
+  const W   = canvas.offsetWidth  || 320;
+  const H   = canvas.offsetHeight || 70;
+  canvas.width  = W * (window.devicePixelRatio || 1);
+  canvas.height = H * (window.devicePixelRatio || 1);
+  ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+  ctx.clearRect(0, 0, W, H);
+
+  const PAD = { top: 6, right: 6, bottom: 16, left: 28 };
+  const gW  = W - PAD.left - PAD.right;
+  const gH  = H - PAD.top  - PAD.bottom;
+  const N   = 36;
+
+  if (!decadeArr || !Array.isArray(decadeArr.sun) || decadeArr.sun.length !== N) {
+    ctx.fillStyle = 'rgba(90,122,92,0.8)';
+    ctx.font      = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('旬別日照データなし（AMeDAS未取得）', W / 2, H / 2);
+    if (subEl)    subEl.textContent = '日照データ未取得';
+    if (legendEl) legendEl.innerHTML = '';
+    return;
+  }
+
+  const sunArr = decadeArr.sun;
+  const maxRaw = Math.max(...sunArr.filter(v => v !== null), 1);
+  const yMax   = Math.ceil(maxRaw / 10) * 10 || 10;
+
+  const cellW = gW / N;
+  const barW  = cellW * 0.7;
+  const toX   = i => PAD.left + i * cellW;
+  const toY   = v  => PAD.top + (1 - v / yMax) * gH;
+
+  // ── 横グリッド線（0 / 最大）──
+  ctx.strokeStyle = 'rgba(42,61,44,0.10)';
+  ctx.lineWidth   = 1;
+  [0, yMax].forEach(val => {
+    const y = toY(val);
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + gW, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(90,122,92,0.85)';
+    ctx.font      = '9px DM Mono, monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(`${val}h`, PAD.left - 4, y + 3);
+  });
+
+  // ── 縦グリッド線（月境界：3旬ごと）──
+  for (let m = 0; m < 12; m++) {
+    const x = toX(m * 3);
+    ctx.strokeStyle = 'rgba(42,61,44,0.12)';
+    ctx.lineWidth   = 1;
+    ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, PAD.top + gH); ctx.stroke();
+  }
+
+  // ── 棒グラフ ──
+  sunArr.forEach((v, i) => {
+    if (v === null) return;
+    const x = toX(i) + (cellW - barW) / 2;
+    const y = toY(v);
+    const h = (PAD.top + gH) - y;
+    const intensity = v / yMax;
+    ctx.fillStyle = intensity >= 0.7 ? 'rgba(251,191,36,0.75)'
+                  : intensity >= 0.4 ? 'rgba(251,191,36,0.45)'
+                  :                    'rgba(251,191,36,0.2)';
+    ctx.fillRect(x, y, barW, h);
+  });
+
+  // ── 月ラベル（各月中旬 = 旬インデックス m*3+1）──
+  const MONTH_LABELS = ['1','2','3','4','5','6','7','8','9','10','11','12'];
+  ctx.fillStyle = 'rgba(90,122,92,0.8)';
+  ctx.font      = '9px DM Mono, monospace';
+  ctx.textAlign = 'center';
+  MONTH_LABELS.forEach((label, m) => {
+    ctx.fillText(label, toX(m * 3 + 1) + cellW / 2, H - 4);
+  });
+
+  if (subEl) subEl.textContent = '旬別日照時間';
+  if (legendEl) legendEl.innerHTML = `
+    <span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(251,191,36,0.6)"></span>日照時間（h/旬）</span>
+  `;
+}
+
+// ─── 🌿 土地環境適合度ドーナツ（適合度ペイン固定・作物選択なしでも表示） ───
+function _adpRenderEnvDonut(area) {
+  const wrap = document.getElementById('adpc-env-donut-fixed');
+  if (!wrap) return;
+
+  const lp      = area.landProfile || {};
+  const climate = currentAreaData?.climate || {};
+  const temp = climate.tempMean ?? lp.avgTemp        ?? null;
+  const rain = climate.rain     ?? lp.annualRainfall ?? null;
+  const elev = lp.elevation     ?? area.meta?.elev   ?? null;
+  const ph   = lp.ph                                  ?? null;
+
+  const C_GREEN = '#4ade80', C_AMBER = '#fbbf24', C_RED = '#f87171';
+
+  const rings = [
+    _adpCalcEnvRing('年均気温', temp,  '℃',  -5,  40,  12,  22, C_GREEN, C_AMBER, C_RED),
+    _adpCalcEnvRing('土壌pH',   ph,    '',   3.5,   9, 5.5,   7, C_GREEN, C_AMBER, C_RED),
+    _adpCalcEnvRing('標高',     elev,  'm',    0, 2000,   0, 600, C_GREEN, C_AMBER, C_RED),
+    _adpCalcEnvRing('年降水量', rain,  'mm',   0, 3500, 900, 2200, C_GREEN, C_AMBER, C_RED),
+  ];
+
+  const SIZE = 160, CX = 80, CY = 80, GAP = 5, THICK = 13, R_BASE = 28;
+
+  function arcPath(cx, cy, r, startDeg, endDeg) {
+    const toRad = d => (d - 90) * Math.PI / 180;
+    const x1 = cx + r * Math.cos(toRad(startDeg));
+    const y1 = cy + r * Math.sin(toRad(startDeg));
+    const x2 = cx + r * Math.cos(toRad(endDeg));
+    const y2 = cy + r * Math.sin(toRad(endDeg));
+    return `M ${x1} ${y1} A ${r} ${r} 0 ${(endDeg - startDeg) > 180 ? 1 : 0} 1 ${x2} ${y2}`;
+  }
+
+  let ringsSvg = '';
+  rings.forEach((ring, i) => {
+    const r   = R_BASE + i * (THICK + GAP);
+    const pct = ring.score !== null ? ring.score : 0;
+    const deg = pct / 100 * 359.9;
+
+    ringsSvg += `<circle cx="${CX}" cy="${CY}" r="${r}" fill="none" stroke="#2a3d2c" stroke-width="${THICK}" opacity="0.55"/>`;
+    if (ring.score !== null && pct > 0) {
+      ringsSvg += `
+        <path d="${arcPath(CX, CY, r, 0, deg)}" fill="none" stroke="${ring.color}"
+          stroke-width="${THICK}" stroke-linecap="round"
+          style="filter:drop-shadow(0 0 4px ${ring.color}66)">
+          <animate attributeName="stroke-dashoffset" from="${2*Math.PI*r}" to="0"
+            dur="0.7s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1" keyTimes="0 1"/>
+        </path>`;
+    }
+  });
+
+  const legendHTML = rings.map(ring => `
+    <div class="adpc-legend-row">
+      <span class="adpc-legend-dot" style="background:${ring.score !== null ? ring.color : '#2a3d2c'}"></span>
+      <div class="adpc-legend-info">
+        <div class="adpc-legend-top">
+          <span class="adpc-legend-label">${ring.name}</span>
+          <span class="adpc-legend-val" style="color:${ring.score !== null ? ring.color : 'var(--text3)'}">${ring.displayVal}</span>
+        </div>
+        <span class="adpc-legend-status" style="color:${ring.score !== null ? ring.color : 'var(--text3)'}">${ring.score !== null ? ring.statusLabel : 'データなし'}</span>
+      </div>
+    </div>`).join('');
+
+  wrap.innerHTML = `
+    <div class="adpc-section-title"><span>🌿 土地環境適合度</span></div>
+    <div class="adpc-donut-layout">
+      <svg class="adpc-donut-svg" viewBox="0 0 ${SIZE} ${SIZE}" xmlns="http://www.w3.org/2000/svg">
+        ${ringsSvg}
+        <text x="${CX}" y="${CY-5}" text-anchor="middle" fill="#5a7a5c" font-size="8" font-family="'DM Mono',monospace" letter-spacing="0.08em">LAND</text>
+        <text x="${CX}" y="${CY+7}" text-anchor="middle" fill="#5a7a5c" font-size="8" font-family="'DM Mono',monospace" letter-spacing="0.08em">ENV</text>
+      </svg>
+      <div class="adpc-donut-legend">${legendHTML}</div>
+    </div>`;
+}
+
+function _adpCalcEnvRing(name, value, unit, displayMin, displayMax, optMin, optMax, cGood, cWarn, cBad) {
+  const fmt = v => {
+    if (v == null) return '—';
+    if (unit === '℃' || unit === '') return Number(v).toFixed(1) + unit;
+    return Math.round(v) + unit;
+  };
+  if (value == null || !isFinite(value)) return { name, score: null, color: '#2a3d2c', displayVal: '—', statusLabel: 'データなし', unit };
+
+  let score, color, statusLabel;
+  if (value >= optMin && value <= optMax) {
+    score = 100; color = cGood; statusLabel = '適合';
+  } else {
+    const overShoot = value < optMin
+      ? (optMin - value) / (optMin - displayMin || 1)
+      : (value - optMax) / (displayMax - optMax || 1);
+    score = Math.max(0, Math.round((1 - overShoot) * 85));
+    color = score >= 50 ? cWarn : cBad;
+    statusLabel = score >= 50 ? '近接' : '範囲外';
+  }
+  return { name, score, color, displayVal: fmt(value), statusLabel, unit };
+}
+
+// ─── ⚠️ 環境リスクゲージ（リスクペイン固定・作物選択なしでも表示） ───
+function _adpRenderLandRiskGauges(area) {
+  const wrap = document.getElementById('adpc-risk-gauges-fixed');
+  if (!wrap) return;
+
+  const lp = area.landProfile || {};
+  const C_GREEN = '#4ade80', C_AMBER = '#fbbf24', C_RED = '#f87171';
+
+  const gauges = [
+    { label: '浸水リスク',   icon: '🌊', value: lp.floodRisk   ?? null, level: lp.floodRiskLevel   ?? null },
+    { label: '干ばつリスク', icon: '☀️', value: lp.droughtRisk ?? null, level: lp.droughtRiskLevel ?? null },
+    { label: '積雪リスク',   icon: '❄️', value: lp.snowRisk    ?? null, level: lp.snowRiskLevel    ?? null },
+  ];
+
+  if (gauges.every(g => g.value === null)) {
+    wrap.innerHTML = `
+      <div class="adpc-section-title"><span>⚠️ 土地環境リスク</span></div>
+      <div class="adpc-nodata">分析実行後にリスクが表示されます</div>`;
+    return;
+  }
+
+  const rows = gauges.map(g => {
+    const pct        = g.value !== null ? Math.min(100, Math.max(0, g.value)) : 0;
+    const color      = g.level === 'high' ? C_RED : g.level === 'medium' ? C_AMBER : C_GREEN;
+    const levelLabel = g.level === 'high' ? '高' : g.level === 'medium' ? '中' : g.value !== null ? '低' : '—';
+    return `
+      <div class="adpc-gauge-row">
+        <span class="adpc-gauge-label">${g.icon} ${g.label}</span>
+        <div class="adpc-gauge-track">
+          <div class="adpc-gauge-bar" style="width:${pct}%;background:${color};box-shadow:0 0 6px ${color}55;transition:width 0.6s ease;"></div>
+        </div>
+        <span class="adpc-gauge-pct" style="color:${g.value !== null ? color : 'var(--text3)'}">${g.value !== null ? pct + '%' : '—'}</span>
+        <span class="adpc-gauge-val" style="color:${g.value !== null ? color : 'var(--text3)'}">${g.value !== null ? levelLabel : '—'}</span>
+      </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="adpc-section-title"><span>⚠️ 土地環境リスク</span></div>
+    <div class="adpc-risk-gauges">${rows}</div>`;
 }
 
 // ─── 気温折れ線グラフ描画 ───
@@ -1718,7 +2165,7 @@ function _adpRenderGrowthChart(cropId) {
   const manageIdxs  = crop ? calToIdx(crop.calendar?.manage)  : [];
 
   // 月幅（旬換算で3旬分）
-  const barW_m = gW / 12; // 月1つ分の幅（12�ヶ月）
+  const barW_m = gW / 12; // 月1つ分の幅（12ヶ月）
 
   // ── Phenology播種ウィンドウ計算（crop+decadeArr両方ある時のみ）──
   let sowingWindows = [];
@@ -2100,51 +2547,10 @@ function _adpRenderGrowthRankingList() {
   el.innerHTML = summaryHtml + itemsHtml;
 }
 
-// ─── crSwitchMajor / crSwitchMinor / _crRenderList をADPビュー開中に差し替え ───
-// analysis.js より後に読まれるため、DOMContentLoaded後にオーバーライドする。
-document.addEventListener('DOMContentLoaded', () => {
-  // _crRenderList
-  const _orig_crRenderList = (typeof _crRenderList === 'function') ? _crRenderList : null;
-  window._crRenderList = function() {
-    if (document.getElementById('adp-view')?.classList.contains('open')) {
-      _adpRenderRankingList();
-    } else if (_orig_crRenderList) {
-      _orig_crRenderList();
-    }
-  };
-
-  // crSwitchMajor: ADPビュー開中はADP用タブ切替のみ実行
-  const _orig_crSwitchMajor = (typeof crSwitchMajor === 'function') ? crSwitchMajor : null;
-  window.crSwitchMajor = function(major) {
-    if (document.getElementById('adp-view')?.classList.contains('open')) {
-      document.querySelectorAll('.cr-tab-major').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.major === major);
-      });
-      _crMajor = major;
-      _crMinor = null;
-      _crRenderMinorTabs();
-      _adpRenderRankingList();
-      _adpRenderGrowthRankingList();
-    } else if (_orig_crSwitchMajor) {
-      _orig_crSwitchMajor(major);
-    }
-  };
-
-  // crSwitchMinor: ADPビュー開中はADP用のみ
-  const _orig_crSwitchMinor = (typeof crSwitchMinor === 'function') ? crSwitchMinor : null;
-  window.crSwitchMinor = function(minor) {
-    if (document.getElementById('adp-view')?.classList.contains('open')) {
-      document.querySelectorAll('.cr-tab-minor').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.minor === minor);
-      });
-      _crMinor = minor;
-      _adpRenderRankingList();
-      _adpRenderGrowthRankingList();
-    } else if (_orig_crSwitchMinor) {
-      _orig_crSwitchMinor(minor);
-    }
-  };
-});
+// ─── crSwitchMajor / crSwitchMinor のADPビュー連携 ───
+// Phase3: analysis.js側のcrSwitchMajor/Minorが_adpRenderRankingListを直接呼ぶため
+// オーバーライドは不要になった。adp-view開中はarea.jsのDOM（cr-tab-major等）が
+// 同じonclick="crSwitchMajor(...)"を持ち、analysis.js側関数が処理する。
 
 // ─── フルビューを閉じてsheetに戻る ───
 function closeAreaDetailPanel() {
@@ -2172,16 +2578,656 @@ function closeAreaDetailPanel() {
   if (gCanvas) { gCanvas.width = 0; gCanvas.height = 0; }
 }
 
-// ─── 作物タップ → グラフ即更新（ペイン切替なし・同一ペイン内） ───
+// ─── 作物タップ → グラフ即更新＋全ペイン更新（ペイン切替なし・同一ペイン内） ───
 function adpCropTap(cropId) {
   if (!_adpArea) return;
 
   // 同じ作物を再タップしたら選択解除（トグル）
   _adpSelectedCropId = (_adpSelectedCropId === cropId) ? null : cropId;
 
-  // グラフ再描画 ＋ リストハイライト更新（ペイン移動なし）
+  // ── ランキング・グラフ再描画 ──
   _adpRenderTempChart(_adpSelectedCropId);
   _adpRenderGrowthChart(_adpSelectedCropId);
   _adpRenderRankingList();
   _adpRenderGrowthRankingList();
+
+  // ── 収益/施肥/リスク/カレンダー/適合度ペインを更新 ──
+  const ad = window.currentAreaData;
+  if (!ad) return;
+
+  if (_adpSelectedCropId) {
+    // _crScores（analysis.js管理）から該当スコアを取得
+    const scoreEntry = (typeof _crScores !== 'undefined')
+      ? _crScores.find(s => s.crop.id === _adpSelectedCropId)
+      : null;
+
+    // cropオブジェクト取得（_crScores → CROP_DB の順でフォールバック）
+    let crop = scoreEntry?.crop ?? null;
+    if (!crop && typeof CROP_DB !== 'undefined') {
+      crop = CROP_DB.find ? CROP_DB.find(c => c.id === _adpSelectedCropId)
+           : Object.values(CROP_DB).flat().find(c => c.id === _adpSelectedCropId);
+    }
+
+    // 収益
+    if (typeof renderProfitWaterfall === 'function') {
+      if (scoreEntry) {
+        renderProfitWaterfall(scoreEntry);
+      } else if (crop && typeof buildSingleCropAnalysis === 'function') {
+        const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
+        if (single) renderProfitWaterfall({ crop: single.crop, profitability: single.profitability });
+        else renderProfitWaterfall(null);
+      } else {
+        renderProfitWaterfall(null);
+      }
+    }
+
+    // 施肥・リスク・作業カレンダー
+    if (crop) {
+      if (typeof _renderFertResult  === 'function') _renderFertResult(crop);
+      if (typeof _renderRiskResult  === 'function') _renderRiskResult(crop);
+      if (typeof renderWorkCalendar === 'function') renderWorkCalendar(crop);
+    }
+
+    // 適合度ペイン（conf-detail）: 単一作物詳細で信頼度項目を表示
+    if (typeof buildSingleCropAnalysis === 'function') {
+      const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
+      const confDetailEl = document.getElementById('conf-detail');
+      if (confDetailEl && single) {
+        confDetailEl.innerHTML = single.confidence.items.map(i => `- ${i}`).join('<br>');
+      }
+    }
+
+    // サマリーバー更新
+    if (scoreEntry && typeof _adpUpdateSummaryBar === 'function') {
+      const modeLabels = { openField:'露地栽培', greenhouse:'ハウス栽培', heatedGreenhouse:'加温ハウス' };
+      _adpUpdateSummaryBar({
+        cropName: scoreEntry.crop.name,
+        areaName: _adpArea?.name ?? null,
+        score:    scoreEntry.viable ? scoreEntry.score : 0,
+        mode:     modeLabels[ad.cultivationMode] || '露地栽培',
+      });
+    }
+
+  } else {
+    // 選択解除：各ペインをデフォルト表示に戻す
+    if (typeof renderProfitWaterfall === 'function') renderProfitWaterfall(null);
+    if (typeof _renderFertResult     === 'function') _renderFertResult(null);
+    if (typeof _renderRiskResult     === 'function') _renderRiskResult(null);
+    if (typeof renderWorkCalendar    === 'function') renderWorkCalendar(null);
+    const confDetailEl = document.getElementById('conf-detail');
+    if (confDetailEl) confDetailEl.innerHTML = '<div class="empty-mini">作物を選択するとエリア適合度の詳細が表示されます。</div>';
+  }
+}
+
+// ═══════════════════════════════════════════
+//  ANALYSIS WIZARD（analysisWizard.js統合・Phase2）
+// ═══════════════════════════════════════════
+// ═══════════════════════════════════════════
+//  ANALYSIS WIZARD — 分析ウィザードダイアログ
+//  フロー（3ステップ・リアルタイム更新）:
+//    Step1: 営農条件入力（優先軸/設備/栽培期間/販売先/規模/経験）
+//    Step2: 作物選択（①作りたい作物を探す ／ ②おすすめから選ぶ・複数選択可）
+//    Step3: 見たい分析項目を選択 → 分析実行
+//  各ステップの操作は即座に裏の分析タブへ反映される。
+// ═══════════════════════════════════════════
+
+// ─── カテゴリラベル（作物検索用） ───
+const CATEGORY_LABELS = {
+  grain:     { label: '穀物',         icon: '🌾' },
+  legume:    { label: '豆類',         icon: '🫘' },
+  leafy:     { label: '葉菜類',       icon: '🥬' },
+  fruit_veg: { label: '果菜類',       icon: '🍅' },
+  root:      { label: '根菜類',       icon: '🥕' },
+  vegetable: { label: '野菜（その他）', icon: '🥦' },
+  fruit:     { label: '果物',         icon: '🍎' },
+  wildveg:   { label: '山菜・きのこ', icon: '🍄' },
+  forest:    { label: '林産きのこ',   icon: '🌲' },
+  herb:      { label: 'ハーブ・薬草', icon: '🌿' },
+  oil:       { label: '油脂作物',     icon: '🫙' },
+  fiber:     { label: '繊維作物',     icon: '🧵' },
+};
+
+// ─── Step1: 営農条件の選択肢定義（engine.js calcFarmingConditionScoreと対応） ───
+const FARM_COND_GROUPS = [
+  { key: 'priority', label: '優先軸', icon: '🎯', options: [
+      { value: 'profit',   label: '収益重視', icon: '💰' },
+      { value: 'easywork', label: '手間最小', icon: '🪶' },
+      { value: 'lowrisk',  label: '低リスク', icon: '🛡️' },
+  ]},
+  { key: 'equipment', label: '設備', icon: '🏗️', options: [
+      { value: 'openField',  label: '露地のみ',   icon: '☀️' },
+      { value: 'greenhouse', label: 'ハウスあり', icon: '🏠' },
+      { value: 'paddy',      label: '水田利用可', icon: '💧' },
+  ]},
+  { key: 'period', label: '栽培期間', icon: '⏳', options: [
+      { value: 'short', label: '短期（〜3ヶ月）', icon: '⚡' },
+      { value: 'mid',   label: '中期（〜8ヶ月）', icon: '🌱' },
+      { value: 'long',  label: '長期・樹木可',     icon: '🌳' },
+  ]},
+  { key: 'sales', label: '販売先', icon: '🛒', options: [
+      { value: 'direct',     label: '直売所',   icon: '🏪' },
+      { value: 'roadside',   label: '道の駅',   icon: '🛣️' },
+      { value: 'ja',         label: 'JA出荷',   icon: '🚜' },
+      { value: 'processing', label: '加工業者', icon: '🏭' },
+      { value: 'self',       label: '自家消費', icon: '🍽️' },
+  ]},
+  { key: 'scale', label: '規模', icon: '👥', options: [
+      { value: 'solo',   label: '一人',     icon: '🧑' },
+      { value: 'family', label: '家族経営', icon: '👨\u200d👩\u200d👧' },
+      { value: 'hired',  label: '雇用あり', icon: '👷' },
+  ]},
+  { key: 'experience', label: '経験', icon: '🎓', options: [
+      { value: 'beginner', label: '初心者', icon: '🌱' },
+      { value: 'mid',      label: '中級',   icon: '🌿' },
+      { value: 'expert',   label: '上級',   icon: '🌲' },
+  ]},
+];
+
+// ─── Step3: 分析項目定義（an-itab / an-pane のキーと対応） ───
+const AW_ITEM_DEFS = [
+  { key: 'ranking',  label: 'ランキング',     icon: '🏆' },
+  { key: 'growth',   label: '生育期間',       icon: '📈' },
+  { key: 'profit',   label: '収益概算',       icon: '💴' },
+  { key: 'fert',     label: '施肥概算',       icon: '🧪' },
+  { key: 'risk',     label: 'リスク・注意点', icon: '⚠️' },
+  { key: 'calendar', label: '生育カレンダー', icon: '📅' },
+  { key: 'match',    label: 'エリア適合度',   icon: '📊' },
+  { key: 'compare',  label: '比較',           icon: '⚖️' },
+];
+
+const AW_STEP_TITLES = ['営農条件入力', '作物選択', '分析項目を選択'];
+
+// ─── ウィザード状態 ───
+let _awStep           = 0;        // 現在ステップ (0〜2)
+let _awArea           = null;     // 選択中エリアデータ
+let _awFarmCond       = null;     // 営農条件（6項目）
+let _awSearchMode     = 'recommend'; // 'recommend' | 'search'
+let _awSearchCategory = null;     // 検索モードのカテゴリ絞り
+let _awSearchText     = '';       // 検索モードのテキスト
+let _awSelectedCropIds = [];      // 選択中の作物ID（複数=比較）
+let _awAnalysisItems  = new Set(['ranking','growth','profit','fert','risk','calendar','match']); // Step3選択
+let _awAllScores      = [];       // buildAnalysisResult().cropScores のキャッシュ
+
+const AW_MAX_COMPARE = 5; // 比較できる作物の最大数
+
+function _awDefaultFarmCond() {
+  return {
+    priority:   'profit',
+    equipment:  'openField',
+    period:     'mid',
+    sales:      'self',
+    scale:      'solo',
+    experience: 'beginner',
+  };
+}
+
+// ─── ウィザードパネル初期化（adp-wizard-panel内・トグルで開閉） ───
+function _awInitPanel(area) {
+  _awArea            = area;
+  _awStep            = 0;
+  _awFarmCond        = _awDefaultFarmCond();
+  _awSearchMode      = 'recommend';
+  _awSearchCategory  = null;
+  _awSearchText      = '';
+  _awSelectedCropIds = [];
+  _awAnalysisItems   = new Set(['ranking','growth','profit','fert','risk','calendar','match']);
+  _awAllScores       = [];
+
+  _awRenderStep(0);
+  _awRunAnalysis(); // 初期状態（デフォルト条件）でサマリーバー・各ペインを即時更新
+}
+
+// ─── パネルを閉じる ───
+function closeAnalysisWizard() {
+  const panel = document.getElementById('adp-wizard-panel');
+  if (panel) panel.setAttribute('hidden', '');
+}
+
+// ─── ステップ描画ディスパッチャ ───
+function _awRenderStep(step) {
+  _awStep = step;
+  _awUpdateProgress(step);
+
+  switch (step) {
+    case 0: _awRenderConditions(); break;
+    case 1: _awRenderCropSelect(); break;
+    case 2: _awRenderItems();      break;
+  }
+}
+
+// ─── プログレスバー更新 ───
+function _awUpdateProgress(step) {
+  for (let i = 0; i < 3; i++) {
+    const dot = document.getElementById('awdot-' + i);
+    if (!dot) continue;
+    dot.classList.remove('active', 'done');
+    if (i < step)   dot.classList.add('done');
+    if (i === step) dot.classList.add('active');
+  }
+  const el = document.getElementById('aw-step-title');
+  if (el) el.textContent = AW_STEP_TITLES[step];
+}
+
+// ═══════════════════════════════════════════
+//  Step 1: 営農条件入力
+// ═══════════════════════════════════════════
+function _awRenderConditions() {
+  const body = document.getElementById('aw-body');
+  body.innerHTML = `
+    <div class="aw-live-preview" id="aw-live-preview"></div>
+    <div class="aw-cond-groups">
+      ${FARM_COND_GROUPS.map(g => `
+        <div class="aw-cond-group">
+          <div class="aw-cond-label">${g.icon} ${g.label}</div>
+          <div class="aw-cond-row">
+            ${g.options.map(o => `
+              <button class="aw-cond-chip ${_awFarmCond[g.key] === o.value ? 'selected' : ''}"
+                onclick="_awSetCondition('${g.key}','${o.value}')">
+                <span class="aw-cond-chip-icon">${o.icon}</span>
+                <span class="aw-cond-chip-label">${o.label}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  _awUpdateLivePreview();
+  _awRenderFooter({
+    back: false,
+    next: true, nextLabel: '次へ →',
+    onNext: () => _awRenderStep(1),
+  });
+}
+
+function _awSetCondition(key, value) {
+  if (_awFarmCond[key] === value) return;
+  _awFarmCond[key] = value;
+  _awRunAnalysis();      // 裏の分析タブをリアルタイム更新
+  _awRenderConditions(); // チップの選択状態を再描画
+}
+
+// ═══════════════════════════════════════════
+//  Step 2: 作物選択（複数選択可）
+// ═══════════════════════════════════════════
+function _awRenderCropSelect() {
+  const body = document.getElementById('aw-body');
+
+  const chips = _awSelectedCropIds.map(id => {
+    const s    = _awAllScores.find(s => s.crop.id === id);
+    const name = s ? s.crop.name : id;
+    return `
+      <span class="aw-crop-chip">
+        ${escHtml(name)}
+        <button class="aw-chip-remove" onclick="_awToggleCropSelect('${id}')">✕</button>
+      </span>
+    `;
+  }).join('');
+
+  body.innerHTML = `
+    <div class="aw-live-preview" id="aw-live-preview"></div>
+    ${_awSelectedCropIds.length ? `<div class="aw-crop-chips">${chips}</div>` : ''}
+    <div class="aw-mode-toggle">
+      <button class="aw-mode-btn ${_awSearchMode === 'recommend' ? 'active' : ''}"
+        onclick="_awSetSearchMode('recommend')">⭐ おすすめから選ぶ</button>
+      <button class="aw-mode-btn ${_awSearchMode === 'search' ? 'active' : ''}"
+        onclick="_awSetSearchMode('search')">🔍 作物を探す</button>
+    </div>
+    ${_awSearchMode === 'search' ? `
+      <div class="aw-search-row">
+        <select class="aw-search-category" onchange="_awSetSearchCategory(this.value)">
+          <option value="">全カテゴリ</option>
+          ${Object.entries(CATEGORY_LABELS).map(([key, v]) => `
+            <option value="${key}" ${_awSearchCategory === key ? 'selected' : ''}>${v.icon} ${v.label}</option>
+          `).join('')}
+        </select>
+        <input type="text" class="aw-search-text" placeholder="作物名で検索"
+          value="${escHtml(_awSearchText)}" oninput="_awSetSearchText(this.value)">
+      </div>
+    ` : ''}
+    <div class="aw-crop-list">${_awBuildCropListHtml()}</div>
+  `;
+  _awUpdateLivePreview();
+  _awRenderFooter({
+    back: true,  onBack: () => _awRenderStep(0),
+    next: true,  nextLabel: '次へ →', onNext: () => _awRenderStep(2),
+  });
+}
+
+// 作物リストHTML（おすすめ Top10 ／ 検索結果）
+function _awBuildCropListHtml() {
+  let scores = _awAllScores;
+
+  if (_awSearchMode === 'recommend') {
+    scores = scores.slice(0, 10);
+    if (!scores.length) return '<div class="empty-mini">エリアデータを読み込み中…</div>';
+    return scores.map((s, i) => _awCropItemHtml(s, i + 1)).join('');
+  }
+
+  if (_awSearchCategory) scores = scores.filter(s => s.crop.category === _awSearchCategory);
+  if (_awSearchText.trim()) {
+    const q = _awSearchText.trim();
+    scores = scores.filter(s => s.crop.name.includes(q));
+  }
+  if (!scores.length) return '<div class="empty-mini">該当する作物がありません</div>';
+  return scores.slice(0, 30).map(s => _awCropItemHtml(s, null)).join('');
+}
+
+function _awCropItemHtml(s, rank) {
+  const selected = _awSelectedCropIds.includes(s.crop.id);
+  const scoreCls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
+  return `
+    <button class="aw-crop-item ${selected ? 'selected' : ''}" onclick="_awToggleCropSelect('${s.crop.id}')">
+      ${rank != null ? `<span class="aw-crop-rank">#${rank}</span>` : ''}
+      <span class="aw-crop-name">${escHtml(s.crop.name)}</span>
+      <span class="aw-crop-score ${s.viable ? scoreCls : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>
+      ${selected ? '<span class="aw-crop-check">✓</span>' : ''}
+    </button>
+  `;
+}
+
+function _awSetSearchMode(mode) {
+  if (_awSearchMode === mode) return;
+  _awSearchMode = mode;
+  _awRenderCropSelect();
+}
+
+function _awSetSearchCategory(cat) {
+  _awSearchCategory = cat || null;
+  _awRenderCropSelect();
+}
+
+let _awSearchDebounce = null;
+function _awSetSearchText(text) {
+  _awSearchText = text;
+  // 入力中はリストだけ差し替え（input要素のフォーカスを保持）
+  clearTimeout(_awSearchDebounce);
+  _awSearchDebounce = setTimeout(() => {
+    const listEl = document.querySelector('#aw-body .aw-crop-list');
+    if (listEl) listEl.innerHTML = _awBuildCropListHtml();
+  }, 150);
+}
+
+// 作物の選択/解除（最大 AW_MAX_COMPARE 件）
+function _awToggleCropSelect(id) {
+  const idx = _awSelectedCropIds.indexOf(id);
+  if (idx >= 0) {
+    _awSelectedCropIds.splice(idx, 1);
+  } else {
+    if (_awSelectedCropIds.length >= AW_MAX_COMPARE) {
+      if (typeof showToast === 'function') {
+        showToast(`比較できる作物は最大${AW_MAX_COMPARE}件までです`);
+      }
+      return;
+    }
+    _awSelectedCropIds.push(id);
+  }
+  _awRunAnalysis();      // 裏の分析タブをリアルタイム更新
+  _awRenderCropSelect();
+}
+
+// ═══════════════════════════════════════════
+//  Step 3: 分析項目選択 → 実行
+// ═══════════════════════════════════════════
+function _awRenderItems() {
+  const body  = document.getElementById('aw-body');
+  const items = AW_ITEM_DEFS.filter(i => i.key !== 'compare' || _awSelectedCropIds.length >= 2);
+
+  body.innerHTML = `
+    <div class="aw-live-preview" id="aw-live-preview"></div>
+    <div class="aw-items-header">
+      <div class="aw-items-hint">タップした項目は分析タブにすぐ反映されます</div>
+    </div>
+    <div class="aw-check-list">
+      ${items.map(item => `
+        <label class="aw-check-item ${_awAnalysisItems.has(item.key) ? 'checked' : ''}" data-key="${item.key}">
+          <input type="checkbox" class="aw-hidden-check" data-key="${item.key}"
+            ${_awAnalysisItems.has(item.key) ? 'checked' : ''}
+            onchange="_awToggleAnalysisItem('${item.key}', this.checked)">
+          <span class="aw-check-icon">${item.icon}</span>
+          <span class="aw-check-label">${item.label}</span>
+          <span class="aw-check-mark">${_awAnalysisItems.has(item.key) ? '✓' : ''}</span>
+        </label>
+      `).join('')}
+    </div>
+  `;
+  _awUpdateLivePreview();
+  _awRenderFooter({
+    back: true, onBack: () => _awRenderStep(1),
+    next: true, nextLabel: '分析実行',
+    nextClass: 'aw-btn-run',
+    onNext: _awExecute,
+  });
+}
+
+function _awToggleAnalysisItem(key, checked) {
+  if (checked) _awAnalysisItems.add(key);
+  else         _awAnalysisItems.delete(key);
+
+  document.querySelectorAll('#aw-body .aw-check-item').forEach(lbl => {
+    const k = lbl.dataset.key;
+    if (!k) return;
+    lbl.classList.toggle('checked', _awAnalysisItems.has(k));
+    const mark = lbl.querySelector('.aw-check-mark');
+    if (mark) mark.textContent = _awAnalysisItems.has(k) ? '✓' : '';
+  });
+
+  // チェックした項目をadp-viewのサブタブで即時表示（リアルタイム切替）
+  if (checked) {
+    _adpSwitchSubTab(key);
+  }
+}
+
+// ─── フッター（戻る／次へ）描画 ───
+function _awRenderFooter({ back, onBack, next, nextLabel, nextClass = '', onNext }) {
+  const footer = document.getElementById('aw-footer');
+  footer.innerHTML = `
+    ${back ? `<button class="aw-btn aw-btn-back" id="aw-btn-back">← 戻る</button>` : '<div></div>'}
+    <button class="aw-btn aw-btn-next ${nextClass}" id="aw-btn-next" ${!next ? 'disabled' : ''}>
+      ${nextLabel}
+    </button>
+  `;
+  if (back && onBack) {
+    const backEl = document.getElementById('aw-btn-back');
+    if (backEl) backEl.addEventListener('click', onBack);
+  }
+  const nextEl = document.getElementById('aw-btn-next');
+  if (nextEl && onNext) nextEl.addEventListener('click', onNext);
+}
+
+// ═══════════════════════════════════════════
+//  リアルタイム分析エンジン連携
+// ═══════════════════════════════════════════
+
+// ウィザードの選択状態から currentAreaData を再構築
+function _awBuildAreaData() {
+  const area = _awArea;
+  const lp   = area.landProfile || {};
+  const meta = area.meta        || {};
+
+  function _pick(...vals) {
+    for (const v of vals) {
+      if (v !== undefined && v !== null && v !== '') return v;
+    }
+    return null;
+  }
+
+  // 設備条件 → 栽培方式（ハウスありならhouse補正、それ以外は露地として計算）
+  const cultivationMode = _awFarmCond.equipment === 'greenhouse' ? 'greenhouse' : 'openField';
+
+  let ad;
+  if (typeof normalizeAreaData === 'function') {
+    ad = normalizeAreaData(area, {
+      selectedCropId:    _awSelectedCropIds[0] || null,
+      cultivationMode,
+      analysisItems:     Array.from(_awAnalysisItems),
+      farmingConditions: { ..._awFarmCond },
+    });
+  } else {
+    // フォールバック（areaEnv.js 未読込時）
+    const lat = _pick(lp.lat, meta.lat, area.lat);
+    ad = {
+      lat,
+      lng:             _pick(lp.lng,       meta.lng,      area.lng),
+      elev:            _pick(lp.elevation, meta.elev,     area.elev),
+      climate:         (typeof getClimate === 'function' && lat != null)
+                         ? getClimate(lat) : null,
+      soilType:        _pick(lp.soilType,  meta.soilType, area.soilType) || 'unknown',
+      ph:              _pick(lp.ph,        meta.ph,       area.ph),
+      slope:           _pick(lp.slope,     meta.slope,    area.slope)    ?? 0,
+      areaSqm:         _pick(meta.areaSqm, area.areaSqm)                 || 0,
+      areaHa:          _pick(meta.areaHa,  area.areaHa)                  || 0,
+      selectedCropId:  _awSelectedCropIds[0] || null,
+      cultivationMode,
+      analysisItems:   Array.from(_awAnalysisItems),
+      landProfile:     Object.keys(lp).length ? lp : null,
+      env:             {},
+    };
+  }
+
+  // 営農条件・栽培方式を確実に反映
+  ad.farmingConditions = { ..._awFarmCond };
+  ad.cultivationMode   = cultivationMode;
+
+  currentAreaData = ad;
+  return ad;
+}
+
+// 現在の選択状態で分析タブを再計算・再描画する
+function _awRunAnalysis() {
+  if (!_awArea) return;
+
+  const ad   = _awBuildAreaData();
+  const name = _awArea.name || 'エリア';
+
+  // 比較タブの表示切替（2件以上選択時のみ表示）
+  const compareTab = document.querySelector('.adp-subtab-compare');
+  if (compareTab) compareTab.style.display = (_awSelectedCropIds.length >= 2) ? '' : 'none';
+
+  // 全作物スコア（営農条件込み）を再計算 → おすすめリスト・ライブプレビューの元データ
+  if (typeof buildAnalysisResult === 'function') {
+    _awAllScores = buildAnalysisResult(ad).cropScores;
+  }
+
+  if (_awSelectedCropIds.length === 0) {
+    // 0件選択：全体ランキング表示
+    runAnalysis(name);
+    if (typeof renderCompareTable === 'function') renderCompareTable([]);
+  } else if (_awSelectedCropIds.length === 1) {
+    // 1件選択：単一作物詳細
+    ad.selectedCropId = _awSelectedCropIds[0];
+    runSingleCropAnalysis(name);
+    if (typeof renderCompareTable === 'function') renderCompareTable([]);
+  } else {
+    // 2件以上：先頭作物を詳細表示 + 比較テーブル
+    ad.selectedCropId = _awSelectedCropIds[0];
+    runSingleCropAnalysis(name);
+
+    if (typeof buildSingleCropAnalysis === 'function' && typeof renderCompareTable === 'function') {
+      const results = _awSelectedCropIds
+        .map(id => buildSingleCropAnalysis(id, ad)?.scoreResult)
+        .filter(Boolean);
+      renderCompareTable(results);
+    }
+  }
+
+  // ── 📈生育期間タブ（気温/生育チャート・生育ランキングリスト）を選択作物に同期 ──
+  // runSingleCropAnalysis()は#crop-rankingを単一作物カードに置き換える際に
+  // _crScoresを[]へリセットするため、生育タブ用に_awAllScores（現在の営農条件
+  // ベースの全作物スコア）で復元してからチャート・リストを再描画する。
+  _adpSelectedCropId = _awSelectedCropIds[0] || null;
+  if (_awSelectedCropIds.length > 0) {
+    _crScores = _awAllScores;
+  }
+  if (typeof _adpRenderTempChart        === 'function') _adpRenderTempChart(_adpSelectedCropId);
+  if (typeof _adpRenderGrowthChart      === 'function') _adpRenderGrowthChart(_adpSelectedCropId);
+  if (typeof _adpRenderGrowthRankingList === 'function') _adpRenderGrowthRankingList();
+
+  _awUpdateLivePreview();
+}
+
+// モーダル内のライブプレビューバーを更新
+function _awUpdateLivePreview() {
+  const bar = document.getElementById('aw-live-preview');
+
+  const ad = window.currentAreaData || {};
+  const modeLabels = { openField: '露地栽培', greenhouse: 'ハウス栽培', heatedGreenhouse: '加温ハウス' };
+  const modeLabel  = modeLabels[ad.cultivationMode] || '露地栽培';
+
+  let cropName = '—';
+  let scoreHtml = '<span class="aw-live-score score-mid">—</span>';
+  let extra = '';
+  let scoreVal = null;
+
+  if (_awSelectedCropIds.length >= 1) {
+    const s = _awAllScores.find(x => x.crop.id === _awSelectedCropIds[0]);
+    if (s) {
+      cropName  = s.crop.name;
+      const cls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
+      scoreHtml = `<span class="aw-live-score ${s.viable ? cls : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>`;
+      if (s.viable) scoreVal = s.score;
+    }
+    if (_awSelectedCropIds.length > 1) {
+      extra = `<span class="aw-live-extra">他${_awSelectedCropIds.length - 1}件と比較中</span>`;
+    }
+  } else if (_awAllScores.length) {
+    const top = _awAllScores[0];
+    cropName  = top.crop.name + '（おすすめ）';
+    const cls = top.score >= 70 ? 'score-high' : top.score >= 40 ? 'score-mid' : 'score-low';
+    scoreHtml = `<span class="aw-live-score ${top.viable ? cls : 'score-low'}">${top.viable ? top.score + '%' : 'NG'}</span>`;
+    if (top.viable) scoreVal = top.score;
+  }
+
+  if (bar) {
+    bar.innerHTML = `
+      <span class="aw-live-icon">📡</span>
+      <span class="aw-live-crop">${escHtml(cropName)}</span>
+      ${scoreHtml}
+      <span class="aw-live-mode">${escHtml(modeLabel)}</span>
+      ${extra}
+    `;
+  }
+
+  // adp-view サマリーバーも更新
+  if (typeof _adpUpdateSummaryBar === 'function') {
+    _adpUpdateSummaryBar({
+      cropName: cropName === '—' ? null : cropName.replace('（おすすめ）',''),
+      areaName: _awArea?.name || null,
+      score: scoreVal,
+      mode: modeLabel,
+    });
+  }
+}
+
+// ─── 分析実行（Step3「分析実行」ボタン） ───
+function _awExecute() {
+  if (!_awArea) return;
+
+  _awRunAnalysis();
+  closeAnalysisWizard();
+
+  const area = _awArea;
+
+  // ─ 地図にポリゴンを表示 ─
+  if (area.geojson && typeof drawnItems !== 'undefined' && typeof map !== 'undefined') {
+    try {
+      drawnItems.clearLayers();
+      // geojsonはFirestoreではJSON文字列で保存されているためパースが必要
+      const geojsonData = typeof area.geojson === 'string'
+        ? JSON.parse(area.geojson) : area.geojson;
+      const drawColor = (typeof CONFIG !== 'undefined' && CONFIG.DRAW_COLOR)
+        ? CONFIG.DRAW_COLOR : '#4ade80';
+      const layer = L.geoJSON(geojsonData, {
+        style: { color: drawColor, weight: 2, fillOpacity: 0.2 },
+      });
+      layer.addTo(drawnItems);
+      map.fitBounds(layer.getBounds());
+    } catch(e) {
+      console.warn('[_awExecute] geojson parse error:', e);
+    }
+  }
+
+  // ─ Step3で選択した項目のうち先頭のサブタブへ切替 ─
+  const focusKey = AW_ITEM_DEFS.find(i => _awAnalysisItems.has(i.key))?.key || 'ranking';
+  _adpSwitchSubTab(focusKey);
 }

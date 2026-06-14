@@ -5099,3 +5099,113 @@ html.draw-dialog-active .bottom-nav {
   text-align: center;
   margin-bottom: 4px;
 }
+
+
+/* ═══════════════════════════════════════════
+   ADP FIXED SECTIONS — 気候サマリー・旬別日照・
+   土地環境ドーナツ・環境リスク（常時表示・固定）
+   Phase6: 旧 areaCharts.js（アコーディオン）から移植
+   ═══════════════════════════════════════════ */
+
+/* ─── 固定セクション共通カード（リスク／適合度ペイン用） ─── */
+.adpc-fixed-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+/* ─── 🌤️ 気候サマリー（sticky header内・コンパクト4枚） ─── */
+.adpc-climate-summary-wrap {
+  margin-bottom: 8px;
+}
+
+.adpc-mini-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.adpc-mini-stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 5px 6px;
+  min-width: 0;
+}
+
+.adpc-mini-stat-icon {
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.adpc-mini-stat-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.adpc-mini-stat-label {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--text3);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.adpc-mini-stat-value {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.adpc-mini-stat-unit {
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--text3);
+  margin-left: 1px;
+}
+
+.adpc-mini-stat-sub {
+  font-size: 8px;
+  color: var(--text3);
+  white-space: nowrap;
+}
+
+.adpc-mini-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10px;
+}
+
+.adpc-mini-zone-name {
+  font-family: var(--mono);
+  font-weight: 600;
+  color: var(--green);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* モバイル: 4列 → 2列 */
+@media (max-width: 380px) {
+  .adpc-mini-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ─── ☀️ 旬別日照チャート（sticky内・気温グラフの下） ─── */
+.adp-sun-chart-wrap {
+  height: 70px;
+  margin-top: 2px;
+}
