@@ -466,10 +466,7 @@ async function openAreaDetailPanel(area) {
   _adpRenderCalendar();
   _adpRenderDayRecords();
 
-  // ── ランキング: まずプレースホルダー ──
-  const rankEl = document.getElementById('crop-ranking');
-
-  // 同一エリアのキャッシュがあれば即描画
+  // 同一エリアのキャッシュがあれば即スコア計算
   const areaKey = area.id || area.name;
   if (_adpClimateCache && _adpClimateCache._areaKey === areaKey) {
     currentAreaData.climate = _adpClimateCache;
@@ -480,8 +477,6 @@ async function openAreaDetailPanel(area) {
     _adpRenderClimateSummary(area);
     return;
   }
-
-  if (rankEl) rankEl.innerHTML = '<div class="empty-mini"><span class="spinner"></span> 気候データ取得中...</div>';
 
   // AMeDAS旬別データを取得してcurrentAreaDataにマージ
   const lat = area.landProfile?.lat ?? area.meta?.lat ?? null;
@@ -752,6 +747,18 @@ function _adpOpenRankingDialog(pane) {
 
   // 栽培方式トグル挿入
   _adpEnsureCultivationToggle();
+
+  // 栽培方式をUIに反映
+  const currentMode = currentAreaData?.cultivationMode || 'openField';
+  document.querySelectorAll('.adp-cult-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === currentMode);
+  });
+
+  // カテゴリタブをリセット
+  document.querySelectorAll('.cr-tab-major').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.major === 'all');
+  });
+  _crRenderMinorTabs();
 
   // ランキング描画
   if (pane === 'growth') {
@@ -1198,22 +1205,10 @@ function soilLabel(key) {
 
 // ─── ランキング描画（エリア詳細パネルを開いた時に呼ぶ）───
 function _adpRenderRanking(area) {
-  const el = document.getElementById('crop-ranking');
-  if (!el) return;
+  if (typeof buildAnalysisResult !== 'function' || !currentAreaData) return;
 
-  if (typeof buildAnalysisResult !== 'function' || !currentAreaData) {
-    el.innerHTML = '<div class="empty-mini">データ不足のためランキングを表示できません</div>';
-    return;
-  }
-
-  // 栽培方式トグルを描画（初回のみ）
-  _adpEnsureCultivationToggle();
-
-  // 生育期間ペインのトグルを初期状態（openField）にリセット
+  // スコア計算のみ（DOM描画はダイアログを開いた時に行う）
   currentAreaData.cultivationMode = 'openField';
-  document.querySelectorAll('.adp-cult-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.mode === 'openField');
-  });
 
   const result = buildAnalysisResult(currentAreaData);
 
@@ -1221,17 +1216,9 @@ function _adpRenderRanking(area) {
   _crOpenFieldScores = result.cropScores.map(s => ({ id: s.crop.id, score: s.score }));
 
   // analysis.js のランキング状態を更新
-  _crScores         = result.cropScores;
-  _crMajor          = 'all';
-  _crMinor          = null;
-
-  // 大タブをリセット
-  document.querySelectorAll('.cr-tab-major').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.major === 'all');
-  });
-  _crRenderMinorTabs();
-  _adpRenderRankingList();
-  _adpRenderGrowthRankingList();
+  _crScores = result.cropScores;
+  _crMajor  = 'all';
+  _crMinor  = null;
 }
 
 // ─── 栽培方式トグル（ランキングダイアログ上部、初回だけ生成）───
