@@ -83,16 +83,15 @@ function crSwitchMajor(major) {
 
   _crRenderMinorTabs();
 
-  // adp-view開中は_adpRenderRankingList（area.js）で描画
+  // adp-view開中かつランキングダイアログが開いている時のみ描画
   if (document.getElementById('adp-view')?.classList.contains('open')) {
-    if (typeof _adpRenderRankingList  === 'function') _adpRenderRankingList();
-    if (typeof _adpRenderGrowthRankingList === 'function') _adpRenderGrowthRankingList();
+    const dlgPane = (typeof _adpRankingDlgPane !== 'undefined') ? _adpRankingDlgPane : null;
+    if (dlgPane === 'ranking' && typeof _adpRenderRankingList === 'function') _adpRenderRankingList();
+    if (dlgPane === 'growth'  && typeof _adpRenderGrowthRankingList === 'function') _adpRenderGrowthRankingList();
+    if (!dlgPane) _crRenderList();
   } else {
     _crRenderList();
   }
-}
-
-// ─── 小タブ描画 ───
 function _crRenderMinorTabs() {
   const wrap = document.getElementById('cr-tabs-minor');
   if (!wrap) return;
@@ -125,10 +124,12 @@ function crSwitchMinor(minor) {
     btn.classList.toggle('active', val === minor);
   });
 
-  // adp-view開中は_adpRenderRankingList（area.js）で描画
+  // adp-view開中かつランキングダイアログが開いている時のみ描画
   if (document.getElementById('adp-view')?.classList.contains('open')) {
-    if (typeof _adpRenderRankingList  === 'function') _adpRenderRankingList();
-    if (typeof _adpRenderGrowthRankingList === 'function') _adpRenderGrowthRankingList();
+    const dlgPane = (typeof _adpRankingDlgPane !== 'undefined') ? _adpRankingDlgPane : null;
+    if (dlgPane === 'ranking' && typeof _adpRenderRankingList === 'function') _adpRenderRankingList();
+    if (dlgPane === 'growth'  && typeof _adpRenderGrowthRankingList === 'function') _adpRenderGrowthRankingList();
+    if (!dlgPane) _crRenderList();
   } else {
     _crRenderList();
   }

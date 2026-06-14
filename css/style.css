@@ -5209,3 +5209,106 @@ html.draw-dialog-active .bottom-nav {
   height: 70px;
   margin-top: 2px;
 }
+
+/* ═══════════════════════════════════════════
+   ランキングダイアログ
+═══════════════════════════════════════════ */
+
+/* ボタンラップ */
+.adp-ranking-btn-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 20px 16px;
+}
+
+.adp-ranking-open-btn {
+  width: 100%;
+  max-width: 320px;
+  padding: 14px 20px;
+  background: var(--accent, #4ade80);
+  color: #0d1a0f;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+}
+.adp-ranking-open-btn:active {
+  opacity: 0.8;
+}
+
+/* ダイアログオーバーレイ */
+.adp-ranking-dialog {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  background: rgba(0,0,0,0.6);
+  align-items: flex-end;
+}
+.adp-ranking-dialog.open {
+  display: flex;
+}
+
+/* ダイアログ本体 */
+.adp-ranking-dlg-inner {
+  width: 100%;
+  max-height: 88vh;
+  background: var(--bg, #0d180f);
+  border-radius: 18px 18px 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ヘッダー */
+.adp-ranking-dlg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border, #1e3a22);
+  flex-shrink: 0;
+}
+.adp-ranking-dlg-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text1, #e8f5ea);
+}
+.adp-ranking-dlg-close {
+  background: none;
+  border: none;
+  color: var(--text2, #7aad82);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+/* コントロール（評価モード・栽培方式・カテゴリ） */
+.adp-ranking-dlg-controls {
+  flex-shrink: 0;
+  padding: 8px 0 0;
+  border-bottom: 1px solid var(--border, #1e3a22);
+}
+.adp-ranking-dlg-controls .adp-eval-mode-wrap {
+  padding: 0 12px 8px;
+}
+.adp-ranking-dlg-controls .cr-tabs-major {
+  padding: 0 12px 8px;
+}
+.adp-ranking-dlg-controls .cr-tabs-minor {
+  padding: 0 12px 6px;
+}
+.adp-ranking-dlg-controls .adp-cult-toggle {
+  padding: 0 12px 8px;
+}
+
+/* スクロール本体 */
+.adp-ranking-dlg-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 8px 10px 24px;
+}

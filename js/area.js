@@ -615,26 +615,11 @@ function _adpEnsureView() {
           <div class="adp-temp-legend" id="adp-sun-legend"></div>
         </div>
 
-        <!-- ▼ 下部スクロール: 評価モード ＋ カテゴリタブ ＋ ランキングリスト -->
-        <div class="adp-ranking-scroll" id="adp-ranking-scroll">
-          <!-- 評価モードトグル -->
-          <div class="adp-eval-mode-wrap" id="adp-eval-mode-wrap">
-            <button class="adp-eval-mode-btn active" id="adp-eval-btn-db"
-              onclick="_adpSetClimateMode(false)">📊 DB評価</button>
-            <button class="adp-eval-mode-btn" id="adp-eval-btn-climate"
-              onclick="_adpSetClimateMode(true)">🌿 気候推定</button>
-          </div>
-          <!-- 栽培方式トグル（_adpEnsureCultivationToggle が挿入） -->
-          <div class="cr-tabs-major" id="cr-tabs-major">
-            <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
-            <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
-            <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
-            <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
-            <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
-            <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
-          </div>
-          <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
-          <div id="crop-ranking"><div class="empty-mini">計算中...</div></div>
+        <!-- ▼ ランキングボタン -->
+        <div class="adp-ranking-btn-wrap">
+          <button class="adp-ranking-open-btn" onclick="_adpOpenRankingDialog('ranking')">
+            🏆 ランキングを見る
+          </button>
         </div>
 
       </div>
@@ -654,25 +639,11 @@ function _adpEnsureView() {
           <div class="adp-temp-legend" id="adp-growth-legend"></div>
         </div>
 
-        <!-- ▼ 下部スクロール: 評価モード ＋ カテゴリタブ ＋ ランキングリスト -->
-        <div class="adp-ranking-scroll adp-ranking-scroll-growth" id="adp-ranking-scroll-growth">
-          <!-- 評価モードトグル -->
-          <div class="adp-eval-mode-wrap" id="adp-eval-mode-wrap-growth">
-            <button class="adp-eval-mode-btn active" id="adp-eval-btn-db-growth"
-              onclick="_adpSetClimateMode(false)">📊 DB評価</button>
-            <button class="adp-eval-mode-btn" id="adp-eval-btn-climate-growth"
-              onclick="_adpSetClimateMode(true)">🌿 気候推定</button>
-          </div>
-          <!-- 栽培方式トグル（_adpEnsureCultivationToggle が挿入） -->
-          <div class="cr-tabs-major" id="cr-tabs-major-growth">
-            <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
-            <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
-            <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
-            <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
-            <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
-            <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
-          </div>
-          <div id="crop-ranking-growth"><div class="empty-mini">計算中...</div></div>
+        <!-- ▼ ランキングボタン -->
+        <div class="adp-ranking-btn-wrap">
+          <button class="adp-ranking-open-btn" onclick="_adpOpenRankingDialog('growth')">
+            📈 生育ランキングを見る
+          </button>
         </div>
 
       </div>
@@ -721,38 +692,117 @@ function _adpEnsureView() {
     </div>
   `;
   document.body.appendChild(view);
+
+  // ─── ランキングダイアログ ───
+  if (!document.getElementById('adp-ranking-dialog')) {
+    const dlg = document.createElement('div');
+    dlg.id = 'adp-ranking-dialog';
+    dlg.className = 'adp-ranking-dialog';
+    dlg.setAttribute('aria-hidden', 'true');
+    dlg.innerHTML = `
+      <div class="adp-ranking-dlg-inner">
+        <div class="adp-ranking-dlg-header">
+          <span class="adp-ranking-dlg-title" id="adp-ranking-dlg-title">ランキング</span>
+          <button class="adp-ranking-dlg-close" onclick="_adpCloseRankingDialog()">✕</button>
+        </div>
+        <div class="adp-ranking-dlg-controls">
+          <div class="adp-eval-mode-wrap" id="adp-eval-mode-wrap">
+            <button class="adp-eval-mode-btn active" id="adp-eval-btn-db"
+              onclick="_adpSetClimateMode(false)">📊 DB評価</button>
+            <button class="adp-eval-mode-btn" id="adp-eval-btn-climate"
+              onclick="_adpSetClimateMode(true)">🌿 気候推定</button>
+          </div>
+          <div class="cr-tabs-major" id="cr-tabs-major">
+            <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
+            <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
+            <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
+            <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
+            <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
+            <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
+          </div>
+          <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
+        </div>
+        <div class="adp-ranking-dlg-body">
+          <div id="crop-ranking"><div class="empty-mini">計算中...</div></div>
+          <div id="crop-ranking-growth" style="display:none;"><div class="empty-mini">計算中...</div></div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(dlg);
+  }
+}
+
+// ─── ランキングダイアログ 開閉 ───
+let _adpRankingDlgPane = null; // 現在開いているペイン ('ranking' | 'growth')
+
+function _adpOpenRankingDialog(pane) {
+  const dlg = document.getElementById('adp-ranking-dialog');
+  if (!dlg) return;
+  _adpRankingDlgPane = pane;
+
+  // タイトル更新
+  const title = document.getElementById('adp-ranking-dlg-title');
+  if (title) title.textContent = pane === 'growth' ? '📈 生育ランキング' : '🏆 ランキング';
+
+  // 表示切替
+  const elRanking = document.getElementById('crop-ranking');
+  const elGrowth  = document.getElementById('crop-ranking-growth');
+  if (elRanking) elRanking.style.display = pane === 'ranking' ? '' : 'none';
+  if (elGrowth)  elGrowth.style.display  = pane === 'growth'  ? '' : 'none';
+
+  // 栽培方式トグル挿入
+  _adpEnsureCultivationToggle();
+
+  // ランキング描画
+  if (pane === 'growth') {
+    _adpRenderGrowthRankingList();
+  } else {
+    _adpRenderRankingList();
+  }
+
+  dlg.classList.add('open');
+  dlg.removeAttribute('aria-hidden');
+}
+
+function _adpCloseRankingDialog() {
+  const dlg = document.getElementById('adp-ranking-dialog');
+  if (!dlg) return;
+  dlg.classList.remove('open');
+  dlg.setAttribute('aria-hidden', 'true');
+  // 次回開いた時に正しい栽培方式で再生成されるよう削除
+  const toggle = document.getElementById('adp-cultivation-toggle');
+  if (toggle) toggle.remove();
+  _adpRankingDlgPane = null;
 }
 
 // ─── 評価モード切替（DB ↔ 気候推定） ───
 function _adpSetClimateMode(isClimate) {
   _adpClimateMode = isClimate;
 
-  // トグルボタン active 同期（chartペイン・growthペイン両方）
-  ['', '-growth'].forEach(suffix => {
-    const dbBtn  = document.getElementById(`adp-eval-btn-db${suffix}`);
-    const clBtn  = document.getElementById(`adp-eval-btn-climate${suffix}`);
-    if (dbBtn)  dbBtn.classList.toggle('active',  !isClimate);
-    if (clBtn)  clBtn.classList.toggle('active',   isClimate);
-  });
+  // トグルボタン active 同期（ダイアログ内）
+  const dbBtn = document.getElementById('adp-eval-btn-db');
+  const clBtn = document.getElementById('adp-eval-btn-climate');
+  if (dbBtn) dbBtn.classList.toggle('active', !isClimate);
+  if (clBtn) clBtn.classList.toggle('active',  isClimate);
 
   // 気候推定モード時はランキングキャッシュを生成
   if (isClimate && !_adpClimateRanking) {
-    // climate.decadeArr → _adpClimateCache.decadeArr の順でフォールバック
     const decadeArr = currentAreaData?.climate?.decadeArr
                    ?? _adpClimateCache?.decadeArr
                    ?? null;
     if (decadeArr && typeof CROP_DB !== 'undefined' && typeof computeClimateRanking === 'function') {
-      const allCrops = CROP_DB;
-      _adpClimateRanking = computeClimateRanking(decadeArr, allCrops);
+      _adpClimateRanking = computeClimateRanking(decadeArr, CROP_DB);
     } else if (!decadeArr) {
-      // AMeDAS未取得の場合はユーザーに通知
       console.warn('[ClimateMode] decadeArr未取得 — AMeDASデータ待ち');
     }
   }
 
-  // ランキング再描画
-  _adpRenderRankingList();
-  _adpRenderGrowthRankingList();
+  // ダイアログが開いているときだけ再描画
+  if (_adpRankingDlgPane === 'growth') {
+    _adpRenderGrowthRankingList();
+  } else if (_adpRankingDlgPane === 'ranking') {
+    _adpRenderRankingList();
+  }
 }
 
 // ─── サブタブ切替（8タブ構成） ───
@@ -1184,10 +1234,9 @@ function _adpRenderRanking(area) {
   _adpRenderGrowthRankingList();
 }
 
-// ─── 栽培方式トグル（ランキング上部、初回だけ生成）───
+// ─── 栽培方式トグル（ランキングダイアログ上部、初回だけ生成）───
 function _adpEnsureCultivationToggle() {
-  _adpInsertCultivationToggle('adp-ranking-scroll',        'adp-cultivation-toggle');
-  _adpInsertCultivationToggle('adp-ranking-scroll-growth', 'adp-cultivation-toggle-growth');
+  _adpInsertCultivationToggle('adp-ranking-dlg-controls', 'adp-cultivation-toggle');
 }
 
 function _adpInsertCultivationToggle(paneId, toggleId) {
