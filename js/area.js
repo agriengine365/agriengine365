@@ -1342,8 +1342,11 @@ function _adpRenderClimateRankingList(el, pane) {
     return;
   }
 
-  // カテゴリフィルタ
+  // カテゴリフィルタ（大タブ × 小タブの掛け合わせ）
   const major = (typeof _crMajor !== 'undefined' && _crMajor) ? _crMajor : 'all';
+  const minor = (typeof _crMinor !== 'undefined') ? _crMinor : null;
+
+  // 大タブ → 気候推定モードのcategoryキーへのマッピング
   const MAJOR_MAP = {
     grain:     ['grain'],
     vegetable: ['leaf_veg','fruit_veg','root_veg'],
@@ -1351,7 +1354,36 @@ function _adpRenderClimateRankingList(el, pane) {
     wild:      ['wildveg'],
     forest:    ['forest'],
   };
-  const allowedCats = major !== 'all' ? (MAJOR_MAP[major] || []) : null;
+
+  // 小タブ（DBモードのcategoryキー）→ 気候推定モードのcategoryキーへの変換
+  const MINOR_TO_CLIMATE_CAT = {
+    grain:     'grain',
+    legume:    'grain',      // 気候推定モードはlegume/grainを区別しない
+    leafy:     'leaf_veg',
+    vegetable: 'leaf_veg',
+    fruit_veg: 'fruit_veg',
+    root:      'root_veg',
+    fruit:     'fruit',
+    wildveg:   'wildveg',
+    herb:      'wildveg',
+    forest:    'forest',
+  };
+
+  let allowedCats = major !== 'all' ? (MAJOR_MAP[major] || []) : null;
+
+  // 小タブが選択されていれば、大タブの範囲内でさらに絞り込む
+  if (minor) {
+    const climateCat = MINOR_TO_CLIMATE_CAT[minor];
+    if (climateCat) {
+      // 大タブ範囲との交差（大タブが 'all' なら小タブだけで絞る）
+      if (!allowedCats || allowedCats.includes(climateCat)) {
+        allowedCats = [climateCat];
+      } else {
+        // 大タブ範囲に含まれないサブカテゴリ → 結果ゼロ
+        allowedCats = [];
+      }
+    }
+  }
 
   let list = _adpClimateRanking;
   if (allowedCats) {
@@ -2618,8 +2650,8 @@ function closeAreaDetailPanel() {
 function adpCropTap(cropId) {
   if (!_adpArea) return;
 
-  // 同じ作物を再タップしたら選択解除（トグル）
-  _adpSelectedCropId = (_adpSelectedCropId === cropId) ? null : cropId;
+  // 同じ作物を再タップしても選択を維持（別の作物タップで切り替わる）
+  _adpSelectedCropId = cropId;
 
   // ── ランキング・グラフ再描画 ──
   _adpRenderTempChart(_adpSelectedCropId);
@@ -2895,7 +2927,7 @@ function _awRenderCropSelect() {
     return `
       <span class="aw-crop-chip">
         ${escHtml(name)}
-        <button class="aw-chip-remove" onclick="_awToggleCropSelect('${id}')">✕</button>
+        <button class="aw-chip-remove" onclick="_awRemoveCropSelect('${id}')">✕</button>
       </span>
     `;
   }).join('');
@@ -2953,7 +2985,7 @@ function _awCropItemHtml(s, rank) {
   const selected = _awSelectedCropIds.includes(s.crop.id);
   const scoreCls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
   return `
-    <button class="aw-crop-item ${selected ? 'selected' : ''}" onclick="_awToggleCropSelect('${s.crop.id}')">
+    <button class="aw-crop-item ${selected ? 'selected' : ''}" onclick="_awSelectCrop('${s.crop.id}')">
       ${rank != null ? `<span class="aw-crop-rank">#${rank}</span>` : ''}
       <span class="aw-crop-name">${escHtml(s.crop.name)}</span>
       <span class="aw-crop-score ${s.viable ? scoreCls : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>
@@ -2985,21 +3017,32 @@ function _awSetSearchText(text) {
 }
 
 // 作物の選択/解除（最大 AW_MAX_COMPARE 件）
-function _awToggleCropSelect(id) {
-  const idx = _awSelectedCropIds.indexOf(id);
-  if (idx >= 0) {
-    _awSelectedCropIds.splice(idx, 1);
-  } else {
-    if (_awSelectedCropIds.length >= AW_MAX_COMPARE) {
-      if (typeof showToast === 'function') {
-        showToast(`比較できる作物は最大${AW_MAX_COMPARE}件までです`);
-      }
-      return;
+// リストアイテム用：既選択なら何もしない、未選択なら追加
+function _awSelectCrop(id) {
+  if (_awSelectedCropIds.includes(id)) return;
+  if (_awSelectedCropIds.length >= AW_MAX_COMPARE) {
+    if (typeof showToast === 'function') {
+      showToast(`比較できる作物は最大${AW_MAX_COMPARE}件までです`);
     }
-    _awSelectedCropIds.push(id);
+    return;
   }
-  _awRunAnalysis();      // 裏の分析タブをリアルタイム更新
+  _awSelectedCropIds.push(id);
+  _awRunAnalysis();
   _awRenderCropSelect();
+}
+
+// チップ✕ボタン用：常に削除
+function _awRemoveCropSelect(id) {
+  const idx = _awSelectedCropIds.indexOf(id);
+  if (idx < 0) return;
+  _awSelectedCropIds.splice(idx, 1);
+  _awRunAnalysis();
+  _awRenderCropSelect();
+}
+
+// 後方互換（外部から呼ばれている場合のフォールバック）
+function _awToggleCropSelect(id) {
+  _awSelectCrop(id);
 }
 
 // ═══════════════════════════════════════════
