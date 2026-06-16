@@ -538,6 +538,7 @@ function _adpEnsureView() {
       <div class="adp-summary-left">
         <span class="adp-summary-crop" id="adp-summary-crop">—</span>
         <span class="adp-summary-area" id="adp-summary-area">—</span>
+        <button class="adp-select-crop-btn" onclick="adpOpenCropSelectFromSummary()" title="作物を選ぶ">🌱 作物を選ぶ</button>
       </div>
       <div class="adp-summary-right">
         <div class="adp-summary-score-wrap">
@@ -2718,10 +2719,164 @@ function closeAreaDetailPanel() {
 }
 
 // ─── 作物タップ → グラフ即更新＋全ペイン更新（ペイン切替なし・同一ペイン内） ───
+// ─── ランキングタップ → 詳細ポップアップを開く ───
 function adpCropTap(cropId) {
   if (!_adpArea) return;
+  _adpOpenCropDetailSheet(cropId);
+}
 
-  // 同じ作物を再タップしても選択を維持（別の作物タップで切り替わる）
+// ─── 作物詳細シート（下から出るポップアップ） ───
+function _adpOpenCropDetailSheet(cropId) {
+  const ad = window.currentAreaData;
+  if (!ad) return;
+
+  // scoreEntry取得
+  const scoreEntry = (typeof _crScores !== 'undefined')
+    ? _crScores.find(s => s.crop.id === cropId)
+    : null;
+
+  // cropオブジェクト取得
+  let crop = scoreEntry?.crop ?? null;
+  if (!crop && typeof CROP_DB !== 'undefined') {
+    crop = CROP_DB.find ? CROP_DB.find(c => c.id === cropId)
+         : Object.values(CROP_DB).flat().find(c => c.id === cropId);
+  }
+  if (!crop) return;
+
+  // スコア根拠（details配列から各軸を抽出）
+  const details = scoreEntry?.details ?? [];
+  const detailRows = details.map(d => {
+    if (!d.label && !d.key) return '';
+    const label = d.label ?? d.key;
+    const pts   = d.score != null ? `${d.score}点` : '';
+    const note  = d.note  ? `<span class="cdp-detail-note">${escHtml(d.note)}</span>` : '';
+    const bar   = d.score != null
+      ? `<div class="cdp-detail-bar"><div class="cdp-detail-bar-fill" style="width:${Math.min(d.score,100)}%"></div></div>`
+      : '';
+    return `<div class="cdp-detail-row">`
+      + `<span class="cdp-detail-label">${escHtml(label)}</span>`
+      + `<span class="cdp-detail-pts">${pts}</span>`
+      + `${bar}${note}`
+      + `</div>`;
+  }).join('');
+
+  // 生育期間
+  const gpMin = crop.conditions?.growthPeriodMin;
+  const gpMax = crop.conditions?.growthPeriodMax;
+  const gpHtml = (gpMin != null || gpMax != null)
+    ? `<div class="cdp-section"><div class="cdp-section-title">🕐 生育期間</div>`
+      + `<div class="cdp-gp">${gpMin ?? '?'}〜${gpMax ?? '?'}日</div></div>`
+    : '';
+
+  // 播種・収穫時期
+  const decadeArr = ad.climate?.decadeArr;
+  let estSeason = null;
+  if (decadeArr && typeof Phenology !== 'undefined') {
+    const wins = Phenology.sowingWindows(decadeArr, crop);
+    if (wins?.length) estSeason = _buildEstimatedSeasonLabel(wins[0]);
+  }
+  const seasonHtml = _buildSeasonBlockHtml(crop, estSeason);
+
+  // リスク一覧（crop.risksまたはbuildSingleCropAnalysis）
+  let risksHtml = '';
+  const single = (typeof buildSingleCropAnalysis === 'function')
+    ? buildSingleCropAnalysis(cropId, ad) : null;
+  const riskItems = crop.risks ?? single?.risks ?? [];
+  if (riskItems.length) {
+    risksHtml = `<div class="cdp-section"><div class="cdp-section-title">⚠️ リスク</div>`
+      + riskItems.map(r => `<div class="cdp-risk-row">・${escHtml(typeof r === 'string' ? r : r.label ?? r.name ?? JSON.stringify(r))}</div>`).join('')
+      + `</div>`;
+  } else if (scoreEntry?.alert) {
+    risksHtml = `<div class="cdp-section"><div class="cdp-section-title">⚠️ リスク</div>`
+      + `<div class="cdp-risk-row">・${escHtml(scoreEntry.alert)}</div></div>`;
+  }
+
+  // 収益概算（profitability）
+  let profitHtml = '';
+  const prof = scoreEntry?.profitability ?? single?.profitability ?? null;
+  if (prof) {
+    const rows = [];
+    if (prof.revenueMin != null && prof.revenueMax != null)
+      rows.push(`売上：${_fmtMoney(prof.revenueMin)}〜${_fmtMoney(prof.revenueMax)}`);
+    if (prof.costMin != null && prof.costMax != null)
+      rows.push(`コスト：${_fmtMoney(prof.costMin)}〜${_fmtMoney(prof.costMax)}`);
+    if (prof.profitMin != null && prof.profitMax != null)
+      rows.push(`利益：${_fmtMoney(prof.profitMin)}〜${_fmtMoney(prof.profitMax)}`);
+    if (rows.length) {
+      profitHtml = `<div class="cdp-section"><div class="cdp-section-title">💴 収益概算（10a）</div>`
+        + rows.map(r => `<div class="cdp-profit-row">${r}</div>`).join('')
+        + `</div>`;
+    }
+  }
+
+  // スコア表示クラス
+  const score = scoreEntry?.score ?? null;
+  const scoreCls = score == null ? '' : score >= 70 ? 'score-high' : score >= 40 ? 'score-mid' : 'score-low';
+  const viableTag = scoreEntry
+    ? (scoreEntry.viable
+        ? '<span class="cdp-viable cdp-viable-ok">✓ 栽培可</span>'
+        : '<span class="cdp-viable cdp-viable-ng">✗ 条件厳しい</span>')
+    : '';
+
+  // シート生成（既存を使いまわし）
+  let sheet = document.getElementById('adp-crop-detail-sheet');
+  if (!sheet) {
+    sheet = document.createElement('div');
+    sheet.id = 'adp-crop-detail-sheet';
+    sheet.className = 'adp-crop-detail-sheet';
+    document.body.appendChild(sheet);
+    // 背景タップで閉じる
+    sheet.addEventListener('click', e => {
+      if (e.target === sheet) _adpCloseCropDetailSheet();
+    });
+  }
+
+  sheet.innerHTML = `
+    <div class="cdp-inner">
+      <div class="cdp-handle"></div>
+      <div class="cdp-header">
+        <div class="cdp-crop-name">${escHtml(crop.name)}</div>
+        <div class="cdp-header-right">
+          ${score != null ? `<span class="cdp-score ${scoreCls}">${score}%</span>` : ''}
+          ${viableTag}
+        </div>
+        <button class="cdp-close" onclick="_adpCloseCropDetailSheet()">✕</button>
+      </div>
+      <div class="cdp-body">
+        ${detailRows ? `<div class="cdp-section"><div class="cdp-section-title">📊 スコア根拠</div>${detailRows}</div>` : ''}
+        <div class="cdp-section"><div class="cdp-section-title">📅 播種・収穫時期</div>${seasonHtml}</div>
+        ${gpHtml}
+        ${risksHtml}
+        ${profitHtml}
+        <div class="cdp-select-wrap">
+          <button class="cdp-select-btn" onclick="_adpSelectCropForAnalysis('${cropId}')">
+            ✅ この作物で各タブを更新
+          </button>
+        </div>
+      </div>
+    </div>`;
+
+  sheet.classList.add('open');
+}
+
+function _adpCloseCropDetailSheet() {
+  const sheet = document.getElementById('adp-crop-detail-sheet');
+  if (sheet) sheet.classList.remove('open');
+}
+
+// ─── 収益表示用フォーマット ───
+function _fmtMoney(val) {
+  if (val == null) return '—';
+  return val >= 10000
+    ? `${Math.round(val / 1000)}千円`
+    : `${val}円`;
+}
+
+// ─── 「この作物で各タブを更新」→ 各ペインに反映 ───
+function _adpSelectCropForAnalysis(cropId) {
+  _adpCloseCropDetailSheet();
+  if (!_adpArea) return;
+
   _adpSelectedCropId = cropId;
 
   // ── ランキング・グラフ再描画 ──
@@ -2730,81 +2885,70 @@ function adpCropTap(cropId) {
   _adpRenderRankingList();
   _adpRenderGrowthRankingList();
 
-  // ── 収益/施肥/リスク/カレンダー/適合度ペインを更新 ──
   const ad = window.currentAreaData;
   if (!ad) return;
 
-  if (_adpSelectedCropId) {
-    // _crScores（analysis.js管理）から該当スコアを取得
-    const scoreEntry = (typeof _crScores !== 'undefined')
-      ? _crScores.find(s => s.crop.id === _adpSelectedCropId)
-      : null;
+  const scoreEntry = (typeof _crScores !== 'undefined')
+    ? _crScores.find(s => s.crop.id === _adpSelectedCropId)
+    : null;
 
-    // cropオブジェクト取得（_crScores → CROP_DB の順でフォールバック）
-    let crop = scoreEntry?.crop ?? null;
-    if (!crop && typeof CROP_DB !== 'undefined') {
-      crop = CROP_DB.find ? CROP_DB.find(c => c.id === _adpSelectedCropId)
-           : Object.values(CROP_DB).flat().find(c => c.id === _adpSelectedCropId);
-    }
-
-    // 収益
-    if (typeof renderProfitWaterfall === 'function') {
-      if (scoreEntry) {
-        renderProfitWaterfall(scoreEntry);
-      } else if (crop && typeof buildSingleCropAnalysis === 'function') {
-        const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
-        if (single) renderProfitWaterfall({ crop: single.crop, profitability: single.profitability });
-        else renderProfitWaterfall(null);
-      } else {
-        renderProfitWaterfall(null);
-      }
-    }
-
-    // 施肥・リスク・作業カレンダー
-    if (crop) {
-      if (typeof _renderFertResult  === 'function') _renderFertResult(crop);
-      if (typeof _renderRiskResult  === 'function') _renderRiskResult(crop);
-      if (typeof renderWorkCalendar === 'function') renderWorkCalendar(crop);
-    }
-
-    // 適合度ペイン（conf-detail）: 単一作物詳細で信頼度項目＋播種収穫時期を表示
-    if (typeof buildSingleCropAnalysis === 'function') {
-      const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
-      const confDetailEl = document.getElementById('conf-detail');
-      if (confDetailEl && single) {
-        // 気候推定の播種収穫（AMeDASデータがあれば計算）
-        const decadeArr = ad.climate?.decadeArr;
-        let estSeason = null;
-        if (decadeArr && typeof Phenology !== 'undefined') {
-          const wins = Phenology.sowingWindows(decadeArr, single.crop);
-          if (wins.length) estSeason = _buildEstimatedSeasonLabel(wins[0]);
-        }
-        const seasonHtml = _buildSeasonBlockHtml(single.crop, estSeason);
-        const confItems  = single.confidence.items.map(i => `- ${i}`).join('<br>');
-        confDetailEl.innerHTML = seasonHtml + (confItems ? `<div class="conf-items">${confItems}</div>` : '');
-      }
-    }
-
-    // サマリーバー更新
-    if (scoreEntry && typeof _adpUpdateSummaryBar === 'function') {
-      const modeLabels = { openField:'露地栽培', greenhouse:'ハウス栽培', heatedGreenhouse:'加温ハウス' };
-      _adpUpdateSummaryBar({
-        cropName: scoreEntry.crop.name,
-        areaName: _adpArea?.name ?? null,
-        score:    scoreEntry.viable ? scoreEntry.score : 0,
-        mode:     modeLabels[ad.cultivationMode] || '露地栽培',
-      });
-    }
-
-  } else {
-    // 選択解除：各ペインをデフォルト表示に戻す
-    if (typeof renderProfitWaterfall === 'function') renderProfitWaterfall(null);
-    if (typeof _renderFertResult     === 'function') _renderFertResult(null);
-    if (typeof _renderRiskResult     === 'function') _renderRiskResult(null);
-    if (typeof renderWorkCalendar    === 'function') renderWorkCalendar(null);
-    const confDetailEl = document.getElementById('conf-detail');
-    if (confDetailEl) confDetailEl.innerHTML = '<div class="empty-mini">作物を選択するとエリア適合度の詳細が表示されます。</div>';
+  let crop = scoreEntry?.crop ?? null;
+  if (!crop && typeof CROP_DB !== 'undefined') {
+    crop = CROP_DB.find ? CROP_DB.find(c => c.id === _adpSelectedCropId)
+         : Object.values(CROP_DB).flat().find(c => c.id === _adpSelectedCropId);
   }
+
+  // 収益
+  if (typeof renderProfitWaterfall === 'function') {
+    if (scoreEntry) {
+      renderProfitWaterfall(scoreEntry);
+    } else if (crop && typeof buildSingleCropAnalysis === 'function') {
+      const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
+      renderProfitWaterfall(single ? { crop: single.crop, profitability: single.profitability } : null);
+    } else {
+      renderProfitWaterfall(null);
+    }
+  }
+
+  // 施肥・リスク・作業カレンダー
+  if (crop) {
+    if (typeof _renderFertResult  === 'function') _renderFertResult(crop);
+    if (typeof _renderRiskResult  === 'function') _renderRiskResult(crop);
+    if (typeof renderWorkCalendar === 'function') renderWorkCalendar(crop);
+  }
+
+  // 適合度ペイン
+  if (typeof buildSingleCropAnalysis === 'function') {
+    const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
+    const confDetailEl = document.getElementById('conf-detail');
+    if (confDetailEl && single) {
+      const decadeArr = ad.climate?.decadeArr;
+      let estSeason = null;
+      if (decadeArr && typeof Phenology !== 'undefined') {
+        const wins = Phenology.sowingWindows(decadeArr, single.crop);
+        if (wins?.length) estSeason = _buildEstimatedSeasonLabel(wins[0]);
+      }
+      const seasonHtml = _buildSeasonBlockHtml(single.crop, estSeason);
+      const confItems  = single.confidence.items.map(i => `- ${i}`).join('<br>');
+      confDetailEl.innerHTML = seasonHtml + (confItems ? `<div class="conf-items">${confItems}</div>` : '');
+    }
+  }
+
+  // サマリーバー更新
+  if (scoreEntry && typeof _adpUpdateSummaryBar === 'function') {
+    const modeLabels = { openField:'露地栽培', greenhouse:'ハウス栽培', heatedGreenhouse:'加温ハウス' };
+    _adpUpdateSummaryBar({
+      cropName: scoreEntry.crop.name,
+      areaName: _adpArea?.name ?? null,
+      score:    scoreEntry.viable ? scoreEntry.score : 0,
+      mode:     modeLabels[ad.cultivationMode] || '露地栽培',
+    });
+  }
+}
+
+// ─── サマリーバーの「作物を選ぶ」ボタン → ランキングダイアログを開く ───
+function adpOpenCropSelectFromSummary() {
+  _adpOpenRankingDialog('ranking');
 }
 
 // ═══════════════════════════════════════════
