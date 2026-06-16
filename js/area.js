@@ -570,7 +570,7 @@ function _adpEnsureView() {
 
     <!-- サブタブバー（8タブ＋比較は条件付き） -->
     <div class="adp-subtabs" id="adp-subtabs">
-      <button class="adp-subtab active" data-subtab="ranking"  onclick="_adpSwitchSubTab('ranking')">🏆 ランキング</button>
+      <button class="adp-subtab active" data-subtab="ranking"  onclick="_adpSwitchSubTab('ranking')">📊 グラフ</button>
       <button class="adp-subtab"        data-subtab="growth"   onclick="_adpSwitchSubTab('growth')">📈 生育期間</button>
       <button class="adp-subtab"        data-subtab="profit"   onclick="_adpSwitchSubTab('profit')">💴 収益</button>
       <button class="adp-subtab"        data-subtab="fert"     onclick="_adpSwitchSubTab('fert')">🧪 施肥</button>
@@ -611,7 +611,7 @@ function _adpEnsureView() {
 
         <!-- ▼ ランキングボタン -->
         <div class="adp-ranking-btn-wrap">
-          <button class="adp-ranking-open-btn" onclick="_adpOpenRankingDialog('ranking')">
+          <button class="adp-ranking-open-btn" id="adp-ranking-open-btn" onclick="_adpOpenRankingByTab()">
             🏆 ランキングを見る
           </button>
         </div>
@@ -635,7 +635,7 @@ function _adpEnsureView() {
 
         <!-- ▼ ランキングボタン -->
         <div class="adp-ranking-btn-wrap">
-          <button class="adp-ranking-open-btn" onclick="_adpOpenRankingDialog('growth')">
+          <button class="adp-ranking-open-btn" id="adp-ranking-open-btn-growth" onclick="_adpOpenRankingByTab()">
             📈 生育ランキングを見る
           </button>
         </div>
@@ -813,8 +813,10 @@ function _adpSetClimateMode(isClimate) {
 
 // ─── サブタブ切替（8タブ構成） ───
 const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'profit', 'fert', 'risk', 'calendar', 'match', 'compare'];
+let _adpCurrentSubTab = 'ranking'; // 現在のサブタブ
 
 function _adpSwitchSubTab(name) {
+  _adpCurrentSubTab = name;
   // タブボタン
   document.querySelectorAll('.adp-subtab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.subtab === name);
@@ -2934,21 +2936,129 @@ function _adpSelectCropForAnalysis(cropId) {
     }
   }
 
-  // サマリーバー更新
-  if (scoreEntry && typeof _adpUpdateSummaryBar === 'function') {
-    const modeLabels = { openField:'露地栽培', greenhouse:'ハウス栽培', heatedGreenhouse:'加温ハウス' };
+  // サマリーバー更新（scoreEntryなしでもcropがあれば更新）
+  const modeLabels = { openField:'露地栽培', greenhouse:'ハウス栽培', heatedGreenhouse:'加温ハウス' };
+  if (typeof _adpUpdateSummaryBar === 'function') {
     _adpUpdateSummaryBar({
-      cropName: scoreEntry.crop.name,
+      cropName: crop?.name ?? scoreEntry?.crop?.name ?? null,
       areaName: _adpArea?.name ?? null,
-      score:    scoreEntry.viable ? scoreEntry.score : 0,
+      score:    scoreEntry?.viable ? scoreEntry.score : (scoreEntry ? 0 : null),
       mode:     modeLabels[ad.cultivationMode] || '露地栽培',
     });
   }
 }
 
-// ─── サマリーバーの「作物を選ぶ」ボタン → ランキングダイアログを開く ───
+// ─── タブ連動ランキングダイアログ ───
+function _adpOpenRankingByTab() {
+  const pane = _adpCurrentSubTab === 'growth' ? 'growth' : 'ranking';
+  _adpOpenRankingDialog(pane);
+}
+
+// ─── サマリーバー「作物を選ぶ」→ カテゴリ一覧シート ───
 function adpOpenCropSelectFromSummary() {
-  _adpOpenRankingDialog('ranking');
+  _adpOpenCropSelectSheet();
+}
+
+function _adpOpenCropSelectSheet() {
+  // CROP_DB取得
+  let allCrops = [];
+  if (typeof CROP_DB !== 'undefined') {
+    allCrops = CROP_DB.find
+      ? CROP_DB
+      : Object.values(CROP_DB).flat();
+  }
+  if (!allCrops.length) {
+    showToast('作物データを読み込み中です', 'amber');
+    return;
+  }
+
+  const CATEGORIES = [
+    { key: 'all',     label: 'すべて' },
+    { key: 'grain',   label: '穀物・豆類' },
+    { key: 'vegetable', label: '野菜' },
+    { key: 'fruit',   label: '果物' },
+    { key: 'wild',    label: '山菜・草' },
+    { key: 'forest',  label: '林産' },
+  ];
+
+  // カテゴリ→DB key マッピング（analysis.jsの_crMajorMapと揃える）
+  const CAT_MAP = {
+    grain:     ['grain','legume'],
+    vegetable: ['leaf_veg','fruit_veg','root_veg','vegetable'],
+    fruit:     ['fruit'],
+    wild:      ['wild','herb'],
+    forest:    ['forest'],
+  };
+
+  let _selectedCat = 'all';
+
+  function buildList(cat) {
+    const list = cat === 'all'
+      ? allCrops
+      : allCrops.filter(c => (CAT_MAP[cat] || [cat]).includes(c.category));
+
+    if (!list.length) return '<div class="css-empty">該当作物なし</div>';
+    return list.map(c => `
+      <div class="css-crop-item" onclick="_adpSelectCropFromSheet('${c.id}')">
+        <span class="css-crop-name">${escHtml(c.name)}</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>`).join('');
+  }
+
+  // シート生成
+  let sheet = document.getElementById('adp-crop-select-sheet');
+  if (!sheet) {
+    sheet = document.createElement('div');
+    sheet.id = 'adp-crop-select-sheet';
+    sheet.className = 'adp-crop-detail-sheet'; // 同じオーバーレイスタイル流用
+    document.body.appendChild(sheet);
+    sheet.addEventListener('click', e => {
+      if (e.target === sheet) _adpCloseCropSelectSheet();
+    });
+  }
+
+  const catTabsHtml = CATEGORIES.map(c =>
+    `<button class="css-cat-btn${c.key === _selectedCat ? ' active' : ''}"
+      data-cat="${c.key}"
+      onclick="_adpCropSelectSwitchCat('${c.key}')">${c.label}</button>`
+  ).join('');
+
+  sheet.innerHTML = `
+    <div class="cdp-inner">
+      <div class="cdp-handle"></div>
+      <div class="cdp-header">
+        <div class="cdp-crop-name">🌱 作物を選ぶ</div>
+        <button class="cdp-close" onclick="_adpCloseCropSelectSheet()">✕</button>
+      </div>
+      <div class="css-cat-tabs" id="css-cat-tabs">${catTabsHtml}</div>
+      <div class="css-list" id="css-list">${buildList('all')}</div>
+    </div>`;
+
+  sheet.classList.add('open');
+
+  // グローバルにbuildListを保持（タブ切り替えで使用）
+  sheet._buildList = buildList;
+}
+
+function _adpCropSelectSwitchCat(cat) {
+  const sheet = document.getElementById('adp-crop-select-sheet');
+  if (!sheet) return;
+  // タブactive切り替え
+  sheet.querySelectorAll('.css-cat-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.cat === cat);
+  });
+  const listEl = document.getElementById('css-list');
+  if (listEl && sheet._buildList) listEl.innerHTML = sheet._buildList(cat);
+}
+
+function _adpCloseCropSelectSheet() {
+  const sheet = document.getElementById('adp-crop-select-sheet');
+  if (sheet) sheet.classList.remove('open');
+}
+
+function _adpSelectCropFromSheet(cropId) {
+  _adpCloseCropSelectSheet();
+  _adpSelectCropForAnalysis(cropId);
 }
 
 // ═══════════════════════════════════════════

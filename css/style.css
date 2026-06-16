@@ -5538,3 +5538,72 @@ html.draw-dialog-active .bottom-nav {
   background: var(--primary, #22c55e);
   color: #0a1a0c;
 }
+
+/* ═══════════════════════════════════════════
+   作物選択シート（adp-crop-select-sheet）
+   ═══════════════════════════════════════════ */
+
+/* カテゴリタブ */
+.css-cat-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border, #1e3a22);
+}
+.css-cat-tabs::-webkit-scrollbar { display: none; }
+
+.css-cat-btn {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border, #1e3a22);
+  background: none;
+  color: var(--text-muted, #9ca3af);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.css-cat-btn.active {
+  background: var(--primary, #16a34a);
+  color: #fff;
+  border-color: var(--primary, #16a34a);
+}
+
+/* 作物リスト */
+.css-list {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-height: 0;
+  padding: 6px 12px 24px;
+}
+
+.css-crop-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 6px;
+  border-bottom: 1px solid var(--border, #1e3a22);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.css-crop-item:active {
+  background: var(--surface-raised, #0f2614);
+}
+.css-crop-name {
+  font-size: 0.9rem;
+  color: var(--text, #e8f5e9);
+  font-weight: 500;
+}
+.css-empty {
+  font-size: 0.85rem;
+  color: var(--text-muted, #9ca3af);
+  padding: 20px 0;
+  text-align: center;
+}
