@@ -561,8 +561,6 @@ function _adpEnsureView() {
         <div class="aw-prog-dot active" id="awdot-0"></div>
         <div class="aw-prog-line"></div>
         <div class="aw-prog-dot" id="awdot-1"></div>
-        <div class="aw-prog-line"></div>
-        <div class="aw-prog-dot" id="awdot-2"></div>
       </div>
       <div class="aw-step-title" id="aw-step-title">営農条件入力</div>
       <div class="aw-body" id="aw-body"></div>
@@ -861,6 +859,10 @@ function _adpToggleWizardPanel() {
   if (!panel) return;
   const willOpen = panel.hasAttribute('hidden');
   if (willOpen) {
+    // AMeDAS未取得時は精度低下を通知
+    if (!_adpClimateLoaded) {
+      showToast('気候データ取得中です。精度が低い可能性があります', 'amber');
+    }
     panel.removeAttribute('hidden');
     if (typeof _awInitPanel === 'function') _awInitPanel(_adpArea);
   } else {
@@ -2803,7 +2805,7 @@ const AW_ITEM_DEFS = [
   { key: 'compare',  label: '比較',           icon: '⚖️' },
 ];
 
-const AW_STEP_TITLES = ['営農条件入力', '作物選択', '分析項目を選択'];
+const AW_STEP_TITLES = ['営農条件入力', '作物選択'];
 
 // ─── ウィザード状態 ───
 let _awStep           = 0;        // 現在ステップ (0〜2)
@@ -2859,13 +2861,12 @@ function _awRenderStep(step) {
   switch (step) {
     case 0: _awRenderConditions(); break;
     case 1: _awRenderCropSelect(); break;
-    case 2: _awRenderItems();      break;
   }
 }
 
 // ─── プログレスバー更新 ───
 function _awUpdateProgress(step) {
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     const dot = document.getElementById('awdot-' + i);
     if (!dot) continue;
     dot.classList.remove('active', 'done');
@@ -2873,7 +2874,7 @@ function _awUpdateProgress(step) {
     if (i === step) dot.classList.add('active');
   }
   const el = document.getElementById('aw-step-title');
-  if (el) el.textContent = AW_STEP_TITLES[step];
+  if (el) el.textContent = AW_STEP_TITLES[step] || '';
 }
 
 // ═══════════════════════════════════════════
@@ -2958,7 +2959,7 @@ function _awRenderCropSelect() {
   _awUpdateLivePreview();
   _awRenderFooter({
     back: true,  onBack: () => _awRenderStep(0),
-    next: true,  nextLabel: '次へ →', onNext: () => _awRenderStep(2),
+    next: true,  nextLabel: '分析実行', nextClass: 'aw-btn-run', onNext: _awExecute,
   });
 }
 
