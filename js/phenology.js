@@ -101,8 +101,14 @@ const Phenology = (() => {
       }
       if (validEnd === -1) continue;
 
+      // 収穫旬 = 播種旬 + growthPeriod中央値（旬単位）
+      const gpMidDecades = Math.round(
+        ((crop.growthPeriodMin ?? 60) + (crop.growthPeriodMax ?? 120)) / 2 / 10
+      );
+      const harvestDecade = (s + gpMidDecades - 1) % 36;
+
       const score = _windowScore(decadeArr, s, validEnd, cond);
-      windows.push({ startDecade: s, endDecade: validEnd, score });
+      windows.push({ startDecade: s, endDecade: validEnd, harvestDecade, score });
     }
 
     // scoreで降順ソート、上位12件

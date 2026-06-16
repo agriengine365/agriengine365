@@ -1039,6 +1039,7 @@ function computeClimateRanking(decadeArr, crops) {
         score:        Math.round(best.score * 100),
         startDecade:  best.startDecade,
         endDecade:    best.endDecade,
+        harvestDecade: best.harvestDecade,
       };
     })
     .sort((a, b) => b.score - a.score);

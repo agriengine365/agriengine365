@@ -1337,6 +1337,78 @@ function _adpCalcRankDiff(cropId, currentRank, openFieldScores) {
   return baseRank - currentRank; // 正=上昇, 負=低下
 }
 
+// ─── 播種・収穫時期ラベル生成（DB値 月→旬変換）───
+// months: 数値月の配列（1〜12）
+// side: 'start'=月上旬基点, 'end'=月下旬基点
+function _buildSeasonLabel(months, side = 'start') {
+  if (!Array.isArray(months) || !months.length) return null;
+  const MONTH_JP = ['1月','2月','3月','4月','5月','6月',
+                    '7月','8月','9月','10月','11月','12月'];
+  const sorted = [...months].sort((a, b) => a - b);
+  const first = sorted[0];
+  const last  = sorted[sorted.length - 1];
+  const from = MONTH_JP[first - 1] + '上旬';
+  const to   = MONTH_JP[last  - 1] + '下旬';
+  return first === last ? MONTH_JP[first - 1] + '上旬〜下旬' : `${from}〜${to}`;
+}
+
+// ─── 作物の播種・収穫ラベルをまとめて返す ───
+function _buildCropSeasonInfo(crop) {
+  const cal = crop.calendar || {};
+  const result = {};
+
+  // 播種系（sowing → seedling → transplant の優先順）
+  if (cal.sowing?.length)     result.sowLabel      = _buildSeasonLabel(cal.sowing);
+  if (cal.seedling?.length)   result.seedlingLabel  = _buildSeasonLabel(cal.seedling);
+  if (cal.transplant?.length) result.transplantLabel = _buildSeasonLabel(cal.transplant);
+  if (cal.harvest?.length)    result.harvestLabel   = _buildSeasonLabel(cal.harvest);
+
+  return result;
+}
+
+// ─── 気候推定モード：播種・収穫旬ラベル ───
+function _buildEstimatedSeasonLabel(r) {
+  if (r.startDecade === null || r.startDecade === undefined) return null;
+  const sowLabel     = Phenology.decadeLabel(r.startDecade);
+  const harvestLabel = (r.harvestDecade != null)
+    ? Phenology.decadeLabel(r.harvestDecade)
+    : Phenology.decadeLabel(r.endDecade);
+  return { sowLabel, harvestLabel };
+}
+
+// ─── 播種・収穫ブロックHTML生成（ランキングリスト / matchタブ共通） ───
+function _buildSeasonBlockHtml(crop, estimatedSeason) {
+  const db  = _buildCropSeasonInfo(crop);
+  const est = estimatedSeason; // { sowLabel, harvestLabel } | null
+
+  const dbRows = [];
+  if (db.sowingLabel)     dbRows.push(`<span class="season-key">播種</span><span class="season-val">${db.sowingLabel}</span>`);
+  if (db.seedlingLabel)   dbRows.push(`<span class="season-key">育苗</span><span class="season-val">${db.seedlingLabel}</span>`);
+  if (db.transplantLabel) dbRows.push(`<span class="season-key">定植</span><span class="season-val">${db.transplantLabel}</span>`);
+  if (db.harvestLabel)    dbRows.push(`<span class="season-key">収穫</span><span class="season-val">${db.harvestLabel}</span>`);
+
+  const dbHtml = dbRows.length
+    ? dbRows.map(r => `<div class="season-row">${r}</div>`).join('')
+    : '<div class="season-row season-nodata">データなし</div>';
+
+  const estHtml = est
+    ? `<div class="season-row"><span class="season-key">播種/定植</span><span class="season-val season-est">${est.sowLabel}</span></div>
+       <div class="season-row"><span class="season-key">収穫</span><span class="season-val season-est">${est.harvestLabel}</span></div>`
+    : '<div class="season-row season-nodata">AMeDASデータ取得後に表示</div>';
+
+  return `
+    <div class="season-block">
+      <div class="season-section">
+        <div class="season-section-title">📋 一般的な時期</div>
+        ${dbHtml}
+      </div>
+      <div class="season-section">
+        <div class="season-section-title">🌤️ このエリアの推定</div>
+        ${estHtml}
+      </div>
+    </div>`;
+}
+
 // ─── 気候推定ランキングリスト描画（chart / growth 共通） ───
 function _adpRenderClimateRankingList(el, pane) {
   if (!_adpClimateRanking) {
@@ -1401,21 +1473,14 @@ function _adpRenderClimateRankingList(el, pane) {
     const scoreCls = r.score >= 70 ? 'score-high' : r.score >= 40 ? 'score-mid' : 'score-low';
     const isSelected = r.crop.id === _adpSelectedCropId;
 
-    // 播種〜収穫旬ラベル
-    let phenoStr = '';
-    if (r.startDecade !== null) {
-      const sLabel = Phenology.decadeLabel(r.startDecade);
-      const eLabel = Phenology.decadeLabel(r.endDecade);
-      phenoStr = `<span class="adp-cr-pheno">▼${sLabel} → ◆${eLabel}</span>`;
-    } else {
-      phenoStr = '<span class="adp-cr-pheno adp-cr-pheno-none">播種適期なし</span>';
-    }
-
     const gpMin = r.crop.conditions?.growthPeriodMin;
     const gpMax = r.crop.conditions?.growthPeriodMax;
     const gpStr = (gpMin != null || gpMax != null)
       ? `<span class="cr-gp-badge">${gpMin ?? '?'}〜${gpMax ?? '?'}日</span>`
       : '';
+
+    const est = _buildEstimatedSeasonLabel(r);
+    const seasonHtml = _buildSeasonBlockHtml(r.crop, est);
 
     const idAttr = pane === 'growth' ? `adp-cr-item` : `cr-item`;
     return `
@@ -1431,7 +1496,7 @@ function _adpRenderClimateRankingList(el, pane) {
         <div class="cr-bar-track">
           <div class="cr-bar-fill ${scoreCls}" style="width:${r.score}%"></div>
         </div>
-        <div class="adp-cr-pheno-wrap">${phenoStr}</div>
+        <div class="season-block-wrap">${seasonHtml}</div>
       </div>`;
   }).join('');
 
@@ -1487,6 +1552,9 @@ function _adpRenderRankingList() {
         + (rankDiff > 0 ? `▲${rankDiff}` : `▼${Math.abs(rankDiff)}`) + `</span>`
       : '';
 
+    // 播種収穫ブロック（DBモードでは気候推定なし）
+    const seasonHtml = _buildSeasonBlockHtml(s.crop, null);
+
     return `
       <div class="cr-item${isSelected ? ' cr-item-open' : ''}"
         onclick="adpCropTap('${s.crop.id}')">
@@ -1503,6 +1571,7 @@ function _adpRenderRankingList() {
         </div>
         ${compareHtml ? `<div class="adp-score-compare">${compareHtml}</div>` : ''}
         ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
+        <div class="season-block-wrap">${seasonHtml}</div>
       </div>
     `;
   }).join('');
@@ -2698,12 +2767,21 @@ function adpCropTap(cropId) {
       if (typeof renderWorkCalendar === 'function') renderWorkCalendar(crop);
     }
 
-    // 適合度ペイン（conf-detail）: 単一作物詳細で信頼度項目を表示
+    // 適合度ペイン（conf-detail）: 単一作物詳細で信頼度項目＋播種収穫時期を表示
     if (typeof buildSingleCropAnalysis === 'function') {
       const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
       const confDetailEl = document.getElementById('conf-detail');
       if (confDetailEl && single) {
-        confDetailEl.innerHTML = single.confidence.items.map(i => `- ${i}`).join('<br>');
+        // 気候推定の播種収穫（AMeDASデータがあれば計算）
+        const decadeArr = ad.climate?.decadeArr;
+        let estSeason = null;
+        if (decadeArr && typeof Phenology !== 'undefined') {
+          const wins = Phenology.sowingWindows(decadeArr, single.crop);
+          if (wins.length) estSeason = _buildEstimatedSeasonLabel(wins[0]);
+        }
+        const seasonHtml = _buildSeasonBlockHtml(single.crop, estSeason);
+        const confItems  = single.confidence.items.map(i => `- ${i}`).join('<br>');
+        confDetailEl.innerHTML = seasonHtml + (confItems ? `<div class="conf-items">${confItems}</div>` : '');
       }
     }
 
