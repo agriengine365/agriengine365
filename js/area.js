@@ -839,6 +839,7 @@ function _adpSetClimateMode(isClimate) {
 // ─── サブタブ切替（8タブ構成） ───
 const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'profit', 'fert', 'risk', 'calendar', 'match', 'compare'];
 let _adpCurrentSubTab = 'ranking'; // 現在のサブタブ
+let _adpNoCropDialogTimer = null;  // 作物未選択ガードのダイアログ起動タイマー（多重起動防止）
 
 function _adpSwitchSubTab(name) {
   _adpCurrentSubTab = name;
@@ -846,9 +847,13 @@ function _adpSwitchSubTab(name) {
   // ── 作物選択ガード（profit/fert/risk/calendarは作物必須） ──
   const _needsCrop = ['profit', 'fert', 'risk', 'calendar'];
   if (_needsCrop.includes(name) && !_adpSelectedCropId) {
-    // タブ自体は切り替えてから即ダイアログ起動
+    // タブ自体は切り替えてから即ダイアログ起動（タイマーは1つだけ保持し連打時の多重起動を防ぐ）
     _adpRenderNoCropPlaceholder(name);
-    setTimeout(() => _adpOpenRankingDialog('ranking'), 120);
+    if (_adpNoCropDialogTimer) clearTimeout(_adpNoCropDialogTimer);
+    _adpNoCropDialogTimer = setTimeout(() => {
+      _adpOpenRankingDialog('ranking');
+      _adpNoCropDialogTimer = null;
+    }, 120);
   }
 
   // タブボタン
@@ -1652,7 +1657,7 @@ function _adpRenderClimateRankingList(el, pane) {
 
     const idAttr = pane === 'growth' ? `adp-cr-item` : `cr-item`;
     return `
-      <div class="${idAttr}${isSelected ? ' selected' : ''}" onclick="adpCropTap('${r.crop.id}')">
+      <div class="${idAttr}${isSelected ? ' selected' : ''}" onclick="adpCropTap(this, '${r.crop.id}')">
         <div class="cr-item-header">
           <span class="cr-rank">#${i + 1}</span>
           <span class="cr-name">${escHtml(r.crop.name)}${gpStr}</span>
@@ -1760,7 +1765,7 @@ function _adpRenderRankingList() {
 
     return `
       <div class="cr-item${isSelected ? ' cr-item-open' : ''}"
-        onclick="adpCropTap('${s.crop.id}')">
+        onclick="adpCropTap(this, '${s.crop.id}')">
         <div class="cr-item-header">
           <span class="cr-rank">#${i + 1}${rankDiffHtml}</span>
           <span class="cr-name">${escHtml(s.crop.name)}${gpStr}</span>
@@ -2876,7 +2881,7 @@ function _adpRenderGrowthRankingList() {
       : '';
 
     return `
-      <div class="adp-cr-item${isSelected ? ' selected' : ''}" onclick="adpCropTap('${s.crop.id}')">
+      <div class="adp-cr-item${isSelected ? ' selected' : ''}" onclick="adpCropTap(this, '${s.crop.id}')">
         <div class="adp-cr-name">${s.crop.name}${gpStr}${rankDiffHtml}</div>
         ${phenoStr ? `<div class="adp-cr-pheno-wrap">${phenoStr}</div>` : ''}
         <div class="adp-cr-bar-wrap">
@@ -2923,22 +2928,18 @@ function closeAreaDetailPanel() {
 }
 
 // ─── 作物タップ → アコーディオン開閉のみ（選択はしない） ───
-function adpCropTap(cropId) {
-  // .cr-item と .adp-cr-item 両方に対応
-  const item = document.querySelector(
-    `.cr-item[onclick*="${cropId}"], .adp-cr-item[onclick*="${cropId}"]`
-  );
-  if (!item) return;
-  const isOpen = item.classList.contains('cr-item-open');
-  // 同一リスト内で他を閉じてから開閉
-  const list = item.closest('.adp-ranking-list, #crop-ranking, #crop-growth-ranking');
+function adpCropTap(el, cropId) {
+  if (!el) return;
+  const isOpen = el.classList.contains('cr-item-open') || el.classList.contains('adp-cr-item-open');
+  // 同一リスト内で他を閉じてから開閉（IDは crop-ranking / crop-ranking-growth が正）
+  const list = el.closest('#crop-ranking, #crop-ranking-growth');
   if (list) {
-    list.querySelectorAll('.cr-item-open, .adp-cr-item-open').forEach(el => {
-      el.classList.remove('cr-item-open', 'adp-cr-item-open');
+    list.querySelectorAll('.cr-item-open, .adp-cr-item-open').forEach(other => {
+      other.classList.remove('cr-item-open', 'adp-cr-item-open');
     });
   }
   if (!isOpen) {
-    item.classList.add(item.classList.contains('adp-cr-item') ? 'adp-cr-item-open' : 'cr-item-open');
+    el.classList.add(el.classList.contains('adp-cr-item') ? 'adp-cr-item-open' : 'cr-item-open');
   }
 }
 
@@ -3092,18 +3093,25 @@ function _fmtMoney(val) {
 // ─── 「この作物で各タブを更新」→ 各ペインに反映 ───
 function _adpSelectCropForAnalysis(cropId) {
   _adpCloseCropDetailSheet();
-  if (!_adpArea) return;
+  _adpCloseRankingDialog();
+
+  const ad = window.currentAreaData;
+  if (!_adpArea || !ad) return;
 
   _adpSelectedCropId = cropId;
+
+  // 作物選択済みになったので未選択プレースホルダーを除去
+  ['profit', 'fert', 'risk', 'calendar'].forEach(tab => {
+    const pane = document.getElementById('adp-pane-' + tab);
+    const ph = pane && pane.querySelector('.adp-no-crop-ph');
+    if (ph) ph.remove();
+  });
 
   // ── ランキング・グラフ再描画 ──
   _adpRenderTempChart(_adpSelectedCropId);
   _adpRenderGrowthChart(_adpSelectedCropId);
   _adpRenderRankingList();
   _adpRenderGrowthRankingList();
-
-  const ad = window.currentAreaData;
-  if (!ad) return;
 
   const scoreEntry = (typeof _crScores !== 'undefined')
     ? _crScores.find(s => s.crop.id === _adpSelectedCropId)
@@ -3115,13 +3123,18 @@ function _adpSelectCropForAnalysis(cropId) {
          : Object.values(CROP_DB).flat().find(c => c.id === _adpSelectedCropId);
   }
 
+  // _crScoresが未充填（AMeDAS取得待ち等のタイミング）でもscoreEntryの代わりに使う。
+  // 適合度ペインでも使うため1回だけ計算して共用する。
+  const single = (crop && typeof buildSingleCropAnalysis === 'function')
+    ? buildSingleCropAnalysis(_adpSelectedCropId, ad)
+    : null;
+
   // 収益
   if (typeof renderProfitWaterfall === 'function') {
     if (scoreEntry) {
       renderProfitWaterfall(scoreEntry);
-    } else if (crop && typeof buildSingleCropAnalysis === 'function') {
-      const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
-      renderProfitWaterfall(single ? { crop: single.crop, profitability: single.profitability } : null);
+    } else if (single) {
+      renderProfitWaterfall({ crop: single.crop, profitability: single.profitability });
     } else {
       renderProfitWaterfall(null);
     }
@@ -3135,8 +3148,7 @@ function _adpSelectCropForAnalysis(cropId) {
   }
 
   // 適合度ペイン
-  if (typeof buildSingleCropAnalysis === 'function') {
-    const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
+  {
     const confDetailEl = document.getElementById('conf-detail');
     if (confDetailEl && single) {
       const decadeArr = ad.climate?.decadeArr;
@@ -3151,19 +3163,24 @@ function _adpSelectCropForAnalysis(cropId) {
     }
   }
 
+  // scoreEntryが無い場合はsingleのスコアにフォールバック（_crScores未充填タイミング対策）
+  const _scoreVal = scoreEntry?.viable ? scoreEntry.score
+                   : scoreEntry ? 0
+                   : (single?.scoreResult?.viable ? single.scoreResult.score : null);
+
   // サマリーバー更新（scoreEntryなしでもcropがあれば更新）
   const modeLabels = { openField:'露地栽培', greenhouse:'ハウス栽培', heatedGreenhouse:'加温ハウス' };
   if (typeof _adpUpdateSummaryBar === 'function') {
     _adpUpdateSummaryBar({
       cropName: crop?.name ?? scoreEntry?.crop?.name ?? null,
       areaName: _adpArea?.name ?? null,
-      score:    scoreEntry?.viable ? scoreEntry.score : (scoreEntry ? 0 : null),
+      score:    _scoreVal,
       mode:     modeLabels[ad.cultivationMode] || '露地栽培',
     });
   }
   // 作物バー更新
   const _cbCrop  = crop ?? scoreEntry?.crop ?? null;
-  const _cbScore = scoreEntry?.viable ? scoreEntry.score : null;
+  const _cbScore = _scoreVal;
   _adpUpdateCropBar(_cbCrop?.name ?? null, _cbScore, _cbCrop?.emoji ?? null);
 }
 
