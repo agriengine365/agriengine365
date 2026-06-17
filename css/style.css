@@ -5835,3 +5835,135 @@ html.draw-dialog-active .bottom-nav {
 #adp-eval-mode-wrap {
   display: none !important;
 }
+
+/* ═══════════════════════════════════════════
+   作物バー（adp-crop-bar）
+   サマリーバーとサブタブの間に常時表示
+═══════════════════════════════════════════ */
+
+.adp-crop-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface2, #1e2530);
+  border-bottom: 1px solid var(--border, #2e3a4a);
+  min-height: 48px;
+  padding: 0 12px;
+}
+
+/* ── 未選択状態 ── */
+.adp-crop-bar-unselected {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.adp-crop-bar-select-btn {
+  background: var(--green-dim, rgba(72,187,120,.15));
+  color: var(--green, #48bb78);
+  border: 1px dashed var(--green, #48bb78);
+  border-radius: 20px;
+  padding: 6px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: .02em;
+  transition: background .15s;
+}
+.adp-crop-bar-select-btn:active {
+  background: rgba(72,187,120,.28);
+}
+
+/* ── 選択済み状態 ── */
+.adp-crop-bar-selected {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.adp-crop-bar-emoji {
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.adp-crop-bar-name {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text, #e2e8f0);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adp-crop-bar-score {
+  font-size: 18px;
+  font-weight: 800;
+  min-width: 44px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.adp-crop-bar-change-btn {
+  background: var(--surface3, #29333f);
+  color: var(--text-muted, #94a3b8);
+  border: 1px solid var(--border, #2e3a4a);
+  border-radius: 12px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.adp-crop-bar-change-btn:active {
+  background: var(--surface4, #354050);
+  color: var(--text, #e2e8f0);
+}
+
+/* ═══════════════════════════════════════════
+   作物未選択プレースホルダー
+═══════════════════════════════════════════ */
+
+.adp-no-crop-ph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+}
+
+.adp-no-crop-ph-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+}
+
+.adp-no-crop-ph-icon {
+  font-size: 40px;
+  line-height: 1;
+  opacity: .6;
+}
+
+.adp-no-crop-ph-inner p {
+  font-size: 14px;
+  color: var(--text-muted, #94a3b8);
+  margin: 0;
+}
+
+.adp-no-crop-ph-btn {
+  background: var(--green, #48bb78);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.adp-no-crop-ph-btn:active {
+  opacity: .8;
+}
