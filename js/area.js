@@ -433,6 +433,10 @@ async function openAreaDetailPanel(area) {
   _adpClimateRanking = null;
   _adpClimateLoaded  = false;
 
+  // 作物選択状態をリセット（エリア再オープン時に前回選択が残らないよう）
+  _adpSelectedCropId = null;
+  _adpUpdateCropBar(null);
+
   _adpEnsureView();
 
   // ── ヘッダー更新 ──
@@ -3151,11 +3155,9 @@ function _adpSelectCropForAnalysis(cropId) {
     if (ph) ph.remove();
   });
 
-  // ── ランキング・グラフ再描画 ──
+  // ── グラフ再描画（表示中タブに関係なく実行） ──
   _adpRenderTempChart(_adpSelectedCropId);
   _adpRenderGrowthChart(_adpSelectedCropId);
-  _adpRenderRankingList();
-  _adpRenderGrowthRankingList();
 
   const scoreEntry = (typeof _crScores !== 'undefined')
     ? _crScores.find(s => s.crop.id === _adpSelectedCropId)
@@ -3167,8 +3169,7 @@ function _adpSelectCropForAnalysis(cropId) {
          : Object.values(CROP_DB).flat().find(c => c.id === _adpSelectedCropId);
   }
 
-  // _crScoresが未充填（AMeDAS取得待ち等のタイミング）でもscoreEntryの代わりに使う。
-  // 適合度ペインでも使うため1回だけ計算して共用する。
+  // _crScoresが未充填でもscoreEntryの代わりに使う。適合度ペインでも共用
   const single = (crop && typeof buildSingleCropAnalysis === 'function')
     ? buildSingleCropAnalysis(_adpSelectedCropId, ad)
     : null;
@@ -3207,26 +3208,32 @@ function _adpSelectCropForAnalysis(cropId) {
     }
   }
 
-  // scoreEntryが無い場合はsingleのスコアにフォールバック（_crScores未充填タイミング対策）
-  // viable:falseでも実スコアを渡す（表示は score < 40 のため赤色になる）
+  // スコア値確定
   const _scoreVal = scoreEntry
-                   ? scoreEntry.score
-                   : (single?.scoreResult?.score ?? null);
+    ? scoreEntry.score
+    : (single?.scoreResult?.score ?? null);
 
-  // サマリーバー更新（scoreEntryなしでもcropがあれば更新）
+  // サマリーバー・作物バー更新
   const modeLabels = { openField:'露地栽培', greenhouse:'ハウス栽培', heatedGreenhouse:'加温ハウス' };
-  if (typeof _adpUpdateSummaryBar === 'function') {
-    _adpUpdateSummaryBar({
-      cropName: crop?.name ?? scoreEntry?.crop?.name ?? null,
-      areaName: _adpArea?.name ?? null,
-      score:    _scoreVal,
-      mode:     modeLabels[ad.cultivationMode] || '露地栽培',
-    });
+  _adpUpdateSummaryBar({
+    cropName: crop?.name ?? null,
+    areaName: _adpArea?.name ?? null,
+    score:    _scoreVal,
+    mode:     modeLabels[ad.cultivationMode] || '露地栽培',
+  });
+  _adpUpdateCropBar(crop?.name ?? null, _scoreVal, crop?.emoji ?? null);
+
+  // ランキングリストの選択ハイライトを更新（ダイアログが開いている場合のみ）
+  _adpRenderRankingList();
+  _adpRenderGrowthRankingList();
+
+  // 現在表示中のタブを強制再描画（ranking/growth は canvas 再描画済みのためスキップ）
+  const cur = _adpCurrentSubTab;
+  if (cur === 'ranking') {
+    setTimeout(() => _adpRenderTempChart(_adpSelectedCropId), 30);
+  } else if (cur === 'growth') {
+    setTimeout(() => _adpRenderGrowthChart(_adpSelectedCropId), 30);
   }
-  // 作物バー更新
-  const _cbCrop  = crop ?? scoreEntry?.crop ?? null;
-  const _cbScore = _scoreVal;
-  _adpUpdateCropBar(_cbCrop?.name ?? null, _cbScore, _cbCrop?.emoji ?? null);
 }
 
 // ─── タブ連動ランキングダイアログ ───
