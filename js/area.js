@@ -469,7 +469,7 @@ async function openAreaDetailPanel(area) {
   // 同一エリアのキャッシュがあれば即スコア計算
   const areaKey = area.id || area.name;
   if (_adpClimateCache && _adpClimateCache._areaKey === areaKey) {
-    currentAreaData.climate = _adpClimateCache;
+    currentAreaData.climate = { ..._adpClimateCache };
     _adpClimateLoaded = true;
     _adpRenderRanking(area);
     _adpRenderTempChart();
@@ -1498,10 +1498,10 @@ function _buildCropSeasonInfo(crop) {
   const result = {};
 
   // 播種系（sowing → seedling → transplant の優先順）
-  if (cal.sowing?.length)     result.sowLabel      = _buildSeasonLabel(cal.sowing);
-  if (cal.seedling?.length)   result.seedlingLabel  = _buildSeasonLabel(cal.seedling);
+  if (cal.sowing?.length)     result.sowingLabel     = _buildSeasonLabel(cal.sowing);
+  if (cal.seedling?.length)   result.seedlingLabel   = _buildSeasonLabel(cal.seedling);
   if (cal.transplant?.length) result.transplantLabel = _buildSeasonLabel(cal.transplant);
-  if (cal.harvest?.length)    result.harvestLabel   = _buildSeasonLabel(cal.harvest);
+  if (cal.harvest?.length)    result.harvestLabel    = _buildSeasonLabel(cal.harvest);
 
   return result;
 }
@@ -2913,11 +2913,12 @@ function closeAreaDetailPanel() {
   if (gCanvas) { gCanvas.width = 0; gCanvas.height = 0; }
 }
 
-// ─── 作物タップ → アコーディオン開閉のみ（選択はしない） ───
+// ─── 作物タップ → 選択して各タブへ反映 ───
 function adpCropTap(el, cropId) {
   if (!el) return;
+
+  // アコーディオン開閉
   const isOpen = el.classList.contains('cr-item-open') || el.classList.contains('adp-cr-item-open');
-  // 同一リスト内で他を閉じてから開閉（IDは crop-ranking / crop-ranking-growth が正）
   const list = el.closest('#crop-ranking, #crop-ranking-growth');
   if (list) {
     list.querySelectorAll('.cr-item-open, .adp-cr-item-open').forEach(other => {
@@ -2926,6 +2927,66 @@ function adpCropTap(el, cropId) {
   }
   if (!isOpen) {
     el.classList.add(el.classList.contains('adp-cr-item') ? 'adp-cr-item-open' : 'cr-item-open');
+  }
+
+  // 作物選択・各タブ反映（adp-view開中のみ）
+  if (document.getElementById('adp-view')?.classList.contains('open')) {
+    if (_adpSelectedCropId !== cropId) {
+      _adpSelectedCropId = cropId;
+      // プレースホルダー除去
+      ['profit', 'fert', 'risk', 'calendar'].forEach(tab => {
+        const pane = document.getElementById('adp-pane-' + tab);
+        const ph = pane && pane.querySelector('.adp-no-crop-ph');
+        if (ph) ph.remove();
+      });
+      // グラフ・各タブ更新
+      _adpRenderTempChart(_adpSelectedCropId);
+      _adpRenderGrowthChart(_adpSelectedCropId);
+      _adpRenderRankingList();
+      _adpRenderGrowthRankingList();
+      // 収益・施肥・リスク・作業カレンダー更新
+      const ad = window.currentAreaData;
+      const scoreEntry = (typeof _crScores !== 'undefined')
+        ? _crScores.find(s => s.crop.id === cropId) : null;
+      let crop = scoreEntry?.crop ?? null;
+      if (!crop && typeof CROP_DB !== 'undefined') {
+        crop = CROP_DB.find ? CROP_DB.find(c => c.id === cropId)
+             : Object.values(CROP_DB).flat().find(c => c.id === cropId);
+      }
+      const single = (crop && typeof buildSingleCropAnalysis === 'function')
+        ? buildSingleCropAnalysis(cropId, ad) : null;
+      if (typeof renderProfitWaterfall === 'function') {
+        renderProfitWaterfall(scoreEntry ?? (single ? { crop: single.crop, profitability: single.profitability } : null));
+      }
+      if (crop) {
+        if (typeof _renderFertResult  === 'function') _renderFertResult(crop);
+        if (typeof _renderRiskResult  === 'function') _renderRiskResult(crop);
+        if (typeof renderWorkCalendar === 'function') renderWorkCalendar(crop);
+      }
+      // 適合度ペイン更新
+      const confDetailEl = document.getElementById('conf-detail');
+      if (confDetailEl && single) {
+        const decadeArr = ad?.climate?.decadeArr;
+        let estSeason = null;
+        if (decadeArr && typeof Phenology !== 'undefined') {
+          const wins = Phenology.sowingWindows(decadeArr, single.crop);
+          if (wins?.length) estSeason = _buildEstimatedSeasonLabel(wins[0]);
+        }
+        const seasonHtml = _buildSeasonBlockHtml(single.crop, estSeason);
+        const confItems  = single.confidence.items.map(i => `- ${i}`).join('<br>');
+        confDetailEl.innerHTML = seasonHtml + (confItems ? `<div class="conf-items">${confItems}</div>` : '');
+      }
+      // サマリーバー・作物バー更新
+      const _scoreVal = scoreEntry?.score ?? (single?.scoreResult?.score ?? null);
+      const modeLabels = { openField:'露地栽培', greenhouse:'ハウス栽培', heatedGreenhouse:'加温ハウス' };
+      _adpUpdateSummaryBar({
+        cropName: crop?.name ?? null,
+        areaName: _adpArea?.name ?? null,
+        score:    _scoreVal,
+        mode:     modeLabels[ad?.cultivationMode] || '露地栽培',
+      });
+      _adpUpdateCropBar(crop?.name ?? null, _scoreVal, crop?.emoji ?? null);
+    }
   }
 }
 
