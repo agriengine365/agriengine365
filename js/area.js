@@ -727,6 +727,8 @@ function _adpEnsureView() {
             <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
             <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
             <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
+            <button class="cr-tab-major"        data-major="oil"       onclick="crSwitchMajor('oil')">油脂</button>
+            <button class="cr-tab-major"        data-major="fiber"     onclick="crSwitchMajor('fiber')">繊維</button>
           </div>
           <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
         </div>
@@ -920,23 +922,7 @@ function _adpSwitchSubTab(name) {
     if (name === 'risk') {
       if (crop && typeof _renderRiskResult === 'function') _renderRiskResult(crop);
     }
-    if (name === 'match') {
-      if (typeof buildSingleCropAnalysis === 'function' && ad) {
-        const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
-        const confDetailEl = document.getElementById('conf-detail');
-        if (confDetailEl && single) {
-          const decadeArr = ad.climate?.decadeArr;
-          let estSeason = null;
-          if (decadeArr && typeof Phenology !== 'undefined') {
-            const wins = Phenology.sowingWindows(decadeArr, single.crop);
-            if (wins?.length) estSeason = _buildEstimatedSeasonLabel(wins[0]);
-          }
-          const seasonHtml = _buildSeasonBlockHtml(single.crop, estSeason);
-          const confItems  = single.confidence.items.map(i => `- ${i}`).join('<br>');
-          confDetailEl.innerHTML = seasonHtml + (confItems ? `<div class="conf-items">${confItems}</div>` : '');
-        }
-      }
-    }
+    // match（適合度）ペインは _adpSelectCropForAnalysis で描画済みのためここでは再計算しない
   }
 }
 
@@ -3164,9 +3150,10 @@ function _adpSelectCropForAnalysis(cropId) {
   }
 
   // scoreEntryが無い場合はsingleのスコアにフォールバック（_crScores未充填タイミング対策）
-  const _scoreVal = scoreEntry?.viable ? scoreEntry.score
-                   : scoreEntry ? 0
-                   : (single?.scoreResult?.viable ? single.scoreResult.score : null);
+  // viable:falseでも実スコアを渡す（表示は score < 40 のため赤色になる）
+  const _scoreVal = scoreEntry
+                   ? scoreEntry.score
+                   : (single?.scoreResult?.score ?? null);
 
   // サマリーバー更新（scoreEntryなしでもcropがあれば更新）
   const modeLabels = { openField:'露地栽培', greenhouse:'ハウス栽培', heatedGreenhouse:'加温ハウス' };
@@ -3215,6 +3202,8 @@ function _adpOpenCropSelectSheet() {
     { key: 'fruit',   label: '果物' },
     { key: 'wild',    label: '山菜・草' },
     { key: 'forest',  label: '林産' },
+    { key: 'oil',     label: '油脂' },
+    { key: 'fiber',   label: '繊維' },
   ];
 
   // カテゴリ→DB key マッピング（analysis.jsのCR_MAJOR_TO_CATEGORIESと揃える）
@@ -3224,6 +3213,8 @@ function _adpOpenCropSelectSheet() {
     fruit:     ['fruit'],
     wild:      ['wildveg','herb'],
     forest:    ['forest'],
+    oil:       ['oil'],
+    fiber:     ['fiber'],
   };
 
   let _selectedCat = 'all';
