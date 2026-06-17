@@ -536,7 +536,7 @@ function runSingleCropAnalysis(areaName) {
   if (typeof _adpUpdateSummaryBar === 'function') {
     _adpUpdateSummaryBar({
       cropName:  result.crop.name,
-      areaName:  _awArea?.name || null,
+      areaName:  _adpArea?.name || null,
       score:     s.viable ? s.score : 0,
       mode:      modeLabels2[result.cultivationMode] || '露地栽培',
       confPct:   conf.pct + '%',

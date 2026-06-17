@@ -531,6 +531,9 @@ function _adpEnsureView() {
         <span>条件設定</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
+      <button class="adp-ranking-header-btn" id="adp-ranking-header-btn" onclick="_adpOpenRankingByTab()">
+        <span id="adp-ranking-header-label">🏆 ランキング</span>
+      </button>
     </div>
 
     <!-- サマリーバー（常時表示） -->
@@ -560,8 +563,6 @@ function _adpEnsureView() {
     <div class="adp-wizard-panel" id="adp-wizard-panel" hidden>
       <div class="adp-wizard-progress">
         <div class="aw-prog-dot active" id="awdot-0"></div>
-        <div class="aw-prog-line"></div>
-        <div class="aw-prog-dot" id="awdot-1"></div>
       </div>
       <div class="aw-step-title" id="aw-step-title">営農条件入力</div>
       <div class="aw-body" id="aw-body"></div>
@@ -609,13 +610,6 @@ function _adpEnsureView() {
           <div class="adp-temp-legend" id="adp-sun-legend"></div>
         </div>
 
-        <!-- ▼ ランキングボタン -->
-        <div class="adp-ranking-btn-wrap">
-          <button class="adp-ranking-open-btn" id="adp-ranking-open-btn" onclick="_adpOpenRankingByTab()">
-            🏆 ランキングを見る
-          </button>
-        </div>
-
       </div>
 
 
@@ -631,13 +625,6 @@ function _adpEnsureView() {
             <canvas id="adp-growth-canvas"></canvas>
           </div>
           <div class="adp-temp-legend" id="adp-growth-legend"></div>
-        </div>
-
-        <!-- ▼ ランキングボタン -->
-        <div class="adp-ranking-btn-wrap">
-          <button class="adp-ranking-open-btn" id="adp-ranking-open-btn-growth" onclick="_adpOpenRankingByTab()">
-            📈 生育ランキングを見る
-          </button>
         </div>
 
       </div>
@@ -2720,11 +2707,24 @@ function closeAreaDetailPanel() {
   if (gCanvas) { gCanvas.width = 0; gCanvas.height = 0; }
 }
 
-// ─── 作物タップ → グラフ即更新＋全ペイン更新（ペイン切替なし・同一ペイン内） ───
-// ─── ランキングタップ → 詳細ポップアップを開く ───
+// ─── 作物タップ → アコーディオン開閉のみ（選択はしない） ───
 function adpCropTap(cropId) {
-  if (!_adpArea) return;
-  _adpOpenCropDetailSheet(cropId);
+  // .cr-item と .adp-cr-item 両方に対応
+  const item = document.querySelector(
+    `.cr-item[onclick*="${cropId}"], .adp-cr-item[onclick*="${cropId}"]`
+  );
+  if (!item) return;
+  const isOpen = item.classList.contains('cr-item-open');
+  // 同一リスト内で他を閉じてから開閉
+  const list = item.closest('.adp-ranking-list, #crop-ranking, #crop-growth-ranking');
+  if (list) {
+    list.querySelectorAll('.cr-item-open, .adp-cr-item-open').forEach(el => {
+      el.classList.remove('cr-item-open', 'adp-cr-item-open');
+    });
+  }
+  if (!isOpen) {
+    item.classList.add(item.classList.contains('adp-cr-item') ? 'adp-cr-item-open' : 'cr-item-open');
+  }
 }
 
 // ─── 作物詳細シート（下から出るポップアップ） ───
@@ -3066,11 +3066,8 @@ function _adpSelectCropFromSheet(cropId) {
 // ═══════════════════════════════════════════
 // ═══════════════════════════════════════════
 //  ANALYSIS WIZARD — 分析ウィザードダイアログ
-//  フロー（3ステップ・リアルタイム更新）:
-//    Step1: 営農条件入力（優先軸/設備/栽培期間/販売先/規模/経験）
-//    Step2: 作物選択（①作りたい作物を探す ／ ②おすすめから選ぶ・複数選択可）
-//    Step3: 見たい分析項目を選択 → 分析実行
-//  各ステップの操作は即座に裏の分析タブへ反映される。
+//  フロー（1ステップ）:
+//    Step1: 営農条件入力（優先軸/設備/栽培期間/販売先/規模/経験）→ 分析実行
 // ═══════════════════════════════════════════
 
 // ─── カテゴリラベル（作物検索用） ───
@@ -3125,7 +3122,7 @@ const FARM_COND_GROUPS = [
   ]},
 ];
 
-// ─── Step3: 分析項目定義（an-itab / an-pane のキーと対応） ───
+// ─── 分析項目定義（an-itab / an-pane のキーと対応） ───
 const AW_ITEM_DEFS = [
   { key: 'ranking',  label: 'ランキング',     icon: '🏆' },
   { key: 'growth',   label: '生育期間',       icon: '📈' },
@@ -3137,20 +3134,14 @@ const AW_ITEM_DEFS = [
   { key: 'compare',  label: '比較',           icon: '⚖️' },
 ];
 
-const AW_STEP_TITLES = ['営農条件入力', '作物選択'];
+const AW_STEP_TITLES = ['営農条件入力'];
 
 // ─── ウィザード状態 ───
-let _awStep           = 0;        // 現在ステップ (0〜2)
+let _awStep           = 0;        // 現在ステップ (0のみ)
 let _awArea           = null;     // 選択中エリアデータ
 let _awFarmCond       = null;     // 営農条件（6項目）
-let _awSearchMode     = 'recommend'; // 'recommend' | 'search'
-let _awSearchCategory = null;     // 検索モードのカテゴリ絞り
-let _awSearchText     = '';       // 検索モードのテキスト
-let _awSelectedCropIds = [];      // 選択中の作物ID（複数=比較）
-let _awAnalysisItems  = new Set(['ranking','growth','profit','fert','risk','calendar','match']); // Step3選択
+let _awAnalysisItems  = new Set(['ranking','growth','profit','fert','risk','calendar','match']); // 分析項目
 let _awAllScores      = [];       // buildAnalysisResult().cropScores のキャッシュ
-
-const AW_MAX_COMPARE = 5; // 比較できる作物の最大数
 
 function _awDefaultFarmCond() {
   return {
@@ -3168,10 +3159,6 @@ function _awInitPanel(area) {
   _awArea            = area;
   _awStep            = 0;
   _awFarmCond        = _awDefaultFarmCond();
-  _awSearchMode      = 'recommend';
-  _awSearchCategory  = null;
-  _awSearchText      = '';
-  _awSelectedCropIds = [];
   _awAnalysisItems   = new Set(['ranking','growth','profit','fert','risk','calendar','match']);
   _awAllScores       = [];
 
@@ -3189,24 +3176,18 @@ function closeAnalysisWizard() {
 function _awRenderStep(step) {
   _awStep = step;
   _awUpdateProgress(step);
-
-  switch (step) {
-    case 0: _awRenderConditions(); break;
-    case 1: _awRenderCropSelect(); break;
-  }
+  _awRenderConditions();
 }
 
 // ─── プログレスバー更新 ───
 function _awUpdateProgress(step) {
-  for (let i = 0; i < 2; i++) {
-    const dot = document.getElementById('awdot-' + i);
-    if (!dot) continue;
+  const dot = document.getElementById('awdot-0');
+  if (dot) {
     dot.classList.remove('active', 'done');
-    if (i < step)   dot.classList.add('done');
-    if (i === step) dot.classList.add('active');
+    dot.classList.add('active');
   }
   const el = document.getElementById('aw-step-title');
-  if (el) el.textContent = AW_STEP_TITLES[step] || '';
+  if (el) el.textContent = AW_STEP_TITLES[0];
 }
 
 // ═══════════════════════════════════════════
@@ -3236,8 +3217,8 @@ function _awRenderConditions() {
   _awUpdateLivePreview();
   _awRenderFooter({
     back: false,
-    next: true, nextLabel: '次へ →',
-    onNext: () => _awRenderStep(1),
+    next: true, nextLabel: '分析実行', nextClass: 'aw-btn-run',
+    onNext: _awExecute,
   });
 }
 
@@ -3249,188 +3230,7 @@ function _awSetCondition(key, value) {
 }
 
 // ═══════════════════════════════════════════
-//  Step 2: 作物選択（複数選択可）
-// ═══════════════════════════════════════════
-function _awRenderCropSelect() {
-  const body = document.getElementById('aw-body');
-
-  const chips = _awSelectedCropIds.map(id => {
-    const s    = _awAllScores.find(s => s.crop.id === id);
-    const name = s ? s.crop.name : id;
-    return `
-      <span class="aw-crop-chip">
-        ${escHtml(name)}
-        <button class="aw-chip-remove" onclick="_awRemoveCropSelect('${id}')">✕</button>
-      </span>
-    `;
-  }).join('');
-
-  body.innerHTML = `
-    <div class="aw-live-preview" id="aw-live-preview"></div>
-    ${_awSelectedCropIds.length ? `<div class="aw-crop-chips">${chips}</div>` : ''}
-    <div class="aw-mode-toggle">
-      <button class="aw-mode-btn ${_awSearchMode === 'recommend' ? 'active' : ''}"
-        onclick="_awSetSearchMode('recommend')">⭐ おすすめから選ぶ</button>
-      <button class="aw-mode-btn ${_awSearchMode === 'search' ? 'active' : ''}"
-        onclick="_awSetSearchMode('search')">🔍 作物を探す</button>
-    </div>
-    ${_awSearchMode === 'search' ? `
-      <div class="aw-search-row">
-        <select class="aw-search-category" onchange="_awSetSearchCategory(this.value)">
-          <option value="">全カテゴリ</option>
-          ${Object.entries(CATEGORY_LABELS).map(([key, v]) => `
-            <option value="${key}" ${_awSearchCategory === key ? 'selected' : ''}>${v.icon} ${v.label}</option>
-          `).join('')}
-        </select>
-        <input type="text" class="aw-search-text" placeholder="作物名で検索"
-          value="${escHtml(_awSearchText)}" oninput="_awSetSearchText(this.value)">
-      </div>
-    ` : ''}
-    <div class="aw-crop-list">${_awBuildCropListHtml()}</div>
-  `;
-  _awUpdateLivePreview();
-  _awRenderFooter({
-    back: true,  onBack: () => _awRenderStep(0),
-    next: true,  nextLabel: '分析実行', nextClass: 'aw-btn-run', onNext: _awExecute,
-  });
-}
-
-// 作物リストHTML（おすすめ Top10 ／ 検索結果）
-function _awBuildCropListHtml() {
-  let scores = _awAllScores;
-
-  if (_awSearchMode === 'recommend') {
-    scores = scores.slice(0, 10);
-    if (!scores.length) return '<div class="empty-mini">エリアデータを読み込み中…</div>';
-    return scores.map((s, i) => _awCropItemHtml(s, i + 1)).join('');
-  }
-
-  if (_awSearchCategory) scores = scores.filter(s => s.crop.category === _awSearchCategory);
-  if (_awSearchText.trim()) {
-    const q = _awSearchText.trim();
-    scores = scores.filter(s => s.crop.name.includes(q));
-  }
-  if (!scores.length) return '<div class="empty-mini">該当する作物がありません</div>';
-  return scores.slice(0, 30).map(s => _awCropItemHtml(s, null)).join('');
-}
-
-function _awCropItemHtml(s, rank) {
-  const selected = _awSelectedCropIds.includes(s.crop.id);
-  const scoreCls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
-  return `
-    <button class="aw-crop-item ${selected ? 'selected' : ''}" onclick="_awSelectCrop('${s.crop.id}')">
-      ${rank != null ? `<span class="aw-crop-rank">#${rank}</span>` : ''}
-      <span class="aw-crop-name">${escHtml(s.crop.name)}</span>
-      <span class="aw-crop-score ${s.viable ? scoreCls : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>
-      ${selected ? '<span class="aw-crop-check">✓</span>' : ''}
-    </button>
-  `;
-}
-
-function _awSetSearchMode(mode) {
-  if (_awSearchMode === mode) return;
-  _awSearchMode = mode;
-  _awRenderCropSelect();
-}
-
-function _awSetSearchCategory(cat) {
-  _awSearchCategory = cat || null;
-  _awRenderCropSelect();
-}
-
-let _awSearchDebounce = null;
-function _awSetSearchText(text) {
-  _awSearchText = text;
-  // 入力中はリストだけ差し替え（input要素のフォーカスを保持）
-  clearTimeout(_awSearchDebounce);
-  _awSearchDebounce = setTimeout(() => {
-    const listEl = document.querySelector('#aw-body .aw-crop-list');
-    if (listEl) listEl.innerHTML = _awBuildCropListHtml();
-  }, 150);
-}
-
-// 作物の選択/解除（最大 AW_MAX_COMPARE 件）
-// リストアイテム用：既選択なら何もしない、未選択なら追加
-function _awSelectCrop(id) {
-  if (_awSelectedCropIds.includes(id)) return;
-  if (_awSelectedCropIds.length >= AW_MAX_COMPARE) {
-    if (typeof showToast === 'function') {
-      showToast(`比較できる作物は最大${AW_MAX_COMPARE}件までです`);
-    }
-    return;
-  }
-  _awSelectedCropIds.push(id);
-  _awRunAnalysis();
-  _awRenderCropSelect();
-}
-
-// チップ✕ボタン用：常に削除
-function _awRemoveCropSelect(id) {
-  const idx = _awSelectedCropIds.indexOf(id);
-  if (idx < 0) return;
-  _awSelectedCropIds.splice(idx, 1);
-  _awRunAnalysis();
-  _awRenderCropSelect();
-}
-
-// 後方互換（外部から呼ばれている場合のフォールバック）
-function _awToggleCropSelect(id) {
-  _awSelectCrop(id);
-}
-
-// ═══════════════════════════════════════════
-//  Step 3: 分析項目選択 → 実行
-// ═══════════════════════════════════════════
-function _awRenderItems() {
-  const body  = document.getElementById('aw-body');
-  const items = AW_ITEM_DEFS.filter(i => i.key !== 'compare' || _awSelectedCropIds.length >= 2);
-
-  body.innerHTML = `
-    <div class="aw-live-preview" id="aw-live-preview"></div>
-    <div class="aw-items-header">
-      <div class="aw-items-hint">タップした項目は分析タブにすぐ反映されます</div>
-    </div>
-    <div class="aw-check-list">
-      ${items.map(item => `
-        <label class="aw-check-item ${_awAnalysisItems.has(item.key) ? 'checked' : ''}" data-key="${item.key}">
-          <input type="checkbox" class="aw-hidden-check" data-key="${item.key}"
-            ${_awAnalysisItems.has(item.key) ? 'checked' : ''}
-            onchange="_awToggleAnalysisItem('${item.key}', this.checked)">
-          <span class="aw-check-icon">${item.icon}</span>
-          <span class="aw-check-label">${item.label}</span>
-          <span class="aw-check-mark">${_awAnalysisItems.has(item.key) ? '✓' : ''}</span>
-        </label>
-      `).join('')}
-    </div>
-  `;
-  _awUpdateLivePreview();
-  _awRenderFooter({
-    back: true, onBack: () => _awRenderStep(1),
-    next: true, nextLabel: '分析実行',
-    nextClass: 'aw-btn-run',
-    onNext: _awExecute,
-  });
-}
-
-function _awToggleAnalysisItem(key, checked) {
-  if (checked) _awAnalysisItems.add(key);
-  else         _awAnalysisItems.delete(key);
-
-  document.querySelectorAll('#aw-body .aw-check-item').forEach(lbl => {
-    const k = lbl.dataset.key;
-    if (!k) return;
-    lbl.classList.toggle('checked', _awAnalysisItems.has(k));
-    const mark = lbl.querySelector('.aw-check-mark');
-    if (mark) mark.textContent = _awAnalysisItems.has(k) ? '✓' : '';
-  });
-
-  // チェックした項目をadp-viewのサブタブで即時表示（リアルタイム切替）
-  if (checked) {
-    _adpSwitchSubTab(key);
-  }
-}
-
-// ─── フッター（戻る／次へ）描画 ───
+//  リアルタイム分析エンジン連携
 function _awRenderFooter({ back, onBack, next, nextLabel, nextClass = '', onNext }) {
   const footer = document.getElementById('aw-footer');
   footer.innerHTML = `
@@ -3470,7 +3270,7 @@ function _awBuildAreaData() {
   let ad;
   if (typeof normalizeAreaData === 'function') {
     ad = normalizeAreaData(area, {
-      selectedCropId:    _awSelectedCropIds[0] || null,
+      selectedCropId:    _adpSelectedCropId || null,
       cultivationMode,
       analysisItems:     Array.from(_awAnalysisItems),
       farmingConditions: { ..._awFarmCond },
@@ -3489,7 +3289,7 @@ function _awBuildAreaData() {
       slope:           _pick(lp.slope,     meta.slope,    area.slope)    ?? 0,
       areaSqm:         _pick(meta.areaSqm, area.areaSqm)                 || 0,
       areaHa:          _pick(meta.areaHa,  area.areaHa)                  || 0,
-      selectedCropId:  _awSelectedCropIds[0] || null,
+      selectedCropId:  _adpSelectedCropId || null,
       cultivationMode,
       analysisItems:   Array.from(_awAnalysisItems),
       landProfile:     Object.keys(lp).length ? lp : null,
@@ -3518,43 +3318,26 @@ function _awRunAnalysis() {
   const ad   = _awBuildAreaData();
   const name = _awArea.name || 'エリア';
 
-  // 比較タブの表示切替（2件以上選択時のみ表示）
+  // 比較タブは常に非表示（比較機能廃止）
   const compareTab = document.querySelector('.adp-subtab-compare');
-  if (compareTab) compareTab.style.display = (_awSelectedCropIds.length >= 2) ? '' : 'none';
+  if (compareTab) compareTab.style.display = 'none';
 
   // 全作物スコア（営農条件込み）を再計算 → おすすめリスト・ライブプレビューの元データ
   if (typeof buildAnalysisResult === 'function') {
     _awAllScores = buildAnalysisResult(ad).cropScores;
   }
 
-  if (_awSelectedCropIds.length === 0) {
-    // 0件選択：全体ランキング表示
-    runAnalysis(name);
-    if (typeof renderCompareTable === 'function') renderCompareTable([]);
-  } else if (_awSelectedCropIds.length === 1) {
-    // 1件選択：単一作物詳細
-    ad.selectedCropId = _awSelectedCropIds[0];
+  if (_adpSelectedCropId) {
+    // 作物選択中：単一作物詳細
+    ad.selectedCropId = _adpSelectedCropId;
     runSingleCropAnalysis(name);
-    if (typeof renderCompareTable === 'function') renderCompareTable([]);
   } else {
-    // 2件以上：先頭作物を詳細表示 + 比較テーブル
-    ad.selectedCropId = _awSelectedCropIds[0];
-    runSingleCropAnalysis(name);
-
-    if (typeof buildSingleCropAnalysis === 'function' && typeof renderCompareTable === 'function') {
-      const results = _awSelectedCropIds
-        .map(id => buildSingleCropAnalysis(id, ad)?.scoreResult)
-        .filter(Boolean);
-      renderCompareTable(results);
-    }
+    // 未選択：全体ランキング表示
+    runAnalysis(name);
   }
 
-  // ── 📈生育期間タブ（気温/生育チャート・生育ランキングリスト）を選択作物に同期 ──
-  // runSingleCropAnalysis()は#crop-rankingを単一作物カードに置き換える際に
-  // _crScoresを[]へリセットするため、生育タブ用に_awAllScores（現在の営農条件
-  // ベースの全作物スコア）で復元してからチャート・リストを再描画する。
-  _adpSelectedCropId = _awSelectedCropIds[0] || null;
-  if (_awSelectedCropIds.length > 0) {
+  // ── 📈生育期間タブを選択作物に同期 ──
+  if (_adpSelectedCropId) {
     _crScores = _awAllScores;
   }
   if (typeof _adpRenderTempChart        === 'function') _adpRenderTempChart(_adpSelectedCropId);
@@ -3574,19 +3357,15 @@ function _awUpdateLivePreview() {
 
   let cropName = '—';
   let scoreHtml = '<span class="aw-live-score score-mid">—</span>';
-  let extra = '';
   let scoreVal = null;
 
-  if (_awSelectedCropIds.length >= 1) {
-    const s = _awAllScores.find(x => x.crop.id === _awSelectedCropIds[0]);
+  if (_adpSelectedCropId) {
+    const s = _awAllScores.find(x => x.crop.id === _adpSelectedCropId);
     if (s) {
       cropName  = s.crop.name;
       const cls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
       scoreHtml = `<span class="aw-live-score ${s.viable ? cls : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>`;
       if (s.viable) scoreVal = s.score;
-    }
-    if (_awSelectedCropIds.length > 1) {
-      extra = `<span class="aw-live-extra">他${_awSelectedCropIds.length - 1}件と比較中</span>`;
     }
   } else if (_awAllScores.length) {
     const top = _awAllScores[0];
@@ -3602,7 +3381,6 @@ function _awUpdateLivePreview() {
       <span class="aw-live-crop">${escHtml(cropName)}</span>
       ${scoreHtml}
       <span class="aw-live-mode">${escHtml(modeLabel)}</span>
-      ${extra}
     `;
   }
 

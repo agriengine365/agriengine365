@@ -5607,3 +5607,69 @@ html.draw-dialog-active .bottom-nav {
   padding: 20px 0;
   text-align: center;
 }
+
+/* ═══════════════════════════════════════════
+   ヘッダー ランキングボタン（条件設定ボタン横）
+   ─ area.js ①で追加 ─
+   ═══════════════════════════════════════════ */
+.adp-ranking-header-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  background: var(--surface-raised, #0f2614);
+  border: 1px solid var(--accent, #4ade80);
+  border-radius: 20px;
+  color: var(--accent, #4ade80);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  white-space: nowrap;
+}
+.adp-ranking-header-btn:active {
+  background: var(--accent-dim, #166534);
+  opacity: 0.85;
+}
+
+/* ═══════════════════════════════════════════
+   ランキングリスト アコーディオン開閉
+   ─ area.js ⑤で使用 ─
+   ═══════════════════════════════════════════ */
+
+/* 閉じた状態：season-block-wrapとscore-compareは非表示 */
+.cr-item .season-block-wrap,
+.cr-item .adp-score-compare,
+.cr-item .cr-alert,
+.adp-cr-item .season-block-wrap {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.22s ease, opacity 0.18s ease;
+}
+
+/* 開いた状態 */
+.cr-item-open .season-block-wrap,
+.cr-item-open .adp-score-compare,
+.cr-item-open .cr-alert,
+.adp-cr-item-open .season-block-wrap {
+  max-height: 300px;
+  opacity: 1;
+}
+
+/* シェブロン回転（開閉インジケーター） */
+.cr-item .cr-chevron,
+.adp-cr-item .cr-chevron {
+  transition: transform 0.2s ease;
+}
+.cr-item-open .cr-chevron,
+.adp-cr-item-open .cr-chevron {
+  transform: rotate(180deg);
+}
+
+/* タップ時ハイライト */
+.cr-item:active,
+.adp-cr-item:active {
+  background: var(--surface-raised, #0f2614);
+}
