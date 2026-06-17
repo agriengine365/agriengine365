@@ -531,9 +531,6 @@ function _adpEnsureView() {
         <span>条件設定</span>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
       </button>
-      <button class="adp-ranking-header-btn" id="adp-ranking-header-btn" onclick="_adpOpenRankingByTab()">
-        <span id="adp-ranking-header-label">🏆 ランキング</span>
-      </button>
     </div>
 
     <!-- サマリーバー（常時表示） -->
@@ -592,13 +589,13 @@ function _adpEnsureView() {
     <!-- 作物バー（選択中作物を常時表示） -->
     <div class="adp-crop-bar" id="adp-crop-bar" data-selected="false">
       <div class="adp-crop-bar-unselected" id="adp-crop-bar-unselected">
-        <button class="adp-crop-bar-select-btn" onclick="_adpOpenRankingDialog('ranking')">🌱 作物を選んでください</button>
+        <button class="adp-crop-bar-select-btn" onclick="adpOpenCropSelectFromSummary()">🌱 作物を選んでください</button>
       </div>
       <div class="adp-crop-bar-selected" id="adp-crop-bar-selected" style="display:none;">
         <span class="adp-crop-bar-emoji" id="adp-crop-bar-emoji">🌱</span>
         <span class="adp-crop-bar-name"  id="adp-crop-bar-name">—</span>
         <span class="adp-crop-bar-score" id="adp-crop-bar-score">—</span>
-        <button class="adp-crop-bar-change-btn" onclick="_adpOpenRankingDialog('ranking')">変更</button>
+        <button class="adp-crop-bar-change-btn" onclick="adpOpenCropSelectFromSummary()">変更</button>
       </div>
     </div>
 
@@ -853,7 +850,7 @@ function _adpSwitchSubTab(name) {
     _adpRenderNoCropPlaceholder(name);
     if (_adpNoCropDialogTimer) clearTimeout(_adpNoCropDialogTimer);
     _adpNoCropDialogTimer = setTimeout(() => {
-      _adpOpenRankingDialog('ranking');
+      adpOpenCropSelectFromSummary();
       _adpNoCropDialogTimer = null;
     }, 120);
   }
@@ -1003,7 +1000,7 @@ function _adpRenderNoCropPlaceholder(tabName) {
     div.innerHTML = `<div class="adp-no-crop-ph-inner">
       <span class="adp-no-crop-ph-icon">🌱</span>
       <p>「${label}」を表示するには作物を選んでください</p>
-      <button class="adp-no-crop-ph-btn" onclick="_adpOpenRankingDialog('ranking')">作物を選ぶ</button>
+      <button class="adp-no-crop-ph-btn" onclick="adpOpenCropSelectFromSummary()">作物を選ぶ</button>
     </div>`;
     pane.prepend(div);
   }
