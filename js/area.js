@@ -435,7 +435,7 @@ async function openAreaDetailPanel(area) {
 
   // 作物選択状態をリセット（エリア再オープン時に前回選択が残らないよう）
   _adpSelectedCropId = null;
-  _adpUpdateCropBar(null);
+  
 
   _adpEnsureView();
 
@@ -588,19 +588,6 @@ function _adpEnsureView() {
       <div class="aw-step-title" id="aw-step-title">営農条件入力</div>
       <div class="aw-body" id="aw-body"></div>
       <div class="aw-footer" id="aw-footer"></div>
-    </div>
-
-    <!-- 作物バー（選択中作物を常時表示） -->
-    <div class="adp-crop-bar" id="adp-crop-bar" data-selected="false">
-      <div class="adp-crop-bar-unselected" id="adp-crop-bar-unselected">
-        <button class="adp-crop-bar-select-btn" onclick="adpOpenCropSelectFromSummary()">🌱 作物を選んでください</button>
-      </div>
-      <div class="adp-crop-bar-selected" id="adp-crop-bar-selected" style="display:none;">
-        <span class="adp-crop-bar-emoji" id="adp-crop-bar-emoji">🌱</span>
-        <span class="adp-crop-bar-name"  id="adp-crop-bar-name">—</span>
-        <span class="adp-crop-bar-score" id="adp-crop-bar-score">—</span>
-        <button class="adp-crop-bar-change-btn" onclick="adpOpenCropSelectFromSummary()">変更</button>
-      </div>
     </div>
 
     <!-- サブタブバー（8タブ＋比較は条件付き） -->
@@ -842,22 +829,9 @@ function _adpSetClimateMode(isClimate) {
 // ─── サブタブ切替（8タブ構成） ───
 const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'profit', 'fert', 'risk', 'calendar', 'match', 'compare'];
 let _adpCurrentSubTab = 'ranking'; // 現在のサブタブ
-let _adpNoCropDialogTimer = null;  // 作物未選択ガードのダイアログ起動タイマー（多重起動防止）
 
 function _adpSwitchSubTab(name) {
   _adpCurrentSubTab = name;
-
-  // ── 作物選択ガード（profit/fert/risk/calendarは作物必須） ──
-  const _needsCrop = ['profit', 'fert', 'risk', 'calendar'];
-  if (_needsCrop.includes(name) && !_adpSelectedCropId) {
-    // タブ自体は切り替えてから即ダイアログ起動（タイマーは1つだけ保持し連打時の多重起動を防ぐ）
-    _adpRenderNoCropPlaceholder(name);
-    if (_adpNoCropDialogTimer) clearTimeout(_adpNoCropDialogTimer);
-    _adpNoCropDialogTimer = setTimeout(() => {
-      adpOpenCropSelectFromSummary();
-      _adpNoCropDialogTimer = null;
-    }, 120);
-  }
 
   // タブボタン
   document.querySelectorAll('.adp-subtab').forEach(btn => {
@@ -958,55 +932,6 @@ function _adpUpdateSummaryBar({ cropName, areaName, score, mode, confPct, confLa
   const scoreEl = document.getElementById('adp-summary-score');
   if (scoreEl && score != null) {
     scoreEl.style.color = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--amber)' : 'var(--red)';
-  }
-}
-
-// ─── 作物バー更新 ───
-function _adpUpdateCropBar(cropName, score, emoji) {
-  const bar        = document.getElementById('adp-crop-bar');
-  const unsel      = document.getElementById('adp-crop-bar-unselected');
-  const sel        = document.getElementById('adp-crop-bar-selected');
-  const nameEl     = document.getElementById('adp-crop-bar-name');
-  const scoreEl    = document.getElementById('adp-crop-bar-score');
-  const emojiEl    = document.getElementById('adp-crop-bar-emoji');
-  if (!bar) return;
-
-  if (cropName) {
-    bar.dataset.selected = 'true';
-    unsel.style.display  = 'none';
-    sel.style.display    = 'flex';
-    if (nameEl)  nameEl.textContent  = cropName;
-    if (emojiEl) emojiEl.textContent = emoji || '🌱';
-    if (scoreEl) {
-      scoreEl.textContent = score != null ? score + '%' : '—';
-      scoreEl.style.color = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--amber)' : 'var(--red)';
-    }
-  } else {
-    bar.dataset.selected = 'false';
-    unsel.style.display  = '';
-    sel.style.display    = 'none';
-  }
-}
-
-// ─── 作物未選択プレースホルダー ───
-function _adpRenderNoCropPlaceholder(tabName) {
-  const labels = { profit:'収益', fert:'施肥', risk:'リスク', calendar:'カレンダー' };
-  const paneId = 'adp-pane-' + tabName;
-  const pane = document.getElementById(paneId);
-  if (!pane) return;
-  // 既存プレースホルダーを上書きしない（作物選択済みならスキップ）
-  if (_adpSelectedCropId) return;
-  const label = labels[tabName] || tabName;
-  const ph = pane.querySelector('.adp-no-crop-ph');
-  if (!ph) {
-    const div = document.createElement('div');
-    div.className = 'adp-no-crop-ph';
-    div.innerHTML = `<div class="adp-no-crop-ph-inner">
-      <span class="adp-no-crop-ph-icon">🌱</span>
-      <p>「${label}」を表示するには作物を選んでください</p>
-      <button class="adp-no-crop-ph-btn" onclick="adpOpenCropSelectFromSummary()">作物を選ぶ</button>
-    </div>`;
-    pane.prepend(div);
   }
 }
 
@@ -2907,7 +2832,7 @@ function closeAreaDetailPanel() {
 
   // 作物選択状態・canvasをリセット
   _adpSelectedCropId = null;
-  _adpUpdateCropBar(null);
+  
   const canvas = document.getElementById('adp-temp-canvas');
   if (canvas) { canvas.width = 0; canvas.height = 0; }
   const gCanvas = document.getElementById('adp-growth-canvas');
@@ -2937,7 +2862,6 @@ function adpCropTap(el, cropId) {
       // プレースホルダー除去
       ['profit', 'fert', 'risk', 'calendar'].forEach(tab => {
         const pane = document.getElementById('adp-pane-' + tab);
-        const ph = pane && pane.querySelector('.adp-no-crop-ph');
         if (ph) ph.remove();
       });
       // グラフ・各タブ更新
@@ -2986,7 +2910,7 @@ function adpCropTap(el, cropId) {
         score:    _scoreVal,
         mode:     modeLabels[ad?.cultivationMode] || '露地栽培',
       });
-      _adpUpdateCropBar(crop?.name ?? null, _scoreVal, crop?.emoji ?? null);
+      
     }
   }
 }
@@ -3151,7 +3075,6 @@ function _adpSelectCropForAnalysis(cropId) {
   // 作物選択済みになったので未選択プレースホルダーを除去
   ['profit', 'fert', 'risk', 'calendar'].forEach(tab => {
     const pane = document.getElementById('adp-pane-' + tab);
-    const ph = pane && pane.querySelector('.adp-no-crop-ph');
     if (ph) ph.remove();
   });
 
@@ -3221,7 +3144,7 @@ function _adpSelectCropForAnalysis(cropId) {
     score:    _scoreVal,
     mode:     modeLabels[ad.cultivationMode] || '露地栽培',
   });
-  _adpUpdateCropBar(crop?.name ?? null, _scoreVal, crop?.emoji ?? null);
+  
 
   // ランキングリストの選択ハイライトを更新（ダイアログが開いている場合のみ）
   _adpRenderRankingList();
