@@ -5673,3 +5673,77 @@ html.draw-dialog-active .bottom-nav {
 .adp-cr-item:active {
   background: var(--surface-raised, #0f2614);
 }
+
+/* ═══════════════════════════════════════════
+   高温リスク行 (.cr-heat-row)
+   気候推定モードランキングカード内に表示
+   ═══════════════════════════════════════════ */
+
+.cr-heat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 3px 12px 4px;
+  margin-bottom: 2px;
+  border-radius: 4px;
+}
+
+.heat-label {
+  color: var(--text-muted, #6b7280);
+  font-size: 10px;
+  min-width: 52px;
+}
+
+.heat-stars {
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.heat-count {
+  color: var(--text-muted, #6b7280);
+  font-size: 10px;
+  margin-left: auto;
+}
+
+/* none: 表示はするが目立たせない */
+.heat-none {
+  background: transparent;
+}
+.heat-none .heat-stars {
+  color: var(--text-muted, #6b7280);
+}
+
+/* low: 黄色系 */
+.heat-low {
+  background: rgba(251, 191, 36, 0.10);
+}
+.heat-low .heat-stars {
+  color: var(--amber, #fbbf24);
+}
+.heat-low .heat-count {
+  color: #b45309;
+}
+
+/* mid: オレンジ系 */
+.heat-mid {
+  background: rgba(249, 115, 22, 0.12);
+}
+.heat-mid .heat-stars {
+  color: #f97316;
+}
+.heat-mid .heat-count {
+  color: #c2410c;
+}
+
+/* high: 赤系 */
+.heat-high {
+  background: rgba(248, 113, 113, 0.12);
+}
+.heat-high .heat-stars {
+  color: var(--red, #f87171);
+}
+.heat-high .heat-count {
+  color: #dc2626;
+}

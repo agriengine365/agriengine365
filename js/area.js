@@ -1472,6 +1472,25 @@ function _adpRenderClimateRankingList(el, pane) {
     const est = _buildEstimatedSeasonLabel(r);
     const seasonHtml = _buildSeasonBlockHtml(r.crop, est);
 
+    // ── 高温リスク行 ──
+    const hr = r.heatRisk;
+    const heatHtml = hr
+      ? (() => {
+          const lvCls = hr.riskLevel === 'none' ? 'heat-none'
+                      : hr.riskLevel === 'low'  ? 'heat-low'
+                      : hr.riskLevel === 'mid'  ? 'heat-mid'
+                      : 'heat-high';
+          const countTxt = hr.hotDecadeCount > 0
+            ? `<span class="heat-count">${hr.hotDecadeCount}旬 (${hr.threshold}℃超)</span>`
+            : '';
+          return `<div class="cr-heat-row ${lvCls}">
+            <span class="heat-label">高温リスク</span>
+            <span class="heat-stars">${hr.riskStars}</span>
+            ${countTxt}
+          </div>`;
+        })()
+      : '';
+
     const idAttr = pane === 'growth' ? `adp-cr-item` : `cr-item`;
     return `
       <div class="${idAttr}${isSelected ? ' selected' : ''}" onclick="adpCropTap('${r.crop.id}')">
@@ -1486,6 +1505,7 @@ function _adpRenderClimateRankingList(el, pane) {
         <div class="cr-bar-track">
           <div class="cr-bar-fill ${scoreCls}" style="width:${r.score}%"></div>
         </div>
+        ${heatHtml}
         <div class="season-block-wrap">${seasonHtml}</div>
       </div>`;
   }).join('');

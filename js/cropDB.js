@@ -8,6 +8,7 @@
 const CROP_DB = [
   {
     "id": "rice",
+    "heatType": "warm",
     "name": "コメ（水稲）",
     "category": "grain",
     "variety": "一般品種",
@@ -115,6 +116,7 @@ const CROP_DB = [
   },
   {
     "id": "soybean",
+    "heatType": "warm",
     "name": "大豆",
     "category": "legume",
     "variety": "一般品種",
@@ -219,6 +221,7 @@ const CROP_DB = [
   },
   {
     "id": "black_soybean",
+    "heatType": "warm",
     "name": "黒大豆",
     "category": "legume",
     "variety": "丹波黒等",
@@ -317,6 +320,7 @@ const CROP_DB = [
   },
   {
     "id": "adzuki",
+    "heatType": "warm",
     "name": "小豆",
     "category": "legume",
     "variety": "一般品種",
@@ -416,6 +420,7 @@ const CROP_DB = [
   },
   {
     "id": "wheat",
+    "heatType": "cool",
     "name": "小麦",
     "category": "grain",
     "variety": "一般品種",
@@ -520,6 +525,7 @@ const CROP_DB = [
   },
   {
     "id": "barley",
+    "heatType": "cool",
     "name": "大麦",
     "category": "grain",
     "variety": "六条・二条",
@@ -618,6 +624,7 @@ const CROP_DB = [
   },
   {
     "id": "rye",
+    "heatType": "cool",
     "name": "ライ麦",
     "category": "grain",
     "variety": "一般品種",
@@ -715,6 +722,7 @@ const CROP_DB = [
   },
   {
     "id": "oat",
+    "heatType": "cool",
     "name": "オーツ麦",
     "category": "grain",
     "variety": "一般品種",
@@ -813,6 +821,7 @@ const CROP_DB = [
   },
   {
     "id": "buckwheat",
+    "heatType": "cool",
     "name": "ソバ",
     "category": "grain",
     "variety": "一般品種",
@@ -915,6 +924,7 @@ const CROP_DB = [
   },
   {
     "id": "foxtail_millet",
+    "heatType": "warm",
     "name": "アワ",
     "category": "grain",
     "variety": "一般品種",
@@ -1015,6 +1025,7 @@ const CROP_DB = [
   },
   {
     "id": "proso_millet",
+    "heatType": "warm",
     "name": "キビ",
     "category": "grain",
     "variety": "一般品種",
@@ -1115,6 +1126,7 @@ const CROP_DB = [
   },
   {
     "id": "barnyard_millet",
+    "heatType": "warm",
     "name": "ヒエ",
     "category": "grain",
     "variety": "一般品種",
@@ -1210,6 +1222,7 @@ const CROP_DB = [
   },
   {
     "id": "corn_grain",
+    "heatType": "warm",
     "name": "トウモロコシ（デント）",
     "category": "grain",
     "variety": "デント・飼料用",
@@ -1309,6 +1322,7 @@ const CROP_DB = [
   },
   {
     "id": "sugarcane",
+    "heatType": "warm",
     "name": "サトウキビ",
     "category": "grain",
     "variety": "一般品種",
@@ -1412,6 +1426,7 @@ const CROP_DB = [
   },
   {
     "id": "rapeseed",
+    "heatType": "cool",
     "name": "菜種（ナタネ）",
     "category": "leafy",
     "variety": "一般品種",
@@ -1511,6 +1526,7 @@ const CROP_DB = [
   },
   {
     "id": "cabbage",
+    "heatType": "cool",
     "name": "キャベツ",
     "category": "leafy",
     "variety": "一般品種",
@@ -1624,6 +1640,7 @@ const CROP_DB = [
   },
   {
     "id": "daikon",
+    "heatType": "cool",
     "name": "大根",
     "category": "vegetable",
     "variety": "一般品種",
@@ -1711,6 +1728,7 @@ const CROP_DB = [
   },
   {
     "id": "carrot",
+    "heatType": "cool",
     "name": "ニンジン",
     "category": "root",
     "variety": "一般品種",
@@ -1815,6 +1833,7 @@ const CROP_DB = [
   },
   {
     "id": "onion",
+    "heatType": "cool",
     "name": "タマネギ",
     "category": "vegetable",
     "variety": "一般品種",
@@ -1899,6 +1918,7 @@ const CROP_DB = [
   },
   {
     "id": "potato",
+    "heatType": "cool",
     "name": "ジャガイモ",
     "category": "root",
     "variety": "男爵・メークイン等",
@@ -1999,6 +2019,7 @@ const CROP_DB = [
   },
   {
     "id": "sweetpotato",
+    "heatType": "warm",
     "name": "サツマイモ",
     "category": "root",
     "variety": "一般品種",
@@ -2100,6 +2121,7 @@ const CROP_DB = [
   },
   {
     "id": "tomato",
+    "heatType": "warm",
     "name": "トマト",
     "category": "fruit_veg",
     "variety": "一般品種",
@@ -2210,6 +2232,7 @@ const CROP_DB = [
   },
   {
     "id": "cucumber",
+    "heatType": "warm",
     "name": "キュウリ",
     "category": "fruit_veg",
     "variety": "一般品種",
@@ -2316,6 +2339,7 @@ const CROP_DB = [
   },
   {
     "id": "eggplant",
+    "heatType": "warm",
     "name": "ナス",
     "category": "fruit_veg",
     "variety": "一般品種",
@@ -2422,6 +2446,7 @@ const CROP_DB = [
   },
   {
     "id": "pepper",
+    "heatType": "warm",
     "name": "ピーマン",
     "category": "fruit_veg",
     "variety": "一般品種",
@@ -2527,6 +2552,7 @@ const CROP_DB = [
   },
   {
     "id": "spinach",
+    "heatType": "cool",
     "name": "ホウレンソウ",
     "category": "leafy",
     "variety": "一般品種",
@@ -2630,6 +2656,7 @@ const CROP_DB = [
   },
   {
     "id": "lettuce",
+    "heatType": "cool",
     "name": "レタス",
     "category": "leafy",
     "variety": "一般品種",
@@ -2737,6 +2764,7 @@ const CROP_DB = [
   },
   {
     "id": "welsh_onion",
+    "heatType": "cool",
     "name": "ネギ",
     "category": "leafy",
     "variety": "一般品種（長ネギ）",
@@ -2842,6 +2870,7 @@ const CROP_DB = [
   },
   {
     "id": "broccoli",
+    "heatType": "cool",
     "name": "ブロッコリー",
     "category": "vegetable",
     "variety": "一般品種",
@@ -2929,6 +2958,7 @@ const CROP_DB = [
   },
   {
     "id": "burdock",
+    "heatType": "cool",
     "name": "ゴボウ",
     "category": "root",
     "variety": "一般品種",
@@ -3028,6 +3058,7 @@ const CROP_DB = [
   },
   {
     "id": "pumpkin",
+    "heatType": "warm",
     "name": "カボチャ",
     "category": "fruit_veg",
     "variety": "一般品種（西洋カボチャ）",
@@ -3124,6 +3155,7 @@ const CROP_DB = [
   },
   {
     "id": "watermelon",
+    "heatType": "warm",
     "name": "スイカ",
     "category": "fruit_veg",
     "variety": "一般品種",
@@ -3227,6 +3259,7 @@ const CROP_DB = [
   },
   {
     "id": "corn_veg",
+    "heatType": "warm",
     "name": "スイートコーン（青果用）",
     "category": "vegetable",
     "variety": "スイートコーン",
@@ -3306,6 +3339,7 @@ const CROP_DB = [
   },
   {
     "id": "garlic",
+    "heatType": "cool",
     "name": "ニンニク",
     "category": "root",
     "variety": "一般品種",
@@ -3399,6 +3433,7 @@ const CROP_DB = [
   },
   {
     "id": "ginger",
+    "heatType": "warm",
     "name": "ショウガ",
     "category": "root",
     "variety": "一般品種",
@@ -3492,6 +3527,7 @@ const CROP_DB = [
   },
   {
     "id": "chinese_cabbage",
+    "heatType": "cool",
     "name": "ハクサイ",
     "category": "leafy",
     "variety": "一般品種",
@@ -3596,6 +3632,7 @@ const CROP_DB = [
   },
   {
     "id": "chili",
+    "heatType": "warm",
     "name": "トウガラシ",
     "category": "fruit_veg",
     "variety": "鷹の爪・伏見甘長等",
@@ -3701,6 +3738,7 @@ const CROP_DB = [
   },
   {
     "id": "edamame",
+    "heatType": "warm",
     "name": "エダマメ",
     "category": "fruit_veg",
     "variety": "一般品種・黒枝豆等",
@@ -3804,6 +3842,7 @@ const CROP_DB = [
   },
   {
     "id": "asparagus",
+    "heatType": "cool",
     "name": "アスパラガス",
     "category": "vegetable",
     "variety": "一般品種",
@@ -3890,6 +3929,7 @@ const CROP_DB = [
   },
   {
     "id": "chinese_chive",
+    "heatType": "cool",
     "name": "ニラ",
     "category": "leafy",
     "variety": "一般品種",
@@ -3995,6 +4035,7 @@ const CROP_DB = [
   },
   {
     "id": "celery",
+    "heatType": "cool",
     "name": "セロリ",
     "category": "leafy",
     "variety": "一般品種",
@@ -4101,6 +4142,7 @@ const CROP_DB = [
   },
   {
     "id": "taro",
+    "heatType": "warm",
     "name": "サトイモ",
     "category": "root",
     "variety": "石川早生・土垂等",
@@ -4200,6 +4242,7 @@ const CROP_DB = [
   },
   {
     "id": "yam",
+    "heatType": "warm",
     "name": "ヤマノイモ（長芋）",
     "category": "root",
     "variety": "長芋・自然薯等",
@@ -4299,6 +4342,7 @@ const CROP_DB = [
   },
   {
     "id": "mitsuba",
+    "heatType": "cool",
     "name": "ミツバ",
     "category": "leafy",
     "variety": "根ミツバ・切りミツバ等",
@@ -4402,6 +4446,7 @@ const CROP_DB = [
   },
   {
     "id": "garland_chrysanthemum",
+    "heatType": "cool",
     "name": "春菊",
     "category": "vegetable",
     "variety": "一般品種",
@@ -4487,6 +4532,7 @@ const CROP_DB = [
   },
   {
     "id": "apple",
+    "heatType": "cool",
     "name": "リンゴ",
     "category": "fruit",
     "variety": "ふじ・つがる等",
@@ -4585,6 +4631,7 @@ const CROP_DB = [
   },
   {
     "id": "mandarin",
+    "heatType": "warm",
     "name": "ミカン（温州ミカン）",
     "category": "fruit",
     "variety": "早生・普通温州",
@@ -4684,6 +4731,7 @@ const CROP_DB = [
   },
   {
     "id": "grape",
+    "heatType": "warm",
     "name": "ブドウ",
     "category": "fruit",
     "variety": "巨峰・シャインマスカット等",
@@ -4782,6 +4830,7 @@ const CROP_DB = [
   },
   {
     "id": "peach",
+    "heatType": "warm",
     "name": "モモ",
     "category": "fruit",
     "variety": "白鳳・白桃等",
@@ -4879,6 +4928,7 @@ const CROP_DB = [
   },
   {
     "id": "pear",
+    "heatType": "cool",
     "name": "ナシ（日本ナシ）",
     "category": "fruit",
     "variety": "幸水・豊水等",
@@ -4976,6 +5026,7 @@ const CROP_DB = [
   },
   {
     "id": "persimmon",
+    "heatType": "warm",
     "name": "カキ",
     "category": "fruit",
     "variety": "富有・次郎・渋柿等",
@@ -5073,6 +5124,7 @@ const CROP_DB = [
   },
   {
     "id": "strawberry",
+    "heatType": "cool",
     "name": "イチゴ",
     "category": "fruit",
     "variety": "女峰・とちおとめ・あまおう等",
@@ -5161,6 +5213,7 @@ const CROP_DB = [
   },
   {
     "id": "blueberry",
+    "heatType": "cool",
     "name": "ブルーベリー",
     "category": "fruit",
     "variety": "ハイブッシュ・ラビットアイ等",
@@ -5260,6 +5313,7 @@ const CROP_DB = [
   },
   {
     "id": "plum",
+    "heatType": "cool",
     "name": "梅",
     "category": "fruit",
     "variety": "南高・白加賀等",
@@ -5341,6 +5395,7 @@ const CROP_DB = [
   },
   {
     "id": "kiwi",
+    "heatType": "warm",
     "name": "キウイフルーツ",
     "category": "fruit",
     "variety": "ヘイワード等",
@@ -5433,6 +5488,7 @@ const CROP_DB = [
   },
   {
     "id": "western_pear",
+    "heatType": "cool",
     "name": "洋ナシ（ラ・フランス等）",
     "category": "fruit",
     "variety": "ラ・フランス・バートレット等",
@@ -5514,6 +5570,7 @@ const CROP_DB = [
   },
   {
     "id": "japanese_plum",
+    "heatType": "cool",
     "name": "スモモ（プラム）",
     "category": "fruit",
     "variety": "大石早生・ソルダム等",
@@ -5612,6 +5669,7 @@ const CROP_DB = [
   },
   {
     "id": "cherry",
+    "heatType": "cool",
     "name": "オウトウ（サクランボ）",
     "category": "fruit",
     "variety": "佐藤錦・紅秀峰等",
@@ -5709,6 +5767,7 @@ const CROP_DB = [
   },
   {
     "id": "loquat",
+    "heatType": "warm",
     "name": "ビワ",
     "category": "fruit",
     "variety": "茂木・長崎早生等",
@@ -5809,6 +5868,7 @@ const CROP_DB = [
   },
   {
     "id": "yuzu",
+    "heatType": "warm",
     "name": "ユズ",
     "category": "fruit",
     "variety": "一般品種",
@@ -5907,6 +5967,7 @@ const CROP_DB = [
   },
   {
     "id": "passion_fruit",
+    "heatType": "warm",
     "name": "パッションフルーツ",
     "category": "fruit",
     "variety": "一般品種",
@@ -5994,6 +6055,7 @@ const CROP_DB = [
   },
   {
     "id": "aralia",
+    "heatType": "cool",
     "name": "タラノメ",
     "category": "wildveg",
     "variety": "タラノキ",
@@ -6086,6 +6148,7 @@ const CROP_DB = [
   },
   {
     "id": "bracken",
+    "heatType": "cool",
     "name": "ワラビ",
     "category": "wildveg",
     "variety": "ワラビ",
@@ -6177,6 +6240,7 @@ const CROP_DB = [
   },
   {
     "id": "butterbur",
+    "heatType": "cool",
     "name": "フキ",
     "category": "wildveg",
     "variety": "フキ",
@@ -6268,6 +6332,7 @@ const CROP_DB = [
   },
   {
     "id": "myoga",
+    "heatType": "warm",
     "name": "ミョウガ",
     "category": "wildveg",
     "variety": "ミョウガ",
@@ -6343,6 +6408,7 @@ const CROP_DB = [
   },
   {
     "id": "wasabi",
+    "heatType": "cool",
     "name": "ワサビ",
     "category": "root",
     "variety": "沢ワサビ・畑ワサビ",
@@ -6443,6 +6509,7 @@ const CROP_DB = [
   },
   {
     "id": "shiitake",
+    "heatType": "cool",
     "name": "シイタケ",
     "category": "forest",
     "variety": "原木・菌床",
@@ -6540,6 +6607,7 @@ const CROP_DB = [
   },
   {
     "id": "enoki",
+    "heatType": "cool",
     "name": "エノキタケ",
     "category": "wildveg",
     "variety": "菌床栽培",
@@ -6624,6 +6692,7 @@ const CROP_DB = [
   },
   {
     "id": "maitake",
+    "heatType": "cool",
     "name": "マイタケ",
     "category": "forest",
     "variety": "原木・菌床",
@@ -6720,6 +6789,7 @@ const CROP_DB = [
   },
   {
     "id": "koshiabura",
+    "heatType": "cool",
     "name": "コシアブラ",
     "category": "wildveg",
     "variety": "コシアブラ",
@@ -6811,6 +6881,7 @@ const CROP_DB = [
   },
   {
     "id": "zenmai",
+    "heatType": "cool",
     "name": "ゼンマイ",
     "category": "wildveg",
     "variety": "ゼンマイ",
@@ -6902,6 +6973,7 @@ const CROP_DB = [
   },
   {
     "id": "nameko",
+    "heatType": "cool",
     "name": "ナメコ",
     "category": "forest",
     "variety": "原木・菌床",
@@ -6998,6 +7070,7 @@ const CROP_DB = [
   },
   {
     "id": "buna_shimeji",
+    "heatType": "cool",
     "name": "ブナシメジ",
     "category": "forest",
     "variety": "菌床栽培",
@@ -7101,6 +7174,7 @@ const CROP_DB = [
   },
   {
     "id": "sunny_lettuce",
+    "heatType": "cool",
     "name": "サニーレタス",
     "category": "leafy",
     "conditions": {
@@ -7159,6 +7233,7 @@ const CROP_DB = [
   },
   {
     "id": "komatsuna",
+    "heatType": "cool",
     "name": "コマツナ",
     "category": "leafy",
     "conditions": {
@@ -7222,6 +7297,7 @@ const CROP_DB = [
   },
   {
     "id": "chingensai",
+    "heatType": "cool",
     "name": "チンゲンサイ",
     "category": "leafy",
     "conditions": {
@@ -7282,6 +7358,7 @@ const CROP_DB = [
   },
   {
     "id": "shungiku",
+    "heatType": "cool",
     "name": "シュンギク",
     "category": "leafy",
     "conditions": {
@@ -7340,6 +7417,7 @@ const CROP_DB = [
   },
   {
     "id": "mizuna",
+    "heatType": "cool",
     "name": "ミズナ",
     "category": "leafy",
     "conditions": {
@@ -7400,6 +7478,7 @@ const CROP_DB = [
   },
   {
     "id": "takana",
+    "heatType": "cool",
     "name": "タカナ",
     "category": "leafy",
     "conditions": {
@@ -7456,6 +7535,7 @@ const CROP_DB = [
   },
   {
     "id": "karashina",
+    "heatType": "cool",
     "name": "カラシナ",
     "category": "leafy",
     "conditions": {
@@ -7513,6 +7593,7 @@ const CROP_DB = [
   },
   {
     "id": "kale",
+    "heatType": "cool",
     "name": "ケール",
     "category": "leafy",
     "conditions": {
@@ -7573,6 +7654,7 @@ const CROP_DB = [
   },
   {
     "id": "moroheiya",
+    "heatType": "warm",
     "name": "モロヘイヤ",
     "category": "leafy",
     "conditions": {
@@ -7626,6 +7708,7 @@ const CROP_DB = [
   },
   {
     "id": "wakegi",
+    "heatType": "cool",
     "name": "ワケギ",
     "category": "leafy",
     "conditions": {
@@ -7682,6 +7765,7 @@ const CROP_DB = [
   },
   {
     "id": "asatsuki",
+    "heatType": "cool",
     "name": "アサツキ",
     "category": "leafy",
     "conditions": {
@@ -7735,6 +7819,7 @@ const CROP_DB = [
   },
   {
     "id": "parsley",
+    "heatType": "cool",
     "name": "パセリ",
     "category": "leafy",
     "conditions": {
@@ -7797,6 +7882,7 @@ const CROP_DB = [
   },
   {
     "id": "mini_tomato",
+    "heatType": "warm",
     "name": "ミニトマト",
     "category": "fruit_veg",
     "conditions": {
@@ -7856,6 +7942,7 @@ const CROP_DB = [
   },
   {
     "id": "paprika",
+    "heatType": "warm",
     "name": "パプリカ",
     "category": "fruit_veg",
     "conditions": {
@@ -7914,6 +8001,7 @@ const CROP_DB = [
   },
   {
     "id": "shishito",
+    "heatType": "warm",
     "name": "シシトウ",
     "category": "fruit_veg",
     "conditions": {
@@ -7972,6 +8060,7 @@ const CROP_DB = [
   },
   {
     "id": "okra",
+    "heatType": "warm",
     "name": "オクラ",
     "category": "fruit_veg",
     "conditions": {
@@ -8023,6 +8112,7 @@ const CROP_DB = [
   },
   {
     "id": "goya",
+    "heatType": "warm",
     "name": "ゴーヤ",
     "category": "fruit_veg",
     "conditions": {
@@ -8078,6 +8168,7 @@ const CROP_DB = [
   },
   {
     "id": "zucchini",
+    "heatType": "warm",
     "name": "ズッキーニ",
     "category": "fruit_veg",
     "conditions": {
@@ -8129,6 +8220,7 @@ const CROP_DB = [
   },
   {
     "id": "melon",
+    "heatType": "warm",
     "name": "メロン",
     "category": "fruit_veg",
     "conditions": {
@@ -8183,6 +8275,7 @@ const CROP_DB = [
   },
   {
     "id": "togan",
+    "heatType": "warm",
     "name": "冬瓜",
     "category": "fruit_veg",
     "conditions": {
@@ -8235,6 +8328,7 @@ const CROP_DB = [
   },
   {
     "id": "ingen",
+    "heatType": "warm",
     "name": "インゲン",
     "category": "fruit_veg",
     "conditions": {
@@ -8289,6 +8383,7 @@ const CROP_DB = [
   },
   {
     "id": "soramame",
+    "heatType": "cool",
     "name": "ソラマメ",
     "category": "fruit_veg",
     "conditions": {
@@ -8345,6 +8440,7 @@ const CROP_DB = [
   },
   {
     "id": "endo",
+    "heatType": "cool",
     "name": "エンドウ",
     "category": "fruit_veg",
     "conditions": {
@@ -8400,6 +8496,7 @@ const CROP_DB = [
   },
   {
     "id": "rakkasei",
+    "heatType": "warm",
     "name": "落花生",
     "category": "fruit_veg",
     "conditions": {
@@ -8452,6 +8549,7 @@ const CROP_DB = [
   },
   {
     "id": "daikon_root",
+    "heatType": "cool",
     "name": "ダイコン",
     "category": "root",
     "conditions": {
@@ -8510,6 +8608,7 @@ const CROP_DB = [
   },
   {
     "id": "kabu",
+    "heatType": "cool",
     "name": "カブ",
     "category": "root",
     "conditions": {
@@ -8567,6 +8666,7 @@ const CROP_DB = [
   },
   {
     "id": "renkon",
+    "heatType": "warm",
     "name": "レンコン",
     "category": "root",
     "conditions": {
@@ -8624,6 +8724,7 @@ const CROP_DB = [
   },
   {
     "id": "beets",
+    "heatType": "cool",
     "name": "ビーツ",
     "category": "root",
     "conditions": {
@@ -8679,6 +8780,7 @@ const CROP_DB = [
   },
   {
     "id": "ukon",
+    "heatType": "warm",
     "name": "ウコン",
     "category": "root",
     "conditions": {
@@ -8732,6 +8834,7 @@ const CROP_DB = [
   },
   {
     "id": "konjac",
+    "heatType": "warm",
     "name": "コンニャク",
     "category": "root",
     "conditions": {
@@ -8786,6 +8889,7 @@ const CROP_DB = [
   },
   {
     "id": "nectarine",
+    "heatType": "warm",
     "name": "ネクタリン",
     "category": "fruit",
     "conditions": {
@@ -8836,6 +8940,7 @@ const CROP_DB = [
   },
   {
     "id": "kuri",
+    "heatType": "cool",
     "name": "クリ",
     "category": "fruit",
     "conditions": {
@@ -8888,6 +8993,7 @@ const CROP_DB = [
   },
   {
     "id": "ume_fruit",
+    "heatType": "cool",
     "name": "ウメ",
     "category": "fruit",
     "conditions": {
@@ -8937,6 +9043,7 @@ const CROP_DB = [
   },
   {
     "id": "sudachi",
+    "heatType": "warm",
     "name": "スダチ",
     "category": "fruit",
     "conditions": {
@@ -8987,6 +9094,7 @@ const CROP_DB = [
   },
   {
     "id": "kabosu",
+    "heatType": "warm",
     "name": "カボス",
     "category": "fruit",
     "conditions": {
@@ -9037,6 +9145,7 @@ const CROP_DB = [
   },
   {
     "id": "lemon",
+    "heatType": "warm",
     "name": "レモン",
     "category": "fruit",
     "conditions": {
@@ -9090,6 +9199,7 @@ const CROP_DB = [
   },
   {
     "id": "ponkan",
+    "heatType": "warm",
     "name": "ポンカン",
     "category": "fruit",
     "conditions": {
@@ -9139,6 +9249,7 @@ const CROP_DB = [
   },
   {
     "id": "dekopon",
+    "heatType": "warm",
     "name": "デコポン",
     "category": "fruit",
     "conditions": {
@@ -9190,6 +9301,7 @@ const CROP_DB = [
   },
   {
     "id": "amanatsu",
+    "heatType": "warm",
     "name": "甘夏",
     "category": "fruit",
     "conditions": {
@@ -9240,6 +9352,7 @@ const CROP_DB = [
   },
   {
     "id": "natsumikan",
+    "heatType": "warm",
     "name": "夏みかん",
     "category": "fruit",
     "conditions": {
@@ -9290,6 +9403,7 @@ const CROP_DB = [
   },
   {
     "id": "raspberry",
+    "heatType": "cool",
     "name": "ラズベリー",
     "category": "fruit",
     "conditions": {
@@ -9342,6 +9456,7 @@ const CROP_DB = [
   },
   {
     "id": "blackberry",
+    "heatType": "cool",
     "name": "ブラックベリー",
     "category": "fruit",
     "conditions": {
@@ -9393,6 +9508,7 @@ const CROP_DB = [
   },
   {
     "id": "ichijiku",
+    "heatType": "warm",
     "name": "イチジク",
     "category": "fruit",
     "conditions": {
@@ -9445,6 +9561,7 @@ const CROP_DB = [
   },
   {
     "id": "zakuro",
+    "heatType": "warm",
     "name": "ザクロ",
     "category": "fruit",
     "conditions": {
@@ -9497,6 +9614,7 @@ const CROP_DB = [
   },
   {
     "id": "akebi",
+    "heatType": "cool",
     "name": "アケビ",
     "category": "fruit",
     "conditions": {
@@ -9549,6 +9667,7 @@ const CROP_DB = [
   },
   {
     "id": "olive",
+    "heatType": "warm",
     "name": "オリーブ",
     "category": "fruit",
     "conditions": {
@@ -9601,6 +9720,7 @@ const CROP_DB = [
   },
   {
     "id": "kurumi",
+    "heatType": "cool",
     "name": "クルミ",
     "category": "forest",
     "conditions": {
@@ -9654,6 +9774,7 @@ const CROP_DB = [
   },
   {
     "id": "hazelnut",
+    "heatType": "cool",
     "name": "ヘーゼルナッツ",
     "category": "fruit",
     "conditions": {
@@ -9706,6 +9827,7 @@ const CROP_DB = [
   },
   {
     "id": "almond",
+    "heatType": "warm",
     "name": "アーモンド",
     "category": "fruit",
     "conditions": {
@@ -9757,6 +9879,7 @@ const CROP_DB = [
   },
   {
     "id": "ginnan",
+    "heatType": "warm",
     "name": "銀杏",
     "category": "forest",
     "conditions": {
@@ -9809,6 +9932,7 @@ const CROP_DB = [
   },
   {
     "id": "papaya",
+    "heatType": "warm",
     "name": "パパイヤ",
     "category": "fruit",
     "conditions": {
@@ -9867,6 +9991,7 @@ const CROP_DB = [
   },
   {
     "id": "mango",
+    "heatType": "warm",
     "name": "マンゴー",
     "category": "fruit",
     "conditions": {
@@ -9918,6 +10043,7 @@ const CROP_DB = [
   },
   {
     "id": "pineapple",
+    "heatType": "warm",
     "name": "パイナップル",
     "category": "fruit",
     "conditions": {
@@ -9980,6 +10106,7 @@ const CROP_DB = [
   },
   {
     "id": "fukinoto",
+    "heatType": "cool",
     "name": "フキノトウ",
     "category": "wildveg",
     "conditions": {
@@ -10019,6 +10146,7 @@ const CROP_DB = [
   },
   {
     "id": "udo",
+    "heatType": "cool",
     "name": "ウド",
     "category": "wildveg",
     "conditions": {
@@ -10061,6 +10189,7 @@ const CROP_DB = [
   },
   {
     "id": "kogomi",
+    "heatType": "cool",
     "name": "コゴミ",
     "category": "wildveg",
     "conditions": {
@@ -10100,6 +10229,7 @@ const CROP_DB = [
   },
   {
     "id": "mizu_sansai",
+    "heatType": "cool",
     "name": "ミズ",
     "category": "wildveg",
     "conditions": {
@@ -10139,6 +10269,7 @@ const CROP_DB = [
   },
   {
     "id": "shidoke",
+    "heatType": "cool",
     "name": "シドケ",
     "category": "wildveg",
     "conditions": {
@@ -10178,6 +10309,7 @@ const CROP_DB = [
   },
   {
     "id": "momijigasa",
+    "heatType": "cool",
     "name": "モミジガサ",
     "category": "wildveg",
     "conditions": {
@@ -10217,6 +10349,7 @@ const CROP_DB = [
   },
   {
     "id": "azami",
+    "heatType": "cool",
     "name": "アザミ",
     "category": "wildveg",
     "conditions": {
@@ -10256,6 +10389,7 @@ const CROP_DB = [
   },
   {
     "id": "yomogi",
+    "heatType": "cool",
     "name": "ヨモギ",
     "category": "wildveg",
     "conditions": {
@@ -10295,6 +10429,7 @@ const CROP_DB = [
   },
   {
     "id": "nobiru",
+    "heatType": "cool",
     "name": "ノビル",
     "category": "wildveg",
     "conditions": {
@@ -10334,6 +10469,7 @@ const CROP_DB = [
   },
   {
     "id": "gyoja_ninniku",
+    "heatType": "cool",
     "name": "ギョウジャニンニク",
     "category": "wildveg",
     "conditions": {
@@ -10376,6 +10512,7 @@ const CROP_DB = [
   },
   {
     "id": "hangonso",
+    "heatType": "cool",
     "name": "ハンゴンソウ",
     "category": "wildveg",
     "conditions": {
@@ -10415,6 +10552,7 @@ const CROP_DB = [
   },
   {
     "id": "itadori",
+    "heatType": "cool",
     "name": "イタドリ",
     "category": "wildveg",
     "conditions": {
@@ -10454,6 +10592,7 @@ const CROP_DB = [
   },
   {
     "id": "tsukushi",
+    "heatType": "cool",
     "name": "ツクシ",
     "category": "wildveg",
     "conditions": {
@@ -10493,6 +10632,7 @@ const CROP_DB = [
   },
   {
     "id": "seri",
+    "heatType": "cool",
     "name": "セリ",
     "category": "wildveg",
     "conditions": {
@@ -10532,6 +10672,7 @@ const CROP_DB = [
   },
   {
     "id": "cress",
+    "heatType": "cool",
     "name": "クレソン",
     "category": "wildveg",
     "conditions": {
@@ -10571,6 +10712,7 @@ const CROP_DB = [
   },
   {
     "id": "hamabofu",
+    "heatType": "cool",
     "name": "ハマボウフウ",
     "category": "wildveg",
     "conditions": {
@@ -10610,6 +10752,7 @@ const CROP_DB = [
   },
   {
     "id": "mitsuba_akebi",
+    "heatType": "cool",
     "name": "ミツバアケビ",
     "category": "wildveg",
     "conditions": {
@@ -10649,6 +10792,7 @@ const CROP_DB = [
   },
   {
     "id": "yabukanzo",
+    "heatType": "warm",
     "name": "ヤブカンゾウ",
     "category": "wildveg",
     "conditions": {
@@ -10688,6 +10832,7 @@ const CROP_DB = [
   },
   {
     "id": "katakuri",
+    "heatType": "cool",
     "name": "カタクリ",
     "category": "wildveg",
     "conditions": {
@@ -10727,6 +10872,7 @@ const CROP_DB = [
   },
   {
     "id": "yamaudo",
+    "heatType": "cool",
     "name": "ヤマウド",
     "category": "wildveg",
     "conditions": {
@@ -10766,6 +10912,7 @@ const CROP_DB = [
   },
   {
     "id": "takenoko",
+    "heatType": "warm",
     "name": "タケノコ",
     "category": "forest",
     "conditions": {
@@ -10805,6 +10952,7 @@ const CROP_DB = [
   },
   {
     "id": "nemagari",
+    "heatType": "cool",
     "name": "ネマガリタケ",
     "category": "wildveg",
     "conditions": {
@@ -10844,6 +10992,7 @@ const CROP_DB = [
   },
   {
     "id": "chishimazasa",
+    "heatType": "cool",
     "name": "チシマザサ",
     "category": "wildveg",
     "conditions": {
@@ -10883,6 +11032,7 @@ const CROP_DB = [
   },
   {
     "id": "kuromoji",
+    "heatType": "cool",
     "name": "クロモジ",
     "category": "wildveg",
     "conditions": {
@@ -10922,6 +11072,7 @@ const CROP_DB = [
   },
   {
     "id": "sansho",
+    "heatType": "warm",
     "name": "サンショウ",
     "category": "forest",
     "conditions": {
@@ -10961,6 +11112,7 @@ const CROP_DB = [
   },
   {
     "id": "kihada",
+    "heatType": "cool",
     "name": "キハダ",
     "category": "wildveg",
     "conditions": {
@@ -11000,6 +11152,7 @@ const CROP_DB = [
   },
   {
     "id": "matatabi",
+    "heatType": "cool",
     "name": "マタタビ",
     "category": "wildveg",
     "conditions": {
@@ -11039,6 +11192,7 @@ const CROP_DB = [
   },
   {
     "id": "akebi_bud",
+    "heatType": "cool",
     "name": "アケビ新芽",
     "category": "wildveg",
     "conditions": {
@@ -11078,6 +11232,7 @@ const CROP_DB = [
   },
   {
     "id": "kusasotetsu",
+    "heatType": "cool",
     "name": "クサソテツ",
     "category": "wildveg",
     "conditions": {
@@ -11117,6 +11272,7 @@ const CROP_DB = [
   },
   {
     "id": "yamabuki_bud",
+    "heatType": "cool",
     "name": "ヤマブキ新芽",
     "category": "wildveg",
     "conditions": {
@@ -11156,6 +11312,7 @@ const CROP_DB = [
   },
   {
     "id": "miyama_irakusa",
+    "heatType": "cool",
     "name": "ミヤマイラクサ",
     "category": "wildveg",
     "conditions": {
@@ -11195,6 +11352,7 @@ const CROP_DB = [
   },
   {
     "id": "obagiboshi",
+    "heatType": "cool",
     "name": "オオバギボウシ",
     "category": "wildveg",
     "conditions": {
@@ -11234,6 +11392,7 @@ const CROP_DB = [
   },
   {
     "id": "yaburegasa",
+    "heatType": "cool",
     "name": "ヤブレガサ",
     "category": "wildveg",
     "conditions": {
@@ -11273,6 +11432,7 @@ const CROP_DB = [
   },
   {
     "id": "shiode",
+    "heatType": "cool",
     "name": "シオデ",
     "category": "wildveg",
     "conditions": {
@@ -11312,6 +11472,7 @@ const CROP_DB = [
   },
   {
     "id": "honna",
+    "heatType": "cool",
     "name": "ホンナ",
     "category": "wildveg",
     "conditions": {
@@ -11351,6 +11512,7 @@ const CROP_DB = [
   },
   {
     "id": "hiratake",
+    "heatType": "cool",
     "name": "ヒラタケ",
     "category": "forest",
     "conditions": {
@@ -11393,6 +11555,7 @@ const CROP_DB = [
   },
   {
     "id": "eringi",
+    "heatType": "cool",
     "name": "エリンギ",
     "category": "forest",
     "conditions": {
@@ -11432,6 +11595,7 @@ const CROP_DB = [
   },
   {
     "id": "kikurage",
+    "heatType": "warm",
     "name": "キクラゲ",
     "category": "forest",
     "conditions": {
@@ -11474,6 +11638,7 @@ const CROP_DB = [
   },
   {
     "id": "tamogitake",
+    "heatType": "warm",
     "name": "タモギタケ",
     "category": "forest",
     "conditions": {
@@ -11513,6 +11678,7 @@ const CROP_DB = [
   },
   {
     "id": "matsutake",
+    "heatType": "cool",
     "name": "マツタケ",
     "category": "forest",
     "conditions": {
@@ -11552,6 +11718,7 @@ const CROP_DB = [
   },
   {
     "id": "truffle",
+    "heatType": "cool",
     "name": "トリュフ",
     "category": "forest",
     "conditions": {
@@ -11591,6 +11758,7 @@ const CROP_DB = [
   },
   {
     "id": "urushi",
+    "heatType": "warm",
     "name": "漆",
     "category": "forest",
     "conditions": {
@@ -11630,6 +11798,7 @@ const CROP_DB = [
   },
   {
     "id": "chamomile",
+    "heatType": "cool",
     "name": "カモミール",
     "category": "herb",
     "conditions": {
@@ -11672,6 +11841,7 @@ const CROP_DB = [
   },
   {
     "id": "mint",
+    "heatType": "cool",
     "name": "ミント",
     "category": "herb",
     "conditions": {
@@ -11714,6 +11884,7 @@ const CROP_DB = [
   },
   {
     "id": "lemon_balm",
+    "heatType": "cool",
     "name": "レモンバーム",
     "category": "herb",
     "conditions": {
@@ -11756,6 +11927,7 @@ const CROP_DB = [
   },
   {
     "id": "rosemary",
+    "heatType": "warm",
     "name": "ローズマリー",
     "category": "herb",
     "conditions": {
@@ -11798,6 +11970,7 @@ const CROP_DB = [
   },
   {
     "id": "thyme",
+    "heatType": "cool",
     "name": "タイム",
     "category": "herb",
     "conditions": {
@@ -11840,6 +12013,7 @@ const CROP_DB = [
   },
   {
     "id": "oregano",
+    "heatType": "warm",
     "name": "オレガノ",
     "category": "herb",
     "conditions": {
@@ -11882,6 +12056,7 @@ const CROP_DB = [
   },
   {
     "id": "sage",
+    "heatType": "cool",
     "name": "セージ",
     "category": "herb",
     "conditions": {
@@ -11924,6 +12099,7 @@ const CROP_DB = [
   },
   {
     "id": "lavender",
+    "heatType": "cool",
     "name": "ラベンダー",
     "category": "herb",
     "conditions": {
@@ -11966,6 +12142,7 @@ const CROP_DB = [
   },
   {
     "id": "basil",
+    "heatType": "warm",
     "name": "バジル",
     "category": "herb",
     "conditions": {
@@ -12008,6 +12185,7 @@ const CROP_DB = [
   },
   {
     "id": "shiso",
+    "heatType": "warm",
     "name": "シソ",
     "category": "herb",
     "conditions": {
@@ -12050,6 +12228,7 @@ const CROP_DB = [
   },
   {
     "id": "echinacea",
+    "heatType": "cool",
     "name": "エキナセア",
     "category": "herb",
     "conditions": {
@@ -12092,6 +12271,7 @@ const CROP_DB = [
   },
   {
     "id": "dokudami",
+    "heatType": "warm",
     "name": "ドクダミ",
     "category": "herb",
     "conditions": {
@@ -12131,6 +12311,7 @@ const CROP_DB = [
   },
   {
     "id": "gennoshoko",
+    "heatType": "cool",
     "name": "ゲンノショウコ",
     "category": "herb",
     "conditions": {
@@ -12170,6 +12351,7 @@ const CROP_DB = [
   },
   {
     "id": "otane_ninjin",
+    "heatType": "cool",
     "name": "オタネニンジン",
     "category": "herb",
     "conditions": {
@@ -12212,6 +12394,7 @@ const CROP_DB = [
   },
   {
     "id": "kihada_herb",
+    "heatType": "cool",
     "name": "キハダ",
     "category": "herb",
     "conditions": {
@@ -12245,6 +12428,7 @@ const CROP_DB = [
   },
   {
     "id": "ukon_herb",
+    "heatType": "warm",
     "name": "ウコン",
     "category": "herb",
     "conditions": {
@@ -12287,6 +12471,7 @@ const CROP_DB = [
   },
   {
     "id": "aloe",
+    "heatType": "warm",
     "name": "アロエ",
     "category": "herb",
     "conditions": {
@@ -12326,6 +12511,7 @@ const CROP_DB = [
   },
   {
     "id": "yomogi_herb",
+    "heatType": "cool",
     "name": "ヨモギ",
     "category": "herb",
     "conditions": {
@@ -12359,6 +12545,7 @@ const CROP_DB = [
   },
   {
     "id": "hatomugi",
+    "heatType": "warm",
     "name": "ハトムギ",
     "category": "herb",
     "conditions": {
@@ -12401,6 +12588,7 @@ const CROP_DB = [
   },
   {
     "id": "kanzo",
+    "heatType": "cool",
     "name": "甘草",
     "category": "herb",
     "conditions": {
@@ -12443,6 +12631,7 @@ const CROP_DB = [
   },
   {
     "id": "botan",
+    "heatType": "cool",
     "name": "ボタン",
     "category": "herb",
     "conditions": {
@@ -12482,6 +12671,7 @@ const CROP_DB = [
   },
   {
     "id": "shakuyaku",
+    "heatType": "cool",
     "name": "シャクヤク",
     "category": "herb",
     "conditions": {
@@ -12521,6 +12711,7 @@ const CROP_DB = [
   },
   {
     "id": "senburi",
+    "heatType": "cool",
     "name": "センブリ",
     "category": "herb",
     "conditions": {
@@ -12560,6 +12751,7 @@ const CROP_DB = [
   },
   {
     "id": "kuko",
+    "heatType": "warm",
     "name": "クコ",
     "category": "herb",
     "conditions": {
@@ -12599,6 +12791,7 @@ const CROP_DB = [
   },
   {
     "id": "ashitaba",
+    "heatType": "warm",
     "name": "アシタバ",
     "category": "herb",
     "conditions": {
@@ -12641,6 +12834,7 @@ const CROP_DB = [
   },
   {
     "id": "sesame",
+    "heatType": "warm",
     "name": "ゴマ",
     "category": "oil",
     "variety": "一般品種",
@@ -12702,6 +12896,7 @@ const CROP_DB = [
   },
   {
     "id": "sunflower",
+    "heatType": "warm",
     "name": "ヒマワリ",
     "category": "oil",
     "variety": "油用品種",
@@ -12764,6 +12959,7 @@ const CROP_DB = [
   },
   {
     "id": "egoma",
+    "heatType": "warm",
     "name": "エゴマ",
     "category": "oil",
     "variety": "一般品種",
@@ -12825,6 +13021,7 @@ const CROP_DB = [
   },
   {
     "id": "safflower",
+    "heatType": "warm",
     "name": "ベニバナ",
     "category": "oil",
     "variety": "一般品種",
@@ -12886,6 +13083,7 @@ const CROP_DB = [
   },
   {
     "id": "oil_palm",
+    "heatType": "warm",
     "name": "アブラヤシ",
     "category": "oil",
     "variety": "テネラ種",
@@ -12947,6 +13145,7 @@ const CROP_DB = [
   },
   {
     "id": "cotton",
+    "heatType": "warm",
     "name": "ワタ（綿）",
     "category": "fiber",
     "variety": "アップランド種",
@@ -13008,6 +13207,7 @@ const CROP_DB = [
   },
   {
     "id": "flax",
+    "heatType": "cool",
     "name": "亜麻（リネン）",
     "category": "fiber",
     "variety": "繊維用品種",
@@ -13069,6 +13269,7 @@ const CROP_DB = [
   },
   {
     "id": "ramie",
+    "heatType": "warm",
     "name": "ラミー（苧麻）",
     "category": "fiber",
     "variety": "一般品種",
@@ -13130,6 +13331,7 @@ const CROP_DB = [
   },
   {
     "id": "kenaf",
+    "heatType": "warm",
     "name": "ケナフ",
     "category": "fiber",
     "variety": "一般品種",
@@ -13192,6 +13394,7 @@ const CROP_DB = [
   },
   {
     "id": "hemp",
+    "heatType": "cool",
     "name": "ヘンプ（産業用大麻）",
     "category": "fiber",
     "variety": "低THC品種",
@@ -13253,6 +13456,7 @@ const CROP_DB = [
   },
   {
     "id": "chicory",
+    "heatType": "cool",
     "name": "チコリ",
     "category": "vegetable",
     "variety": "一般品種",
@@ -13314,6 +13518,7 @@ const CROP_DB = [
   },
   {
     "id": "endive",
+    "heatType": "cool",
     "name": "エンダイブ",
     "category": "vegetable",
     "variety": "一般品種",
@@ -13375,6 +13580,7 @@ const CROP_DB = [
   },
   {
     "id": "arugula",
+    "heatType": "cool",
     "name": "ルッコラ",
     "category": "vegetable",
     "variety": "一般品種",
@@ -13436,6 +13642,7 @@ const CROP_DB = [
   },
   {
     "id": "fennel",
+    "heatType": "cool",
     "name": "フェンネル（ウイキョウ）",
     "category": "vegetable",
     "variety": "球茎用品種",
@@ -13497,6 +13704,7 @@ const CROP_DB = [
   },
   {
     "id": "celeriac",
+    "heatType": "cool",
     "name": "セルリアック（根セロリ）",
     "category": "vegetable",
     "variety": "一般品種",
@@ -13558,6 +13766,7 @@ const CROP_DB = [
   },
   {
     "id": "kohlrabi",
+    "heatType": "cool",
     "name": "コールラビ",
     "category": "vegetable",
     "variety": "一般品種",
@@ -13619,6 +13828,7 @@ const CROP_DB = [
   },
   {
     "id": "chard",
+    "heatType": "cool",
     "name": "チャード（フダンソウ）",
     "category": "vegetable",
     "variety": "一般品種",
@@ -13680,6 +13890,7 @@ const CROP_DB = [
   },
   {
     "id": "leek",
+    "heatType": "cool",
     "name": "リーキ（西洋ネギ）",
     "category": "vegetable",
     "variety": "一般品種",
@@ -13741,6 +13952,7 @@ const CROP_DB = [
   },
   {
     "id": "kailan",
+    "heatType": "warm",
     "name": "カイラン（中国ケール）",
     "category": "vegetable",
     "variety": "一般品種",
@@ -13802,6 +14014,7 @@ const CROP_DB = [
   },
   {
     "id": "pakchoi",
+    "heatType": "cool",
     "name": "パクチョイ",
     "category": "vegetable",
     "variety": "一般品種",
@@ -13863,6 +14076,7 @@ const CROP_DB = [
   },
   {
     "id": "hanabiratake",
+    "heatType": "cool",
     "name": "ハナビラタケ",
     "category": "wildveg",
     "variety": "菌床栽培",
@@ -13918,6 +14132,7 @@ const CROP_DB = [
   },
   {
     "id": "yamabushitake",
+    "heatType": "cool",
     "name": "ヤマブシタケ",
     "category": "wildveg",
     "variety": "菌床栽培",
@@ -13973,6 +14188,7 @@ const CROP_DB = [
   },
   {
     "id": "agaricus",
+    "heatType": "warm",
     "name": "アガリクス",
     "category": "wildveg",
     "variety": "菌床栽培",
@@ -14028,6 +14244,7 @@ const CROP_DB = [
   },
   {
     "id": "kotake",
+    "heatType": "cool",
     "name": "コウタケ",
     "category": "wildveg",
     "variety": "天然・半栽培",
@@ -14080,6 +14297,7 @@ const CROP_DB = [
   },
   {
     "id": "tokiiro_hiratake",
+    "heatType": "warm",
     "name": "トキイロヒラタケ",
     "category": "wildveg",
     "variety": "菌床栽培",
@@ -14135,6 +14353,7 @@ const CROP_DB = [
   },
   {
     "id": "chickpea",
+    "heatType": "warm",
     "name": "ヒヨコマメ",
     "category": "legume",
     "variety": "一般品種",
@@ -14196,6 +14415,7 @@ const CROP_DB = [
   },
   {
     "id": "lentil",
+    "heatType": "cool",
     "name": "レンズマメ",
     "category": "legume",
     "variety": "一般品種",
@@ -14257,6 +14477,7 @@ const CROP_DB = [
   },
   {
     "id": "mung_bean",
+    "heatType": "warm",
     "name": "緑豆（ムング豆）",
     "category": "legume",
     "variety": "一般品種",
@@ -14318,6 +14539,7 @@ const CROP_DB = [
   },
   {
     "id": "lima_bean",
+    "heatType": "warm",
     "name": "ライマメ",
     "category": "legume",
     "variety": "一般品種",
@@ -14379,6 +14601,7 @@ const CROP_DB = [
   },
   {
     "id": "runner_bean",
+    "heatType": "cool",
     "name": "ベニバナインゲン",
     "category": "legume",
     "variety": "一般品種",

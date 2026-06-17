@@ -1020,10 +1020,70 @@ function buildSingleCropAnalysis(cropId, areaData) {
   };
 }
 
+// ─── 高温リスク計算 ───
+/**
+ * calcHeatRisk(crop, decadeArr, startDecade, endDecade)
+ *
+ * 生育期間（startDecade〜endDecade）内の旬別最高気温(tMax)が
+ * 高温閾値以上となる旬数をカウントし、リスクレベルを返す。
+ *
+ * 閾値は作物の heatType で決定:
+ *   'warm' → 35℃（高温性：トマト・スイカ等）
+ *   'cool' → 33℃（冷涼性：レタス・コムギ等、デフォルト）
+ *
+ * 返却:
+ *   {
+ *     hotDecadeCount : number,   // 閾値超過旬数
+ *     threshold      : number,   // 使用した閾値(℃)
+ *     heatType       : string,   // 'warm' | 'cool'
+ *     riskLevel      : string,   // 'none'|'low'|'mid'|'high'
+ *     riskStars      : string,   // '★☆☆☆' 等（4段階）
+ *     riskLabel      : string,   // 表示用テキスト
+ *   }
+ *   生育期間が未定・tMax配列なし の場合は null を返す
+ */
+function calcHeatRisk(crop, decadeArr, startDecade, endDecade) {
+  if (!decadeArr?.tMax || !Array.isArray(decadeArr.tMax)) return null;
+  if (startDecade == null || endDecade == null) return null;
+
+  // heatType が未設定の場合は cool 扱い（保守的に厳しい閾値）
+  const heatType  = crop.heatType === 'warm' ? 'warm' : 'cool';
+  const threshold = heatType === 'warm' ? 35 : 33;
+
+  // 生育期間の旬インデックスを列挙（年跨ぎ対応）
+  const growDecades = [];
+  if (endDecade >= startDecade) {
+    for (let i = startDecade; i <= endDecade; i++) growDecades.push(i % 36);
+  } else {
+    // 年跨ぎ（例：11月上旬播種 → 翌4月収穫）
+    for (let i = startDecade; i < 36; i++) growDecades.push(i);
+    for (let i = 0; i <= endDecade; i++) growDecades.push(i);
+  }
+
+  const hotDecadeCount = growDecades.filter(i => {
+    const t = decadeArr.tMax[i];
+    return t != null && t >= threshold;
+  }).length;
+
+  // リスクレベル判定
+  let riskLevel, riskStars, riskLabel;
+  if (hotDecadeCount === 0) {
+    riskLevel = 'none';  riskStars = '☆☆☆☆';  riskLabel = 'リスクなし';
+  } else if (hotDecadeCount <= 2) {
+    riskLevel = 'low';   riskStars = '★☆☆☆';  riskLabel = '低リスク';
+  } else if (hotDecadeCount <= 5) {
+    riskLevel = 'mid';   riskStars = '★★★☆';  riskLabel = '中リスク';
+  } else {
+    riskLevel = 'high';  riskStars = '★★★★';  riskLabel = '高リスク';
+  }
+
+  return { hotDecadeCount, threshold, heatType, riskLevel, riskStars, riskLabel };
+}
+
 // ─── 気候推定ランキング（Phenologyベース・DBスコアと独立） ───
 //  decadeArr : Phenology.buildDecadeArray() の返却値
 //  crops     : cropDB の全作物配列
-//  返却: [{ crop, score(0-100), startDecade, endDecade }] スコア降順
+//  返却: [{ crop, score(0-100), startDecade, endDecade, harvestDecade, heatRisk }] スコア降順
 function computeClimateRanking(decadeArr, crops) {
   if (!decadeArr || !crops?.length) return [];
 
@@ -1031,15 +1091,17 @@ function computeClimateRanking(decadeArr, crops) {
     .map(crop => {
       const wins = Phenology.sowingWindows(decadeArr, crop);
       if (!wins.length) {
-        return { crop, score: 0, startDecade: null, endDecade: null };
+        return { crop, score: 0, startDecade: null, endDecade: null, harvestDecade: null, heatRisk: null };
       }
       const best = wins[0];
+      const heatRisk = calcHeatRisk(crop, decadeArr, best.startDecade, best.harvestDecade ?? best.endDecade);
       return {
         crop,
-        score:        Math.round(best.score * 100),
-        startDecade:  best.startDecade,
-        endDecade:    best.endDecade,
+        score:         Math.round(best.score * 100),
+        startDecade:   best.startDecade,
+        endDecade:     best.endDecade,
         harvestDecade: best.harvestDecade,
+        heatRisk,
       };
     })
     .sort((a, b) => b.score - a.score);
