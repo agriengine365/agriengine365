@@ -5756,3 +5756,82 @@ html.draw-dialog-active .bottom-nav {
   border-bottom: 1px solid var(--border, #eee);
   margin-bottom: 4px;
 }
+
+/* ═══════════════════════════════════════════
+   サマリーバー再設計（コントロール行 + 情報行）
+   ═══════════════════════════════════════════ */
+
+/* バー全体 */
+#adp-summary-bar {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg2, #111f14);
+  border-bottom: 1px solid var(--border, #1e3a22);
+  padding: 0;
+}
+
+/* 行1: コントロール */
+.adp-summary-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px 6px;
+  border-bottom: 1px solid var(--border, #1e3a22);
+  flex-wrap: wrap;
+}
+
+/* 作物を選ぶボタン：マージン除去（flex内で管理） */
+.adp-summary-controls .adp-select-crop-btn {
+  margin-left: 0;
+  flex-shrink: 0;
+}
+
+/* 栽培方式トグル（サマリーバー内） */
+.adp-sb-cult-toggle {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.adp-sb-cult-toggle .adp-cult-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  flex: none;
+  border-radius: 6px;
+}
+
+/* DB/気候トグル（サマリーバー内） */
+.adp-sb-eval-toggle {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+.adp-sb-eval-toggle .adp-eval-mode-btn {
+  padding: 3px 8px;
+  font-size: 11px;
+  border-radius: 12px;
+  flex: none;
+}
+
+/* 行2: 情報表示 */
+.adp-summary-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 10px 6px;
+}
+.adp-summary-info .adp-summary-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.adp-summary-info .adp-summary-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ランキングダイアログのevalトグルを非表示（サマリーバーに移動） */
+#adp-eval-mode-wrap {
+  display: none !important;
+}

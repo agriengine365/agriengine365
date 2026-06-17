@@ -538,25 +538,45 @@ function _adpEnsureView() {
 
     <!-- サマリーバー（常時表示） -->
     <div class="adp-summary-bar" id="adp-summary-bar">
-      <div class="adp-summary-left">
-        <span class="adp-summary-crop" id="adp-summary-crop">—</span>
-        <span class="adp-summary-area" id="adp-summary-area">—</span>
+
+      <!-- 行1: 操作トグル -->
+      <div class="adp-summary-controls">
         <button class="adp-select-crop-btn" onclick="adpOpenCropSelectFromSummary()" title="作物を選ぶ">🌱 作物を選ぶ</button>
-      </div>
-      <div class="adp-summary-right">
-        <div class="adp-summary-score-wrap">
-          <span class="adp-summary-score" id="adp-summary-score">—</span>
-          <span class="adp-summary-score-label">総合スコア</span>
+        <div class="adp-sb-cult-toggle">
+          <button class="adp-cult-btn active" data-mode="openField"        onclick="_adpSwitchCultivation('openField')">露地</button>
+          <button class="adp-cult-btn"        data-mode="greenhouse"       onclick="_adpSwitchCultivation('greenhouse')">ハウス</button>
+          <button class="adp-cult-btn"        data-mode="heatedGreenhouse" onclick="_adpSwitchCultivation('heatedGreenhouse')">加温</button>
         </div>
-        <div class="adp-summary-mode" id="adp-summary-mode">露地</div>
-        <div class="adp-summary-conf-wrap">
-          <div class="conf-bar-track adp-summary-conf-track">
-            <div class="conf-bar-fill" id="adp-conf-bar" style="width:0%"></div>
+        <div class="adp-sb-eval-toggle">
+          <button class="adp-eval-mode-btn active" id="adp-eval-btn-db"
+            onclick="_adpSetClimateMode(false)">📊 基本DB</button>
+          <button class="adp-eval-mode-btn" id="adp-eval-btn-climate"
+            onclick="_adpSetClimateMode(true)">🌿 <span id="adp-eval-climate-label">エリア気候</span></button>
+        </div>
+      </div>
+
+      <!-- 行2: 結果表示 -->
+      <div class="adp-summary-info">
+        <div class="adp-summary-left">
+          <span class="adp-summary-crop" id="adp-summary-crop">—</span>
+          <span class="adp-summary-area" id="adp-summary-area">—</span>
+        </div>
+        <div class="adp-summary-right">
+          <div class="adp-summary-score-wrap">
+            <span class="adp-summary-score" id="adp-summary-score">—</span>
+            <span class="adp-summary-score-label">総合スコア</span>
           </div>
-          <span id="adp-conf-pct" class="adp-summary-conf-pct">0%</span>
-          <span id="adp-conf-label" class="adp-summary-conf-label">—</span>
+          <div class="adp-summary-mode" id="adp-summary-mode">露地</div>
+          <div class="adp-summary-conf-wrap">
+            <div class="conf-bar-track adp-summary-conf-track">
+              <div class="conf-bar-fill" id="adp-conf-bar" style="width:0%"></div>
+            </div>
+            <span id="adp-conf-pct" class="adp-summary-conf-pct">0%</span>
+            <span id="adp-conf-label" class="adp-summary-conf-label">—</span>
+          </div>
         </div>
       </div>
+
     </div>
 
     <!-- 分析ウィザード（インラインアコーディオン） -->
@@ -687,12 +707,6 @@ function _adpEnsureView() {
           <button class="adp-ranking-dlg-close" onclick="_adpCloseRankingDialog()">✕</button>
         </div>
         <div class="adp-ranking-dlg-controls">
-          <div class="adp-eval-mode-wrap" id="adp-eval-mode-wrap">
-            <button class="adp-eval-mode-btn active" id="adp-eval-btn-db"
-              onclick="_adpSetClimateMode(false)">📊 基本DB</button>
-            <button class="adp-eval-mode-btn" id="adp-eval-btn-climate"
-              onclick="_adpSetClimateMode(true)">🌿 <span id="adp-eval-climate-label">エリア気候</span></button>
-          </div>
           <div class="cr-tabs-major" id="cr-tabs-major">
             <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
             <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
@@ -762,9 +776,6 @@ function _adpCloseRankingDialog() {
   if (!dlg) return;
   dlg.classList.remove('open');
   dlg.setAttribute('aria-hidden', 'true');
-  // 次回開いた時に正しい栽培方式で再生成されるよう削除
-  const toggle = document.getElementById('adp-cultivation-toggle');
-  if (toggle) toggle.remove();
   _adpRankingDlgPane = null;
 }
 
@@ -772,11 +783,11 @@ function _adpCloseRankingDialog() {
 function _adpSetClimateMode(isClimate) {
   _adpClimateMode = isClimate;
 
-  // トグルボタン active 同期（ダイアログ内）
-  const dbBtn = document.getElementById('adp-eval-btn-db');
-  const clBtn = document.getElementById('adp-eval-btn-climate');
-  if (dbBtn) dbBtn.classList.toggle('active', !isClimate);
-  if (clBtn) clBtn.classList.toggle('active',  isClimate);
+  // トグルボタン active 同期（サマリーバー）
+  document.querySelectorAll('.adp-eval-mode-btn').forEach(btn => {
+    const isDb = btn.id === 'adp-eval-btn-db';
+    btn.classList.toggle('active', isDb ? !isClimate : isClimate);
+  });
 
   // 気候ボタンのラベルをエリア名に更新
   const clLabel = document.getElementById('adp-eval-climate-label');
@@ -803,11 +814,12 @@ function _adpSetClimateMode(isClimate) {
     _adpRenderGrowthChart(_adpSelectedCropId);
   }, 20);
 
-  // ダイアログが開いているときだけランキング再描画
-  if (_adpRankingDlgPane === 'growth') {
-    _adpRenderGrowthRankingList();
-  } else if (_adpRankingDlgPane === 'ranking') {
-    _adpRenderRankingList();
+  // 常時再描画（サマリーバー操作なので常にアクティブ）
+  _adpRenderRankingList();
+  _adpRenderGrowthRankingList();
+  // 選択作物が存在する場合は全タブも更新
+  if (_adpSelectedCropId) {
+    _adpSelectCropForAnalysis(_adpSelectedCropId);
   }
 }
 
@@ -1215,6 +1227,20 @@ function _adpRenderRanking(area) {
   // スコア計算のみ（DOM描画はダイアログを開いた時に行う）
   currentAreaData.cultivationMode = 'openField';
 
+  // サマリーバーの栽培方式ボタンを初期化状態に同期
+  document.querySelectorAll('.adp-cult-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === 'openField');
+  });
+  // DB/気候トグルを初期化（DB側をactive）
+  document.querySelectorAll('.adp-eval-mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.id === 'adp-eval-btn-db');
+  });
+  // 気候ボタンのエリア名ラベルを更新
+  const _clLabelInit = document.getElementById('adp-eval-climate-label');
+  if (_clLabelInit && currentAreaData?.name) {
+    _clLabelInit.textContent = `${currentAreaData.name}気候`;
+  }
+
   const result = buildAnalysisResult(currentAreaData);
 
   // 露地スコアをキャッシュ（補正比較用）
@@ -1226,9 +1252,9 @@ function _adpRenderRanking(area) {
   _crMinor  = null;
 }
 
-// ─── 栽培方式トグル（ランキングダイアログ上部、初回だけ生成）───
+// ─── 栽培方式トグル（サマリーバーに移動済み・ダイアログへの挿入は不要） ───
 function _adpEnsureCultivationToggle() {
-  _adpInsertCultivationToggle('adp-ranking-dlg-controls', 'adp-cultivation-toggle');
+  // サマリーバーのトグルで一元管理するためダイアログへの挿入は行わない
 }
 
 function _adpInsertCultivationToggle(paneId, toggleId) {
@@ -1279,6 +1305,10 @@ function _adpSwitchCultivation(mode) {
   _adpRenderGrowthRankingList();
   _adpRenderTempChart(_adpSelectedCropId);
   _adpRenderGrowthChart(_adpSelectedCropId);
+  // 選択作物が存在する場合は全タブも更新
+  if (_adpSelectedCropId) {
+    _adpSelectCropForAnalysis(_adpSelectedCropId);
+  }
 }
 
 // ─── 補正比較ヘルパー ───
