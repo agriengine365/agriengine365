@@ -2859,11 +2859,6 @@ function adpCropTap(el, cropId) {
   if (document.getElementById('adp-view')?.classList.contains('open')) {
     if (_adpSelectedCropId !== cropId) {
       _adpSelectedCropId = cropId;
-      // プレースホルダー除去
-      ['profit', 'fert', 'risk', 'calendar'].forEach(tab => {
-        const pane = document.getElementById('adp-pane-' + tab);
-        if (ph) ph.remove();
-      });
       // グラフ・各タブ更新
       _adpRenderTempChart(_adpSelectedCropId);
       _adpRenderGrowthChart(_adpSelectedCropId);
@@ -3072,11 +3067,7 @@ function _adpSelectCropForAnalysis(cropId) {
 
   _adpSelectedCropId = cropId;
 
-  // 作物選択済みになったので未選択プレースホルダーを除去
-  ['profit', 'fert', 'risk', 'calendar'].forEach(tab => {
-    const pane = document.getElementById('adp-pane-' + tab);
-    if (ph) ph.remove();
-  });
+
 
   // ── グラフ再描画（表示中タブに関係なく実行） ──
   _adpRenderTempChart(_adpSelectedCropId);
