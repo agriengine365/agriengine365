@@ -1577,23 +1577,23 @@ function _adpRenderClimateRankingList(el, pane) {
   // 大タブ → 気候推定モードのcategoryキーへのマッピング
   const MAJOR_MAP = {
     grain:     ['grain'],
-    vegetable: ['leaf_veg','fruit_veg','root_veg'],
+    vegetable: ['leafy','fruit_veg','root','vegetable'],
     fruit:     ['fruit'],
-    wild:      ['wildveg'],
+    wild:      ['wildveg','herb'],
     forest:    ['forest'],
   };
 
-  // 小タブ（DBモードのcategoryキー）→ 気候推定モードのcategoryキーへの変換
+  // 小タブ（DBモードのcategoryキー）→ 気候推定フィルタ用のcategoryキーへの変換
   const MINOR_TO_CLIMATE_CAT = {
     grain:     'grain',
-    legume:    'grain',      // 気候推定モードはlegume/grainを区別しない
-    leafy:     'leaf_veg',
-    vegetable: 'leaf_veg',
+    legume:    'legume',
+    leafy:     'leafy',
+    vegetable: 'vegetable',
     fruit_veg: 'fruit_veg',
-    root:      'root_veg',
+    root:      'root',
     fruit:     'fruit',
     wildveg:   'wildveg',
-    herb:      'wildveg',
+    herb:      'herb',
     forest:    'forest',
   };
 
@@ -3217,12 +3217,12 @@ function _adpOpenCropSelectSheet() {
     { key: 'forest',  label: '林産' },
   ];
 
-  // カテゴリ→DB key マッピング（analysis.jsの_crMajorMapと揃える）
+  // カテゴリ→DB key マッピング（analysis.jsのCR_MAJOR_TO_CATEGORIESと揃える）
   const CAT_MAP = {
     grain:     ['grain','legume'],
-    vegetable: ['leaf_veg','fruit_veg','root_veg','vegetable'],
+    vegetable: ['leafy','fruit_veg','root','vegetable'],
     fruit:     ['fruit'],
-    wild:      ['wild','herb'],
+    wild:      ['wildveg','herb'],
     forest:    ['forest'],
   };
 
