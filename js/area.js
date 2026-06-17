@@ -1888,7 +1888,7 @@ function _adpRenderEnvDonut(area) {
           stroke-width="${THICK}" stroke-linecap="round"
           style="filter:drop-shadow(0 0 4px ${ring.color}66)">
           <animate attributeName="stroke-dashoffset" from="${2*Math.PI*r}" to="0"
-            dur="0.7s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1" keyTimes="0 1"/>
+            dur="0.7s" fill="freeze" calcMode="spline" keySplines="0.4 0 0.2 1" keyTimes="0;1"/>
         </path>`;
     }
   });

@@ -22,9 +22,11 @@ function initFirebase(cfg) {
     }
     db = firebase.firestore();
     const el = document.getElementById('firebase-status');
-    el.textContent    = '● Firebase接続済';
-    el.style.color    = 'var(--green)';
-    el.style.borderColor = 'var(--green3)';
+    if (el) {
+      el.textContent    = '● Firebase接続済';
+      el.style.color    = 'var(--green)';
+      el.style.borderColor = 'var(--green3)';
+    }
     return true;
   } catch(e) {
     console.error(e);
