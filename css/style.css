@@ -5747,3 +5747,12 @@ html.draw-dialog-active .bottom-nav {
 .heat-high .heat-count {
   color: #dc2626;
 }
+
+/* ─── 基本DBモードノート ─── */
+.adp-db-mode-note {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  padding: 6px 12px 4px;
+  border-bottom: 1px solid var(--border, #eee);
+  margin-bottom: 4px;
+}

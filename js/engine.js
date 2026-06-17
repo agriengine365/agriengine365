@@ -1077,7 +1077,8 @@ function calcHeatRisk(crop, decadeArr, startDecade, endDecade) {
     riskLevel = 'high';  riskStars = '★★★★';  riskLabel = '高リスク';
   }
 
-  return { hotDecadeCount, threshold, heatType, riskLevel, riskStars, riskLabel };
+  const hotDayApprox = hotDecadeCount * 10; // 旬×10日（簡易換算）
+  return { hotDecadeCount, hotDayApprox, threshold, heatType, riskLevel, riskStars, riskLabel };
 }
 
 // ─── 気候推定ランキング（Phenologyベース・DBスコアと独立） ───

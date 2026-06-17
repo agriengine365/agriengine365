@@ -689,9 +689,9 @@ function _adpEnsureView() {
         <div class="adp-ranking-dlg-controls">
           <div class="adp-eval-mode-wrap" id="adp-eval-mode-wrap">
             <button class="adp-eval-mode-btn active" id="adp-eval-btn-db"
-              onclick="_adpSetClimateMode(false)">📊 DB評価</button>
+              onclick="_adpSetClimateMode(false)">📊 基本DB</button>
             <button class="adp-eval-mode-btn" id="adp-eval-btn-climate"
-              onclick="_adpSetClimateMode(true)">🌿 気候推定</button>
+              onclick="_adpSetClimateMode(true)">🌿 <span id="adp-eval-climate-label">エリア気候</span></button>
           </div>
           <div class="cr-tabs-major" id="cr-tabs-major">
             <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
@@ -778,6 +778,13 @@ function _adpSetClimateMode(isClimate) {
   if (dbBtn) dbBtn.classList.toggle('active', !isClimate);
   if (clBtn) clBtn.classList.toggle('active',  isClimate);
 
+  // 気候ボタンのラベルをエリア名に更新
+  const clLabel = document.getElementById('adp-eval-climate-label');
+  if (clLabel) {
+    const areaName = currentAreaData?.name;
+    clLabel.textContent = areaName ? `${areaName}気候` : 'エリア気候';
+  }
+
   // 気候推定モード時はランキングキャッシュを生成
   if (isClimate && !_adpClimateRanking) {
     const decadeArr = currentAreaData?.climate?.decadeArr
@@ -790,7 +797,13 @@ function _adpSetClimateMode(isClimate) {
     }
   }
 
-  // ダイアログが開いているときだけ再描画
+  // グラフを独立して再描画（モードに応じたデータで）
+  setTimeout(() => {
+    _adpRenderTempChart(_adpSelectedCropId);
+    _adpRenderGrowthChart(_adpSelectedCropId);
+  }, 20);
+
+  // ダイアログが開いているときだけランキング再描画
   if (_adpRankingDlgPane === 'growth') {
     _adpRenderGrowthRankingList();
   } else if (_adpRankingDlgPane === 'ranking') {
@@ -1481,7 +1494,7 @@ function _adpRenderClimateRankingList(el, pane) {
                       : hr.riskLevel === 'mid'  ? 'heat-mid'
                       : 'heat-high';
           const countTxt = hr.hotDecadeCount > 0
-            ? `<span class="heat-count">${hr.hotDecadeCount}旬 (${hr.threshold}℃超)</span>`
+            ? `<span class="heat-count">約${hr.hotDayApprox ?? hr.hotDecadeCount * 10}日以上 (${hr.threshold}℃超)</span>`
             : '';
           return `<div class="cr-heat-row ${lvCls}">
             <span class="heat-label">高温リスク</span>
@@ -1511,7 +1524,7 @@ function _adpRenderClimateRankingList(el, pane) {
   }).join('');
 
   el.innerHTML =
-    '<div class="adp-climate-mode-note">🌿 気候推定モード：旬別気温・日照から播種適期を算出</div>' +
+    `<div class="adp-climate-mode-note">🌿 ${currentAreaData?.name ?? 'エリア'}気候：旬別気温・日照から播種適期を算出</div>` +
     itemsHtml;
 }
 
@@ -1565,6 +1578,40 @@ function _adpRenderRankingList() {
     // 播種収穫ブロック（DBモードでは気候推定なし）
     const seasonHtml = _buildSeasonBlockHtml(s.crop, null);
 
+    // ── 高温リスク（DBモード：decadeArrがあれば算出） ──
+    const decadeArr = currentAreaData?.climate?.decadeArr ?? null;
+    let heatHtml = '';
+    if (decadeArr && typeof calcHeatRisk === 'function') {
+      // DB側では播種・収穫旬が未定のため生育期間全体を概算
+      const gpMin = s.crop.conditions?.growthPeriodMin ?? 60;
+      const gpMax = s.crop.conditions?.growthPeriodMax ?? gpMin + 30;
+      const gpDecades = Math.round(((gpMin + gpMax) / 2) / 10);
+      // 最も温暖な旬を播種起点として仮算出（簡易）
+      const tMean = decadeArr.tMean || decadeArr.tMax;
+      let startD = 0;
+      if (tMean) {
+        let best = -Infinity;
+        tMean.forEach((t, idx) => { if (t != null && t > best) { best = t; startD = idx; } });
+        startD = (startD - Math.round(gpDecades / 2) + 36) % 36;
+      }
+      const endD = (startD + gpDecades - 1) % 36;
+      const hr = calcHeatRisk(s.crop, decadeArr, startD, endD);
+      if (hr) {
+        const lvCls = hr.riskLevel === 'none' ? 'heat-none'
+                    : hr.riskLevel === 'low'  ? 'heat-low'
+                    : hr.riskLevel === 'mid'  ? 'heat-mid'
+                    : 'heat-high';
+        const countTxt = hr.hotDecadeCount > 0
+          ? `<span class="heat-count">約${hr.hotDayApprox ?? hr.hotDecadeCount * 10}日以上 (${hr.threshold}℃超)</span>`
+          : '';
+        heatHtml = `<div class="cr-heat-row ${lvCls}">
+          <span class="heat-label">高温リスク</span>
+          <span class="heat-stars">${hr.riskStars}</span>
+          ${countTxt}
+        </div>`;
+      }
+    }
+
     return `
       <div class="cr-item${isSelected ? ' cr-item-open' : ''}"
         onclick="adpCropTap('${s.crop.id}')">
@@ -1580,13 +1627,14 @@ function _adpRenderRankingList() {
           <div class="cr-bar-fill ${scoreCls}" style="width:${s.score}%"></div>
         </div>
         ${compareHtml ? `<div class="adp-score-compare">${compareHtml}</div>` : ''}
+        ${heatHtml}
         ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
         <div class="season-block-wrap">${seasonHtml}</div>
       </div>
     `;
   }).join('');
 
-  el.innerHTML = summaryHtml + itemsHtml;
+  el.innerHTML = '<div class="adp-db-mode-note">📊 基本DB：DB平年値ベースの適正スコア</div>' + summaryHtml + itemsHtml;
 }
 
 // ═══════════════════════════════════════════
