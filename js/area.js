@@ -888,6 +888,51 @@ function _adpSwitchSubTab(name) {
     _adpRenderCalendar();
     _adpRenderDayRecords();
   }
+  // ── 作物選択済み時の各ペイン再描画 ──
+  if (_adpSelectedCropId) {
+    const ad = window.currentAreaData;
+    const scoreEntry = (typeof _crScores !== 'undefined')
+      ? _crScores.find(s => s.crop.id === _adpSelectedCropId) : null;
+    const crop = scoreEntry?.crop
+      ?? (typeof CROP_DB !== 'undefined'
+          ? (CROP_DB.find ? CROP_DB.find(c => c.id === _adpSelectedCropId)
+            : Object.values(CROP_DB).flat().find(c => c.id === _adpSelectedCropId))
+          : null);
+
+    if (name === 'profit') {
+      if (typeof renderProfitWaterfall === 'function') {
+        if (scoreEntry) {
+          renderProfitWaterfall(scoreEntry);
+        } else if (crop && typeof buildSingleCropAnalysis === 'function') {
+          const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
+          renderProfitWaterfall(single ? { crop: single.crop, profitability: single.profitability } : null);
+        }
+      }
+    }
+    if (name === 'fert') {
+      if (crop && typeof _renderFertResult === 'function') _renderFertResult(crop);
+    }
+    if (name === 'risk') {
+      if (crop && typeof _renderRiskResult === 'function') _renderRiskResult(crop);
+    }
+    if (name === 'match') {
+      if (typeof buildSingleCropAnalysis === 'function' && ad) {
+        const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
+        const confDetailEl = document.getElementById('conf-detail');
+        if (confDetailEl && single) {
+          const decadeArr = ad.climate?.decadeArr;
+          let estSeason = null;
+          if (decadeArr && typeof Phenology !== 'undefined') {
+            const wins = Phenology.sowingWindows(decadeArr, single.crop);
+            if (wins?.length) estSeason = _buildEstimatedSeasonLabel(wins[0]);
+          }
+          const seasonHtml = _buildSeasonBlockHtml(single.crop, estSeason);
+          const confItems  = single.confidence.items.map(i => `- ${i}`).join('<br>');
+          confDetailEl.innerHTML = seasonHtml + (confItems ? `<div class="conf-items">${confItems}</div>` : '');
+        }
+      }
+    }
+  }
 }
 
 // ─── ウィザードパネルの開閉 ───
