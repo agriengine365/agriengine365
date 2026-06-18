@@ -2766,7 +2766,7 @@ function _adpRenderGrowthChartEst(cropId) {
   let gddCurve      = null;
   let gddMax        = 0;
   if (crop && typeof Phenology !== 'undefined') {
-    sowingWindows = // ハウス補正済みdecadeArrを生成してsowingWindowsを計算
+    // ハウス補正済みdecadeArrを生成してsowingWindowsを計算
     const correctedDecadeArr = g.cultivationMode !== 'openField'
       ? { ...g.decadeArr, tMean: g.tMeanCorrected }
       : g.decadeArr;
