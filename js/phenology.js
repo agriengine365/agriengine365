@@ -78,22 +78,30 @@ const Phenology = (() => {
   //  crop: cropDB エントリ（conditions付き）
   //  返却: [ { startDecade, endDecade, harvestDecade, score } ] — 最大12件
   //
-  //  変更点（v3）:
-  //   1. 播種ウィンドウ妥当性判定を tMax/tMean ハイブリッド方式（B案）に変更
-  //      - 下限判定: decadeArr.tMax >= tempMeanMin
-  //          「昼間の最高気温が作物の最低必要温度に届いていれば生育可能」
-  //          → 春先・晩秋の低温期を救い、ウィンドウが実際の農業に近くなる
-  //      - 上限判定: decadeArr.tMean <= tempMeanMax
-  //          「高温障害は持続する平均気温で判断すべき（瞬間高温より継続熱が重要）」
-  //          → 夏の高温期は引き続き厳格に除外
+  //  変更点（v4）:
+  //   1. 播種下限判定に C案マージン（-3℃）を適用
+  //      - 下限判定: decadeArr.tMax >= tempMeanMin - 3
+  //          「播種時は昼間気温が最低必要温度の3℃手前まで届いていれば許容」
+  //          → 春先・晩秋の播種適期をより農業実態に近い幅に拡大
+  //          → 生育期間に入れば通常の _isValidDecade（マージンなし）を維持
+  //      - 上限判定: decadeArr.tMean <= tempMeanMax（変更なし）
   //      - null 旬はデータ欠損として許容（打ち切らない）
-  //   2. 収穫旬を GDD 積算ベースに変更（v2 から継続）
+  //   2. 最低生育期間の棄却条件を minDecades × 0.7 に緩和
+  //      - 棄却基準: runLen < Math.round(minDecades * 0.7)
+  //          「連続適温期間が最低生育日数の7割以上あれば播種ウィンドウとして採用」
+  //          → 短い適温窓でも候補に上がるため選択肢が増える
+  //          → _windowScore は元の minDecades 基準を維持（品質評価は変えない）
+  //   3. 収穫旬を GDD 積算ベースに変更（v2 から継続）
   //      - targetGDD = growthPeriodMid（日）×（tOpt − base）
   //      - base = tempMeanMin, tOpt = (tempMeanMin + tempMeanMax) / 2
   //      - 播種旬から tMean を積算し targetGDD 到達旬を収穫予測旬とする
   //      - 到達旬が growthPeriodMin×0.7〜growthPeriodMax×1.5 旬の範囲外は無効
   //      - tempMeanMin/Max が DB 未定義、または GDD で未決定の場合は
   //        従来通り growthPeriodMid 固定加算にフォールバック
+
+  // 播種判定用マージン（℃）: 播種旬のみ最低温度をこの値だけ緩める
+  const SOW_TMIN_MARGIN = 3;
+
   function sowingWindows(decadeArr, crop) {
     const cond     = crop.conditions || {};
     const cropTMin = cond.tempMeanMin ?? -99;  // 作物の最低必要温度
@@ -109,7 +117,7 @@ const Phenology = (() => {
     const targetGDD = hasTempConds ? gpMid * Math.max(0, tOpt - base) : 0;
     //   = gpMid × (cropTMax − cropTMin) / 2
 
-    // ── 旬の適期判定（B案: 下限=tMax、上限=tMean）────────────
+    // ── 旬の適期判定（生育期間用・マージンなし）──────────────
     // tMax が作物最低温度に届いている && tMean が作物最高温度を超えていない
     function _isValidDecade(idx) {
       const hi  = decadeArr.tMax?.[idx];
@@ -120,13 +128,28 @@ const Phenology = (() => {
       return true;
     }
 
+    // ── 播種旬専用判定（C案: 下限を -SOW_TMIN_MARGIN℃ 緩める）──
+    // 播種旬自身のみに適用し、区間継続判定は _isValidDecade を使う
+    function _isValidSowDecade(idx) {
+      const hi  = decadeArr.tMax?.[idx];
+      const avg = decadeArr.tMean?.[idx];
+      if (hi === null && avg === null) return true;
+      if (hi  !== null && hi  < cropTMin - SOW_TMIN_MARGIN) return false;
+      if (avg !== null && avg > cropTMax) return false;
+      return true;
+    }
+
+    // 最低生育旬数の棄却閾値（×0.7 緩和）
+    const minDecadesThreshold = Math.round(minDecades * 0.7);
+
     const windows = [];
 
     for (let s = 0; s < 36; s++) {
-      if (!_isValidDecade(s)) continue;
+      // 播種旬は緩い判定（C案マージン適用）
+      if (!_isValidSowDecade(s)) continue;
 
       // ── 区間内全旬チェック ────────────────────────────────────
-      // len=1 は播種旬自身（既にチェック済み）、len=2 以降を順に検証
+      // len=1 は播種旬自身（既にチェック済み）、len=2 以降は通常判定
       // 適期外（_isValidDecade = false）: 即打ち切り
       let runLen = 1;
       for (let len = 2; len <= maxDecades && len <= 36; len++) {
@@ -134,7 +157,8 @@ const Phenology = (() => {
         if (!_isValidDecade(idx)) break;
         runLen = len;
       }
-      if (runLen < minDecades) continue;
+      // 緩和された閾値で棄却（元の minDecades ×0.7）
+      if (runLen < minDecadesThreshold) continue;
       const validEnd = (s + Math.min(runLen, maxDecades) - 1) % 36;
 
       // ── GDD 積算ベース収穫旬推定 ─────────────────────────────

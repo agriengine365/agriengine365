@@ -1020,12 +1020,42 @@ function buildSingleCropAnalysis(cropId, areaData) {
   };
 }
 
-// ─── 高温リスク計算 ───
+// ═══════════════════════════════════════════════════════════════
+//  リスク計算エンジン群
+//
+//  共通ユーティリティ: _buildGrowDecades(startDecade, endDecade)
+//    生育期間の旬インデックス配列を生成（年跨ぎ対応）
+//    startDecade〜endDecade が null の場合は空配列を返す
+// ═══════════════════════════════════════════════════════════════
+
+function _buildGrowDecades(startDecade, endDecade) {
+  if (startDecade == null || endDecade == null) return [];
+  const arr = [];
+  if (endDecade >= startDecade) {
+    for (let i = startDecade; i <= endDecade; i++) arr.push(i % 36);
+  } else {
+    // 年跨ぎ（例: 11月上旬播種 → 翌4月収穫）
+    for (let i = startDecade; i < 36; i++) arr.push(i);
+    for (let i = 0; i <= endDecade; i++) arr.push(i);
+  }
+  return arr;
+}
+
+// ── リスクレベル共通マッピング ──────────────────────────────────
+// count / threshold 比率（0〜1）からレベルを返す
+function _riskLevelByRatio(ratio) {
+  if (ratio === 0)       return { riskLevel: 'none', riskStars: '☆☆☆☆' };
+  if (ratio <= 0.15)     return { riskLevel: 'low',  riskStars: '★☆☆☆' };
+  if (ratio <= 0.35)     return { riskLevel: 'mid',  riskStars: '★★★☆' };
+  return                        { riskLevel: 'high', riskStars: '★★★★' };
+}
+
+// ─── ① 高温リスク計算（強化版）───────────────────────────────
 /**
  * calcHeatRisk(crop, decadeArr, startDecade, endDecade)
  *
- * 生育期間（startDecade〜endDecade）内の旬別最高気温(tMax)が
- * 高温閾値以上となる旬数をカウントし、リスクレベルを返す。
+ * 生育期間内の旬別最高気温(tMax)が高温閾値以上となる旬を検出し、
+ * 旬数カウント・超過温度積算・連続高温旬数を返す。
  *
  * 閾値は作物の heatType で決定:
  *   'warm' → 35℃（高温性：トマト・スイカ等）
@@ -1033,58 +1063,336 @@ function buildSingleCropAnalysis(cropId, areaData) {
  *
  * 返却:
  *   {
- *     hotDecadeCount : number,   // 閾値超過旬数
- *     threshold      : number,   // 使用した閾値(℃)
- *     heatType       : string,   // 'warm' | 'cool'
- *     riskLevel      : string,   // 'none'|'low'|'mid'|'high'
- *     riskStars      : string,   // '★☆☆☆' 等（4段階）
- *     riskLabel      : string,   // 表示用テキスト
+ *     hotDecadeCount      : number,  // 閾値超過旬数
+ *     hotDayApprox        : number,  // 旬×10日換算（参考値）
+ *     heatSeverityScore   : number,  // 超過℃の積算（生育期間全体）
+ *     maxConsecutiveHot   : number,  // 最大連続高温旬数
+ *     threshold           : number,  // 使用した閾値(℃)
+ *     heatType            : string,  // 'warm' | 'cool'
+ *     riskLevel           : string,  // 'none'|'low'|'mid'|'high'
+ *     riskStars           : string,  // '★☆☆☆' 等（4段階）
+ *     riskLabel           : string,  // 表示用テキスト
  *   }
  *   生育期間が未定・tMax配列なし の場合は null を返す
  */
 function calcHeatRisk(crop, decadeArr, startDecade, endDecade) {
   if (!decadeArr?.tMax || !Array.isArray(decadeArr.tMax)) return null;
-  if (startDecade == null || endDecade == null) return null;
+  const growDecades = _buildGrowDecades(startDecade, endDecade);
+  if (!growDecades.length) return null;
 
-  // heatType が未設定の場合は cool 扱い（保守的に厳しい閾値）
   const heatType  = crop.heatType === 'warm' ? 'warm' : 'cool';
   const threshold = heatType === 'warm' ? 35 : 33;
 
-  // 生育期間の旬インデックスを列挙（年跨ぎ対応）
-  const growDecades = [];
-  if (endDecade >= startDecade) {
-    for (let i = startDecade; i <= endDecade; i++) growDecades.push(i % 36);
-  } else {
-    // 年跨ぎ（例：11月上旬播種 → 翌4月収穫）
-    for (let i = startDecade; i < 36; i++) growDecades.push(i);
-    for (let i = 0; i <= endDecade; i++) growDecades.push(i);
-  }
+  let hotDecadeCount    = 0;
+  let heatSeverityScore = 0;
+  let maxConsecutiveHot = 0;
+  let curConsec         = 0;
 
-  const hotDecadeCount = growDecades.filter(i => {
+  growDecades.forEach(i => {
     const t = decadeArr.tMax[i];
-    return t != null && t >= threshold;
-  }).length;
+    if (t != null && t >= threshold) {
+      hotDecadeCount++;
+      heatSeverityScore += (t - threshold);
+      curConsec++;
+      if (curConsec > maxConsecutiveHot) maxConsecutiveHot = curConsec;
+    } else {
+      curConsec = 0;
+    }
+  });
 
-  // リスクレベル判定
+  heatSeverityScore = Math.round(heatSeverityScore * 10) / 10;
+
+  const ratio = growDecades.length > 0 ? hotDecadeCount / growDecades.length : 0;
+  const { riskLevel, riskStars } = _riskLevelByRatio(ratio);
+
+  const riskLabel = {
+    none: 'リスクなし',
+    low:  '低リスク',
+    mid:  '中リスク',
+    high: '高リスク',
+  }[riskLevel];
+
+  const hotDayApprox = hotDecadeCount * 10;
+  return {
+    hotDecadeCount, hotDayApprox, heatSeverityScore, maxConsecutiveHot,
+    threshold, heatType, riskLevel, riskStars, riskLabel,
+  };
+}
+
+// ─── ② 霜リスク計算 ────────────────────────────────────────────
+/**
+ * calcFrostRisk(decadeArr, startDecade, endDecade)
+ *
+ * 生育期間内の旬別最低気温(tMin)が 0℃未満となる旬を検出し、
+ * 霜の発生リスクレベルを返す。
+ *
+ * 返却:
+ *   {
+ *     frostDecadeCount : number,    // 0℃未満旬数
+ *     frostDecades     : number[],  // 0℃未満旬インデックスリスト
+ *     frostDayApprox   : number,    // 旬×10日換算（参考値）
+ *     lowestTMin       : number,    // 最低気温（生育期間中の最小値）
+ *     riskLevel        : string,    // 'none'|'low'|'mid'|'high'
+ *     riskStars        : string,
+ *     riskLabel        : string,
+ *   }
+ *   tMin配列なし の場合は null
+ */
+function calcFrostRisk(decadeArr, startDecade, endDecade) {
+  if (!decadeArr?.tMin || !Array.isArray(decadeArr.tMin)) return null;
+  const growDecades = _buildGrowDecades(startDecade, endDecade);
+  if (!growDecades.length) return null;
+
+  const frostDecades = growDecades.filter(i => {
+    const t = decadeArr.tMin[i];
+    return t != null && t < 0;
+  });
+
+  const frostDecadeCount = frostDecades.length;
+  const frostDayApprox   = frostDecadeCount * 10;
+
+  // 最低気温（null は除外）
+  const tMinVals  = growDecades.map(i => decadeArr.tMin[i]).filter(v => v != null);
+  const lowestTMin = tMinVals.length > 0 ? Math.round(Math.min(...tMinVals) * 10) / 10 : null;
+
+  const ratio = growDecades.length > 0 ? frostDecadeCount / growDecades.length : 0;
+  const { riskLevel, riskStars } = _riskLevelByRatio(ratio);
+
+  const riskLabel = {
+    none: '霜リスクなし',
+    low:  '霜リスク低（局所対策で回避可）',
+    mid:  '霜リスク中（防霜対策が必要）',
+    high: '霜リスク高（栽培時期の再検討推奨）',
+  }[riskLevel];
+
+  return {
+    frostDecadeCount, frostDecades, frostDayApprox, lowestTMin,
+    riskLevel, riskStars, riskLabel,
+  };
+}
+
+// ─── ③ 冷害リスク計算 ──────────────────────────────────────────
+/**
+ * calcChillRisk(crop, decadeArr, startDecade, endDecade)
+ *
+ * 生育期間内の旬別平均気温(tMean)が「作物最低必要温度 + 3℃」を下回る旬を
+ * 冷害リスク旬として検出する（生育鈍化・障害の前兆も捕捉するため+3℃マージン）。
+ *
+ * 返却:
+ *   {
+ *     chillDecadeCount : number,   // 低温旬数
+ *     chillDecades     : number[], // 低温旬インデックスリスト
+ *     worstDiff        : number,   // 最大乖離℃（cropTMin+3 との差、正値）
+ *     chillThreshold   : number,   // 使用した閾値（cropTMin + 3）
+ *     riskLevel        : string,
+ *     riskStars        : string,
+ *     riskLabel        : string,
+ *   }
+ *   tMean配列なし の場合は null
+ */
+function calcChillRisk(crop, decadeArr, startDecade, endDecade) {
+  if (!decadeArr?.tMean || !Array.isArray(decadeArr.tMean)) return null;
+  const growDecades = _buildGrowDecades(startDecade, endDecade);
+  if (!growDecades.length) return null;
+
+  const cropTMin     = crop.conditions?.tempMeanMin ?? null;
+  // cropTMin 未定義の場合はリスク計算不可
+  if (cropTMin === null) return null;
+
+  const chillThreshold = cropTMin + 3; // B案マージン
+
+  const chillDecades = growDecades.filter(i => {
+    const t = decadeArr.tMean[i];
+    return t != null && t < chillThreshold;
+  });
+
+  const chillDecadeCount = chillDecades.length;
+
+  // 最大乖離（最も寒い旬と閾値の差）
+  const diffs = chillDecades.map(i => chillThreshold - (decadeArr.tMean[i] ?? chillThreshold));
+  const worstDiff = diffs.length > 0 ? Math.round(Math.max(...diffs) * 10) / 10 : 0;
+
+  const ratio = growDecades.length > 0 ? chillDecadeCount / growDecades.length : 0;
+  const { riskLevel, riskStars } = _riskLevelByRatio(ratio);
+
+  const riskLabel = {
+    none: '冷害リスクなし',
+    low:  '冷害リスク低（生育が一時的に鈍化する可能性）',
+    mid:  '冷害リスク中（品質低下・収量減の可能性あり）',
+    high: '冷害リスク高（栽培適期の再検討を推奨）',
+  }[riskLevel];
+
+  return {
+    chillDecadeCount, chillDecades, worstDiff, chillThreshold,
+    riskLevel, riskStars, riskLabel,
+  };
+}
+
+// ─── ④ 日照不足リスク計算 ──────────────────────────────────────
+/**
+ * calcSunDeficitRisk(crop, decadeArr, startDecade, endDecade)
+ *
+ * 生育期間内の旬別日照時間(sun)が作物の最低必要日照（sunDecadeMin）を
+ * 下回る旬を検出し、日照充足率とリスクレベルを返す。
+ *
+ * 返却:
+ *   {
+ *     sufficiencyPct   : number,   // 日照充足率（0〜100%）
+ *     deficitDecades   : number[], // 日照不足旬インデックスリスト
+ *     deficitDecadeCount: number,
+ *     sunDecadeMin     : number,   // 使用した最低基準（h/旬）
+ *     riskLevel        : string,
+ *     riskStars        : string,
+ *     riskLabel        : string,
+ *   }
+ *   sun配列なし・生育期間データなし の場合は null
+ */
+function calcSunDeficitRisk(crop, decadeArr, startDecade, endDecade) {
+  if (!decadeArr?.sun || !Array.isArray(decadeArr.sun)) return null;
+  const growDecades = _buildGrowDecades(startDecade, endDecade);
+  if (!growDecades.length) return null;
+
+  const cond   = crop.conditions || {};
+  const sunDef = SUNSHINE_DEFAULT_ENGINE[cond.category] || SUNSHINE_DEFAULT_ENGINE._default;
+  const sunDecadeMin = cond.sunDecadeMin ?? sunDef.min;
+  const sunDecadeOpt = cond.sunDecadeOpt ?? sunDef.opt;
+
+  // データがある旬のみ評価
+  const validDecades = growDecades.filter(i => decadeArr.sun[i] != null);
+  if (validDecades.length === 0) return null;
+
+  const deficitDecades = validDecades.filter(i => decadeArr.sun[i] < sunDecadeMin);
+
+  // 充足率: 各旬のスコア（0〜1）の平均
+  let scoreSum = 0;
+  validDecades.forEach(i => {
+    const s = decadeArr.sun[i];
+    if (s >= sunDecadeOpt) {
+      scoreSum += 1.0;
+    } else if (s >= sunDecadeMin) {
+      scoreSum += (s - sunDecadeMin) / (sunDecadeOpt - sunDecadeMin);
+    } else {
+      scoreSum += Math.max(0, s / sunDecadeMin * 0.5);
+    }
+  });
+  const sufficiencyPct = Math.round((scoreSum / validDecades.length) * 100);
+
+  // 不足率からリスクレベル
+  const deficitRatio = deficitDecades.length / validDecades.length;
+  const { riskLevel, riskStars } = _riskLevelByRatio(deficitRatio);
+
+  const riskLabel = {
+    none: '日照リスクなし',
+    low:  '日照やや不足（影響は軽微）',
+    mid:  '日照不足（徒長・品質低下に注意）',
+    high: '日照大幅不足（施設補光または作期変更を検討）',
+  }[riskLevel];
+
+  return {
+    sufficiencyPct,
+    deficitDecades,
+    deficitDecadeCount: deficitDecades.length,
+    sunDecadeMin,
+    riskLevel, riskStars, riskLabel,
+  };
+}
+
+// ─── ⑤ 寒暖差指数 ──────────────────────────────────────────────
+/**
+ * calcDiurnalIndex(decadeArr, startDecade, endDecade)
+ *
+ * 生育期間内の旬別日較差（tMax - tMin）を集計し、
+ * 寒暖差の特性を返す。
+ *
+ * 日較差は糖度・色付き・香気など品質形成に正の影響を与えるため、
+ * 大きいほど品質向上に有利な指数として扱う。
+ *
+ * riskLevel は「寒暖差のなさ」に対するリスクとして定義:
+ *   none → 日較差大（品質形成に有利、平均10℃超）
+ *   low  → 日較差やや大（7〜10℃）
+ *   mid  → 日較差小（4〜7℃）
+ *   high → 日較差極小（4℃未満、品質形成に不利）
+ *
+ * 返却:
+ *   {
+ *     avgRange   : number,  // 平均日較差（℃）
+ *     maxRange   : number,  // 最大日較差
+ *     minRange   : number,  // 最小日較差
+ *     decadeCount: number,  // 評価旬数（nullを除く）
+ *     riskLevel  : string,  // 'none'|'low'|'mid'|'high'（日較差不足リスク）
+ *     riskStars  : string,
+ *     riskLabel  : string,
+ *   }
+ *   tMax/tMin 配列なし の場合は null
+ */
+function calcDiurnalIndex(decadeArr, startDecade, endDecade) {
+  if (!decadeArr?.tMax || !decadeArr?.tMin) return null;
+  const growDecades = _buildGrowDecades(startDecade, endDecade);
+  if (!growDecades.length) return null;
+
+  const ranges = growDecades
+    .map(i => {
+      const hi = decadeArr.tMax[i];
+      const lo = decadeArr.tMin[i];
+      return (hi != null && lo != null) ? hi - lo : null;
+    })
+    .filter(v => v !== null);
+
+  if (ranges.length === 0) return null;
+
+  const avgRange = Math.round((ranges.reduce((s, v) => s + v, 0) / ranges.length) * 10) / 10;
+  const maxRange = Math.round(Math.max(...ranges) * 10) / 10;
+  const minRange = Math.round(Math.min(...ranges) * 10) / 10;
+
+  // 日較差不足リスク（小さいほど高リスク）
   let riskLevel, riskStars, riskLabel;
-  if (hotDecadeCount === 0) {
-    riskLevel = 'none';  riskStars = '☆☆☆☆';  riskLabel = 'リスクなし';
-  } else if (hotDecadeCount <= 2) {
-    riskLevel = 'low';   riskStars = '★☆☆☆';  riskLabel = '低リスク';
-  } else if (hotDecadeCount <= 5) {
-    riskLevel = 'mid';   riskStars = '★★★☆';  riskLabel = '中リスク';
+  if (avgRange >= 10) {
+    riskLevel = 'none'; riskStars = '☆☆☆☆'; riskLabel = '寒暖差大（品質形成に有利）';
+  } else if (avgRange >= 7) {
+    riskLevel = 'low';  riskStars = '★☆☆☆'; riskLabel = '寒暖差やや大（品質向上が期待できる）';
+  } else if (avgRange >= 4) {
+    riskLevel = 'mid';  riskStars = '★★★☆'; riskLabel = '寒暖差小（品質形成効果は限定的）';
   } else {
-    riskLevel = 'high';  riskStars = '★★★★';  riskLabel = '高リスク';
+    riskLevel = 'high'; riskStars = '★★★★'; riskLabel = '寒暖差極小（品質向上効果は期待しにくい）';
   }
 
-  const hotDayApprox = hotDecadeCount * 10; // 旬×10日（簡易換算）
-  return { hotDecadeCount, hotDayApprox, threshold, heatType, riskLevel, riskStars, riskLabel };
+  return {
+    avgRange, maxRange, minRange,
+    decadeCount: ranges.length,
+    riskLevel, riskStars, riskLabel,
+  };
+}
+
+// ─── ラッパー: 全リスクをまとめて計算 ──────────────────────────
+/**
+ * calcAllRisks(crop, decadeArr, startDecade, endDecade)
+ *
+ * 5種のリスク関数を一括呼び出しし、まとめて返す。
+ * 各関数が null を返した場合もそのまま格納する（呼び出し元でnullチェックを）。
+ *
+ * 返却:
+ *   {
+ *     heat      : calcHeatRisk の結果
+ *     frost     : calcFrostRisk の結果
+ *     chill     : calcChillRisk の結果
+ *     sunDeficit: calcSunDeficitRisk の結果
+ *     diurnal   : calcDiurnalIndex の結果
+ *   }
+ */
+function calcAllRisks(crop, decadeArr, startDecade, endDecade) {
+  return {
+    heat:       calcHeatRisk(crop, decadeArr, startDecade, endDecade),
+    frost:      calcFrostRisk(decadeArr, startDecade, endDecade),
+    chill:      calcChillRisk(crop, decadeArr, startDecade, endDecade),
+    sunDeficit: calcSunDeficitRisk(crop, decadeArr, startDecade, endDecade),
+    diurnal:    calcDiurnalIndex(decadeArr, startDecade, endDecade),
+  };
 }
 
 // ─── 気候推定ランキング（Phenologyベース・DBスコアと独立） ───
 //  decadeArr : Phenology.buildDecadeArray() の返却値
 //  crops     : cropDB の全作物配列
-//  返却: [{ crop, score(0-100), startDecade, endDecade, harvestDecade, heatRisk }] スコア降順
+//  返却: [{ crop, score(0-100), startDecade, endDecade, harvestDecade, heatRisk, allRisks }] スコア降順
 function computeClimateRanking(decadeArr, crops) {
   if (!decadeArr || !crops?.length) return [];
 
@@ -1092,17 +1400,23 @@ function computeClimateRanking(decadeArr, crops) {
     .map(crop => {
       const wins = Phenology.sowingWindows(decadeArr, crop);
       if (!wins.length) {
-        return { crop, score: 0, startDecade: null, endDecade: null, harvestDecade: null, heatRisk: null };
+        return {
+          crop, score: 0,
+          startDecade: null, endDecade: null, harvestDecade: null,
+          heatRisk: null, allRisks: null,
+        };
       }
-      const best = wins[0];
-      const heatRisk = calcHeatRisk(crop, decadeArr, best.startDecade, best.harvestDecade ?? best.endDecade);
+      const best    = wins[0];
+      const endIdx  = best.harvestDecade ?? best.endDecade;
+      const allRisks = calcAllRisks(crop, decadeArr, best.startDecade, endIdx);
       return {
         crop,
         score:         Math.round(best.score * 100),
         startDecade:   best.startDecade,
         endDecade:     best.endDecade,
         harvestDecade: best.harvestDecade,
-        heatRisk,
+        heatRisk:      allRisks.heat,   // 後方互換: 単独アクセス用
+        allRisks,
       };
     })
     .sort((a, b) => b.score - a.score);
