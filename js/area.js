@@ -3063,30 +3063,32 @@ function _adpSelectCropForAnalysis(cropId) {
   _adpCloseRankingDialog();
 
   const ad = window.currentAreaData;
-  if (!_adpArea || !ad) return;
+  console.log('[SELECT] cropId:', cropId, '_adpArea:', !!_adpArea, 'ad:', !!ad);
+  if (!_adpArea || !ad) { console.warn('[SELECT] 早期return: _adpArea or ad がない'); return; }
 
   _adpSelectedCropId = cropId;
-
-
-
-  // ── グラフ再描画（表示中タブに関係なく実行） ──
-  _adpRenderTempChart(_adpSelectedCropId);
-  _adpRenderGrowthChart(_adpSelectedCropId);
 
   const scoreEntry = (typeof _crScores !== 'undefined')
     ? _crScores.find(s => s.crop.id === _adpSelectedCropId)
     : null;
+  console.log('[SELECT] _crScores.length:', _crScores?.length, 'scoreEntry:', !!scoreEntry);
 
   let crop = scoreEntry?.crop ?? null;
   if (!crop && typeof CROP_DB !== 'undefined') {
     crop = CROP_DB.find ? CROP_DB.find(c => c.id === _adpSelectedCropId)
          : Object.values(CROP_DB).flat().find(c => c.id === _adpSelectedCropId);
   }
+  console.log('[SELECT] crop:', crop?.name ?? 'NOT FOUND');
 
   // _crScoresが未充填でもscoreEntryの代わりに使う。適合度ペインでも共用
   const single = (crop && typeof buildSingleCropAnalysis === 'function')
     ? buildSingleCropAnalysis(_adpSelectedCropId, ad)
     : null;
+  console.log('[SELECT] single:', !!single, 'scoreVal:', single?.scoreResult?.score);
+
+  // ── グラフ再描画 ──
+  _adpRenderTempChart(_adpSelectedCropId);
+  _adpRenderGrowthChart(_adpSelectedCropId);
 
   // 収益
   if (typeof renderProfitWaterfall === 'function') {
