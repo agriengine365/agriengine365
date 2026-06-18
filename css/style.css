@@ -5562,7 +5562,7 @@ html.draw-dialog-active .bottom-nav {
   border-radius: 20px;
   border: 1.5px solid var(--border);
   background: none;
-  color: var(--text2);
+  color: var(--text);        /* text2→text に変更: 非アクティブも読みやすく */
   font-size: 0.78rem;
   font-weight: 600;
   cursor: pointer;
@@ -5573,6 +5573,39 @@ html.draw-dialog-active .bottom-nav {
   background: var(--green, #16a34a);
   color: #fff;
   border-color: var(--green, #16a34a);
+}
+
+/* サブカテゴリタブ */
+.css-subcat-tabs {
+  display: flex;
+  gap: 5px;
+  padding: 6px 12px 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border, #1e3a22);
+  background: rgba(0,0,0,0.12);
+}
+.css-subcat-tabs::-webkit-scrollbar { display: none; }
+
+.css-subcat-btn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text2);       /* サブは text2: 大カテゴリより一段控えめ */
+  font-size: 0.73rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.css-subcat-btn.active {
+  background: rgba(34,197,94,0.15);
+  border-color: var(--green2, #22c55e);
+  color: var(--green2, #22c55e);
 }
 
 /* 作物リスト */
@@ -5598,12 +5631,16 @@ html.draw-dialog-active .bottom-nav {
 }
 .css-crop-name {
   font-size: 0.92rem;
-  color: var(--text);
+  color: var(--text);        /* 元々 var(--text) で正しい・明示的に維持 */
   font-weight: 500;
+}
+.css-crop-item svg {
+  color: var(--text2);       /* 矢印アイコン色を明示指定 */
+  flex-shrink: 0;
 }
 .css-empty {
   font-size: 0.85rem;
-  color: var(--text-muted, #9ca3af);
+  color: var(--text2);       /* text-muted → text2 に統一（変数未定義対策） */
   padding: 20px 0;
   text-align: center;
 }

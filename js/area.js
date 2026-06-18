@@ -3294,35 +3294,65 @@ function _adpOpenCropSelectSheet() {
     return;
   }
 
+  // 大カテゴリ定義
   const CATEGORIES = [
-    { key: 'all',     label: 'すべて' },
-    { key: 'grain',   label: '穀物・豆類' },
+    { key: 'all',       label: 'すべて' },
+    { key: 'grain',     label: '穀物・豆類' },
     { key: 'vegetable', label: '野菜' },
-    { key: 'fruit',   label: '果物' },
-    { key: 'wild',    label: '山菜・草' },
-    { key: 'forest',  label: '林産' },
-    { key: 'oil',     label: '油脂' },
-    { key: 'fiber',   label: '繊維' },
+    { key: 'fruit',     label: '果物' },
+    { key: 'wild',      label: '山菜・草' },
+    { key: 'forest',    label: '林産' },
+    { key: 'oil',       label: '油脂' },
+    { key: 'fiber',     label: '繊維' },
   ];
 
-  // カテゴリ→DB key マッピング（analysis.jsのCR_MAJOR_TO_CATEGORIESと揃える）
+  // 大カテゴリ → DB category キーのマッピング
   const CAT_MAP = {
-    grain:     ['grain','legume'],
-    vegetable: ['leafy','fruit_veg','root','vegetable'],
+    grain:     ['grain', 'legume'],
+    vegetable: ['leafy', 'fruit_veg', 'root', 'vegetable'],
     fruit:     ['fruit'],
-    wild:      ['wildveg','herb'],
+    wild:      ['wildveg', 'herb'],
     forest:    ['forest'],
     oil:       ['oil'],
     fiber:     ['fiber'],
   };
 
-  let _selectedCat = 'all';
+  // 大カテゴリ → サブカテゴリ定義（サブなしの場合は空配列）
+  const SUBCAT_MAP = {
+    grain:     [
+      { key: 'grain',  label: '穀物' },
+      { key: 'legume', label: '豆類' },
+    ],
+    vegetable: [
+      { key: 'leafy',     label: '葉菜類' },
+      { key: 'fruit_veg', label: '果菜類' },
+      { key: 'root',      label: '根菜類' },
+      { key: 'vegetable', label: 'その他' },
+    ],
+    wild: [
+      { key: 'wildveg', label: '山菜・きのこ' },
+      { key: 'herb',    label: 'ハーブ・薬草' },
+    ],
+    fruit:  [],
+    forest: [],
+    oil:    [],
+    fiber:  [],
+  };
 
-  function buildList(cat) {
-    const list = cat === 'all'
-      ? allCrops
-      : allCrops.filter(c => (CAT_MAP[cat] || [cat]).includes(c.category));
+  // シート状態
+  let _selectedCat    = 'all';
+  let _selectedSubcat = null; // null = サブカテゴリ未選択（大カテゴリ全体）
 
+  // 作物リスト HTML 生成
+  function buildList(cat, subcat) {
+    let list;
+    if (cat === 'all') {
+      list = allCrops;
+    } else if (subcat) {
+      list = allCrops.filter(c => c.category === subcat);
+    } else {
+      list = allCrops.filter(c => (CAT_MAP[cat] || [cat]).includes(c.category));
+    }
     if (!list.length) return '<div class="css-empty">該当作物なし</div>';
     return list.map(c => `
       <div class="css-crop-item" onclick="_adpSelectCropFromSheet('${c.id}')">
@@ -3331,18 +3361,31 @@ function _adpOpenCropSelectSheet() {
       </div>`).join('');
   }
 
-  // シート生成
+  // サブカテゴリタブ HTML 生成
+  function buildSubcatTabs(cat, currentSubcat) {
+    const subs = SUBCAT_MAP[cat] || [];
+    if (!subs.length) return '';
+    const tabsHtml = subs.map(s =>
+      `<button class="css-subcat-btn${currentSubcat === s.key ? ' active' : ''}"
+        data-subcat="${s.key}"
+        onclick="_adpCropSelectSwitchSubcat('${s.key}')">${s.label}</button>`
+    ).join('');
+    return `<div class="css-subcat-tabs" id="css-subcat-tabs">${tabsHtml}</div>`;
+  }
+
+  // シート生成（初回のみDOM追加）
   let sheet = document.getElementById('adp-crop-select-sheet');
   if (!sheet) {
     sheet = document.createElement('div');
     sheet.id = 'adp-crop-select-sheet';
-    sheet.className = 'adp-crop-detail-sheet'; // 同じオーバーレイスタイル流用
+    sheet.className = 'adp-crop-detail-sheet';
     document.body.appendChild(sheet);
     sheet.addEventListener('click', e => {
       if (e.target === sheet) _adpCloseCropSelectSheet();
     });
   }
 
+  // 大カテゴリタブ HTML 生成
   const catTabsHtml = CATEGORIES.map(c =>
     `<button class="css-cat-btn${c.key === _selectedCat ? ' active' : ''}"
       data-cat="${c.key}"
@@ -3357,24 +3400,60 @@ function _adpOpenCropSelectSheet() {
         <button class="cdp-close" onclick="_adpCloseCropSelectSheet()">✕</button>
       </div>
       <div class="css-cat-tabs" id="css-cat-tabs">${catTabsHtml}</div>
-      <div class="css-list" id="css-list">${buildList('all')}</div>
+      <div id="css-subcat-wrap"></div>
+      <div class="css-list" id="css-list">${buildList('all', null)}</div>
     </div>`;
 
   sheet.classList.add('open');
 
-  // グローバルにbuildListを保持（タブ切り替えで使用）
-  sheet._buildList = buildList;
+  // タブ切り替え用の関数・状態をシートに保持
+  sheet._buildList       = buildList;
+  sheet._buildSubcatTabs = buildSubcatTabs;
+  sheet._getState        = () => ({ cat: _selectedCat, subcat: _selectedSubcat });
+  sheet._setState        = (cat, subcat) => { _selectedCat = cat; _selectedSubcat = subcat; };
 }
 
 function _adpCropSelectSwitchCat(cat) {
   const sheet = document.getElementById('adp-crop-select-sheet');
   if (!sheet) return;
-  // タブactive切り替え
+
+  // 状態更新（サブカテゴリはリセット）
+  sheet._setState(cat, null);
+
+  // 大タブ active 切り替え
   sheet.querySelectorAll('.css-cat-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.cat === cat);
   });
+
+  // サブカテゴリタブ 再描画
+  const subcatWrap = document.getElementById('css-subcat-wrap');
+  if (subcatWrap) {
+    subcatWrap.innerHTML = sheet._buildSubcatTabs(cat, null);
+  }
+
+  // 作物リスト 再描画
   const listEl = document.getElementById('css-list');
-  if (listEl && sheet._buildList) listEl.innerHTML = sheet._buildList(cat);
+  if (listEl) listEl.innerHTML = sheet._buildList(cat, null);
+}
+
+function _adpCropSelectSwitchSubcat(subcat) {
+  const sheet = document.getElementById('adp-crop-select-sheet');
+  if (!sheet) return;
+
+  const { cat, subcat: prevSubcat } = sheet._getState();
+
+  // 同じサブカテゴリをタップ → 解除（トグル）
+  const nextSubcat = (prevSubcat === subcat) ? null : subcat;
+  sheet._setState(cat, nextSubcat);
+
+  // サブタブ active 切り替え
+  sheet.querySelectorAll('.css-subcat-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.subcat === nextSubcat);
+  });
+
+  // 作物リスト 再描画
+  const listEl = document.getElementById('css-list');
+  if (listEl) listEl.innerHTML = sheet._buildList(cat, nextSubcat);
 }
 
 function _adpCloseCropSelectSheet() {
