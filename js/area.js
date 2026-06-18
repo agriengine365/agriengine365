@@ -872,7 +872,7 @@ function _adpSwitchSubTab(name) {
   }
   // ── 作物選択済み時の各ペイン再描画 ──
   if (_adpSelectedCropId) {
-    const ad = window.currentAreaData;
+    const ad = currentAreaData;
     const scoreEntry = (typeof _crScores !== 'undefined')
       ? _crScores.find(s => s.crop.id === _adpSelectedCropId) : null;
     const crop = scoreEntry?.crop
@@ -2865,7 +2865,7 @@ function adpCropTap(el, cropId) {
       _adpRenderRankingList();
       _adpRenderGrowthRankingList();
       // 収益・施肥・リスク・作業カレンダー更新
-      const ad = window.currentAreaData;
+      const ad = currentAreaData;
       const scoreEntry = (typeof _crScores !== 'undefined')
         ? _crScores.find(s => s.crop.id === cropId) : null;
       let crop = scoreEntry?.crop ?? null;
@@ -2912,7 +2912,7 @@ function adpCropTap(el, cropId) {
 
 // ─── 作物詳細シート（下から出るポップアップ） ───
 function _adpOpenCropDetailSheet(cropId) {
-  const ad = window.currentAreaData;
+  const ad = currentAreaData;
   if (!ad) return;
 
   // scoreEntry取得
@@ -3062,7 +3062,7 @@ function _adpSelectCropForAnalysis(cropId) {
   _adpCloseCropDetailSheet();
   _adpCloseRankingDialog();
 
-  const ad = window.currentAreaData;
+  const ad = currentAreaData;
   console.log('[SELECT] cropId:', cropId, '_adpArea:', !!_adpArea, 'ad:', !!ad);
   if (!_adpArea || !ad) { console.warn('[SELECT] 早期return: _adpArea or ad がない'); return; }
 
@@ -3559,7 +3559,7 @@ function _awRunAnalysis() {
 function _awUpdateLivePreview() {
   const bar = document.getElementById('aw-live-preview');
 
-  const ad = window.currentAreaData || {};
+  const ad = currentAreaData || {};
   const modeLabels = { openField: '露地栽培', greenhouse: 'ハウス栽培', heatedGreenhouse: '加温ハウス' };
   const modeLabel  = modeLabels[ad.cultivationMode] || '露地栽培';
 
