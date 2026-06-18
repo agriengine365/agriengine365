@@ -78,11 +78,16 @@ const Phenology = (() => {
   //  crop: cropDB エントリ（conditions付き）
   //  返却: [ { startDecade, endDecade, harvestDecade, score } ] — 最大12件
   //
-  //  変更点（v2）:
-  //   1. 播種ウィンドウ妥当性判定を「全旬チェック」に厳格化
-  //      - 区間内で最初に tempMeanMin/Max 範囲外の旬が出た時点で打ち切り
+  //  変更点（v3）:
+  //   1. 播種ウィンドウ妥当性判定を tMax/tMean ハイブリッド方式（B案）に変更
+  //      - 下限判定: decadeArr.tMax >= tempMeanMin
+  //          「昼間の最高気温が作物の最低必要温度に届いていれば生育可能」
+  //          → 春先・晩秋の低温期を救い、ウィンドウが実際の農業に近くなる
+  //      - 上限判定: decadeArr.tMean <= tempMeanMax
+  //          「高温障害は持続する平均気温で判断すべき（瞬間高温より継続熱が重要）」
+  //          → 夏の高温期は引き続き厳格に除外
   //      - null 旬はデータ欠損として許容（打ち切らない）
-  //   2. 収穫旬を GDD 積算ベースに変更
+  //   2. 収穫旬を GDD 積算ベースに変更（v2 から継続）
   //      - targetGDD = growthPeriodMid（日）×（tOpt − base）
   //      - base = tempMeanMin, tOpt = (tempMeanMin + tempMeanMax) / 2
   //      - 播種旬から tMean を積算し targetGDD 到達旬を収穫予測旬とする
@@ -90,37 +95,43 @@ const Phenology = (() => {
   //      - tempMeanMin/Max が DB 未定義、または GDD で未決定の場合は
   //        従来通り growthPeriodMid 固定加算にフォールバック
   function sowingWindows(decadeArr, crop) {
-    const cond = crop.conditions || {};
-    const tMin = cond.tempMeanMin ?? -99;
-    const tMax = cond.tempMeanMax ?? 99;
+    const cond     = crop.conditions || {};
+    const cropTMin = cond.tempMeanMin ?? -99;  // 作物の最低必要温度
+    const cropTMax = cond.tempMeanMax ?? 99;   // 作物の最高耐性温度
     const minDecades = Math.round((crop.growthPeriodMin ?? 60) / 10);
     const maxDecades = Math.round((crop.growthPeriodMax ?? 120) / 10);
     const gpMid      = ((crop.growthPeriodMin ?? 60) + (crop.growthPeriodMax ?? 120)) / 2;
 
     // GDD 目標値（tempMeanMin/Max 両方が DB に定義されている場合のみ有効）
-    // ?? デフォルト値（-99/99）のまま計算すると targetGDD が発散するため
-    // null チェックで明示的に定義済みの場合に限定する
     const hasTempConds = cond.tempMeanMin != null && cond.tempMeanMax != null;
-    const base      = tMin;
-    const tOpt      = (tMin + tMax) / 2;
+    const base      = cropTMin;
+    const tOpt      = (cropTMin + cropTMax) / 2;
     const targetGDD = hasTempConds ? gpMid * Math.max(0, tOpt - base) : 0;
-    //   = gpMid × (tMax − tMin) / 2
+    //   = gpMid × (cropTMax − cropTMin) / 2
+
+    // ── 旬の適期判定（B案: 下限=tMax、上限=tMean）────────────
+    // tMax が作物最低温度に届いている && tMean が作物最高温度を超えていない
+    function _isValidDecade(idx) {
+      const hi  = decadeArr.tMax?.[idx];
+      const avg = decadeArr.tMean?.[idx];
+      if (hi === null && avg === null) return true;   // 両方null → データ欠損許容
+      if (hi  !== null && hi  < cropTMin) return false; // 昼温が最低必要温度に届かない
+      if (avg !== null && avg > cropTMax) return false;  // 平均が最高耐性温度を超える
+      return true;
+    }
 
     const windows = [];
 
     for (let s = 0; s < 36; s++) {
-      const t = decadeArr.tMean[s];
-      if (t === null || t < tMin || t > tMax) continue;
+      if (!_isValidDecade(s)) continue;
 
       // ── 区間内全旬チェック ────────────────────────────────────
       // len=1 は播種旬自身（既にチェック済み）、len=2 以降を順に検証
-      // ・範囲外（non-null かつ tMin/tMax 逸脱）: 即打ち切り
-      // ・null（データ欠損）: 許容してカウント継続
+      // 適期外（_isValidDecade = false）: 即打ち切り
       let runLen = 1;
       for (let len = 2; len <= maxDecades && len <= 36; len++) {
         const idx = (s + len - 1) % 36;
-        const tv  = decadeArr.tMean[idx];
-        if (tv !== null && (tv < tMin || tv > tMax)) break;
+        if (!_isValidDecade(idx)) break;
         runLen = len;
       }
       if (runLen < minDecades) continue;
