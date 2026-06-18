@@ -5876,3 +5876,106 @@ html.draw-dialog-active .bottom-nav {
 #adp-eval-mode-wrap {
   display: none !important;
 }
+/* ═══════════════════════════════════════════════════════════════
+   収益タブ強化 — 追記分
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── ウォーターフォール行のサブノート ── */
+.wf-note {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 10px;
+  color: var(--text3);
+  font-weight: 400;
+}
+
+/* ── 収量内訳ブロック ── */
+.profit-yield-detail {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.pyd-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.pyd-row:last-child {
+  border-bottom: none;
+}
+
+.pyd-label {
+  flex-shrink: 0;
+  width: 68px;
+  color: var(--text3);
+  font-size: 10px;
+}
+
+.pyd-val {
+  flex-shrink: 0;
+  min-width: 64px;
+  font-weight: 600;
+  font-size: 12px;
+  font-family: var(--mono);
+  text-align: right;
+  color: var(--text);
+}
+
+.pyd-sub {
+  color: var(--text3);
+  font-size: 10px;
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* ── ウォーターフォール本体セクション ── */
+.profit-wf-section {
+  margin-top: 2px;
+}
+
+/* ── 合計行（純利益行）を視覚的に強調 ── */
+.profit-wf-section .waterfall-row:last-child {
+  border-top: 2px solid var(--border);
+  margin-top: 2px;
+  font-weight: 600;
+}
+.profit-wf-section .waterfall-row:last-child .waterfall-label {
+  color: var(--text);
+}
+.profit-wf-section .waterfall-row:last-child .waterfall-value {
+  font-size: 12px;
+}
+
+/* ── 収益サマリーのspan/strongを既存に合わせて補強 ── */
+.profit-summary > div span {
+  display: block;
+  font-size: 10px;
+  color: var(--text3);
+  margin-bottom: 2px;
+}
+.profit-summary > div strong {
+  display: block;
+  font-size: 12px;
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+}
+
+/* ── 390px以下: 収量内訳もシングルカラムに ── */
+@media (max-width: 390px) {
+  .pyd-row {
+    flex-wrap: wrap;
+    gap: 2px;
+  }
+  .pyd-label {
+    width: 100%;
+  }
+  .pyd-sub {
+    width: 100%;
+  }
+}
