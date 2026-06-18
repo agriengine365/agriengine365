@@ -708,59 +708,220 @@ function cropYieldPer10aKg(crop) {
   return ((crop.yield.min || 0) + (crop.yield.max || 0)) / 2;
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  収益計算エンジン（強化版）
+//
+//  設計方針:
+//   - コストを種苗/資材/機械/労働/初期償却の5項目に分解
+//   - 収量補正を標高・栽培方式・気温乖離の3軸で多段補正
+//   - 出荷率をカテゴリ別ベース × 適合率 × 栽培方式で算出
+//   - 初期費用は作物寿命年数で均等償却（果樹=10年、多年草=5年、一年草=3年）
+//   - リスク控除はenv/作物/連作の3成分を重み付きで合算
+// ═══════════════════════════════════════════════════════════════
+
+// ── カテゴリ別コスト単価テーブル（円/10a・年） ─────────────────
+// 種苗費: 種・苗・球根等の購入費
+// 資材費: 農薬・肥料（化成）・マルチ・ネット等の消耗品
+// 機械費: トラクター・管理機等の燃料・修繕の按分
+// 労働費: 播種〜収穫の作業時間 × 地域最低賃金相当（≈1,000円/h）
+// 初期費用: 苗木・整枝棚・灌漑設備等の初期投資（年数償却で使用）
+// 償却年数: 初期費用を何年に分割するか
+const COST_TABLE = {
+  fruit:     { seed: 15000, material: 42000, machine: 28000, labor: 110000, initial: 350000, amortYears: 10 },
+  grain:     { seed:  8000, material: 18000, machine: 35000, labor:  38000, initial:  40000, amortYears:  3 },
+  legume:    { seed:  9000, material: 15000, machine: 28000, labor:  42000, initial:  35000, amortYears:  3 },
+  leafy:     { seed: 12000, material: 25000, machine: 18000, labor:  80000, initial:  30000, amortYears:  3 },
+  root:      { seed: 10000, material: 22000, machine: 25000, labor:  65000, initial:  32000, amortYears:  3 },
+  fruit_veg: { seed: 14000, material: 30000, machine: 20000, labor:  90000, initial:  45000, amortYears:  3 },
+  vegetable: { seed: 11000, material: 22000, machine: 20000, labor:  72000, initial:  30000, amortYears:  3 },
+  wildveg:   { seed:  8000, material: 15000, machine: 15000, labor:  60000, initial:  80000, amortYears:  5 },
+  herb:      { seed: 10000, material: 18000, machine: 12000, labor:  55000, initial:  35000, amortYears:  4 },
+  mushroom:  { seed: 20000, material: 30000, machine: 15000, labor:  70000, initial: 120000, amortYears:  5 },
+  forest:    { seed:  5000, material: 10000, machine: 20000, labor:  40000, initial: 100000, amortYears: 10 },
+  oil:       { seed:  8000, material: 18000, machine: 30000, labor:  45000, initial:  50000, amortYears:  4 },
+  fiber:     { seed:  7000, material: 16000, machine: 28000, labor:  50000, initial:  45000, amortYears:  4 },
+  specialty: { seed: 12000, material: 25000, machine: 18000, labor:  60000, initial:  60000, amortYears:  5 },
+  _default:  { seed: 10000, material: 22000, machine: 22000, labor:  60000, initial:  40000, amortYears:  3 },
+};
+
+// ── カテゴリ別 出荷率ベース ────────────────────────────────────
+// 露地・標準適合率（suitabilityRate=1.0）での基準値
+// ハウス・高適合率では上側に補正される
+const MARKETABLE_BASE = {
+  fruit:     0.78,
+  grain:     0.92,
+  legume:    0.88,
+  leafy:     0.70,
+  root:      0.80,
+  fruit_veg: 0.75,
+  vegetable: 0.78,
+  wildveg:   0.82,
+  herb:      0.80,
+  mushroom:  0.88,
+  forest:    0.85,
+  oil:       0.90,
+  fiber:     0.88,
+  specialty: 0.80,
+  _default:  0.78,
+};
+
+/**
+ * calculateRiskDeductionRate(crop, landProfile)
+ *
+ * リスク控除率を3成分の重み付き合算で算出する。
+ *
+ * 成分:
+ *   envRate    : 圃場環境リスク（洪水・干ばつ・積雪の平均）× 0.20
+ *   cropRate   : 作物固有リスク（リスク項目のレベル別加算）
+ *   continuousRate: 連作障害リスク（continuousCropYears=1 → 5%、それ以外 → 2%）
+ *
+ * 上限: 45%（過大な控除を防ぐ）
+ */
 function calculateRiskDeductionRate(crop, landProfile) {
-  const envRisk = (
-    (landProfile.floodRisk || 0) +
+  // 環境リスク: 3指標の平均（0〜100）を 0〜1 に正規化し 0.20 を乗じる
+  const envAvg = (
+    (landProfile.floodRisk   || 0) +
     (landProfile.droughtRisk || 0) +
-    (landProfile.snowRisk || 0)
-  ) / 300;
-  const cropRisk = (crop.risks || []).reduce((sum, r) => {
-    return sum + (r.level === 'high' ? 0.06 : r.level === 'medium' ? 0.035 : 0.015);
+    (landProfile.snowRisk    || 0)
+  ) / 3;
+  const envRate = (envAvg / 100) * 0.20;
+
+  // 作物固有リスク: high=8% / medium=4% / low=1.5%
+  const cropRate = (crop.risks || []).reduce((sum, r) => {
+    return sum + (r.level === 'high' ? 0.08 : r.level === 'medium' ? 0.04 : 0.015);
   }, 0);
-  const continuous = crop.conditions?.continuousCropYears <= 1 ? 0.05 : 0.02;
-  return clamp(envRisk * 0.16 + cropRisk + continuous, 0, 0.45);
+
+  // 連作障害リスク
+  const continuousRate = crop.conditions?.continuousCropYears <= 1 ? 0.05 : 0.02;
+
+  return clamp(envRate + cropRate + continuousRate, 0, 0.45);
 }
 
+/**
+ * calculateProfitability(crop, areaData, scoreResult, landProfile)
+ *
+ * 収益性を多軸モデルで算出する。
+ *
+ * 収量補正3軸:
+ *   1. 適合率補正     : suitabilityRate（スコア/100）をそのまま乗算
+ *   2. 栽培方式補正   : greenhouse=+15%, heatedGreenhouse=+25%, openField=±0%
+ *   3. 標高・気温補正 : DB最適気温からの乖離が大きいほど収量ペナルティ
+ *
+ * コスト5項目:
+ *   seedCost / materialCost / machineCost / laborCost / amortizedInitialCost
+ *
+ * 返却フィールド（後方互換のため旧フィールドも維持）:
+ *   area10a, baseYield, yieldCorrectionFactor, predictedYield,
+ *   marketableYieldRate, marketableYield, averagePrice,
+ *   revenue, seedCost, materialCost, machineCost, laborCost,
+ *   amortizedInitialCost, annualCost (旧互換: seed+material+machine),
+ *   riskDeduction, riskDeductionRate, averageProfit
+ */
 function calculateProfitability(crop, areaData, scoreResult, landProfile) {
-  const area10a = Math.max(0, (areaData.areaSqm || 0) / 1000);
+  const area10a         = Math.max(0, (areaData.areaSqm || 0) / 1000);
   const suitabilityRate = clamp((scoreResult?.score || 0) / 100, 0, 1);
-  const baseYield = cropYieldPer10aKg(crop) * area10a;
-  const predictedYield = baseYield * suitabilityRate;
-  const marketableYieldRate = clamp(0.72 + suitabilityRate * 0.22, 0.45, 0.96);
-  const marketableYield = predictedYield * marketableYieldRate;
-  const demandScore = crop.category === 'fruit'   || crop.category === 'wildveg' ? 1.08
-                    : crop.category === 'oil'    || crop.category === 'fiber'   ? 1.05
-                    : 1.0;
-  const revenue = marketableYield * cropPricePerKg(crop) * demandScore;
-  const fertilizer = crop.fertilizer || { N: 0, P: 0, K: 0 };
-  const annualCost = area10a * (45000 + (fertilizer.N + fertilizer.P + fertilizer.K) * 1200);
-  const initialCost = area10a * (crop.category === 'fruit'   ? 120000
-                               : crop.category === 'wildveg' ?  70000
-                               : crop.category === 'oil'     ?  45000
-                               : crop.category === 'fiber'   ?  50000
-                               : 35000);
-  const laborCost = area10a * (crop.category === 'fruit'      ? 90000
-                              : crop.category === 'vegetable' ? 75000
-                              : crop.category === 'oil'       ? 55000
-                              : crop.category === 'fiber'     ? 60000
-                              : 48000);
+  const cultivationMode = areaData.cultivationMode || 'openField';
+  const cat             = crop.conditions?.category || crop.category || '_default';
+  const costRow         = COST_TABLE[cat] || COST_TABLE._default;
+
+  // ── ① 収量補正係数 ──────────────────────────────────────────
+  // 適合率補正
+  const suitFactor = suitabilityRate;
+
+  // 栽培方式補正
+  const modeFactor = cultivationMode === 'heatedGreenhouse' ? 1.25
+                   : cultivationMode === 'greenhouse'       ? 1.15
+                   : 1.0;
+
+  // 気温乖離補正: 年均気温と作物最適気温の差に基づくペナルティ
+  // 最適気温 = (tempMeanMin + tempMeanMax) / 2
+  const cond    = crop.conditions || {};
+  let tempFactor = 1.0;
+  if (cond.tempMeanMin != null && cond.tempMeanMax != null && landProfile.avgTemp != null) {
+    const tOpt = (cond.tempMeanMin + cond.tempMeanMax) / 2;
+    const diff  = Math.abs(landProfile.avgTemp - tOpt);
+    // 2℃以内: ペナルティなし / 2〜8℃: 線形減少 / 8℃超: 最大20%減
+    tempFactor = diff <= 2 ? 1.0
+               : diff <= 8 ? 1.0 - (diff - 2) / 6 * 0.20
+               : 0.80;
+  }
+
+  const yieldCorrectionFactor = Math.round(suitFactor * modeFactor * tempFactor * 1000) / 1000;
+
+  // ── ② 収量計算 ───────────────────────────────────────────────
+  const baseYield      = cropYieldPer10aKg(crop) * area10a;
+  const predictedYield = baseYield * yieldCorrectionFactor;
+
+  // ── ③ 出荷率 ─────────────────────────────────────────────────
+  // カテゴリ別ベース × 適合率補正（±8%）× 栽培方式補正（ハウス+5%）
+  const marketableBase     = MARKETABLE_BASE[cat] || MARKETABLE_BASE._default;
+  const marketableAdj      = clamp(marketableBase + (suitabilityRate - 0.7) * 0.08, 0.45, 0.96);
+  const marketableYieldRate = cultivationMode !== 'openField'
+    ? clamp(marketableAdj + 0.05, 0.45, 0.97)
+    : marketableAdj;
+  const marketableYield    = predictedYield * marketableYieldRate;
+
+  // ── ④ 販売収入 ───────────────────────────────────────────────
+  const averagePrice = cropPricePerKg(crop);
+  const revenue      = marketableYield * averagePrice;
+
+  // ── ⑤ コスト5項目（円/10a × 面積） ─────────────────────────
+  // ハウス栽培: 資材費+15%、機械費+10%（暖房・設備費を資材費に含む近似）
+  const modeMatMult = cultivationMode !== 'openField' ? 1.15 : 1.0;
+  const modeMacMult = cultivationMode !== 'openField' ? 1.10 : 1.0;
+
+  // 肥料費補正: fertilizer.N/P/K 合計量 × 単価（DBにある場合のみ加算）
+  const fert         = crop.fertilizer || { N: 0, P: 0, K: 0 };
+  const fertAdj      = ((fert.N || 0) + (fert.P || 0) + (fert.K || 0)) * 800; // 800円/kg
+
+  const seedCost             = costRow.seed     * area10a;
+  const materialCost         = (costRow.material * modeMatMult + fertAdj) * area10a;
+  const machineCost          = costRow.machine  * modeMacMult * area10a;
+  const laborCost            = costRow.labor    * area10a;
+  const amortizedInitialCost = (costRow.initial / costRow.amortYears) * area10a;
+
+  // 後方互換: annualCost = 種苗+資材+機械（旧: 資材+肥料の扱い）
+  const annualCost = seedCost + materialCost + machineCost;
+
+  // ── ⑥ リスク控除 ─────────────────────────────────────────────
   const riskDeductionRate = calculateRiskDeductionRate(crop, landProfile);
-  const riskDeduction = revenue * riskDeductionRate;
-  const averageProfit = revenue - annualCost - initialCost - laborCost - riskDeduction;
+  const riskDeduction     = revenue * riskDeductionRate;
+
+  // ── ⑦ 純利益 ─────────────────────────────────────────────────
+  const averageProfit = revenue
+    - seedCost
+    - materialCost
+    - machineCost
+    - laborCost
+    - amortizedInitialCost
+    - riskDeduction;
 
   return {
+    // 面積
     area10a,
+    // 収量
+    baseYield,
+    yieldCorrectionFactor,
     predictedYield,
     marketableYieldRate,
     marketableYield,
-    averagePrice: cropPricePerKg(crop),
-    demandScore,
+    // 収入
+    averagePrice,
     revenue,
-    initialCost,
-    annualCost,
+    // コスト（5項目）
+    seedCost,
+    materialCost,
+    machineCost,
     laborCost,
-    riskDeduction,
+    amortizedInitialCost,
+    amortYears: costRow.amortYears,
+    // 後方互換フィールド
+    annualCost,
+    initialCost: costRow.initial * area10a,   // 旧フィールド（未償却の総額）
+    // リスク控除
     riskDeductionRate,
+    riskDeduction,
+    // 利益
     averageProfit,
   };
 }

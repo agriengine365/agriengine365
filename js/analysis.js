@@ -354,40 +354,97 @@ function renderProfitWaterfall(result) {
     return;
   }
 
-  const p = result.profitability;
+  const p   = result.profitability;
+  const crop = result.crop;
+
+  // 面積が0の場合は入力促しを表示
+  if (!p.area10a || p.area10a <= 0) {
+    el.innerHTML = '<div class="empty-mini">面積を入力すると収益試算が表示されます</div>';
+    return;
+  }
+
+  // ── ウォーターフォール用スケール ───────────────────────────
+  const costItems = [
+    p.seedCost             ?? 0,
+    p.materialCost         ?? 0,
+    p.machineCost          ?? 0,
+    p.laborCost            ?? 0,
+    p.amortizedInitialCost ?? 0,
+    p.riskDeduction        ?? 0,
+  ];
   const maxAbs = Math.max(
-    Math.abs(p.revenue),
-    Math.abs(p.initialCost),
-    Math.abs(p.annualCost + p.laborCost),
-    Math.abs(p.riskDeduction),
-    Math.abs(p.averageProfit),
+    Math.abs(p.revenue || 0),
+    ...costItems,
+    Math.abs(p.averageProfit || 0),
     1
   );
-  const row = (label, value, type) => {
-    const width = Math.max(8, Math.min(100, Math.abs(value) / maxAbs * 100));
+
+  const row = (label, value, type, note = '') => {
+    const width = Math.max(6, Math.min(100, Math.abs(value) / maxAbs * 100));
+    const noteHtml = note ? `<span class="wf-note">${note}</span>` : '';
     return `
       <div class="waterfall-row">
-        <div class="waterfall-label">${label}</div>
+        <div class="waterfall-label">${label}${noteHtml}</div>
         <div class="waterfall-track">
           <div class="waterfall-bar ${type}" style="width:${width}%"></div>
         </div>
         <div class="waterfall-value">${fmtYen(value)}</div>
-      </div>
-    `;
+      </div>`;
   };
+
+  // ── 収量内訳テキスト ────────────────────────────────────────
+  const baseY  = fmtInt(p.baseYield);
+  const corrPct = Math.round((p.yieldCorrectionFactor ?? 1) * 100);
+  const predY  = fmtInt(p.predictedYield);
+  const mktPct = Math.round((p.marketableYieldRate ?? 0) * 100);
+  const mktY   = fmtInt(p.marketableYield);
+  const unitPrice = p.averagePrice ? Math.round(p.averagePrice).toLocaleString() + '円/kg' : '-';
+  const amortNote = p.amortYears ? `初期費用を${p.amortYears}年償却` : '';
+
+  // ── 利益ラベル色 ─────────────────────────────────────────────
+  const profitCls = (p.averageProfit ?? 0) >= 0 ? 'profit-plus' : 'profit-minus';
 
   el.innerHTML = `
     <div class="profit-summary">
-      <div><span>対象作物</span><strong>${result.crop.name}</strong></div>
-      <div><span>収量</span><strong>${fmtInt(p.predictedYield)} kg</strong></div>
-      <div><span>出荷率</span><strong>${Math.round(p.marketableYieldRate * 100)}%</strong></div>
-      <div><span>利益</span><strong class="${p.averageProfit >= 0 ? 'profit-plus' : 'profit-minus'}">${fmtYen(p.averageProfit)}</strong></div>
+      <div><span>対象作物</span><strong>${escHtml(crop.name)}</strong></div>
+      <div><span>面積</span><strong>${fmtNum(p.area10a, 2)} 10a</strong></div>
+      <div><span>販売単価</span><strong>${unitPrice}</strong></div>
+      <div><span>純利益</span><strong class="${profitCls}">${fmtYen(p.averageProfit)}</strong></div>
     </div>
-    ${row('[+] 販売収入', p.revenue, 'plus')}
-    ${row('[-] 初期費用', -p.initialCost, 'minus')}
-    ${row('[-] 管理費＋人件費', -(p.annualCost + p.laborCost), 'minus')}
-    ${row('[-] リスク控除', -p.riskDeduction, 'minus')}
-    ${row('[=] 平均利益', p.averageProfit, p.averageProfit >= 0 ? 'plus' : 'minus')}
+
+    <div class="profit-yield-detail">
+      <div class="pyd-row">
+        <span class="pyd-label">基準収量</span>
+        <span class="pyd-val">${baseY} kg</span>
+        <span class="pyd-sub">（DB標準値 × ${fmtNum(p.area10a, 2)} 10a）</span>
+      </div>
+      <div class="pyd-row">
+        <span class="pyd-label">補正係数</span>
+        <span class="pyd-val ${corrPct >= 100 ? 'profit-plus' : corrPct >= 75 ? '' : 'profit-minus'}">${corrPct}%</span>
+        <span class="pyd-sub">（適合率 × 栽培方式 × 気温乖離）</span>
+      </div>
+      <div class="pyd-row">
+        <span class="pyd-label">予測収量</span>
+        <span class="pyd-val">${predY} kg</span>
+        <span class="pyd-sub">（基準 × 補正係数）</span>
+      </div>
+      <div class="pyd-row">
+        <span class="pyd-label">出荷率</span>
+        <span class="pyd-val">${mktPct}%</span>
+        <span class="pyd-sub">→ 出荷量 ${mktY} kg</span>
+      </div>
+    </div>
+
+    <div class="profit-wf-section">
+      ${row('[+] 販売収入',   p.revenue,                'plus')}
+      ${row('[-] 種苗費',     -p.seedCost,              'minus')}
+      ${row('[-] 資材費',     -p.materialCost,          'minus', '農薬・肥料・マルチ等')}
+      ${row('[-] 機械費',     -p.machineCost,           'minus', '燃料・修繕按分')}
+      ${row('[-] 労働費',     -p.laborCost,             'minus')}
+      ${row('[-] 初期償却費', -p.amortizedInitialCost,  'minus', amortNote)}
+      ${row('[-] リスク控除', -p.riskDeduction,         'minus', Math.round((p.riskDeductionRate ?? 0) * 100) + '%')}
+      ${row('[=] 純利益',      p.averageProfit,         profitCls === 'profit-plus' ? 'plus' : 'minus')}
+    </div>
   `;
 }
 
