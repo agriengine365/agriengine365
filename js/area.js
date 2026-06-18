@@ -2347,6 +2347,7 @@ const _ADP_GROWTH_MONTH_LABELS = ['1','2','3','4','5','6','7','8','9','10','11',
 const _ADP_GROWTH_N = 36; // 旬数
 
 // canvas初期化＋旬データ取得。データなしの場合は「データなし」表示してnullを返す
+const _ADP_MODE_LABELS = { openField:'露地栽培', greenhouse:'ハウス栽培', heatedGreenhouse:'加温ハウス' };
 function _adpGrowthSetup(canvasId, legendId, noDataMsg) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return null;
@@ -2372,7 +2373,14 @@ function _adpGrowthSetup(canvasId, legendId, noDataMsg) {
     return null;
   }
 
-  return { ctx, W, H, decadeArr, rainMonthly, tMeanArr: decadeArr.tMean };
+  const cultivationMode = currentAreaData?.cultivationMode || 'openField';
+  const isHouse  = cultivationMode === 'greenhouse' || cultivationMode === 'heatedGreenhouse';
+  const isHeated = cultivationMode === 'heatedGreenhouse';
+  // ハウス補正: 加温ハウスは全旬+4℃、普通ハウスは最低気温+4℃相当として旬平均を+2℃
+  const tMeanCorrected = decadeArr.tMean.map(v =>
+    v === null ? null : isHeated ? v + 4 : isHouse ? v + 2 : v
+  );
+  return { ctx, W, H, decadeArr, rainMonthly, tMeanArr: decadeArr.tMean, tMeanCorrected, cultivationMode };
 }
 
 // cropId → CROP_DBエントリ取得（_crScoresフォールバック付き）
@@ -2395,7 +2403,7 @@ function _adpGrowthAxes(g, crop) {
   const gW  = g.W - PAD.left - PAD.right;
   const gH  = g.H - PAD.top  - PAD.bottom;
 
-  const allTemps = g.tMeanArr.filter(v => v !== null);
+  const allTemps = [...g.tMeanArr, ...g.tMeanCorrected].filter(v => v !== null);
   if (crop) {
     if (crop.conditions.tempMeanMin != null) allTemps.push(crop.conditions.tempMeanMin - 2);
     if (crop.conditions.tempMeanMax != null) allTemps.push(crop.conditions.tempMeanMax + 2);
@@ -2560,6 +2568,23 @@ function _adpGrowthDrawSeries(g, ax, crop) {
     ctx.fillStyle = '#fbbf24';
     ctx.beginPath(); ctx.arc(toX(i), toTY(v), r, 0, Math.PI * 2); ctx.fill();
   });
+
+  // ハウス補正気温折れ線（緑破線）
+  if (g.cultivationMode !== 'openField') {
+    ctx.strokeStyle = '#34d399';
+    ctx.lineWidth   = 1.8;
+    ctx.lineJoin    = 'round';
+    ctx.setLineDash([4, 3]);
+    ctx.beginPath();
+    let hMoved = false;
+    g.tMeanCorrected.forEach((v, i) => {
+      if (v === null) { hMoved = false; return; }
+      if (!hMoved) { ctx.moveTo(toX(i), toTY(v)); hMoved = true; }
+      else         { ctx.lineTo(toX(i), toTY(v)); }
+    });
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
 }
 
 // 月ラベル（DB/推定 共通・最前面）
@@ -2713,6 +2738,7 @@ function _adpRenderGrowthChartDB(cropId) {
       ${stageLabels}
       ${rText ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(74,222,128,0.5)"></span>適正降水 ${rText}</span>` : ''}
       ${gpText ? `<span class="adp-tl-item adp-tl-period">${gpText}</span>` : ''}
+      ${g.cultivationMode !== 'openField' ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:#34d399"></span>${_ADP_MODE_LABELS[g.cultivationMode]}（+4℃補正）</span>` : ''}
     `;
   } else {
     if (subEl) subEl.textContent = '作物を選択するとDB登録の播種・育苗・定植・収穫を表示';
@@ -2740,10 +2766,14 @@ function _adpRenderGrowthChartEst(cropId) {
   let gddCurve      = null;
   let gddMax        = 0;
   if (crop && typeof Phenology !== 'undefined') {
-    sowingWindows = Phenology.sowingWindows(g.decadeArr, crop);
+    sowingWindows = // ハウス補正済みdecadeArrを生成してsowingWindowsを計算
+    const correctedDecadeArr = g.cultivationMode !== 'openField'
+      ? { ...g.decadeArr, tMean: g.tMeanCorrected }
+      : g.decadeArr;
+    sowingWindows = Phenology.sowingWindows(correctedDecadeArr, crop);
     if (sowingWindows.length > 0) {
       const base = crop.conditions?.tempMeanMin ?? 10;
-      gddCurve = Phenology.accumulateGDD(g.tMeanArr, base, sowingWindows[0].startDecade);
+      gddCurve = Phenology.accumulateGDD(g.tMeanCorrected, base, sowingWindows[0].startDecade);
       gddMax   = Math.max(...gddCurve.filter(v => v !== null), 1);
     }
   }
@@ -2836,6 +2866,7 @@ function _adpRenderGrowthChartEst(cropId) {
       ${rText ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(74,222,128,0.5)"></span>適正降水 ${rText}</span>` : ''}
       ${gddCurve ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(167,139,250,0.8)"></span>GDD積算</span>` : ''}
       ${!bestWin ? `<span class="adp-tl-item adp-tl-period">この気候では適期が見つかりませんでした</span>` : ''}
+      ${g.cultivationMode !== 'openField' ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:#34d399"></span>${_ADP_MODE_LABELS[g.cultivationMode]}（+4℃補正）</span>` : ''}
     `;
   } else {
     if (subEl) subEl.textContent = '作物を選択すると気候推定（GDD）による播種/定植適期・収穫予測を表示';
