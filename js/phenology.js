@@ -102,19 +102,23 @@ const Phenology = (() => {
   // 播種判定用マージン（℃）: 播種旬のみ最低温度をこの値だけ緩める
   const SOW_TMIN_MARGIN = 3;
 
-  function sowingWindows(decadeArr, crop) {
+  function sowingWindows(decadeArr, crop, cultivationMode = 'openField') {
     const cond     = crop.conditions || {};
-    const cropTMin = cond.tempMeanMin ?? -99;  // 作物の最低必要温度
-    const cropTMax = cond.tempMeanMax ?? 99;   // 作物の最高耐性温度
+    // ハウス(greenhouse/heatedGreenhouse)時は下限閾値のみ-4緩和（上限は無補正）
+    const isHouse  = cultivationMode === 'greenhouse' || cultivationMode === 'heatedGreenhouse';
+    const houseOffset = isHouse ? 4 : 0;
+    const cropTMin = (cond.tempMeanMin ?? -99) - houseOffset; // 下限のみ緩和
+    const cropTMax = cond.tempMeanMax ?? 99;   // 上限は一切補正しない
     const minDecades = Math.round((crop.growthPeriodMin ?? 60) / 10);
     const maxDecades = Math.round((crop.growthPeriodMax ?? 120) / 10);
     const gpMid      = ((crop.growthPeriodMin ?? 60) + (crop.growthPeriodMax ?? 120)) / 2;
 
     // GDD 目標値（tempMeanMin/Max 両方が DB に定義されている場合のみ有効）
+    // GDD の base は作物固有の生値（ハウス補正前）を使う
     const hasTempConds = cond.tempMeanMin != null && cond.tempMeanMax != null;
-    const base      = cropTMin;
-    const tOpt      = (cropTMin + cropTMax) / 2;
-    const targetGDD = hasTempConds ? gpMid * Math.max(0, tOpt - base) : 0;
+    const gddBase   = cond.tempMeanMin ?? -99;           // GDD 積算用: 補正前の作物基準温度
+    const tOpt      = (cropTMin + cropTMax) / 2;         // 適温中央（判定閾値ベース）
+    const targetGDD = hasTempConds ? gpMid * Math.max(0, tOpt - gddBase) : 0;
     //   = gpMid × (cropTMax − cropTMin) / 2
 
     // ── 旬の適期判定（生育期間用・マージンなし）──────────────
@@ -173,7 +177,7 @@ const Phenology = (() => {
         for (let i = 1; i <= maxSearch; i++) {
           const idx = (s + i - 1) % 36;
           const tv  = decadeArr.tMean[idx];
-          if (tv !== null) cum += Math.max(0, tv - base);
+          if (tv !== null) cum += Math.max(0, tv - gddBase);
           if (cum >= targetGDD) {
             // 安全クランプ: 生育日数の 0.7〜1.5 倍旬の範囲内のみ採用
             if (i >= minHDecades && i <= maxHDecades) {

@@ -73,14 +73,12 @@ function scoreCrop(crop, areaData) {
     heatedGreenhouse:'加温ハウス栽培',
   }[cultivationMode] || '露地栽培';
 
-  // ── 気温補正値を先に確定（survivalTempMin判定でも使う） ──
-  let corrTemp = null;
+  // ── 年均気温ベース（フォールバック用） ──
+  // 下限比較: tempMeanMin - 4（ハウス時）、上限比較: rawBase のまま
+  let rawBase = null;  // 補正なしの年均気温（上限判定・加温ハウス差分計算に使用）
+  const isHouseMode = cultivationMode === 'greenhouse' || cultivationMode === 'heatedGreenhouse';
   if (climate) {
-    const base = elev ? elevCorrect(climate.tempMean, elev) : climate.tempMean;
-    // ハウス: 最低気温を-4℃補正する効果を年均では+2℃相当で近似
-    corrTemp = (cultivationMode === 'greenhouse' || cultivationMode === 'heatedGreenhouse')
-      ? base + 2
-      : base;
+    rawBase = elev ? elevCorrect(climate.tempMean, elev) : climate.tempMean;
   }
 
   // ════════════════════════════════════════
@@ -143,9 +141,10 @@ function scoreCrop(crop, areaData) {
     Array.isArray(_decadeArr.tMean) && _decadeArr.tMean.length === 36;
 
   // ハウス補正:
-  //   greenhouse      → 旬別最低気温を -4℃ として計算（保温効果で下限カバー範囲を拡大）
+  //   greenhouse      → 最低気温閾値(tempMeanMin)を-4℃して判定を緩める（下限のみ）
   //   heatedGreenhouse → 旬別に個別計算するためここでは定義しない
-  const houseMinOffset = cultivationMode === 'greenhouse' ? -4 : 0;
+  //   上限(tempMeanMax)・実測データ(tMean)は一切補正しない
+  const houseMinOffset = cultivationMode === 'greenhouse' ? 4 : 0; // 閾値から引く量（正値）
   const isHeated       = cultivationMode === 'heatedGreenhouse';
 
   // ── 生育旬を特定（0-indexed: 0=1月上旬 … 35=12月下旬）──
@@ -184,11 +183,13 @@ function scoreCrop(crop, areaData) {
         const tMean = _decadeArr.tMean[i];
         if (tMean === null) continue;
         const tMin = _decadeArr.tMin[i];
+        // 下限閾値を緩める（データ側は触らない）
+        const effectiveTMin = c.tempMeanMin - houseMinOffset; // greenhouse: -4緩和
         const tAdjusted = isHeated
           ? Math.max(tMean, c.tempMeanMin)
-          : tMean + (houseMinOffset / 2);
-        if (isHeated || (tAdjusted >= c.tempMeanMin && tAdjusted <= c.tempMeanMax)) {
-          candidates.push({ idx: i, tMean: tAdjusted });
+          : tMean;
+        if (isHeated || (tAdjusted >= effectiveTMin && tAdjusted <= c.tempMeanMax)) {
+          candidates.push({ idx: i, tMean: tMean }); // tMean は実測値のまま格納
         }
       }
       const gpMin = c.growthPeriodMin ?? 0;
@@ -245,11 +246,12 @@ function scoreCrop(crop, areaData) {
           totalPts += monthScore;
         }
       } else {
-        const tAdj = tMean + (houseMinOffset / 2);
-        if (tAdj >= tMin2 && tAdj <= tMax2) {
+        // 下限閾値を-houseMinOffset緩める（上限・データは無補正）
+        const effectiveTMin = tMin2 - houseMinOffset; // greenhouse: tMin2-4
+        if (tMean >= effectiveTMin && tMean <= tMax2) {
           decadeMatch[i] = true;
           totalPts += 1.0;
-        } else if (tAdj >= tMin2 - 2 && tAdj <= tMax2 + 2) {
+        } else if (tMean >= effectiveTMin - 2 && tMean <= tMax2 + 2) {
           decadeMatch[i] = 'border';
           totalPts += 0.5;
         } else {
@@ -297,23 +299,31 @@ function scoreCrop(crop, areaData) {
         decadeMatch,
       });
     }
-  } else if (corrTemp !== null) {
-    // フォールバック: 年均気温
+  } else if (rawBase !== null) {
+    // フォールバック: 年均気温（旬別データなし）
+    // 下限比較のみハウス補正（閾値を-4）、上限比較は生データそのまま
     const c = crop.conditions;
     if (isHeated) {
       // 加温ハウスは年均フォールバック時も viable=true・気温差でスコア
-      const diff = Math.max(0, (c.tempMeanMin ?? 0) - corrTemp);
+      const diff = Math.max(0, (c.tempMeanMin ?? 0) - rawBase);
       const pts  = diff === 0 ? 1.0
         : diff <= 5  ? 1.0 - diff * 0.06
         : diff <= 10 ? 0.7 - (diff - 5) * 0.06
         : Math.max(0.1, 0.4 - (diff - 10) * 0.06);
       score += Math.round(25 * pts);
       details.push({ ok: diff < 10, text: `加温ハウス — 年均気温差 ${diff.toFixed(1)}℃補填` });
-    } else if (corrTemp >= c.tempMeanMin && corrTemp <= c.tempMeanMax) {
-      score += 25;
-      details.push({ ok: true,  text: `推定年均気温 ${corrTemp.toFixed(1)}℃ — 適正（${modeLabel}補正後）` });
     } else {
-      details.push({ ok: false, text: `推定年均気温 ${corrTemp.toFixed(1)}℃ — 適正外(${c.tempMeanMin}–${c.tempMeanMax}℃)` });
+      // 下限: ハウス時は閾値を-4緩和、上限: rawBase をそのまま比較
+      const effectiveTMin = (c.tempMeanMin ?? -Infinity) - (isHouseMode ? 4 : 0);
+      const ok = rawBase >= effectiveTMin && rawBase <= (c.tempMeanMax ?? Infinity);
+      if (ok) {
+        score += 25;
+        const label = isHouseMode ? `${modeLabel}（下限-4℃緩和）` : modeLabel;
+        details.push({ ok: true,  text: `推定年均気温 ${rawBase.toFixed(1)}℃ — 適正（${label}）` });
+      } else {
+        const effMinLabel = isHouseMode ? `${c.tempMeanMin}-4` : c.tempMeanMin;
+        details.push({ ok: false, text: `推定年均気温 ${rawBase.toFixed(1)}℃ — 適正外(${effMinLabel}–${c.tempMeanMax}℃)` });
+      }
     }
   }
 
@@ -1576,12 +1586,12 @@ function calcAllRisks(crop, decadeArr, startDecade, endDecade) {
 //  decadeArr : Phenology.buildDecadeArray() の返却値
 //  crops     : cropDB の全作物配列
 //  返却: [{ crop, score(0-100), startDecade, endDecade, harvestDecade, heatRisk, allRisks }] スコア降順
-function computeClimateRanking(decadeArr, crops) {
+function computeClimateRanking(decadeArr, crops, cultivationMode = 'openField') {
   if (!decadeArr || !crops?.length) return [];
 
   return crops
     .map(crop => {
-      const wins = Phenology.sowingWindows(decadeArr, crop);
+      const wins = Phenology.sowingWindows(decadeArr, crop, cultivationMode);
       if (!wins.length) {
         return {
           crop, score: 0,

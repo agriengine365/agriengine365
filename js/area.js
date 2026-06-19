@@ -781,7 +781,8 @@ function _adpSetClimateMode(isClimate) {
                    ?? _adpClimateCache?.decadeArr
                    ?? null;
     if (decadeArr && typeof CROP_DB !== 'undefined' && typeof computeClimateRanking === 'function') {
-      _adpClimateRanking = computeClimateRanking(decadeArr, CROP_DB);
+      const _crCultMode = currentAreaData?.cultivationMode || 'openField';
+      _adpClimateRanking = computeClimateRanking(decadeArr, CROP_DB, _crCultMode);
     } else if (!decadeArr) {
       console.warn('[ClimateMode] decadeArr未取得 — AMeDASデータ待ち');
     }
@@ -2469,13 +2470,9 @@ function _adpGrowthSetup(canvasId, legendId, noDataMsg) {
   }
 
   const cultivationMode = currentAreaData?.cultivationMode || 'openField';
-  const isHouse  = cultivationMode === 'greenhouse' || cultivationMode === 'heatedGreenhouse';
-  const isHeated = cultivationMode === 'heatedGreenhouse';
-  // ハウス補正: 加温ハウスは全旬+4℃、普通ハウスは最低気温+4℃相当として旬平均を+2℃
-  const tMeanCorrected = decadeArr.tMean.map(v =>
-    v === null ? null : isHeated ? v + 4 : isHouse ? v + 2 : v
-  );
-  return { ctx, W, H, decadeArr, rainMonthly, tMeanArr: decadeArr.tMean, tMeanCorrected, cultivationMode };
+  // tMeanCorrected は廃止（データ側補正をやめて閾値側で-4する方針に統一）
+  // グラフ描画・判定ともに生データ tMean を使用し、閾値を緩める形で対応
+  return { ctx, W, H, decadeArr, rainMonthly, tMeanArr: decadeArr.tMean, cultivationMode };
 }
 
 // cropId → CROP_DBエントリ取得（_crScoresフォールバック付き）
@@ -2498,7 +2495,7 @@ function _adpGrowthAxes(g, crop) {
   const gW  = g.W - PAD.left - PAD.right;
   const gH  = g.H - PAD.top  - PAD.bottom;
 
-  const allTemps = [...g.tMeanArr, ...g.tMeanCorrected].filter(v => v !== null);
+  const allTemps = [...g.tMeanArr].filter(v => v !== null);
   if (crop) {
     if (crop.conditions.tempMeanMin != null) allTemps.push(crop.conditions.tempMeanMin - 2);
     if (crop.conditions.tempMeanMax != null) allTemps.push(crop.conditions.tempMeanMax + 2);
@@ -2664,22 +2661,8 @@ function _adpGrowthDrawSeries(g, ax, crop) {
     ctx.beginPath(); ctx.arc(toX(i), toTY(v), r, 0, Math.PI * 2); ctx.fill();
   });
 
-  // ハウス補正気温折れ線（緑破線）
-  if (g.cultivationMode !== 'openField') {
-    ctx.strokeStyle = '#34d399';
-    ctx.lineWidth   = 1.8;
-    ctx.lineJoin    = 'round';
-    ctx.setLineDash([4, 3]);
-    ctx.beginPath();
-    let hMoved = false;
-    g.tMeanCorrected.forEach((v, i) => {
-      if (v === null) { hMoved = false; return; }
-      if (!hMoved) { ctx.moveTo(toX(i), toTY(v)); hMoved = true; }
-      else         { ctx.lineTo(toX(i), toTY(v)); }
-    });
-    ctx.stroke();
-    ctx.setLineDash([]);
-  }
+  // ハウス補正気温折れ線: tMeanCorrected 廃止のため削除
+  // （グラフは生データを表示、判定は閾値側で-4して緩める方式に統一）
 }
 
 // 月ラベル（DB/推定 共通・最前面）
@@ -2861,14 +2844,12 @@ function _adpRenderGrowthChartEst(cropId) {
   let gddCurve      = null;
   let gddMax        = 0;
   if (crop && typeof Phenology !== 'undefined') {
-    // ハウス補正済みdecadeArrを生成してsowingWindowsを計算
-    const correctedDecadeArr = g.cultivationMode !== 'openField'
-      ? { ...g.decadeArr, tMean: g.tMeanCorrected }
-      : g.decadeArr;
-    sowingWindows = Phenology.sowingWindows(correctedDecadeArr, crop);
+    // 生データ(decadeArr)をそのまま渡し、cultivationMode を phenology 側に伝播
+    // 閾値の緩和(下限-4)は phenology.sowingWindows 内で処理される
+    sowingWindows = Phenology.sowingWindows(g.decadeArr, crop, g.cultivationMode);
     if (sowingWindows.length > 0) {
       const base = crop.conditions?.tempMeanMin ?? 10;
-      gddCurve = Phenology.accumulateGDD(g.tMeanCorrected, base, sowingWindows[0].startDecade);
+      gddCurve = Phenology.accumulateGDD(g.tMeanArr, base, sowingWindows[0].startDecade);
       gddMax   = Math.max(...gddCurve.filter(v => v !== null), 1);
     }
   }
@@ -3022,7 +3003,8 @@ function _adpRenderGrowthRankingList() {
     // Phenologyで播種〜収穫旬ラベルを計算
     let phenoStr = '';
     if (typeof Phenology !== 'undefined' && decadeArr) {
-      const wins = Phenology.sowingWindows(decadeArr, s.crop);
+      const _cultMode3006 = currentAreaData?.cultivationMode || 'openField';
+      const wins = Phenology.sowingWindows(decadeArr, s.crop, _cultMode3006);
       if (wins.length > 0) {
         const sLabel = Phenology.decadeLabel(wins[0].startDecade);
         const eLabel = Phenology.decadeLabel(wins[0].endDecade);
@@ -3142,7 +3124,8 @@ function adpCropTap(el, cropId) {
         const decadeArr = ad?.climate?.decadeArr;
         let estSeason = null;
         if (decadeArr && typeof Phenology !== 'undefined') {
-          const wins = Phenology.sowingWindows(decadeArr, single.crop);
+          const _cultMode3126 = currentAreaData?.cultivationMode || 'openField';
+          const wins = Phenology.sowingWindows(decadeArr, single.crop, _cultMode3126);
           if (wins?.length) estSeason = _buildEstimatedSeasonLabel(wins[0]);
         }
         const seasonHtml = _buildSeasonBlockHtml(single.crop, estSeason);
@@ -3210,7 +3193,8 @@ function _adpOpenCropDetailSheet(cropId) {
   const decadeArr = ad.climate?.decadeArr;
   let estSeason = null;
   if (decadeArr && typeof Phenology !== 'undefined') {
-    const wins = Phenology.sowingWindows(decadeArr, crop);
+    const _cultMode3194 = ad.cultivationMode || currentAreaData?.cultivationMode || 'openField';
+    const wins = Phenology.sowingWindows(decadeArr, crop, _cultMode3194);
     if (wins?.length) estSeason = _buildEstimatedSeasonLabel(wins[0]);
   }
   const seasonHtml = _buildSeasonBlockHtml(crop, estSeason);
@@ -3353,7 +3337,8 @@ function _adpSelectCropForAnalysis(cropId) {
       const decadeArr = ad.climate?.decadeArr;
       let estSeason = null;
       if (decadeArr && typeof Phenology !== 'undefined') {
-        const wins = Phenology.sowingWindows(decadeArr, single.crop);
+        const _cultMode3337 = ad.cultivationMode || currentAreaData?.cultivationMode || 'openField';
+        const wins = Phenology.sowingWindows(decadeArr, single.crop, _cultMode3337);
         if (wins?.length) estSeason = _buildEstimatedSeasonLabel(wins[0]);
       }
       const seasonHtml = _buildSeasonBlockHtml(single.crop, estSeason);
