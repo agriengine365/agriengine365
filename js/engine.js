@@ -197,7 +197,7 @@ function scoreCrop(crop, areaData) {
       const targetDecades = Math.round((gpMin + gpMax) / 2 / 10);
       if (candidates.length > 0) {
         const sorted = [...candidates].sort((a,b) => b.tMean - a.tMean);
-        const picked = sorted.slice(0, Math.max(targetDecades, candidates.length));
+        const picked = sorted.slice(0, targetDecades);
         growthDecades = picked.map(p => p.idx).sort((a,b) => a-b);
       }
     }
@@ -997,7 +997,7 @@ function calcFarmingConditionScore(crop, conditions) {
   } else if (priority === 'easywork') {
     // 手間最小：管理期間が短い・リスクが少ない作物を優遇
     const riskCount = (crop.risks || []).length;
-    const gpMid = c.growthPeriodMax ? (c.growthPeriodMin || 0 + c.growthPeriodMax) / 2 : 180;
+    const gpMid = c.growthPeriodMax ? ((c.growthPeriodMin || 0) + c.growthPeriodMax) / 2 : 180;
     const p = riskCount <= 1 && gpMid <= 120 ? 5 : riskCount <= 2 ? 3 : 1;
     pts += p;
     details.push({ text: `優先軸(手間最小)`, pts: p });
