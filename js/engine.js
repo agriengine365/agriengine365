@@ -152,14 +152,24 @@ function scoreCrop(crop, areaData) {
   let growthDecades = null; // null = 特定不能
   const cal = crop.calendar;
   if (cal && hasDecadeCols) {
-    // calendar.manage + harvest の月キーから旬インデックスへ変換（月×3旬）
+    // calendar の生育系フェーズ（manage/harvest/sowing/sow/planting/seedling/transplant）から
+    // 旬インデックスへ変換（月×3旬）。
+    // 'prep'（休眠・準備期間）は生育旬に含めない。
+    // 値は cropDB.js では月番号(1-12)で格納されているのが基本だが、
+    // 'jan'-'dec' 形式の文字列が来ても解釈できるようにフォールバックも残す。
     const monthKeys = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const growthPhases = ['seedling','transplant','manage','harvest','sowing','planting','sow'];
     const flagged = new Set();
-    ['manage','harvest'].forEach(phase => {
+    growthPhases.forEach(phase => {
       if (!Array.isArray(cal[phase])) return;
       cal[phase].forEach(mk => {
-        const mi = monthKeys.indexOf(mk);
-        if (mi >= 0) { flagged.add(mi*3); flagged.add(mi*3+1); flagged.add(mi*3+2); }
+        let mi = null;
+        if (typeof mk === 'number' && mk >= 1 && mk <= 12) {
+          mi = mk - 1; // 月番号(1-12) → 0-indexed
+        } else if (typeof mk === 'string') {
+          mi = monthKeys.indexOf(mk.toLowerCase());
+        }
+        if (mi !== null && mi >= 0) { flagged.add(mi*3); flagged.add(mi*3+1); flagged.add(mi*3+2); }
       });
     });
     if (flagged.size > 0) growthDecades = [...flagged].sort((a,b) => a-b);
