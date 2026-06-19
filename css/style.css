@@ -2500,6 +2500,21 @@ html.draw-dialog-active #draw-scope {
 #adp-pane-ranking {
   padding: 0;
   gap: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* サブタブバーを上部固定 */
+#adp-pane-ranking .adp-rk-subtabs {
+  flex-shrink: 0;
+}
+
+/* 各ペインをスクロール可能領域に */
+#adp-pane-ranking .adp-rk-pane {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* カレンダーペイン */
