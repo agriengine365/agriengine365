@@ -5979,3 +5979,353 @@ html.draw-dialog-active .bottom-nav {
     width: 100%;
   }
 }
+
+/* ═══════════════════════════════════════════
+   ランキングタブ内サブタブ（adp-rk-*）
+   Step3〜5 追加分
+   ═══════════════════════════════════════════ */
+
+/* ── サブタブバー ── */
+.adp-rk-subtabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.adp-rk-subtabs::-webkit-scrollbar { display: none; }
+
+.adp-rk-subtab {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: var(--text2);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.adp-rk-subtab:hover {
+  background: var(--bg3);
+  color: var(--text);
+}
+.adp-rk-subtab.active {
+  background: var(--bg3);
+  color: var(--green);
+  font-weight: 600;
+  border-bottom: 2px solid var(--green);
+}
+
+/* ── ペイン共通 ── */
+.adp-rk-pane {
+  padding: 12px;
+  overflow-y: auto;
+}
+
+/* ── 収益ランキングカード ── */
+.adp-rk-profit-card {
+  background: var(--bg3);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.adp-rk-profit-rank {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text2);
+  min-width: 28px;
+}
+.adp-rk-profit-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.adp-rk-profit-amount {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+.adp-rk-profit-diff {
+  font-size: 0.72rem;
+  color: var(--text2);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* 内訳アコーディオン */
+.adp-rk-profit-detail {
+  display: none;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--text2);
+}
+.adp-rk-profit-detail.open { display: block; }
+
+/* 収益正負カラー */
+.profit-positive { color: var(--green, #4caf50); }
+.profit-negative { color: var(--red,   #f44336); }
+
+/* ── 条件設定 ── */
+.adp-rk-cond-wrap { padding: 4px 0; }
+.adp-rk-cond-group { margin-bottom: 14px; }
+.adp-rk-cond-label {
+  font-size: 0.78rem;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+.adp-rk-cond-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.adp-rk-cond-chip {
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.adp-rk-cond-chip.selected {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+  font-weight: 600;
+}
+.adp-rk-cond-btn-nav {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-top: 6px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s;
+}
+.adp-rk-cond-btn-nav:hover { background: var(--bg2, var(--bg3)); }
+
+/* ── 収益シミュレーター ── */
+.adp-rk-sim-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.adp-rk-sim-select-wrap label {
+  font-size: 0.8rem;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.adp-rk-sim-select {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+
+.adp-rk-sim-field {
+  margin-bottom: 10px;
+}
+.adp-rk-sim-field label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text2);
+  margin-bottom: 3px;
+}
+.sim-unit {
+  font-size: 0.72rem;
+  color: var(--text2);
+}
+.adp-rk-sim-field input[type="number"] {
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  font-size: 0.88rem;
+  box-sizing: border-box;
+}
+.sim-note {
+  font-size: 0.72rem;
+  color: var(--text2);
+  margin-top: 3px;
+}
+
+/* プレビュー */
+.adp-rk-sim-preview {
+  background: var(--bg3);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 12px 0 8px;
+  font-size: 0.82rem;
+}
+.adp-rk-sim-preview-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  color: var(--text2);
+}
+.adp-rk-sim-total {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0 2px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.adp-rk-sim-area-note {
+  font-size: 0.7rem;
+  color: var(--text2);
+  text-align: right;
+  margin-top: 4px;
+}
+
+/* アクションボタン */
+.adp-rk-sim-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* データなし表示 */
+.adp-rk-sim-no-data {
+  text-align: center;
+  color: var(--text2);
+  font-size: 0.85rem;
+  padding: 24px 12px;
+}
+
+/* ══════════════════════════════════════════════
+   Step6追加：未定義クラス補完
+   ══════════════════════════════════════════════ */
+
+/* ── 収益ランキングカード ── */
+.adp-rk-profit-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px 0;
+  user-select: none;
+}
+.adp-rk-profit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  color: var(--text2);
+}
+.adp-rk-profit-table th {
+  text-align: left;
+  font-weight: 500;
+  padding: 2px 4px 2px 0;
+  white-space: nowrap;
+  width: 72px;
+}
+.adp-rk-profit-table td {
+  padding: 2px 4px;
+}
+.adp-rk-profit-total {
+  border-top: 1px solid var(--border);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.adp-rk-profit-total th,
+.adp-rk-profit-total td {
+  padding-top: 5px;
+}
+.adp-rk-toggle {
+  font-size: 0.72rem;
+  color: var(--text2);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* 収量内訳行（グレーアウト） */
+.adp-rk-profit-yield-row th,
+.adp-rk-profit-yield-row td {
+  color: var(--text2);
+  font-size: 0.75rem;
+  padding: 1px 4px 1px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.adp-rk-profit-yield-row:last-of-type td {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 5px;
+  margin-bottom: 4px;
+}
+
+/* ── 条件設定パネル ── */
+.adp-rk-cond-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.adp-rk-cond-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.adp-rk-cond-chip-icon {
+  font-size: 1em;
+  line-height: 1;
+}
+.adp-rk-cond-chip-label {
+  font-size: 0.78rem;
+}
+.adp-rk-cond-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.adp-rk-cond-nav {
+  display: flex;
+  gap: 8px;
+}
+.adp-rk-cond-btn-reset {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--text2);
+  cursor: pointer;
+  align-self: flex-start;
+}
+.adp-rk-cond-btn-reset:active {
+  opacity: 0.7;
+}
+
+/* ── 適合度ランキング フィルタ行 ── */
+.adp-rk-match-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0 4px;
+  flex-wrap: wrap;
+}
+
+/* ── シミュレーターフォーム ── */
+.adp-rk-sim-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}

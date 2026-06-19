@@ -817,7 +817,7 @@ function calculateRiskDeductionRate(crop, landProfile) {
  *   amortizedInitialCost, annualCost (旧互換: seed+material+machine),
  *   riskDeduction, riskDeductionRate, averageProfit
  */
-function calculateProfitability(crop, areaData, scoreResult, landProfile) {
+function calculateProfitability(crop, areaData, scoreResult, landProfile, farmCond = null, overrides = null) {
   const area10a         = Math.max(0, (areaData.areaSqm || 0) / 1000);
   const suitabilityRate = clamp((scoreResult?.score || 0) / 100, 0, 1);
   const cultivationMode = areaData.cultivationMode || 'openField';
@@ -861,8 +861,20 @@ function calculateProfitability(crop, areaData, scoreResult, landProfile) {
     : marketableAdj;
   const marketableYield    = predictedYield * marketableYieldRate;
 
+  // ── farmCond / overrides 補正係数 ────────────────────────────────
+  const ov = overrides?.[crop.id] || null;
+  let priceMult = 1.0;
+  let laborMult = 1.0;
+  if (farmCond) {
+    if (farmCond.sales === 'direct' || farmCond.sales === 'roadside') priceMult = 1.15;
+    else if (farmCond.sales === 'ja')         priceMult = 0.90;
+    else if (farmCond.sales === 'processing') priceMult = 0.85;
+    if      (farmCond.scale === 'family') laborMult = 0.85;
+    else if (farmCond.scale === 'hired')  laborMult = 1.30;
+  }
+
   // ── ④ 販売収入 ───────────────────────────────────────────────
-  const averagePrice = cropPricePerKg(crop);
+  const averagePrice = ov?.pricePerKg ?? (cropPricePerKg(crop) * priceMult);
   const revenue      = marketableYield * averagePrice;
 
   // ── ⑤ コスト5項目（円/10a × 面積） ─────────────────────────
@@ -874,11 +886,11 @@ function calculateProfitability(crop, areaData, scoreResult, landProfile) {
   const fert         = crop.fertilizer || { N: 0, P: 0, K: 0 };
   const fertAdj      = ((fert.N || 0) + (fert.P || 0) + (fert.K || 0)) * 800; // 800円/kg
 
-  const seedCost             = costRow.seed     * area10a;
-  const materialCost         = (costRow.material * modeMatMult + fertAdj) * area10a;
-  const machineCost          = costRow.machine  * modeMacMult * area10a;
-  const laborCost            = costRow.labor    * area10a;
-  const amortizedInitialCost = (costRow.initial / costRow.amortYears) * area10a;
+  const seedCost             = (ov?.seedCost10a      ?? costRow.seed)                               * area10a;
+  const materialCost         = (ov?.materialCost10a  ?? (costRow.material * modeMatMult + fertAdj))  * area10a;
+  const machineCost          = (ov?.machineCost10a   ?? (costRow.machine  * modeMacMult))            * area10a;
+  const laborCost            = (ov?.laborCost10a     ?? (costRow.labor    * laborMult))              * area10a;
+  const amortizedInitialCost = ((ov?.initialCost     ?? costRow.initial) / costRow.amortYears)       * area10a;
 
   // 後方互換: annualCost = 種苗+資材+機械（旧: 資材+肥料の扱い）
   const annualCost = seedCost + materialCost + machineCost;
@@ -1101,7 +1113,7 @@ function buildAnalysisResult(areaData) {
         baseScore:      scoreResult.score,  // 元の気候・土壌スコア
         farmingScore,                        // 営農条件スコア（null=未入力）
         farmingDetails,
-        profitability:  calculateProfitability(crop, areaData, scoreResult, landProfile),
+        profitability:  calculateProfitability(crop, areaData, scoreResult, landProfile, farmCond, areaData.profitOverrides || null),
       };
     })
     .sort((a, b) => {
@@ -1166,7 +1178,7 @@ function buildSingleCropAnalysis(cropId, areaData) {
     farmingDetails,
   };
 
-  const profitability = calculateProfitability(crop, areaData, adjustedScoreResult, landProfile);
+  const profitability = calculateProfitability(crop, areaData, adjustedScoreResult, landProfile, farmCond, areaData.profitOverrides || null);
   const fertilizer    = calcFertilizer(crop, areaData.areaSqm || 0);
   const confidence    = calcConfidence(scoringAreaData);
 

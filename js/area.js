@@ -64,6 +64,7 @@ async function commitSaveArea({ name, memo, soilType }) {
       soilType:        soilType || null,
     },
     createdAt: new Date().toISOString(),
+    profitOverrides: {},
   };
 
   try {
@@ -424,6 +425,7 @@ let _adpClimateLoaded  = false; // true=AMeDAS取得試行済み（成功/失敗
 
 async function openAreaDetailPanel(area) {
   _adpArea    = area;
+  _awArea     = area;   // 条件設定フォームのエリア参照を更新（_awFarmCondは引き継ぎ）
   const now   = new Date();
   _adpYear    = now.getFullYear();
   _adpMonth   = now.getMonth();
@@ -435,7 +437,9 @@ async function openAreaDetailPanel(area) {
 
   // 作物選択状態をリセット（エリア再オープン時に前回選択が残らないよう）
   _adpSelectedCropId = null;
-  
+  _simSelectedCropId = null;
+  _simDirty          = false;
+  _simMemory         = {};
 
   _adpEnsureView();
 
@@ -458,8 +462,9 @@ async function openAreaDetailPanel(area) {
   const view = document.getElementById('adp-view');
   view.classList.add('open');
 
-  // ── 最初のサブタブ（気温グラフ）を表示 ──
+  // ── 最初のサブタブ（🏆ランキング＝条件設定から開始）を表示 ──
   _adpSwitchSubTab('ranking');
+  _adpRkSwitchPane('cond');
 
   // 🌿 土地環境系（landProfile依存・AMeDAS不要・常時表示）
   _adpRenderEnvDonut(area);
@@ -531,10 +536,6 @@ function _adpEnsureView() {
         <div class="adp-title" id="adp-title"></div>
         <div class="adp-meta"  id="adp-meta"></div>
       </div>
-      <button class="adp-analyze-btn" onclick="_adpToggleWizardPanel()">
-        <span>条件設定</span>
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-      </button>
     </div>
 
     <!-- サマリーバー（常時表示） -->
@@ -580,21 +581,10 @@ function _adpEnsureView() {
 
     </div>
 
-    <!-- 分析ウィザード（インラインアコーディオン） -->
-    <div class="adp-wizard-panel" id="adp-wizard-panel" hidden>
-      <div class="adp-wizard-progress">
-        <div class="aw-prog-dot active" id="awdot-0"></div>
-      </div>
-      <div class="aw-step-title" id="aw-step-title">営農条件入力</div>
-      <div class="aw-body" id="aw-body"></div>
-      <div class="aw-footer" id="aw-footer"></div>
-    </div>
-
-    <!-- サブタブバー（8タブ＋比較は条件付き） -->
+    <!-- サブタブバー（7タブ＋比較は条件付き） -->
     <div class="adp-subtabs" id="adp-subtabs">
-      <button class="adp-subtab active" data-subtab="ranking"  onclick="_adpSwitchSubTab('ranking')">📊 グラフ</button>
+      <button class="adp-subtab active" data-subtab="ranking"  onclick="_adpSwitchSubTab('ranking')">🏆 ランキング</button>
       <button class="adp-subtab"        data-subtab="growth"   onclick="_adpSwitchSubTab('growth')">📈 生育期間</button>
-      <button class="adp-subtab"        data-subtab="profit"   onclick="_adpSwitchSubTab('profit')">💴 収益</button>
       <button class="adp-subtab"        data-subtab="fert"     onclick="_adpSwitchSubTab('fert')">🧪 施肥</button>
       <button class="adp-subtab"        data-subtab="risk"     onclick="_adpSwitchSubTab('risk')">⚠️ リスク</button>
       <button class="adp-subtab"        data-subtab="calendar" onclick="_adpSwitchSubTab('calendar')">📅 カレンダー</button>
@@ -605,30 +595,74 @@ function _adpEnsureView() {
     <!-- コンテンツ領域 -->
     <div class="adp-view-body">
 
-      <!-- ① ランキング（旧chart流用：気温適性チャート固定上部 ＋ ランキングリスト下部） -->
+      <!-- ① 🏆 ランキング（条件設定／グラフ／適合度ランキング／収益ランキング／収益シミュレーターの5サブタブ） -->
       <div class="adp-pane adp-pane-combined" id="adp-pane-ranking">
 
-        <!-- ▼ 上部固定: グラフブロック -->
-        <div class="adp-chart-sticky">
-          <!-- 🌤️ 気候サマリー（年均気温・年降水量・年間日照・標高+pH／気候帯） -->
-          <div id="adpc-climate-summary" class="adpc-climate-summary-wrap"></div>
+        <!-- ランキングタブ内ネストサブタブバー -->
+        <div class="adp-rk-subtabs" id="adp-rk-subtabs">
+          <button class="adp-rk-subtab active" data-rk-pane="cond"   onclick="_adpRkSwitchPane('cond')">条件設定</button>
+          <button class="adp-rk-subtab"        data-rk-pane="chart"  onclick="_adpRkSwitchPane('chart')">グラフ</button>
+          <button class="adp-rk-subtab"        data-rk-pane="match"  onclick="_adpRkSwitchPane('match')">適合度ランキング</button>
+          <button class="adp-rk-subtab"        data-rk-pane="profit" onclick="_adpRkSwitchPane('profit')">収益ランキング</button>
+          <button class="adp-rk-subtab"        data-rk-pane="sim"    onclick="_adpRkSwitchPane('sim')">収益シミュレーター</button>
+        </div>
 
-          <div class="adp-temp-chart-header">
-            <span class="adp-temp-chart-sub" id="adp-temp-chart-sub">作物を選択すると適正温度を重畳表示</span>
-          </div>
-          <div class="adp-temp-chart-wrap">
-            <canvas id="adp-temp-canvas"></canvas>
-          </div>
-          <div class="adp-temp-legend" id="adp-temp-legend"></div>
+        <!-- 1) 条件設定（枠組みのみ・Step4で常設フォームを実装） -->
+        <div class="adp-rk-pane" id="adp-rk-pane-cond">
+          <div id="adp-rk-cond-wrap"></div>
+        </div>
 
-          <!-- ☀️ 旬別日照チャート -->
-          <div class="adp-temp-chart-header">
-            <span class="adp-temp-chart-sub" id="adp-sun-chart-sub">旬別日照時間</span>
+        <!-- 2) グラフ（旧adp-pane-rankingの中身をそのまま移植） -->
+        <div class="adp-rk-pane" id="adp-rk-pane-chart" style="display:none;">
+          <div class="adp-chart-sticky">
+            <!-- 🌤️ 気候サマリー（年均気温・年降水量・年間日照・標高+pH／気候帯） -->
+            <div id="adpc-climate-summary" class="adpc-climate-summary-wrap"></div>
+
+            <div class="adp-temp-chart-header">
+              <span class="adp-temp-chart-sub" id="adp-temp-chart-sub">作物を選択すると適正温度を重畳表示</span>
+            </div>
+            <div class="adp-temp-chart-wrap">
+              <canvas id="adp-temp-canvas"></canvas>
+            </div>
+            <div class="adp-temp-legend" id="adp-temp-legend"></div>
+
+            <!-- ☀️ 旬別日照チャート -->
+            <div class="adp-temp-chart-header">
+              <span class="adp-temp-chart-sub" id="adp-sun-chart-sub">旬別日照時間</span>
+            </div>
+            <div class="adp-temp-chart-wrap adp-sun-chart-wrap">
+              <canvas id="adp-sun-canvas"></canvas>
+            </div>
+            <div class="adp-temp-legend" id="adp-sun-legend"></div>
           </div>
-          <div class="adp-temp-chart-wrap adp-sun-chart-wrap">
-            <canvas id="adp-sun-canvas"></canvas>
+        </div>
+
+        <!-- 3) 適合度ランキング（旧adp-ranking-dialogの中身をそのまま移植） -->
+        <div class="adp-rk-pane" id="adp-rk-pane-match" style="display:none;">
+          <div class="adp-rk-match-controls">
+            <div class="cr-tabs-major" id="cr-tabs-major">
+              <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
+              <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
+              <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
+              <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
+              <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
+              <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
+              <button class="cr-tab-major"        data-major="oil"       onclick="crSwitchMajor('oil')">油脂</button>
+              <button class="cr-tab-major"        data-major="fiber"     onclick="crSwitchMajor('fiber')">繊維</button>
+            </div>
+            <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
           </div>
-          <div class="adp-temp-legend" id="adp-sun-legend"></div>
+          <div id="crop-ranking"><div class="empty-mini">計算中...</div></div>
+        </div>
+
+        <!-- 4) 収益ランキング（枠組みのみ・Step3で実装） -->
+        <div class="adp-rk-pane" id="adp-rk-pane-profit" style="display:none;">
+          <div id="crop-ranking-profit"><div class="empty-mini">収益ランキングは準備中です（Step3で実装）。</div></div>
+        </div>
+
+        <!-- 5) 収益シミュレーター（枠組みのみ・Step5で実装） -->
+        <div class="adp-rk-pane" id="adp-rk-pane-sim" style="display:none;">
+          <div id="adp-rk-sim-wrap" class="empty-mini">収益シミュレーターは準備中です（Step5で実装）。</div>
         </div>
 
       </div>
@@ -660,11 +694,6 @@ function _adpEnsureView() {
 
         </div>
 
-      </div>
-
-      <!-- ③ 収益（Phase3で実装） -->
-      <div class="adp-pane" id="adp-pane-profit" style="display:none;">
-        <div id="profit-waterfall" class="empty-mini">作物を選択すると収益概算が表示されます。</div>
       </div>
 
       <!-- ④ 施肥（Phase3で実装） -->
@@ -706,84 +735,6 @@ function _adpEnsureView() {
     </div>
   `;
   document.body.appendChild(view);
-
-  // ─── ランキングダイアログ ───
-  if (!document.getElementById('adp-ranking-dialog')) {
-    const dlg = document.createElement('div');
-    dlg.id = 'adp-ranking-dialog';
-    dlg.className = 'adp-ranking-dialog';
-    dlg.setAttribute('aria-hidden', 'true');
-    dlg.innerHTML = `
-      <div class="adp-ranking-dlg-inner">
-        <div class="adp-ranking-dlg-header">
-          <span class="adp-ranking-dlg-title" id="adp-ranking-dlg-title">ランキング</span>
-          <button class="adp-ranking-dlg-close" onclick="_adpCloseRankingDialog()">✕</button>
-        </div>
-        <div class="adp-ranking-dlg-controls">
-          <div class="cr-tabs-major" id="cr-tabs-major">
-            <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
-            <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
-            <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
-            <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
-            <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
-            <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
-            <button class="cr-tab-major"        data-major="oil"       onclick="crSwitchMajor('oil')">油脂</button>
-            <button class="cr-tab-major"        data-major="fiber"     onclick="crSwitchMajor('fiber')">繊維</button>
-          </div>
-          <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
-        </div>
-        <div class="adp-ranking-dlg-body">
-          <div id="crop-ranking"><div class="empty-mini">計算中...</div></div>
-          <div id="crop-ranking-growth" style="display:none;"><div class="empty-mini">計算中...</div></div>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(dlg);
-  }
-}
-
-// ─── ランキングダイアログ 開閉 ───
-let _adpRankingDlgPane = null; // 現在開いているペイン ('ranking' | 'growth')
-
-function _adpOpenRankingDialog(pane) {
-  const dlg = document.getElementById('adp-ranking-dialog');
-  if (!dlg) return;
-  _adpRankingDlgPane = pane;
-
-  // タイトル更新
-  const title = document.getElementById('adp-ranking-dlg-title');
-  if (title) title.textContent = pane === 'growth' ? '📈 生育ランキング' : '🏆 ランキング';
-
-  // 表示切替
-  const elRanking = document.getElementById('crop-ranking');
-  const elGrowth  = document.getElementById('crop-ranking-growth');
-  if (elRanking) elRanking.style.display = pane === 'ranking' ? '' : 'none';
-  if (elGrowth)  elGrowth.style.display  = pane === 'growth'  ? '' : 'none';
-
-  // 栽培方式トグル挿入
-  _adpEnsureCultivationToggle();
-
-  // 栽培方式をUIに反映
-  const currentMode = currentAreaData?.cultivationMode || 'openField';
-  document.querySelectorAll('.adp-cult-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.mode === currentMode);
-  });
-
-  // カテゴリタブをリセット
-  document.querySelectorAll('.cr-tab-major').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.major === 'all');
-  });
-  _crRenderMinorTabs();
-
-  // ランキング描画
-  if (pane === 'growth') {
-    _adpRenderGrowthRankingList();
-  } else {
-    _adpRenderRankingList();
-  }
-
-  dlg.classList.add('open');
-  dlg.removeAttribute('aria-hidden');
 }
 
 function _adpCloseRankingDialog() {
@@ -838,8 +789,8 @@ function _adpSetClimateMode(isClimate) {
   }
 }
 
-// ─── サブタブ切替（8タブ構成） ───
-const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'profit', 'fert', 'risk', 'calendar', 'match', 'compare'];
+// ─── サブタブ切替（7タブ構成） ───
+const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'fert', 'risk', 'calendar', 'match', 'compare'];
 let _adpCurrentSubTab = 'ranking'; // 現在のサブタブ
 
 function _adpSwitchSubTab(name) {
@@ -861,9 +812,6 @@ function _adpSwitchSubTab(name) {
     }
   });
   // グラフペインを表示したときに再描画（offsetWidth が 0→正常になるため）
-  if (name === 'ranking') {
-    setTimeout(() => _adpRenderTempChart(_adpSelectedCropId), 30);
-  }
   if (name === 'growth') {
     // 生育期間ペイン用トグルを確実に生成してからモードを同期
     _adpEnsureCultivationToggle();
@@ -893,16 +841,6 @@ function _adpSwitchSubTab(name) {
             : Object.values(CROP_DB).flat().find(c => c.id === _adpSelectedCropId))
           : null);
 
-    if (name === 'profit') {
-      if (typeof renderProfitWaterfall === 'function') {
-        if (scoreEntry) {
-          renderProfitWaterfall(scoreEntry);
-        } else if (crop && typeof buildSingleCropAnalysis === 'function') {
-          const single = buildSingleCropAnalysis(_adpSelectedCropId, ad);
-          renderProfitWaterfall(single ? { crop: single.crop, profitability: single.profitability } : null);
-        }
-      }
-    }
     if (name === 'fert') {
       if (crop && typeof _renderFertResult === 'function') _renderFertResult(crop);
     }
@@ -913,21 +851,157 @@ function _adpSwitchSubTab(name) {
   }
 }
 
-// ─── ウィザードパネルの開閉 ───
-function _adpToggleWizardPanel() {
-  const panel = document.getElementById('adp-wizard-panel');
-  if (!panel) return;
-  const willOpen = panel.hasAttribute('hidden');
-  if (willOpen) {
-    // AMeDAS未取得時は精度低下を通知
-    if (!_adpClimateLoaded) {
-      showToast('気候データ取得中です。精度が低い可能性があります', 'amber');
-    }
-    panel.removeAttribute('hidden');
-    if (typeof _awInitPanel === 'function') _awInitPanel(_adpArea);
-  } else {
-    panel.setAttribute('hidden', '');
+// ─── 🏆ランキングタブ内サブタブ切替（5分割：条件設定/グラフ/適合度ランキング/収益ランキング/シミュレーター） ───
+const ADP_RK_PANE_KEYS = ['cond', 'chart', 'match', 'profit', 'sim'];
+let _adpRkCurrentPane  = 'cond'; // 現在のランキング内サブタブ
+
+// ─── 収益シミュレーター用モジュール変数 ───
+let _simSelectedCropId = null;   // シミュレーターで選択中の作物ID
+let _simDirty          = false;  // 未保存変更フラグ
+let _simMemory         = {};     // 作物ごとの入力キャッシュ（同一セッション内保持）
+
+function _adpRkSwitchPane(paneKey) {
+  // 未保存変更がある場合の離脱確認（simペインから離れる際）
+  if (_adpRkCurrentPane === 'sim' && paneKey !== 'sim' && _simDirty) {
+    if (!confirm('未保存の変更があります。破棄してよろしいですか？')) return;
+    _simDirty = false;
+    delete _simMemory[_simSelectedCropId];
   }
+
+  _adpRkCurrentPane = paneKey;
+
+  // タブボタン
+  document.querySelectorAll('.adp-rk-subtab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.rkPane === paneKey);
+  });
+  // ペイン
+  ADP_RK_PANE_KEYS.forEach(p => {
+    const el = document.getElementById('adp-rk-pane-' + p);
+    if (!el) return;
+    el.style.display = (p === paneKey) ? '' : 'none';
+  });
+
+  // グラフペイン表示時にチャート再描画（offsetWidth が 0→正常になるため）
+  if (paneKey === 'chart') {
+    setTimeout(() => _adpRenderTempChart(_adpSelectedCropId), 30);
+  }
+  // 適合度ランキングペイン表示時にリスト再描画
+  if (paneKey === 'match') {
+    _adpRenderRankingList();
+  }
+  // 条件設定ペイン表示時に描画
+  if (paneKey === 'cond') {
+    _awRenderConditions();
+  }
+  // 収益ランキング描画
+  if (paneKey === 'profit') {
+    _adpRenderProfitRankingList();
+  }
+  // 収益シミュレーター描画
+  if (paneKey === 'sim') {
+    _adpRenderProfitSimulator();
+  }
+
+}
+// ─── 収益ランキングリスト描画（サブタブ4） ───
+/**
+ * _adpRenderProfitRankingList()
+ *
+ * データソース：_crScores（_adpRenderRankingList()で常時更新済み）
+ * viable=true の作物を averageProfit 降順で上位20件表示。
+ * farmCond.sales === 'self'（自家消費）の除外はStep4で有効化。
+ */
+function _adpRenderProfitRankingList() {
+  const el = document.getElementById('crop-ranking-profit');
+  if (!el) return;
+
+  const scores = (typeof _crScores !== 'undefined') ? _crScores : [];
+  if (!scores.length) {
+    el.innerHTML = '<div class="empty-mini">エリアを選択するとランキングが表示されます。</div>';
+    return;
+  }
+
+  // viable のみ・自家消費除外（farmCondが設定済みの場合）・averageProfit 降順・上位20件
+  const isSelf = (_awFarmCond && _awFarmCond.sales === 'self');
+  const sorted = [...scores]
+    .filter(s => s.viable && s.profitability && !isSelf)
+    .sort((a, b) => b.profitability.averageProfit - a.profitability.averageProfit)
+    .slice(0, 20);
+
+  if (!sorted.length) {
+    el.innerHTML = isSelf
+      ? '<div class="empty-mini">販売先が「自家消費」のため収益ランキングは表示されません。<br>条件設定から販売先を変更してください。</div>'
+      : '<div class="empty-mini">適合する作物がありません。</div>';
+    return;
+  }
+
+  const fmt = n => Math.round(n).toLocaleString('ja-JP');
+  const fmtKg = n => Math.round(n).toLocaleString('ja-JP');
+
+  el.innerHTML = sorted.map((s, idx) => {
+    const p   = s.profitability;
+    const profit = p.averageProfit;
+    const profitClass = profit >= 0 ? 'profit-positive' : 'profit-negative';
+    const profitSign  = profit >= 0 ? '+' : '';
+
+    // 適合度ランキングとの順位差
+    const matchRank = scores
+      .filter(x => x.viable)
+      .sort((a, b) => b.score - a.score)
+      .findIndex(x => x.crop.id === s.crop.id) + 1;
+    const profitRank = idx + 1;
+    const diff = matchRank - profitRank;
+    const diffLabel = diff > 0 ? `▲${diff}` : diff < 0 ? `▼${Math.abs(diff)}` : '–';
+    const diffClass  = diff > 0 ? 'rank-up' : diff < 0 ? 'rank-down' : 'rank-same';
+
+    const detailId = `adp-profit-detail-${idx}`;
+    return `
+      <div class="adp-rk-profit-card">
+        <div class="adp-rk-profit-card-header" onclick="
+          const d=document.getElementById('${detailId}');
+          d.style.display = d.style.display==='none' ? '' : 'none';
+          this.querySelector('.adp-rk-toggle').textContent = d.style.display==='' ? '▲' : '▼';
+        ">
+          <span class="adp-rk-profit-rank">#${profitRank}</span>
+          <span class="adp-rk-profit-name">${s.crop.name}</span>
+          <span class="adp-rk-profit-amount ${profitClass}">${profitSign}${fmt(profit)} 円</span>
+          <span class="adp-rk-profit-diff ${diffClass}" title="適合度順位との差">適合#${matchRank} ${diffLabel}</span>
+          <span class="adp-rk-toggle">▼</span>
+        </div>
+        <div class="adp-rk-profit-detail" id="${detailId}" style="display:none;">
+          <table class="adp-rk-profit-table">
+            <tr class="adp-rk-profit-yield-row"><th>基準収量</th><td>${Math.round(p.baseYield ?? 0).toLocaleString('ja-JP')} kg</td>
+                <td class="adp-rk-sub">DB標準値 × ${p.area10a?.toFixed(2)} 10a</td></tr>
+            <tr class="adp-rk-profit-yield-row"><th>補正係数</th><td class="${(p.yieldCorrectionFactor ?? 1) >= 1 ? 'profit-positive' : (p.yieldCorrectionFactor ?? 1) >= 0.75 ? '' : 'profit-negative'}">${Math.round((p.yieldCorrectionFactor ?? 1) * 100)}%</td>
+                <td class="adp-rk-sub">適合率 × 栽培方式 × 気温乖離</td></tr>
+            <tr class="adp-rk-profit-yield-row"><th>予測収量</th><td>${Math.round(p.predictedYield ?? 0).toLocaleString('ja-JP')} kg</td>
+                <td class="adp-rk-sub">基準 × 補正係数</td></tr>
+            <tr class="adp-rk-profit-yield-row"><th>出荷率</th><td>${Math.round((p.marketableYieldRate ?? 0) * 100)}%</td>
+                <td class="adp-rk-sub">→ 出荷量 ${Math.round(p.marketableYield ?? 0).toLocaleString('ja-JP')} kg</td></tr>
+            <tr><th>収入</th><td class="profit-positive">+${fmt(p.revenue)} 円</td>
+                <td class="adp-rk-sub">出荷量 ${fmtKg(p.marketableYield)} kg × ${fmt(p.averagePrice)} 円/kg</td></tr>
+            <tr><th>種苗費</th><td>−${fmt(p.seedCost)} 円</td><td></td></tr>
+            <tr><th>資材費</th><td>−${fmt(p.materialCost)} 円</td><td></td></tr>
+            <tr><th>機械費</th><td>−${fmt(p.machineCost)} 円</td><td></td></tr>
+            <tr><th>労働費</th><td>−${fmt(p.laborCost)} 円</td><td></td></tr>
+            <tr><th>初期償却費</th><td>−${fmt(p.amortizedInitialCost)} 円</td>
+                <td class="adp-rk-sub">${p.amortYears}年償却</td></tr>
+            <tr><th>リスク控除</th><td>−${fmt(p.riskDeduction)} 円</td>
+                <td class="adp-rk-sub">${Math.round(p.riskDeductionRate * 100)}%</td></tr>
+            <tr class="adp-rk-profit-total">
+              <th>純利益</th>
+              <td class="${profitClass}">${profitSign}${fmt(profit)} 円</td>
+              <td class="adp-rk-sub">${p.area10a.toFixed(2)} 反換算</td>
+            </tr>
+          </table>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ─── ウィザードパネルの開閉（Step2でadp-wizard-panel廃止のためno-op化。条件設定はランキングタブのサブタブへ移行） ───
+function _adpToggleWizardPanel() {
+  // 呼び出し元（ヘッダーの「条件設定」ボタン）は削除済み。Step4までの間の無害化スタブ。
 }
 
 // ─── サマリーバー更新 ───
@@ -2965,6 +3039,13 @@ function _adpRenderGrowthRankingList() {
 
 // ─── フルビューを閉じてsheetに戻る ───
 function closeAreaDetailPanel() {
+  // 収益シミュレーターに未保存変更がある場合は確認
+  if (_adpRkCurrentPane === 'sim' && _simDirty) {
+    if (!confirm('未保存の変更があります。破棄してよろしいですか？')) return;
+    _simDirty = false;
+    delete _simMemory[_simSelectedCropId];
+  }
+
   const view = document.getElementById('adp-view');
   if (view) view.classList.remove('open');
 
@@ -3028,9 +3109,6 @@ function adpCropTap(el, cropId) {
       }
       const single = (crop && typeof buildSingleCropAnalysis === 'function')
         ? buildSingleCropAnalysis(cropId, ad) : null;
-      if (typeof renderProfitWaterfall === 'function') {
-        renderProfitWaterfall(scoreEntry ?? (single ? { crop: single.crop, profitability: single.profitability } : null));
-      }
       if (crop) {
         if (typeof _renderFertResult  === 'function') _renderFertResult(crop);
         if (typeof _renderRiskResult  === 'function') _renderRiskResult(crop);
@@ -3239,17 +3317,6 @@ function _adpSelectCropForAnalysis(cropId) {
   _adpRenderTempChart(_adpSelectedCropId);
   _adpRenderGrowthChart(_adpSelectedCropId);
 
-  // 収益
-  if (typeof renderProfitWaterfall === 'function') {
-    if (scoreEntry) {
-      renderProfitWaterfall(scoreEntry);
-    } else if (single) {
-      renderProfitWaterfall({ crop: single.crop, profitability: single.profitability });
-    } else {
-      renderProfitWaterfall(null);
-    }
-  }
-
   // 施肥・リスク・作業カレンダー
   if (crop) {
     if (typeof _renderFertResult  === 'function') _renderFertResult(crop);
@@ -3299,12 +3366,6 @@ function _adpSelectCropForAnalysis(cropId) {
   } else if (cur === 'growth') {
     setTimeout(() => _adpRenderGrowthChart(_adpSelectedCropId), 30);
   }
-}
-
-// ─── タブ連動ランキングダイアログ ───
-function _adpOpenRankingByTab() {
-  const pane = _adpCurrentSubTab === 'growth' ? 'growth' : 'ranking';
-  _adpOpenRankingDialog(pane);
 }
 
 // ─── サマリーバー「作物を選ぶ」→ カテゴリ一覧シート ───
@@ -3570,13 +3631,11 @@ const AW_ITEM_DEFS = [
   { key: 'compare',  label: '比較',           icon: '⚖️' },
 ];
 
-const AW_STEP_TITLES = ['営農条件入力'];
+const AW_STEP_TITLES = ['営農条件入力']; // 旧ウィザード互換・参照箇所が残る間は温存
 
-// ─── ウィザード状態 ───
-let _awStep           = 0;        // 現在ステップ (0のみ)
-let _awArea           = null;     // 選択中エリアデータ
-let _awFarmCond       = null;     // 営農条件（6項目）
-let _awAnalysisItems  = new Set(['ranking','growth','profit','fert','risk','calendar','match']); // 分析項目
+// ─── 条件設定状態 ───
+let _awArea           = null;     // 選択中エリアデータ（openAreaDetailPanelで更新）
+let _awFarmCond       = null;     // 営農条件（6項目）：アプリ起動時に初期化、デフォルトボタンでリセット
 let _awAllScores      = [];       // buildAnalysisResult().cropScores のキャッシュ
 
 function _awDefaultFarmCond() {
@@ -3590,97 +3649,57 @@ function _awDefaultFarmCond() {
   };
 }
 
-// ─── ウィザードパネル初期化（adp-wizard-panel内・トグルで開閉） ───
-function _awInitPanel(area) {
-  _awArea            = area;
-  _awStep            = 0;
-  _awFarmCond        = _awDefaultFarmCond();
-  _awAnalysisItems   = new Set(['ranking','growth','profit','fert','risk','calendar','match']);
-  _awAllScores       = [];
+// アプリ起動時に一度だけ初期化（以降はデフォルトボタンでのみリセット）
+_awFarmCond = _awDefaultFarmCond();
 
-  _awRenderStep(0);
-  _awRunAnalysis(); // 初期状態（デフォルト条件）でサマリーバー・各ペインを即時更新
-}
-
-// ─── パネルを閉じる ───
+// ─── ウィザードパネルクローズ（旧互換・no-op化） ───
 function closeAnalysisWizard() {
-  const panel = document.getElementById('adp-wizard-panel');
-  if (panel) panel.setAttribute('hidden', '');
-}
-
-// ─── ステップ描画ディスパッチャ ───
-function _awRenderStep(step) {
-  _awStep = step;
-  _awUpdateProgress(step);
-  _awRenderConditions();
-}
-
-// ─── プログレスバー更新 ───
-function _awUpdateProgress(step) {
-  const dot = document.getElementById('awdot-0');
-  if (dot) {
-    dot.classList.remove('active', 'done');
-    dot.classList.add('active');
-  }
-  const el = document.getElementById('aw-step-title');
-  if (el) el.textContent = AW_STEP_TITLES[0];
+  // adp-wizard-panelはStep2で廃止済み。呼び出し元の残骸に対する安全スタブ。
 }
 
 // ═══════════════════════════════════════════
 //  Step 1: 営農条件入力
 // ═══════════════════════════════════════════
 function _awRenderConditions() {
-  const body = document.getElementById('aw-body');
-  body.innerHTML = `
-    <div class="aw-live-preview" id="aw-live-preview"></div>
-    <div class="aw-cond-groups">
+  const wrap = document.getElementById('adp-rk-cond-wrap');
+  if (!wrap) return;
+
+  wrap.innerHTML = `
+    <div class="adp-rk-cond-groups">
       ${FARM_COND_GROUPS.map(g => `
-        <div class="aw-cond-group">
-          <div class="aw-cond-label">${g.icon} ${g.label}</div>
-          <div class="aw-cond-row">
+        <div class="adp-rk-cond-group">
+          <div class="adp-rk-cond-label">${g.icon} ${g.label}</div>
+          <div class="adp-rk-cond-row">
             ${g.options.map(o => `
-              <button class="aw-cond-chip ${_awFarmCond[g.key] === o.value ? 'selected' : ''}"
+              <button class="adp-rk-cond-chip ${_awFarmCond[g.key] === o.value ? 'selected' : ''}"
                 onclick="_awSetCondition('${g.key}','${o.value}')">
-                <span class="aw-cond-chip-icon">${o.icon}</span>
-                <span class="aw-cond-chip-label">${o.label}</span>
+                <span class="adp-rk-cond-chip-icon">${o.icon}</span>
+                <span class="adp-rk-cond-chip-label">${o.label}</span>
               </button>
             `).join('')}
           </div>
         </div>
       `).join('')}
     </div>
+    <div class="adp-rk-cond-footer">
+      <button class="adp-rk-cond-btn-reset" onclick="_awResetConditions()">↩ デフォルトに戻す</button>
+      <div class="adp-rk-cond-nav">
+        <button class="adp-rk-cond-btn-nav" onclick="_adpRkSwitchPane('match')">📊 適合度ランキングへ</button>
+        <button class="adp-rk-cond-btn-nav" onclick="_adpRkSwitchPane('profit')">💴 収益ランキングへ</button>
+      </div>
+    </div>
   `;
-  _awUpdateLivePreview();
-  _awRenderFooter({
-    back: false,
-    next: true, nextLabel: '分析実行', nextClass: 'aw-btn-run',
-    onNext: _awExecute,
-  });
 }
 
 function _awSetCondition(key, value) {
   if (_awFarmCond[key] === value) return;
   _awFarmCond[key] = value;
-  _awRunAnalysis();      // 裏の分析タブをリアルタイム更新
-  _awRenderConditions(); // チップの選択状態を再描画
-}
-
-// ═══════════════════════════════════════════
-//  リアルタイム分析エンジン連携
-function _awRenderFooter({ back, onBack, next, nextLabel, nextClass = '', onNext }) {
-  const footer = document.getElementById('aw-footer');
-  footer.innerHTML = `
-    ${back ? `<button class="aw-btn aw-btn-back" id="aw-btn-back">← 戻る</button>` : '<div></div>'}
-    <button class="aw-btn aw-btn-next ${nextClass}" id="aw-btn-next" ${!next ? 'disabled' : ''}>
-      ${nextLabel}
-    </button>
-  `;
-  if (back && onBack) {
-    const backEl = document.getElementById('aw-btn-back');
-    if (backEl) backEl.addEventListener('click', onBack);
+  _awRunAnalysis();               // currentAreaData.farmingConditions更新＋各タブ再計算
+  _awRenderConditions();          // チップの選択状態を再描画
+  // 収益ランキングペインが表示中なら即時再描画
+  if (_adpRkCurrentPane === 'profit') {
+    _adpRenderProfitRankingList();
   }
-  const nextEl = document.getElementById('aw-btn-next');
-  if (nextEl && onNext) nextEl.addEventListener('click', onNext);
 }
 
 // ═══════════════════════════════════════════
@@ -3708,7 +3727,7 @@ function _awBuildAreaData() {
     ad = normalizeAreaData(area, {
       selectedCropId:    _adpSelectedCropId || null,
       cultivationMode,
-      analysisItems:     Array.from(_awAnalysisItems),
+      analysisItems:     ['ranking','growth','profit','fert','risk','calendar','match'],
       farmingConditions: { ..._awFarmCond },
     });
   } else {
@@ -3727,7 +3746,7 @@ function _awBuildAreaData() {
       areaHa:          _pick(meta.areaHa,  area.areaHa)                  || 0,
       selectedCropId:  _adpSelectedCropId || null,
       cultivationMode,
-      analysisItems:   Array.from(_awAnalysisItems),
+      analysisItems:   ['ranking','growth','profit','fert','risk','calendar','match'],
       landProfile:     Object.keys(lp).length ? lp : null,
       env:             {},
     };
@@ -3736,6 +3755,9 @@ function _awBuildAreaData() {
   // 営農条件・栽培方式を確実に反映
   ad.farmingConditions = { ..._awFarmCond };
   ad.cultivationMode   = cultivationMode;
+
+  // profitOverrides を引き継ぐ（シミュレーター上書き値をengine.jsに渡すために必要）
+  ad.profitOverrides = _adpArea?.profitOverrides || area.profitOverrides || {};
 
   // AMeDASキャッシュ（decadeArr等）を復元してから上書き
   // normalizeAreaData() は素のareaから組み立てるため decadeArr が消えてしまう
@@ -3831,35 +3853,396 @@ function _awUpdateLivePreview() {
   }
 }
 
-// ─── 分析実行（Step3「分析実行」ボタン） ───
-function _awExecute() {
-  if (!_awArea) return;
-
+// ─── デフォルト条件にリセット ───
+function _awResetConditions() {
+  _awFarmCond = _awDefaultFarmCond();
   _awRunAnalysis();
-  closeAnalysisWizard();
+  _awRenderConditions();
+  if (_adpRkCurrentPane === 'profit') {
+    _adpRenderProfitRankingList();
+  }
+}
 
-  const area = _awArea;
+// ═══════════════════════════════════════════
+//  収益シミュレーター（サブタブ5）
+// ═══════════════════════════════════════════
 
-  // ─ 地図にポリゴンを表示 ─
-  if (area.geojson && typeof drawnItems !== 'undefined' && typeof map !== 'undefined') {
-    try {
-      drawnItems.clearLayers();
-      // geojsonはFirestoreではJSON文字列で保存されているためパースが必要
-      const geojsonData = typeof area.geojson === 'string'
-        ? JSON.parse(area.geojson) : area.geojson;
-      const drawColor = (typeof CONFIG !== 'undefined' && CONFIG.DRAW_COLOR)
-        ? CONFIG.DRAW_COLOR : '#4ade80';
-      const layer = L.geoJSON(geojsonData, {
-        style: { color: drawColor, weight: 2, fillOpacity: 0.2 },
-      });
-      layer.addTo(drawnItems);
-      map.fitBounds(layer.getBounds());
-    } catch(e) {
-      console.warn('[_awExecute] geojson parse error:', e);
-    }
+/**
+ * _simEnsureOverridesStore()
+ * currentAreaData.profitOverrides を返す。未初期化なら {} で初期化してから返す。
+ */
+function _simEnsureOverridesStore() {
+  if (!currentAreaData) return {};
+  if (!currentAreaData.profitOverrides) currentAreaData.profitOverrides = {};
+  return currentAreaData.profitOverrides;
+}
+
+/**
+ * _simResolveDefaultCropId()
+ * シミュレーターの初期作物IDを決定する。
+ * 優先順位:
+ *   1. _adpSelectedCropId（適合度タブで選択済み）
+ *   2. _crScores の averageProfit 最高作物
+ *   3. _crScores の先頭
+ *   4. null（登録作物0件）
+ */
+function _simResolveDefaultCropId() {
+  if (_adpSelectedCropId) return _adpSelectedCropId;
+  const scores = (typeof _crScores !== 'undefined' && _crScores.length) ? _crScores : [];
+  if (!scores.length) return null;
+  // averageProfit最高を1位とする
+  const top = [...scores]
+    .filter(s => s.profitability)
+    .sort((a, b) => b.profitability.averageProfit - a.profitability.averageProfit)[0];
+  return top ? top.crop.id : scores[0].crop.id;
+}
+
+/**
+ * _simGetDefaultValues(cropId)
+ * COST_TABLE + farmCond補正を反映したデフォルト値を返す。
+ * engine.js の COST_TABLE / cropPricePerKg はグローバル参照可能。
+ */
+function _simGetDefaultValues(cropId) {
+  const scores = (typeof _crScores !== 'undefined') ? _crScores : [];
+  const entry  = scores.find(s => s.crop.id === cropId);
+  const crop   = entry ? entry.crop : null;
+  if (!crop) return null;
+
+  const cat     = crop.category || '_default';
+  const costRow = (typeof COST_TABLE !== 'undefined')
+    ? (COST_TABLE[cat] || COST_TABLE._default)
+    : { seed: 10000, material: 22000, machine: 22000, labor: 60000, initial: 40000, amortYears: 3 };
+
+  // farmCond補正
+  const fc = (typeof _awFarmCond !== 'undefined' && _awFarmCond) ? _awFarmCond : {};
+  const laborMult = fc.scale === 'family' ? 0.85 : fc.scale === 'hired' ? 1.30 : 1.0;
+  const priceMult = fc.sales === 'direct' || fc.sales === 'roadside' ? 1.15
+    : fc.sales === 'ja' ? 0.90
+    : fc.sales === 'processing' ? 0.85 : 1.0;
+
+  const basePrice = (typeof cropPricePerKg === 'function') ? cropPricePerKg(crop) : 0;
+
+  return {
+    seedCost10a:     Math.round(costRow.seed),
+    materialCost10a: Math.round(costRow.material),
+    machineCost10a:  Math.round(costRow.machine),
+    laborCost10a:    Math.round(costRow.labor * laborMult),
+    initialCost:     Math.round(costRow.initial),
+    pricePerKg:      Math.round(basePrice * priceMult),
+    amortYears:      costRow.amortYears || 3,
+    hasNoPrice:      !crop.price,  // priceがnullなら参考データなし
+  };
+}
+
+/**
+ * _simCalcPreview(cropId, inputs)
+ * inputs: { seedCost10a, materialCost10a, machineCost10a, laborCost10a, initialCost, pricePerKg }
+ * すべてnullの項目はデフォルト値を使用。
+ * 純利益（エリア全体換算）を返す。
+ */
+function _simCalcPreview(cropId, inputs) {
+  const defs = _simGetDefaultValues(cropId);
+  if (!defs) return null;
+
+  const areaSqm = (currentAreaData && currentAreaData.areaSqm) ? currentAreaData.areaSqm : 0;
+  const area10a = areaSqm / 1000; // 10a=1000㎡
+
+  const seed     = (inputs.seedCost10a     !== null ? inputs.seedCost10a     : defs.seedCost10a)     * area10a;
+  const material = (inputs.materialCost10a !== null ? inputs.materialCost10a : defs.materialCost10a) * area10a;
+  const machine  = (inputs.machineCost10a  !== null ? inputs.machineCost10a  : defs.machineCost10a)  * area10a;
+  const labor    = (inputs.laborCost10a    !== null ? inputs.laborCost10a    : defs.laborCost10a)    * area10a;
+  const initial  = (inputs.initialCost     !== null ? inputs.initialCost     : defs.initialCost);
+  const amort    = defs.amortYears;
+  const price    = (inputs.pricePerKg      !== null ? inputs.pricePerKg      : defs.pricePerKg);
+
+  // _crScoresから収量・収益計算に必要な情報を取得
+  const scores  = (typeof _crScores !== 'undefined') ? _crScores : [];
+  const entry   = scores.find(s => s.crop.id === cropId);
+  const profit  = entry ? entry.profitability : null;
+
+  // 簡易収量推定（profitabilityから逆算 or デフォルト）
+  let revenue = 0;
+  if (profit && profit.revenue) {
+    // 既存収益計算の収入をベースに、単価だけ差し替え
+    const origPrice = profit.averagePrice || (price || 1);
+    revenue = origPrice > 0 ? profit.revenue / origPrice * price : 0;
   }
 
-  // ─ Step3で選択した項目のうち先頭のサブタブへ切替 ─
-  const focusKey = AW_ITEM_DEFS.find(i => _awAnalysisItems.has(i.key))?.key || 'ranking';
-  _adpSwitchSubTab(focusKey);
+  const totalCost   = seed + material + machine + labor + (initial / amort) * area10a;
+  const riskRate    = profit ? (profit.riskDeductionRate || 0) : 0;
+  const netProfit   = Math.round((revenue - totalCost) * (1 - riskRate));
+
+  return {
+    revenue:      Math.round(revenue),
+    seedCost:     Math.round(seed),
+    materialCost: Math.round(material),
+    machineCost:  Math.round(machine),
+    laborCost:    Math.round(labor),
+    amortCost:    Math.round((initial / amort) * area10a),
+    riskRate:     Math.round(riskRate * 100),
+    netProfit,
+    area10a,
+  };
+}
+
+/**
+ * _simUpdatePreview()
+ * フォームの現在値を読み取り、プレビューエリアを更新する。
+ */
+function _simUpdatePreview() {
+  const cropId = _simSelectedCropId;
+  if (!cropId) return;
+
+  function readVal(id) {
+    const el = document.getElementById(id);
+    if (!el || el.value === '') return null;
+    return Number(el.value) || null;
+  }
+
+  const inputs = {
+    seedCost10a:     readVal('sim-seed'),
+    materialCost10a: readVal('sim-material'),
+    machineCost10a:  readVal('sim-machine'),
+    laborCost10a:    readVal('sim-labor'),
+    initialCost:     readVal('sim-initial'),
+    pricePerKg:      readVal('sim-price'),
+  };
+
+  // _simMemoryに保存
+  _simMemory[cropId] = inputs;
+
+  const r = _simCalcPreview(cropId, inputs);
+  const el = document.getElementById('adp-rk-sim-preview');
+  if (!el || !r) return;
+
+  const fmt = v => v == null ? '—' : v.toLocaleString('ja-JP') + '円';
+  const profitClass = r.netProfit >= 0 ? 'profit-positive' : 'profit-negative';
+
+  el.innerHTML = `
+    <div class="adp-rk-sim-preview-row"><span>収入（推定）</span><span>${fmt(r.revenue)}</span></div>
+    <div class="adp-rk-sim-preview-row"><span>　種苗費</span><span>−${fmt(r.seedCost)}</span></div>
+    <div class="adp-rk-sim-preview-row"><span>　資材費</span><span>−${fmt(r.materialCost)}</span></div>
+    <div class="adp-rk-sim-preview-row"><span>　機械費</span><span>−${fmt(r.machineCost)}</span></div>
+    <div class="adp-rk-sim-preview-row"><span>　労働費</span><span>−${fmt(r.laborCost)}</span></div>
+    <div class="adp-rk-sim-preview-row"><span>　初期費用（年間償却）</span><span>−${fmt(r.amortCost)}</span></div>
+    <div class="adp-rk-sim-preview-row"><span>　リスク控除</span><span>−${r.riskRate}%</span></div>
+    <div class="adp-rk-sim-total ${profitClass}"><span>推定純利益</span><span>${fmt(r.netProfit)}</span></div>
+    <div class="adp-rk-sim-area-note">※ エリア面積 ${r.area10a.toFixed(2)} 10a 換算</div>
+  `;
+}
+
+/**
+ * _simSaveProfitOverrides()
+ * 現在のフォーム値を profitOverrides に保存し、Firestore/localStorage に永続化する。
+ */
+async function _simSaveProfitOverrides() {
+  const cropId = _simSelectedCropId;
+  if (!cropId || !_adpArea) return;
+
+  function readVal(id) {
+    const el = document.getElementById(id);
+    if (!el || el.value === '') return null;
+    return Number(el.value) || null;
+  }
+
+  const payload = {
+    seedCost10a:     readVal('sim-seed'),
+    materialCost10a: readVal('sim-material'),
+    machineCost10a:  readVal('sim-machine'),
+    laborCost10a:    readVal('sim-labor'),
+    initialCost:     readVal('sim-initial'),
+    pricePerKg:      readVal('sim-price'),
+    updatedAt:       new Date().toISOString(),
+  };
+
+  // メモリ上更新
+  const store = _simEnsureOverridesStore();
+  store[cropId] = payload;
+  _adpArea.profitOverrides = store;
+
+  // Firestore / localStorage 永続化（saveInlineEditパターン踏襲）
+  const id = _adpArea.id;
+  const update = { [`profitOverrides.${cropId}`]: payload };
+
+  try {
+    if (typeof db !== 'undefined' && db && id && !String(id).startsWith('local_')) {
+      await db.collection('areas').doc(id).update(update);
+    } else {
+      const stored = JSON.parse(localStorage.getItem(CONFIG.AREAS_KEY) || '[]');
+      const idx = stored.findIndex(a => a.id === id);
+      if (idx !== -1) {
+        stored[idx].profitOverrides = stored[idx].profitOverrides || {};
+        stored[idx].profitOverrides[cropId] = payload;
+        localStorage.setItem(CONFIG.AREAS_KEY, JSON.stringify(stored));
+      }
+    }
+    _simDirty = false;
+    showToast('保存しました ✓', 'green');
+    // 分析を再計算して収益ランキングに反映
+    if (typeof _awRunAnalysis === 'function') _awRunAnalysis();
+  } catch(e) {
+    showToast('保存に失敗しました', 'amber');
+    console.error(e);
+  }
+}
+
+/**
+ * _simResetCrop(cropId)
+ * 指定作物の上書き値をクリアし、フォームをデフォルトに戻す。
+ */
+async function _simResetCrop(cropId) {
+  if (!cropId || !_adpArea) return;
+
+  const store = _simEnsureOverridesStore();
+  delete store[cropId];
+  _adpArea.profitOverrides = store;
+
+  // localStorage更新
+  const id = _adpArea.id;
+  try {
+    if (typeof db !== 'undefined' && db && id && !String(id).startsWith('local_')) {
+      // Firestoreはフィールド削除のためFieldValue.deleteを使う
+      const del = {};
+      del[`profitOverrides.${cropId}`] = firebase.firestore.FieldValue.delete();
+      await db.collection('areas').doc(id).update(del);
+    } else {
+      const stored = JSON.parse(localStorage.getItem(CONFIG.AREAS_KEY) || '[]');
+      const idx = stored.findIndex(a => a.id === id);
+      if (idx !== -1) {
+        if (stored[idx].profitOverrides) delete stored[idx].profitOverrides[cropId];
+        localStorage.setItem(CONFIG.AREAS_KEY, JSON.stringify(stored));
+      }
+    }
+  } catch(e) {
+    console.warn('profitOverrides削除:', e);
+  }
+
+  delete _simMemory[cropId];
+  _simDirty = false;
+  // フォームを再描画（デフォルト値で）
+  _adpRenderProfitSimulator();
+  showToast('リセットしました', 'green');
+}
+
+/**
+ * _adpRenderProfitSimulator()
+ * 収益シミュレーターUI（サブタブ5）を描画する。
+ */
+function _adpRenderProfitSimulator() {
+  const wrap = document.getElementById('adp-rk-sim-wrap');
+  if (!wrap) return;
+
+  const scores = (typeof _crScores !== 'undefined') ? _crScores : [];
+
+  // 登録作物が0件の場合
+  if (!scores.length) {
+    wrap.innerHTML = `<div class="adp-rk-sim-no-data">作物未登録です。エリアに作物を追加してください。</div>`;
+    return;
+  }
+
+  // 初期作物IDを決定
+  if (!_simSelectedCropId) {
+    _simSelectedCropId = _simResolveDefaultCropId();
+  }
+  const cropId = _simSelectedCropId;
+
+  // ドロップダウン用の選択肢を生成
+  const options = scores.map(s =>
+    `<option value="${escHtml(s.crop.id)}" ${s.crop.id === cropId ? 'selected' : ''}>${escHtml(s.crop.name)}</option>`
+  ).join('');
+
+  // 選択作物のデフォルト値
+  const defs = _simGetDefaultValues(cropId);
+  if (!defs) {
+    wrap.innerHTML = `<div class="adp-rk-sim-no-data">作物データが見つかりません。</div>`;
+    return;
+  }
+
+  // 保存済みoverrides or セッションキャッシュを優先
+  const store   = _simEnsureOverridesStore();
+  const saved   = store[cropId] || null;
+  const cached  = _simMemory[cropId] || null;
+  const vals    = cached || saved || {};
+
+  function fmtVal(key) {
+    const v = vals[key];
+    return (v !== undefined && v !== null) ? v : '';
+  }
+
+  const noPriceNote = defs.hasNoPrice
+    ? `<div class="adp-rk-sim-no-data" style="margin-bottom:8px;">⚠️ この作物には参考価格データがありません。実勢価格を入力してください。</div>`
+    : '';
+
+  wrap.innerHTML = `
+    <div class="adp-rk-sim-form">
+      <div class="adp-rk-sim-select-wrap">
+        <label for="sim-crop-select">作物</label>
+        <select id="sim-crop-select" class="adp-rk-sim-select"
+          onchange="_simOnCropChange(this.value)">
+          ${options}
+        </select>
+      </div>
+      ${noPriceNote}
+      <div class="adp-rk-sim-field">
+        <label>種苗費 <span class="sim-unit">円/10a</span></label>
+        <input id="sim-seed" type="number" min="0" placeholder="${defs.seedCost10a.toLocaleString('ja-JP')}"
+          value="${fmtVal('seedCost10a')}" oninput="_simOnInput()">
+      </div>
+      <div class="adp-rk-sim-field">
+        <label>資材費 <span class="sim-unit">円/10a</span></label>
+        <input id="sim-material" type="number" min="0" placeholder="${defs.materialCost10a.toLocaleString('ja-JP')}"
+          value="${fmtVal('materialCost10a')}" oninput="_simOnInput()">
+      </div>
+      <div class="adp-rk-sim-field">
+        <label>機械費 <span class="sim-unit">円/10a</span></label>
+        <input id="sim-machine" type="number" min="0" placeholder="${defs.machineCost10a.toLocaleString('ja-JP')}"
+          value="${fmtVal('machineCost10a')}" oninput="_simOnInput()">
+      </div>
+      <div class="adp-rk-sim-field">
+        <label>労働費 <span class="sim-unit">円/10a</span></label>
+        <input id="sim-labor" type="number" min="0" placeholder="${defs.laborCost10a.toLocaleString('ja-JP')}"
+          value="${fmtVal('laborCost10a')}" oninput="_simOnInput()">
+      </div>
+      <div class="adp-rk-sim-field">
+        <label>初期費用 <span class="sim-unit">円/10a</span></label>
+        <input id="sim-initial" type="number" min="0" placeholder="${defs.initialCost.toLocaleString('ja-JP')}"
+          value="${fmtVal('initialCost')}" oninput="_simOnInput()">
+        <div class="sim-note">償却年数 ${defs.amortYears}年（変更不可）</div>
+      </div>
+      <div class="adp-rk-sim-field">
+        <label>販売単価 <span class="sim-unit">円/kg</span></label>
+        <input id="sim-price" type="number" min="0" placeholder="${defs.pricePerKg.toLocaleString('ja-JP')}"
+          value="${fmtVal('pricePerKg')}" oninput="_simOnInput()">
+      </div>
+      <div id="adp-rk-sim-preview" class="adp-rk-sim-preview"></div>
+      <div class="adp-rk-sim-actions">
+        <button class="btn btn-ghost" onclick="_simResetCrop('${escHtml(cropId)}')">↩ リセット</button>
+        <button class="btn btn-primary" onclick="_simSaveProfitOverrides()">保存</button>
+      </div>
+    </div>
+  `;
+
+  // 初期プレビューを表示
+  _simUpdatePreview();
+}
+
+/** 作物ドロップダウン変更時 */
+function _simOnCropChange(newCropId) {
+  if (_simDirty) {
+    if (!confirm('未保存の変更があります。破棄してよろしいですか？')) {
+      // 元に戻す
+      const sel = document.getElementById('sim-crop-select');
+      if (sel) sel.value = _simSelectedCropId;
+      return;
+    }
+    _simDirty = false;
+  }
+  _simSelectedCropId = newCropId;
+  _adpRenderProfitSimulator();
+}
+
+/** 入力変更時 */
+function _simOnInput() {
+  _simDirty = true;
+  _simUpdatePreview();
 }
