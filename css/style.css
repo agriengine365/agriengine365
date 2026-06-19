@@ -6047,6 +6047,16 @@ html.draw-dialog-active .bottom-nav {
   border-radius: 10px;
   padding: 12px;
   margin-bottom: 8px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, background 0.15s;
+}
+.adp-rk-profit-card.selected {
+  border-color: var(--accent, #4caf50);
+  background: color-mix(in srgb, var(--accent, #4caf50) 8%, var(--bg3));
+}
+.adp-rk-profit-card.selected .adp-rk-profit-name {
+  color: var(--accent, #4caf50);
 }
 .adp-rk-profit-rank {
   font-size: 0.75rem;

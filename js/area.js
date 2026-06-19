@@ -655,9 +655,22 @@ function _adpEnsureView() {
           <div id="crop-ranking"><div class="empty-mini">計算中...</div></div>
         </div>
 
-        <!-- 4) 収益ランキング（枠組みのみ・Step3で実装） -->
+        <!-- 4) 収益ランキング -->
         <div class="adp-rk-pane" id="adp-rk-pane-profit" style="display:none;">
-          <div id="crop-ranking-profit"><div class="empty-mini">収益ランキングは準備中です（Step3で実装）。</div></div>
+          <div class="adp-rk-match-controls">
+            <div class="cr-tabs-major" id="cr-tabs-major-profit">
+              <button class="cr-tab-major active" data-major="all"       onclick="crSwitchMajor('all')">すべて</button>
+              <button class="cr-tab-major"        data-major="grain"     onclick="crSwitchMajor('grain')">穀物・豆類</button>
+              <button class="cr-tab-major"        data-major="vegetable" onclick="crSwitchMajor('vegetable')">野菜</button>
+              <button class="cr-tab-major"        data-major="fruit"     onclick="crSwitchMajor('fruit')">果物</button>
+              <button class="cr-tab-major"        data-major="wild"      onclick="crSwitchMajor('wild')">山菜・草</button>
+              <button class="cr-tab-major"        data-major="forest"    onclick="crSwitchMajor('forest')">林産</button>
+              <button class="cr-tab-major"        data-major="oil"       onclick="crSwitchMajor('oil')">油脂</button>
+              <button class="cr-tab-major"        data-major="fiber"     onclick="crSwitchMajor('fiber')">繊維</button>
+            </div>
+            <div class="cr-tabs-minor" id="cr-tabs-minor-profit" style="display:none;"></div>
+          </div>
+          <div id="crop-ranking-profit"><div class="empty-mini">計算中...</div></div>
         </div>
 
         <!-- 5) 収益シミュレーター（枠組みのみ・Step5で実装） -->
@@ -915,15 +928,17 @@ function _adpRenderProfitRankingList() {
   const el = document.getElementById('crop-ranking-profit');
   if (!el) return;
 
-  const scores = (typeof _crScores !== 'undefined') ? _crScores : [];
-  if (!scores.length) {
+  // カテゴリーフィルター適用済みスコアを取得
+  const allScores = (typeof _crScores !== 'undefined') ? _crScores : [];
+  if (!allScores.length) {
     el.innerHTML = '<div class="empty-mini">エリアを選択するとランキングが表示されます。</div>';
     return;
   }
 
-  // viable のみ・自家消費除外（farmCondが設定済みの場合）・averageProfit 降順・上位20件
+  // viable のみ・自家消費除外・カテゴリーフィルター適用・averageProfit 降順・上位20件
   const isSelf = (_awFarmCond && _awFarmCond.sales === 'self');
-  const sorted = [...scores]
+  const filtered = (typeof _crFilteredScores === 'function') ? _crFilteredScores() : allScores;
+  const sorted = [...filtered]
     .filter(s => s.viable && s.profitability && !isSelf)
     .sort((a, b) => b.profitability.averageProfit - a.profitability.averageProfit)
     .slice(0, 20);
@@ -938,35 +953,41 @@ function _adpRenderProfitRankingList() {
   const fmt = n => Math.round(n).toLocaleString('ja-JP');
   const fmtKg = n => Math.round(n).toLocaleString('ja-JP');
 
+  // 適合度ランキング順位テーブルを事前生成（全スコア対象）
+  const matchRankMap = new Map(
+    allScores.filter(x => x.viable)
+      .sort((a, b) => b.score - a.score)
+      .map((x, i) => [x.crop.id, i + 1])
+  );
+
   el.innerHTML = sorted.map((s, idx) => {
-    const p   = s.profitability;
-    const profit = p.averageProfit;
+    const p          = s.profitability;
+    const profit     = p.averageProfit;
     const profitClass = profit >= 0 ? 'profit-positive' : 'profit-negative';
     const profitSign  = profit >= 0 ? '+' : '';
+    const isSelected  = s.crop.id === _adpSelectedCropId;
 
-    // 適合度ランキングとの順位差
-    const matchRank = scores
-      .filter(x => x.viable)
-      .sort((a, b) => b.score - a.score)
-      .findIndex(x => x.crop.id === s.crop.id) + 1;
+    const matchRank  = matchRankMap.get(s.crop.id) ?? '–';
     const profitRank = idx + 1;
-    const diff = matchRank - profitRank;
-    const diffLabel = diff > 0 ? `▲${diff}` : diff < 0 ? `▼${Math.abs(diff)}` : '–';
-    const diffClass  = diff > 0 ? 'rank-up' : diff < 0 ? 'rank-down' : 'rank-same';
+    const diff       = (typeof matchRank === 'number') ? matchRank - profitRank : null;
+    const diffLabel  = diff === null ? '–' : diff > 0 ? `▲${diff}` : diff < 0 ? `▼${Math.abs(diff)}` : '–';
+    const diffClass  = diff === null ? 'rank-same' : diff > 0 ? 'rank-up' : diff < 0 ? 'rank-down' : 'rank-same';
 
     const detailId = `adp-profit-detail-${idx}`;
     return `
-      <div class="adp-rk-profit-card">
-        <div class="adp-rk-profit-card-header" onclick="
-          const d=document.getElementById('${detailId}');
-          d.style.display = d.style.display==='none' ? '' : 'none';
-          this.querySelector('.adp-rk-toggle').textContent = d.style.display==='' ? '▲' : '▼';
-        ">
+      <div class="adp-rk-profit-card${isSelected ? ' selected' : ''}"
+           onclick="adpCropTap(this, '${s.crop.id}')">
+        <div class="adp-rk-profit-card-header">
           <span class="adp-rk-profit-rank">#${profitRank}</span>
           <span class="adp-rk-profit-name">${s.crop.name}</span>
           <span class="adp-rk-profit-amount ${profitClass}">${profitSign}${fmt(profit)} 円</span>
           <span class="adp-rk-profit-diff ${diffClass}" title="適合度順位との差">適合#${matchRank} ${diffLabel}</span>
-          <span class="adp-rk-toggle">▼</span>
+          <span class="adp-rk-toggle" onclick="
+            event.stopPropagation();
+            const d=document.getElementById('${detailId}');
+            d.style.display = d.style.display==='none' ? '' : 'none';
+            this.textContent = d.style.display==='' ? '▲' : '▼';
+          ">▼</span>
         </div>
         <div class="adp-rk-profit-detail" id="${detailId}" style="display:none;">
           <table class="adp-rk-profit-table">
@@ -3077,7 +3098,7 @@ function closeAreaDetailPanel() {
 function adpCropTap(el, cropId) {
   if (!el) return;
 
-  // アコーディオン開閉
+  // アコーディオン開閉（適合度・生育期間ランキングリスト対象）
   const isOpen = el.classList.contains('cr-item-open') || el.classList.contains('adp-cr-item-open');
   const list = el.closest('#crop-ranking, #crop-ranking-growth');
   if (list) {
@@ -3098,6 +3119,7 @@ function adpCropTap(el, cropId) {
       _adpRenderGrowthChart(_adpSelectedCropId);
       _adpRenderRankingList();
       _adpRenderGrowthRankingList();
+      _adpRenderProfitRankingList();
       // 収益・施肥・リスク・作業カレンダー更新
       const ad = currentAreaData;
       const scoreEntry = (typeof _crScores !== 'undefined')

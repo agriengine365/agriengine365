@@ -76,37 +76,26 @@ function crSwitchMajor(major) {
   _crMajor = major;
   _crMinor = null;
 
-  // 大タブUI更新
+  // 大タブUI更新（適合度・収益の両タブバーに反映）
   document.querySelectorAll('.cr-tab-major').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.major === major);
   });
 
   _crRenderMinorTabs();
 
-  // adp-view開中かつランキングダイアログが開いている時のみ描画
+  // adp-view開中は両ランキングを直接再描画
   if (document.getElementById('adp-view')?.classList.contains('open')) {
-    const dlgPane = (typeof _adpRankingDlgPane !== 'undefined') ? _adpRankingDlgPane : null;
-    if (dlgPane === 'ranking' && typeof _adpRenderRankingList === 'function') _adpRenderRankingList();
-    if (dlgPane === 'growth'  && typeof _adpRenderGrowthRankingList === 'function') _adpRenderGrowthRankingList();
-    if (!dlgPane) _crRenderList();
+    if (typeof _adpRenderRankingList       === 'function') _adpRenderRankingList();
+    if (typeof _adpRenderGrowthRankingList === 'function') _adpRenderGrowthRankingList();
+    if (typeof _adpRenderProfitRankingList === 'function') _adpRenderProfitRankingList();
   } else {
     _crRenderList();
   }
 }
 
 function _crRenderMinorTabs() {
-  const wrap = document.getElementById('cr-tabs-minor');
-  if (!wrap) return;
-
   const minors = CR_MAJOR[_crMajor];
-  if (!minors || minors.length <= 1) {
-    wrap.style.display = 'none';
-    wrap.innerHTML = '';
-    return;
-  }
-
-  wrap.style.display = 'flex';
-  wrap.innerHTML = `
+  const html = (!minors || minors.length <= 1) ? '' : `
     <button class="cr-tab-minor ${_crMinor === null ? 'active' : ''}" onclick="crSwitchMinor(null)">すべて</button>
     ${minors.map(key => `
       <button class="cr-tab-minor ${_crMinor === key ? 'active' : ''}"
@@ -115,6 +104,15 @@ function _crRenderMinorTabs() {
       </button>
     `).join('')}
   `;
+  const show = !!html;
+
+  // 適合度用と収益用の両タブバーを同時更新
+  ['cr-tabs-minor', 'cr-tabs-minor-profit'].forEach(id => {
+    const wrap = document.getElementById(id);
+    if (!wrap) return;
+    wrap.style.display = show ? 'flex' : 'none';
+    wrap.innerHTML = html;
+  });
 }
 
 // ─── 小タブ切り替え ───
@@ -126,12 +124,11 @@ function crSwitchMinor(minor) {
     btn.classList.toggle('active', val === minor);
   });
 
-  // adp-view開中かつランキングダイアログが開いている時のみ描画
+  // adp-view開中は両ランキングを直接再描画
   if (document.getElementById('adp-view')?.classList.contains('open')) {
-    const dlgPane = (typeof _adpRankingDlgPane !== 'undefined') ? _adpRankingDlgPane : null;
-    if (dlgPane === 'ranking' && typeof _adpRenderRankingList === 'function') _adpRenderRankingList();
-    if (dlgPane === 'growth'  && typeof _adpRenderGrowthRankingList === 'function') _adpRenderGrowthRankingList();
-    if (!dlgPane) _crRenderList();
+    if (typeof _adpRenderRankingList       === 'function') _adpRenderRankingList();
+    if (typeof _adpRenderGrowthRankingList === 'function') _adpRenderGrowthRankingList();
+    if (typeof _adpRenderProfitRankingList === 'function') _adpRenderProfitRankingList();
   } else {
     _crRenderList();
   }
