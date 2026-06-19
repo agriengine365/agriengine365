@@ -375,23 +375,84 @@ function _renderRiskResult(crop) {
   const el = document.getElementById('risk-result');
   if (!el) return;
 
-  if (!crop || !crop.risks?.length) {
+  if (!crop) {
     el.innerHTML = '<div class="empty-mini">リスクデータなし</div>';
     return;
   }
 
-  el.innerHTML = crop.risks.map(r => {
-    const color = r.level === 'high' ? 'var(--red)' : r.level === 'medium' ? 'var(--amber)' : 'var(--green2)';
-    return `
-      <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);">
-        <span style="color:${color};font-size:10px;font-family:var(--mono);padding-top:2px;flex-shrink:0;">${r.level.toUpperCase()}</span>
-        <div>
-          <div style="font-size:12px;font-weight:500;">${r.name}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px;">${r.note}</div>
+  // ─ 輪作セクション（family + continuousCropYears ベース） ─
+  const rotationHtml = _buildRotationSection(crop);
+
+  // ─ 既存リスク一覧 ─
+  let risksHtml = '';
+  if (crop.risks?.length) {
+    risksHtml = crop.risks.map(r => {
+      const color = r.level === 'high' ? 'var(--red)' : r.level === 'medium' ? 'var(--amber)' : 'var(--green2)';
+      return `
+        <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);">
+          <span style="color:${color};font-size:10px;font-family:var(--mono);padding-top:2px;flex-shrink:0;">${r.level.toUpperCase()}</span>
+          <div>
+            <div style="font-size:12px;font-weight:500;">${r.name}</div>
+            <div style="font-size:11px;color:var(--text2);margin-top:2px;">${r.note}</div>
+          </div>
         </div>
+      `;
+    }).join('');
+  } else if (!rotationHtml) {
+    risksHtml = '<div class="empty-mini">リスクデータなし</div>';
+  }
+
+  el.innerHTML = rotationHtml + risksHtml;
+}
+
+// ─── 輪作セクション（科名 + 連作可能年数） ───
+/**
+ * _buildRotationSection(crop)
+ *
+ * crop.conditions.family（ラテン語学名）と
+ * crop.conditions.continuousCropYears（連作可能年数）から、
+ * 単発の輪作アドバイス（履歴非依存・選択中作物の科のみを見た注意喚起）を生成する。
+ * familyが存在しない場合は空文字を返す（セクション自体を表示しない）。
+ */
+function _buildRotationSection(crop) {
+  const family = crop?.conditions?.family;
+  if (!family) return '';
+
+  const familyJa = FAMILY_NAME_JA[family] || family;
+  const years = crop?.conditions?.continuousCropYears;
+
+  let level, color, label, note;
+  if (years === undefined || years === null) {
+    level = 'unknown';
+    color = 'var(--text2)';
+    label = '不明';
+    note = '連作間隔の目安データがありません。';
+  } else if (years <= 1) {
+    level = 'high';
+    color = 'var(--red)';
+    label = '高';
+    note = '同じ場所での連続栽培は避けてください（毎年）。';
+  } else if (years <= 4) {
+    level = 'medium';
+    color = 'var(--amber)';
+    label = '中';
+    note = `同じ科の作物は${years}年は間隔をあけてください。`;
+  } else {
+    level = 'low';
+    color = 'var(--green2)';
+    label = '低';
+    note = '長期間／永年、同じ場所での栽培が可能です。';
+  }
+
+  return `
+    <div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0 10px;border-bottom:1px solid var(--border);margin-bottom:4px;">
+      <span style="color:${color};font-size:10px;font-family:var(--mono);padding-top:2px;flex-shrink:0;">${label === '不明' ? '−' : label.toUpperCase()}</span>
+      <div>
+        <div style="font-size:12px;font-weight:500;">🔬 ${escHtml(familyJa)} (${escHtml(family)})</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px;">連作障害リスク：${label} — ${note}</div>
       </div>
-    `;
-  }).join('');
+    </div>
+  `;
 }
 
 // ─── 単一作物 分析実行（ウィザード経由） ───
@@ -751,3 +812,78 @@ function exportJSON() {
   a.download = `agrisim_${Date.now()}.json`;
   a.click();
 }
+
+// ─── 科名（ラテン語学名 → 日本語）変換テーブル ───
+// cropDB.js conditions.family の69種類をすべてカバー。
+// 輪作セクション（_buildRotationSection）で使用。
+const FAMILY_NAME_JA = {
+  Actinidiaceae: 'マタタビ科',
+  Agaricaceae: 'ハラタケ科',
+  Amaranthaceae: 'ヒユ科',
+  Amaryllidaceae: 'ヒガンバナ科',
+  Anacardiaceae: 'ウルシ科',
+  Apiaceae: 'セリ科',
+  Araceae: 'サトイモ科',
+  Araliaceae: 'ウコギ科',
+  Arecaceae: 'ヤシ科',
+  Asparagaceae: 'キジカクシ科',
+  Asphodelaceae: 'ツルボラン科',
+  Asteraceae: 'キク科',
+  Auriculariaceae: 'キクラゲ科',
+  Bankeraceae: 'ケロウジ科',
+  Betulaceae: 'カバノキ科',
+  Brassicaceae: 'アブラナ科',
+  Bromeliaceae: 'パイナップル科',
+  Cannabaceae: 'アサ科',
+  Caricaceae: 'パパイア科',
+  Chenopodiaceae: 'アカザ科',
+  Convolvulaceae: 'ヒルガオ科',
+  Cucurbitaceae: 'ウリ科',
+  Dennstaedtiaceae: 'コバノイシカグマ科',
+  Dioscoreaceae: 'ヤマノイモ科',
+  Ebenaceae: 'カキノキ科',
+  Equisetaceae: 'トクサ科',
+  Ericaceae: 'ツツジ科',
+  Fabaceae: 'マメ科',
+  Fagaceae: 'ブナ科',
+  Gentianaceae: 'リンドウ科',
+  Geraniaceae: 'フウロソウ科',
+  Ginkgoaceae: 'イチョウ科',
+  Hericiaceae: 'サンゴハリタケ科',
+  Juglandaceae: 'クルミ科',
+  Lamiaceae: 'シソ科',
+  Lardizabalaceae: 'アケビ科',
+  Lauraceae: 'クスノキ科',
+  Liliaceae: 'ユリ科',
+  Linaceae: 'アマ科',
+  Lyophyllaceae: 'シメジ科',
+  Malvaceae: 'アオイ科',
+  Marasmiaceae: 'シメジ科（ホウライタケ科）',
+  Meripilaceae: 'トンビマイタケ科',
+  Moraceae: 'クワ科',
+  Nelumbonaceae: 'ハス科',
+  Oleaceae: 'モクセイ科',
+  Onocleaceae: 'コウヤワラビ科',
+  Osmundaceae: 'ゼンマイ科',
+  Paeoniaceae: 'ボタン科',
+  Passifloraceae: 'トケイソウ科',
+  Pedaliaceae: 'ゴマ科',
+  Physalacriaceae: 'タマバリタケ科',
+  Pleurotaceae: 'ヒラタケ科',
+  Poaceae: 'イネ科',
+  Polygonaceae: 'タデ科',
+  Punicaceae: 'ザクロ科',
+  Rosaceae: 'バラ科',
+  Rutaceae: 'ミカン科',
+  Saururaceae: 'ドクダミ科',
+  Smilacaceae: 'サルトリイバラ科',
+  Solanaceae: 'ナス科',
+  Sparassidaceae: 'ハナビラタケ科',
+  Strophariaceae: 'モエギタケ科',
+  Tiliaceae: 'シナノキ科',
+  Tricholomataceae: 'キシメジ科',
+  Tuberaceae: 'セイヨウショウロ科',
+  Urticaceae: 'イラクサ科',
+  Vitaceae: 'ブドウ科',
+  Zingiberaceae: 'ショウガ科',
+};
