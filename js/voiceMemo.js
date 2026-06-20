@@ -406,7 +406,7 @@ function vmDelete(id) {
 
 // ─────────────────────────────────────────
 //  Web Speech API
-//  continuous=true + 自前2.5秒無音タイマーで余裕を確保
+//  continuous=true + 自前5秒無音タイマーで余裕を確保
 // ─────────────────────────────────────────
 
 let _vmRecognition  = null;
@@ -416,13 +416,13 @@ let _vmFinalText    = '';     // 確定テキスト蓄積
 let _vmInterimText  = '';     // 途中テキスト
 let _vmCallback     = null;   // 認識完了コールバック（通常 or ダイアログ内）
 
-const VM_SILENCE_MS = 2500;   // 無音検出閾値（ms）
+const VM_SILENCE_MS = 5000;   // 無音検出閾値（ms）
 
 // ─── 無音タイマーリセット ───
 function _vmResetSilenceTimer() {
   clearTimeout(_vmSilenceTimer);
   _vmSilenceTimer = setTimeout(() => {
-    // 無音2.5秒 → 認識確定
+    // 無音5秒 → 認識確定
     if (_vmRecognition) _vmRecognition.stop();
   }, VM_SILENCE_MS);
 }
@@ -542,7 +542,7 @@ function _vmSetRecordingUI(on, phase) {
 
   if (btn) {
     btn.classList.toggle('recording', on);
-    btn.title = on ? '停止' : '音声メモを録音';
+    btn.title = on ? '停止' : '音声入力で記録';
   }
   if (overlay) overlay.style.display = on ? 'flex' : 'none';
 
@@ -652,7 +652,7 @@ function _vmBuildDialogHTML(parsed, rawText, areaId) {
 
       <!-- ヘッダー -->
       <div class="vm-confirm-header">
-        <span class="vm-confirm-title">🎤 音声メモ確認</span>
+        <span class="vm-confirm-title">🎤 音声入力 確認</span>
         <button class="vm-confirm-close" onclick="vmCloseConfirmDialog()">✕</button>
       </div>
 
@@ -809,14 +809,22 @@ function vmSetSchedule(isSchedule) {
 function vmDlgAddRecording(areaId) {
   if (_vmListening) { vmStopListening(); return; }
   vmStartListening(areaId, (addedText) => {
-    // 認識テキストに追記
+    // 認識テキストに追記（既存メモ欄と完全一致する文はスキップして重複表示を防ぐ）
     const ta = document.getElementById('vm-raw-text');
+    let isDuplicate = false;
     if (ta) {
-      ta.value = (ta.value ? ta.value + '　' : '') + addedText;
+      const existing = ta.value || '';
+      // 既存テキストを文区切り（句点・全角スペース・改行）で分割し、
+      // 追加テキストがすでに同一文として含まれていればスキップ
+      const existingSegments = existing.split(/[　\s。]+/).map(s => s.trim()).filter(Boolean);
+      isDuplicate = existingSegments.includes(addedText.trim());
+      if (!isDuplicate) {
+        ta.value = (existing ? existing + '　' : '') + addedText;
+      }
     }
-    // 追加テキストを解析してフィールドに反映
+    // 追加テキストを解析してフィールドに反映（重複時もフィールド補完は行う）
     _vmApplyParsedToDialog(addedText, true);
-    showToast('🎤 テキストを追加しました', 'green');
+    showToast(isDuplicate ? '（同じ内容のため追加をスキップしました）' : '🎤 テキストを追加しました', isDuplicate ? '' : 'green');
   });
 }
 
@@ -963,7 +971,7 @@ function vmCommit(areaId) {
 
   vmCloseConfirmDialog();
   const label = isSchedule ? '予定' : '実績';
-  showToast(`📝 音声メモを保存しました（${workDate} / ${tag} / ${label}）`);
+  showToast(`📝 音声入力を保存しました（${workDate} / ${tag} / ${label}）`);
 
   if (typeof _adpRenderCalendar === 'function')    _adpRenderCalendar();
   if (typeof _adpRenderDayRecords === 'function')  _adpRenderDayRecords();
@@ -991,7 +999,7 @@ function vmMicButtonHTML() {
   return `
     <button id="vm-mic-btn" class="vm-mic-btn"
       onclick="vmStartListening(_adpArea?.id)"
-      title="音声メモを録音">
+      title="音声入力で記録">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2">
         <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -999,7 +1007,7 @@ function vmMicButtonHTML() {
         <line x1="12" y1="19" x2="12" y2="23"/>
         <line x1="8"  y1="23" x2="16" y2="23"/>
       </svg>
-      <span>音声メモ</span>
+      <span>音声入力</span>
     </button>
     <div id="vm-recording-overlay" class="vm-recording-overlay" style="display:none;">
       <span class="vm-rec-dot"></span>
