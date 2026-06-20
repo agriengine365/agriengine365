@@ -559,12 +559,12 @@ function _vmSetRecordingUI(on, phase) {
     el.style.opacity = '1';
   }
 
-  // ダイアログ内マイクボタンの状態も同期
-  const dlgBtn = document.getElementById('vm-dlg-mic-btn');
-  if (dlgBtn) {
+  // ダイアログ内マイクボタンの状態も同期（シンプルビュー／詳細ビュー両方）
+  document.querySelectorAll('.vm-dlg-mic-btn').forEach(dlgBtn => {
+    if (!dlgBtn.dataset.origText) dlgBtn.dataset.origText = dlgBtn.textContent;
     dlgBtn.classList.toggle('recording', on);
-    dlgBtn.textContent = on ? '⏹ 停止' : '🎤 追加録音';
-  }
+    dlgBtn.textContent = on ? '⏹ 停止' : dlgBtn.dataset.origText;
+  });
 }
 
 // ─────────────────────────────────────────
@@ -574,10 +574,28 @@ function _vmSetRecordingUI(on, phase) {
 // ダイアログの現在タブ状態
 let _vmDlgTab = 'work'; // 'work' | 'ship'
 
+// シンプルビューに表示する項目のうち「未解決・要確認」フラグの現在状態
+// （詳細ビューでの修正・追加録音・タグ候補選択・月選択のたびに更新される）
+let _vmDlgWarnState = {
+  workDateUnresolved: false,
+  workMonthUnknown:   false,
+  tagAmbiguous:        false,
+};
+
+// 予定／実績トグルをユーザーが手動操作したか（trueなら自動再判定で上書きしない）
+let _vmDlgScheduleTouched = false;
+
 function vmShowConfirmDialog(rawText, areaId) {
   _vmDlgTab = 'work';
   const parsed = vmParseText(rawText);
   if (areaId) parsed.areaId = areaId;
+
+  _vmDlgWarnState = {
+    workDateUnresolved: !!parsed.workDateUnresolved,
+    workMonthUnknown:   !!parsed.workMonthUnknown,
+    tagAmbiguous:        !!(parsed.tagAmbiguous && parsed.tagCandidates && parsed.tagCandidates.length > 1),
+  };
+  _vmDlgScheduleTouched = false;
 
   document.getElementById('vm-confirm-overlay')?.remove();
   const overlay = document.createElement('div');
@@ -586,8 +604,107 @@ function vmShowConfirmDialog(rawText, areaId) {
   overlay.innerHTML = _vmBuildDialogHTML(parsed, rawText, areaId);
   document.body.appendChild(overlay);
 
+  vmSwitchView('simple');
   _vmBindMonthPickers(parsed);
+  _vmBindSimpleSync();
   _vmCheckScheduleBanner(parsed.workDate);
+}
+
+// ─── 日付を「6月15日」形式に整形 ───
+function _vmFormatDateJP(dateStr) {
+  if (!dateStr) return '';
+  const parts = String(dateStr).split('-');
+  if (parts.length !== 3) return dateStr;
+  const m = parseInt(parts[1], 10);
+  const d = parseInt(parts[2], 10);
+  if (!m || !d) return dateStr;
+  return `${m}月${d}日`;
+}
+
+// ─── シンプルビュー：要約4行のHTML組み立て ───
+// data = { workDate, tag, crop, quantity }
+function _vmBuildSimpleRowsHTML(data) {
+  let dateLabel = _vmFormatDateJP(data.workDate) || '未確認';
+  let dateWarn = false;
+  if (_vmDlgWarnState.workDateUnresolved) {
+    dateLabel += '（未確認）';
+    dateWarn = true;
+  } else if (_vmDlgWarnState.workMonthUnknown) {
+    dateLabel += '（月を確認）';
+    dateWarn = true;
+  }
+
+  const tagLabel = data.tag && data.tag !== 'その他' ? data.tag : (data.tag || '未設定');
+  const tagWarn = _vmDlgWarnState.tagAmbiguous;
+
+  const cropLabel = data.crop ? data.crop : '（未入力）';
+  const qtyLabel  = data.quantity ? data.quantity : '（未入力）';
+
+  const rows = [
+    { field: 'vm-work-date', label: '日付', value: dateLabel, warn: dateWarn },
+    { field: 'vm-tag',       label: '作業', value: tagLabel,  warn: tagWarn },
+    { field: 'vm-crop',      label: '作物', value: cropLabel, warn: false },
+    { field: 'vm-quantity',  label: '量',   value: qtyLabel,  warn: false },
+  ];
+
+  return rows.map(r => `
+    <div class="vm-simple-row${r.warn ? ' vm-simple-row-warn' : ''}" onclick="vmFocusDetailField('${r.field}')">
+      <span class="vm-simple-row-label">${r.label}</span>
+      <span class="vm-simple-row-value">${escHtml(r.value)}</span>
+      <span class="vm-simple-row-arrow">›</span>
+    </div>`).join('');
+}
+
+// ─── シンプルビューの要約表示を現在のDOM値で再描画 ───
+function _vmRefreshSimpleRows() {
+  const rowsEl = document.getElementById('vm-simple-rows');
+  if (!rowsEl) return;
+  const data = {
+    workDate: document.getElementById('vm-work-date')?.value || '',
+    tag:      document.getElementById('vm-tag')?.value || '',
+    crop:     document.getElementById('vm-crop')?.value.trim() || '',
+    quantity: document.getElementById('vm-quantity')?.value.trim() || '',
+  };
+  rowsEl.innerHTML = _vmBuildSimpleRowsHTML(data);
+}
+
+// ─── シンプル行タップ → 詳細ビューに切替＋該当inputへフォーカス ───
+function vmFocusDetailField(fieldId) {
+  vmSwitchView('detail');
+  setTimeout(() => {
+    const el = document.getElementById(fieldId);
+    if (el) {
+      el.focus();
+      if (typeof el.select === 'function' && el.type !== 'date') el.select();
+      el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, 0);
+}
+
+// ─── シンプル／詳細ビュー切替 ───
+function vmSwitchView(view) {
+  const simple = document.getElementById('vm-simple-view');
+  const detail = document.getElementById('vm-detail-view');
+  if (simple) simple.style.display = view === 'simple' ? '' : 'none';
+  if (detail) detail.style.display = view === 'detail' ? '' : 'none';
+}
+
+// ─── 詳細ビュー側の主要項目を編集 → シンプルビューへ同期するバインド ───
+function _vmBindSimpleSync() {
+  const dateEl = document.getElementById('vm-work-date');
+  if (dateEl) {
+    dateEl.addEventListener('input', () => {
+      dateEl.classList.remove('vm-input-unresolved');
+      _vmDlgWarnState.workDateUnresolved = false;
+      _vmRefreshSimpleRows();
+    });
+  }
+  ['vm-tag', 'vm-crop', 'vm-quantity'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', _vmRefreshSimpleRows);
+    el.addEventListener('change', _vmRefreshSimpleRows);
+  });
 }
 
 // ─── ダイアログHTML組み立て ───
@@ -647,129 +764,161 @@ function _vmBuildDialogHTML(parsed, rawText, areaId) {
       data-type="${t.key}" onclick="vmSelectShipType('${t.key}')">${t.label}</button>`
   ).join('');
 
+  const simpleRowsHTML = _vmBuildSimpleRowsHTML({
+    workDate: parsed.workDate,
+    tag:      parsed.tag,
+    crop:     parsed.crop,
+    quantity: parsed.quantity,
+  });
+
   return `
     <div class="vm-confirm-dialog">
 
-      <!-- ヘッダー -->
+      <!-- ヘッダー（共通） -->
       <div class="vm-confirm-header">
         <span class="vm-confirm-title">🎤 音声入力 確認</span>
         <button class="vm-confirm-close" onclick="vmCloseConfirmDialog()">✕</button>
       </div>
 
-      <!-- タブ -->
-      <div class="vm-dlg-tabs">
-        <button class="vm-dlg-tab active" id="vm-tab-work"
-          onclick="vmSwitchDlgTab('work')">📋 作業メモ</button>
-        <button class="vm-dlg-tab" id="vm-tab-ship"
-          onclick="vmSwitchDlgTab('ship')">📦 出荷記録</button>
-      </div>
+      <!-- ═══ シンプルビュー（既定表示） ═══ -->
+      <div class="vm-simple-view" id="vm-simple-view">
 
-      <!-- 予定バナー（未来日付検出時に表示） -->
-      <div class="vm-schedule-banner" id="vm-schedule-banner" style="display:none;">
-        <span>📅 これは<strong>予定</strong>ですか？</span>
-        <button type="button" class="vm-banner-yes" onclick="vmSetSchedule(true)">はい・予定</button>
-        <button type="button" class="vm-banner-no"  onclick="vmSetSchedule(false)">いいえ・実績</button>
-      </div>
-      <input type="hidden" id="vm-is-schedule" value="0">
-
-      <!-- ボディ -->
-      <div class="vm-confirm-body">
-
-        <!-- 認識テキスト + 追加録音 -->
-        <div class="vm-field vm-field-mic-row">
-          <label class="vm-label">認識テキスト</label>
-          <div class="vm-raw-row">
-            <textarea class="vm-textarea" id="vm-raw-text" rows="2">${escHtml(rawText)}</textarea>
-            <button type="button" class="vm-dlg-mic-btn" id="vm-dlg-mic-btn"
-              onclick="vmDlgAddRecording('${areaId || ''}')">🎤 追加録音</button>
+        <!-- 予定／実績トグル -->
+        <div class="vm-schedule-banner" id="vm-schedule-banner">
+          <span class="vm-schedule-label">📅 これは<strong>予定</strong>ですか？<strong>実績</strong>ですか？</span>
+          <div class="vm-schedule-btn-row">
+            <button type="button" class="vm-banner-yes" id="vm-banner-yes" onclick="vmSetSchedule(true)">📅 予定</button>
+            <button type="button" class="vm-banner-no"  id="vm-banner-no"  onclick="vmSetSchedule(false)">✅ 実績</button>
           </div>
         </div>
+        <input type="hidden" id="vm-is-schedule" value="0">
 
-        <!-- 作業メモタブ -->
-        <div id="vm-panel-work">
-          <div class="vm-field-row">
-            <div class="vm-field">
-              <label class="vm-label">作業日</label>
-              <input class="vm-input${parsed.workDateUnresolved ? ' vm-input-unresolved' : ''}" type="date" id="vm-work-date" value="${parsed.workDate}">
-              ${workDateUnresolvedHTML}
-              ${workMonthPickerHTML}
-            </div>
-            <div class="vm-field">
-              <label class="vm-label">出荷日</label>
-              <input class="vm-input${parsed.shipDateUnresolved ? ' vm-input-unresolved' : ''}" type="date" id="vm-ship-date" value="${parsed.shipDate || ''}">
-              ${shipDateUnresolvedHTML}
-              ${shipMonthPickerHTML}
-            </div>
-          </div>
-          <div class="vm-field">
-            <label class="vm-label">作業タグ</label>
-            <select class="vm-select" id="vm-tag">${tagOptions}</select>
-            ${tagCandidateHTML}
-          </div>
-          <div class="vm-field-row">
-            <div class="vm-field">
-              <label class="vm-label">作物</label>
-              <input class="vm-input" type="text" id="vm-crop"
-                value="${escHtml(parsed.crop || '')}" placeholder="例：トマト">
-            </div>
-            <div class="vm-field">
-              <label class="vm-label">資材</label>
-              <input class="vm-input" type="text" id="vm-material"
-                value="${escHtml(parsed.material || '')}" placeholder="例：液肥">
-            </div>
-          </div>
-          <div class="vm-field-row">
-            <div class="vm-field">
-              <label class="vm-label">数量・単位</label>
-              <input class="vm-input" type="text" id="vm-quantity"
-                value="${escHtml(parsed.quantity || '')}" placeholder="例：200kg">
-            </div>
-            <div class="vm-field">
-              <label class="vm-label">メモ（任意）</label>
-              <input class="vm-input" type="text" id="vm-note" placeholder="補足など">
-            </div>
-          </div>
+        <!-- 要約表示 -->
+        <div class="vm-simple-rows" id="vm-simple-rows">${simpleRowsHTML}</div>
+
+        <!-- アクション -->
+        <div class="vm-simple-actions">
+          <button type="button" class="vm-simple-mic-btn vm-dlg-mic-btn"
+            onclick="vmDlgAddRecording('${areaId || ''}')">🎤 もう一度話す</button>
+          <button type="button" class="vm-simple-detail-btn" onclick="vmSwitchView('detail')">詳しく入力する</button>
+          <button type="button" class="btn btn-primary" onclick="vmCommit('${areaId || ''}')">この内容で保存</button>
         </div>
 
-        <!-- 出荷記録タブ -->
-        <div id="vm-panel-ship" style="display:none;">
-          <div class="vm-field">
-            <label class="vm-label">出荷先</label>
-            <div class="vm-ship-type-grid">${shippingTypeOpts}</div>
-            <input type="hidden" id="vm-ship-type" value="${parsed.shipping || 'ja'}">
-          </div>
-          <div class="vm-field-row">
-            <div class="vm-field">
-              <label class="vm-label">出荷日</label>
-              <input class="vm-input" type="date" id="vm-ship-date2"
-                value="${parsed.shipDate || parsed.workDate || ''}">
-            </div>
-            <div class="vm-field">
-              <label class="vm-label">品目</label>
-              <input class="vm-input" type="text" id="vm-ship-item"
-                value="${escHtml(parsed.crop || '')}" placeholder="例：トマト">
-            </div>
-          </div>
-          <div class="vm-field-row">
-            <div class="vm-field">
-              <label class="vm-label">数量</label>
-              <input class="vm-input" type="text" id="vm-ship-qty"
-                value="${escHtml(parsed.quantity || '')}" placeholder="例：20kg">
-            </div>
-            <div class="vm-field">
-              <label class="vm-label">メモ</label>
-              <input class="vm-input" type="text" id="vm-ship-note" placeholder="補足など">
-            </div>
-          </div>
+      </div><!-- /vm-simple-view -->
+
+      <!-- ═══ 詳細ビュー（既存フォーム・初期非表示） ═══ -->
+      <div class="vm-detail-view" id="vm-detail-view" style="display:none;">
+
+        <button type="button" class="vm-back-to-simple" onclick="vmSwitchView('simple')">← かんたん表示に戻る</button>
+
+        <!-- タブ -->
+        <div class="vm-dlg-tabs">
+          <button class="vm-dlg-tab active" id="vm-tab-work"
+            onclick="vmSwitchDlgTab('work')">📋 作業メモ</button>
+          <button class="vm-dlg-tab" id="vm-tab-ship"
+            onclick="vmSwitchDlgTab('ship')">📦 出荷記録</button>
         </div>
 
-      </div><!-- /body -->
+        <!-- ボディ -->
+        <div class="vm-confirm-body">
 
-      <!-- フッター -->
-      <div class="vm-confirm-footer">
-        <button class="btn btn-ghost" onclick="vmCloseConfirmDialog()">キャンセル</button>
-        <button class="btn btn-primary" onclick="vmCommit('${areaId || ''}')">保存する</button>
-      </div>
+          <!-- 認識テキスト + 追加録音 -->
+          <div class="vm-field vm-field-mic-row">
+            <label class="vm-label">認識テキスト</label>
+            <div class="vm-raw-row">
+              <textarea class="vm-textarea" id="vm-raw-text" rows="2">${escHtml(rawText)}</textarea>
+              <button type="button" class="vm-dlg-mic-btn"
+                onclick="vmDlgAddRecording('${areaId || ''}')">🎤 追加録音</button>
+            </div>
+          </div>
+
+          <!-- 作業メモタブ -->
+          <div id="vm-panel-work">
+            <div class="vm-field-row">
+              <div class="vm-field">
+                <label class="vm-label">作業日</label>
+                <input class="vm-input${parsed.workDateUnresolved ? ' vm-input-unresolved' : ''}" type="date" id="vm-work-date" value="${parsed.workDate}">
+                ${workDateUnresolvedHTML}
+                ${workMonthPickerHTML}
+              </div>
+              <div class="vm-field">
+                <label class="vm-label">出荷日</label>
+                <input class="vm-input${parsed.shipDateUnresolved ? ' vm-input-unresolved' : ''}" type="date" id="vm-ship-date" value="${parsed.shipDate || ''}">
+                ${shipDateUnresolvedHTML}
+                ${shipMonthPickerHTML}
+              </div>
+            </div>
+            <div class="vm-field">
+              <label class="vm-label">作業タグ</label>
+              <select class="vm-select" id="vm-tag">${tagOptions}</select>
+              ${tagCandidateHTML}
+            </div>
+            <div class="vm-field-row">
+              <div class="vm-field">
+                <label class="vm-label">作物</label>
+                <input class="vm-input" type="text" id="vm-crop"
+                  value="${escHtml(parsed.crop || '')}" placeholder="例：トマト">
+              </div>
+              <div class="vm-field">
+                <label class="vm-label">資材</label>
+                <input class="vm-input" type="text" id="vm-material"
+                  value="${escHtml(parsed.material || '')}" placeholder="例：液肥">
+              </div>
+            </div>
+            <div class="vm-field-row">
+              <div class="vm-field">
+                <label class="vm-label">数量・単位</label>
+                <input class="vm-input" type="text" id="vm-quantity"
+                  value="${escHtml(parsed.quantity || '')}" placeholder="例：200kg">
+              </div>
+              <div class="vm-field">
+                <label class="vm-label">メモ（任意）</label>
+                <input class="vm-input" type="text" id="vm-note" placeholder="補足など">
+              </div>
+            </div>
+          </div>
+
+          <!-- 出荷記録タブ -->
+          <div id="vm-panel-ship" style="display:none;">
+            <div class="vm-field">
+              <label class="vm-label">出荷先</label>
+              <div class="vm-ship-type-grid">${shippingTypeOpts}</div>
+              <input type="hidden" id="vm-ship-type" value="${parsed.shipping || 'ja'}">
+            </div>
+            <div class="vm-field-row">
+              <div class="vm-field">
+                <label class="vm-label">出荷日</label>
+                <input class="vm-input" type="date" id="vm-ship-date2"
+                  value="${parsed.shipDate || parsed.workDate || ''}">
+              </div>
+              <div class="vm-field">
+                <label class="vm-label">品目</label>
+                <input class="vm-input" type="text" id="vm-ship-item"
+                  value="${escHtml(parsed.crop || '')}" placeholder="例：トマト">
+              </div>
+            </div>
+            <div class="vm-field-row">
+              <div class="vm-field">
+                <label class="vm-label">数量</label>
+                <input class="vm-input" type="text" id="vm-ship-qty"
+                  value="${escHtml(parsed.quantity || '')}" placeholder="例：20kg">
+              </div>
+              <div class="vm-field">
+                <label class="vm-label">メモ</label>
+                <input class="vm-input" type="text" id="vm-ship-note" placeholder="補足など">
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /body -->
+
+        <!-- フッター -->
+        <div class="vm-confirm-footer">
+          <button class="btn btn-ghost" onclick="vmCloseConfirmDialog()">キャンセル</button>
+          <button class="btn btn-primary" onclick="vmCommit('${areaId || ''}')">保存する</button>
+        </div>
+
+      </div><!-- /vm-detail-view -->
 
     </div>
   `;
@@ -784,25 +933,20 @@ function vmSwitchDlgTab(tab) {
   document.getElementById('vm-tab-ship').classList.toggle('active', tab === 'ship');
 }
 
-// ─── 予定バナー制御 ───
+// ─── 予定／実績トグル：未来日付ならデフォルトで「予定」をハイライト（自動判定・上書き不可） ───
 function _vmCheckScheduleBanner(workDate) {
   if (!workDate) return;
   const today = new Date(); today.setHours(0,0,0,0);
   const target = new Date(workDate);
-  if (target > today) {
-    const banner = document.getElementById('vm-schedule-banner');
-    if (banner) banner.style.display = 'flex';
-  }
+  vmSetSchedule(target > today, false);
 }
 
-function vmSetSchedule(isSchedule) {
+// ─── 予定／実績を選択（選び直し可能）。isManual=trueの場合は自動再判定で上書きされなくなる ───
+function vmSetSchedule(isSchedule, isManual = true) {
+  if (isManual) _vmDlgScheduleTouched = true;
   document.getElementById('vm-is-schedule').value = isSchedule ? '1' : '0';
-  const banner = document.getElementById('vm-schedule-banner');
-  if (banner) {
-    banner.innerHTML = isSchedule
-      ? `<span class="vm-schedule-confirmed">📅 予定として保存します</span>`
-      : `<span class="vm-schedule-confirmed">✅ 実績として保存します</span>`;
-  }
+  document.getElementById('vm-banner-yes')?.classList.toggle('active', isSchedule);
+  document.getElementById('vm-banner-no')?.classList.toggle('active', !isSchedule);
 }
 
 // ─── ダイアログ内追加録音 ───
@@ -854,7 +998,10 @@ function _vmApplyParsedToDialog(text, additive) {
 
   // 日付未解決の強調表示を更新（追加録音で日付が新たに確定した場合は警告を外す）
   const workDateEl = document.getElementById('vm-work-date');
-  if (workDateEl && !p.workDateUnresolved) workDateEl.classList.remove('vm-input-unresolved');
+  if (workDateEl && !p.workDateUnresolved) {
+    workDateEl.classList.remove('vm-input-unresolved');
+    _vmDlgWarnState.workDateUnresolved = false;
+  }
   const shipDateEl = document.getElementById('vm-ship-date');
   if (shipDateEl && !p.shipDateUnresolved) shipDateEl.classList.remove('vm-input-unresolved');
 
@@ -862,6 +1009,7 @@ function _vmApplyParsedToDialog(text, additive) {
     const sel = document.getElementById('vm-tag');
     if (sel && (!additive || !sel.value || sel.value === 'その他')) {
       sel.value = p.tag;
+      _vmDlgWarnState.tagAmbiguous = false;
     }
   }
   if (p.shipping) {
@@ -869,9 +1017,12 @@ function _vmApplyParsedToDialog(text, additive) {
     if (hidden && (!additive || !hidden.value)) vmSelectShipType(p.shipping);
   }
 
-  // 予定バナー再チェック
+  // 予定トグル再チェック（ユーザーが手動で選択済みの場合は上書きしない）
   const wd = document.getElementById('vm-work-date')?.value;
-  if (wd) _vmCheckScheduleBanner(wd);
+  if (wd && !_vmDlgScheduleTouched) _vmCheckScheduleBanner(wd);
+
+  // シンプルビューの要約表示を最新状態に同期
+  _vmRefreshSimpleRows();
 }
 
 function vmCloseConfirmDialog() {
@@ -885,6 +1036,8 @@ function vmSelectTagCandidate(tag) {
   document.querySelectorAll('.vm-tag-cand-btn').forEach(btn => {
     btn.classList.toggle('active', btn.textContent === tag);
   });
+  _vmDlgWarnState.tagAmbiguous = false;
+  _vmRefreshSimpleRows();
 }
 
 // ─── 出荷先タイプ選択 ───
@@ -907,6 +1060,8 @@ function _vmBindMonthPickers(parsed) {
       d.setMonth(parseInt(workMonthSel.value) - 1);
       const pad = n => String(n).padStart(2,'0');
       workDateInput.value = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      _vmDlgWarnState.workMonthUnknown = false;
+      _vmRefreshSimpleRows();
     });
   }
   const shipMonthSel = document.getElementById('vm-ship-month');
@@ -1000,7 +1155,7 @@ function vmMicButtonHTML() {
     <button id="vm-mic-btn" class="vm-mic-btn"
       onclick="vmStartListening(_adpArea?.id)"
       title="音声入力で記録">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2">
         <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
         <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -1015,4 +1170,4 @@ function vmMicButtonHTML() {
       <button class="vm-stop-btn" onclick="vmStopListening()">停止</button>
     </div>
   `;
-}
+}

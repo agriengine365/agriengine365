@@ -3986,16 +3986,17 @@ html.draw-dialog-active .bottom-nav {
 .vm-mic-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 7px 14px;
+  gap: 8px;
+  padding: 12px 20px;
   background: var(--accent, #4ADE80);
   color: #0a0f0a;
   border: none;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
+  border-radius: 24px;
+  font-size: 16px;
+  font-weight: 700;
   cursor: pointer;
   transition: background 0.2s, transform 0.1s;
+  min-height: 48px;
 }
 .vm-mic-btn:active { transform: scale(0.96); }
 .vm-mic-btn.recording {
@@ -4012,17 +4013,18 @@ html.draw-dialog-active .bottom-nav {
 .vm-recording-overlay {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
+  gap: 10px;
+  padding: 10px 14px;
   background: rgba(239,68,68,0.12);
   border: 1px solid rgba(239,68,68,0.35);
-  border-radius: 8px;
-  font-size: 12px;
+  border-radius: 10px;
+  font-size: 15px;
   color: #fca5a5;
   flex: 1;
+  min-height: 44px;
 }
 .vm-rec-dot {
-  width: 8px; height: 8px;
+  width: 10px; height: 10px;
   background: #EF4444;
   border-radius: 50%;
   animation: vm-pulse 0.8s ease-in-out infinite;
@@ -4034,17 +4036,19 @@ html.draw-dialog-active .bottom-nav {
   white-space: nowrap;
   text-overflow: ellipsis;
   color: #fff;
-  font-size: 12px;
+  font-size: 15px;
 }
 .vm-stop-btn {
   background: none;
-  border: 1px solid rgba(239,68,68,0.5);
-  border-radius: 6px;
+  border: 1.5px solid rgba(239,68,68,0.6);
+  border-radius: 8px;
   color: #fca5a5;
-  font-size: 11px;
-  padding: 3px 8px;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 14px;
   cursor: pointer;
   white-space: nowrap;
+  min-height: 40px;
 }
 
 /* ─── 確認ダイアログ ─── */
@@ -4059,7 +4063,7 @@ html.draw-dialog-active .bottom-nav {
 }
 .vm-confirm-dialog {
   width: 100%;
-  max-height: 90vh;
+  max-height: 92vh;
   background: var(--surface, #1a1f2e);
   border-radius: 16px 16px 0 0;
   overflow-y: auto;
@@ -4069,55 +4073,57 @@ html.draw-dialog-active .bottom-nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 16px 10px;
+  padding: 16px 18px 12px;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .vm-confirm-title {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--text1, #fff);
 }
 .vm-confirm-close {
   background: none;
   border: none;
   color: var(--text3, #6b7280);
-  font-size: 16px;
+  font-size: 22px;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 8px 10px;
+  min-width: 44px;
+  min-height: 44px;
 }
 .vm-confirm-body {
-  padding: 12px 16px;
+  padding: 14px 18px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
 }
 .vm-field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   flex: 1;
 }
 .vm-field-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 .vm-label {
-  font-size: 10px;
-  color: var(--text3, #6b7280);
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 14px;
+  color: var(--text2, #9ca3af);
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 .vm-input, .vm-select, .vm-textarea {
   background: var(--surface2, #0f1117);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 8px;
+  border: 1.5px solid rgba(255,255,255,0.16);
+  border-radius: 10px;
   color: var(--text1, #fff);
-  font-size: 13px;
-  padding: 8px 10px;
+  font-size: 16px;
+  padding: 11px 12px;
   width: 100%;
   box-sizing: border-box;
   font-family: inherit;
+  min-height: 44px;
 }
 .vm-input:focus, .vm-select:focus, .vm-textarea:focus {
   outline: none;
@@ -4125,23 +4131,304 @@ html.draw-dialog-active .bottom-nav {
 }
 .vm-textarea { resize: none; }
 
-/* ─── 日付特定不能の警告（音声メモ確認ダイアログ） ─── */
+/* ─── 認識テキスト＋追加録音の行 ─── */
+.vm-field-mic-row { gap: 8px; }
+.vm-raw-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.vm-raw-row .vm-textarea { flex: 1; }
+.vm-dlg-mic-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 16px;
+  background: var(--surface2, #0f1117);
+  border: 1.5px solid var(--accent, #4ADE80);
+  color: var(--accent, #4ADE80);
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  min-width: 92px;
+  min-height: 44px;
+}
+.vm-dlg-mic-btn:active { transform: scale(0.96); }
+
+/* ─── フィールド自動反映ハイライト ─── */
+@keyframes vm-field-flash {
+  0%   { background: rgba(74,222,128,0.28); }
+  100% { background: var(--surface2, #0f1117); }
+}
+.vm-field-updated {
+  animation: vm-field-flash 1.5s ease-out;
+}
+
+/* ─── タブ切替（作業メモ／出荷記録） ─── */
+.vm-dlg-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 10px 18px 0;
+}
+.vm-dlg-tab {
+  flex: 1;
+  padding: 12px 10px;
+  background: var(--surface2, #0f1117);
+  border: 1.5px solid rgba(255,255,255,0.12);
+  border-radius: 10px 10px 0 0;
+  color: var(--text2, #9ca3af);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+}
+.vm-dlg-tab.active {
+  background: var(--surface, #1a1f2e);
+  border-color: var(--accent, #4ADE80);
+  border-bottom-color: var(--surface, #1a1f2e);
+  color: var(--text1, #fff);
+}
+
+/* ─── 予定／実績トグル（シンプル画面冒頭・常時表示） ─── */
+.vm-schedule-banner {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 18px 0;
+  padding: 14px;
+  background: var(--surface2, #0f1117);
+  border: 1.5px solid rgba(255,255,255,0.14);
+  border-radius: 12px;
+}
+.vm-schedule-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text1, #fff);
+  line-height: 1.5;
+}
+.vm-schedule-btn-row {
+  display: flex;
+  gap: 10px;
+}
+.vm-banner-yes, .vm-banner-no {
+  flex: 1;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  min-height: 48px;
+  background: var(--surface, #1a1f2e);
+  color: var(--text2, #9ca3af);
+  border: 1.5px solid rgba(255,255,255,0.16);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.vm-banner-yes:active, .vm-banner-no:active { transform: scale(0.98); }
+.vm-banner-yes.active {
+  background: rgba(251,191,36,0.18);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+.vm-banner-no.active {
+  background: rgba(74,222,128,0.18);
+  border-color: var(--accent, #4ADE80);
+  color: var(--accent, #4ADE80);
+}
+
+/* ─── タグ曖昧時の候補ボタン ─── */
+.vm-tag-candidates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.vm-tag-hint {
+  font-size: 13px;
+  color: var(--amber);
+  line-height: 1.5;
+  flex-basis: 100%;
+}
+.vm-tag-cand-btn {
+  padding: 9px 16px;
+  background: var(--surface2, #0f1117);
+  border: 1.5px solid rgba(255,255,255,0.16);
+  border-radius: 18px;
+  color: var(--text1, #fff);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 40px;
+}
+.vm-tag-cand-btn.active {
+  background: var(--accent, #4ADE80);
+  border-color: var(--accent, #4ADE80);
+  color: #0a0f0a;
+}
+
+/* ─── 月選択UI（月不明時の補完） ─── */
+.vm-month-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  background: #2a2310;
+  border: 1.5px solid var(--amber);
+  border-radius: 10px;
+}
+.vm-month-picker .vm-tag-hint { flex-basis: auto; }
+.vm-month-sel {
+  font-size: 15px;
+  font-weight: 600;
+  min-height: 40px;
+  width: auto;
+  padding: 8px 10px;
+}
+
+/* ─── 出荷先タイプボタン ─── */
+.vm-ship-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+}
+.vm-ship-type-btn {
+  padding: 12px 10px;
+  background: var(--surface2, #0f1117);
+  border: 1.5px solid rgba(255,255,255,0.16);
+  border-radius: 10px;
+  color: var(--text1, #fff);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 48px;
+}
+.vm-ship-type-btn.active {
+  background: rgba(74,222,128,0.18);
+  border-color: var(--accent, #4ADE80);
+  color: var(--accent, #4ADE80);
+}
+
+/* ─── 日付特定不能の警告（音声入力確認ダイアログ） ─── */
 .vm-input-unresolved {
   border-color: var(--amber) !important;
   background: #2a2310;
 }
 .vm-date-unresolved-hint {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--amber);
   margin-top: 4px;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .vm-confirm-footer {
   display: flex;
-  gap: 8px;
-  padding: 8px 16px 16px;
+  gap: 10px;
+  padding: 12px 18px 18px;
   justify-content: flex-end;
+}
+.vm-confirm-footer .btn {
+  font-size: 16px;
+  font-weight: 700;
+  padding: 12px 22px;
+  min-height: 48px;
+}
+
+/* ─── シンプルビュー ─── */
+.vm-simple-view {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-bottom: 18px;
+}
+.vm-simple-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 18px;
+}
+.vm-simple-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px;
+  background: var(--surface2, #0f1117);
+  border: 1.5px solid rgba(255,255,255,0.12);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.vm-simple-row:active { background: rgba(255,255,255,0.06); }
+.vm-simple-row-warn {
+  border-color: var(--amber);
+  background: #2a2310;
+}
+.vm-simple-row-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text2, #9ca3af);
+  flex-shrink: 0;
+  width: 52px;
+}
+.vm-simple-row-value {
+  flex: 1;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text1, #fff);
+}
+.vm-simple-row-warn .vm-simple-row-value { color: var(--amber); }
+.vm-simple-row-arrow {
+  font-size: 22px;
+  color: var(--text3, #6b7280);
+  flex-shrink: 0;
+}
+
+.vm-simple-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 18px;
+}
+.vm-simple-mic-btn {
+  width: 100%;
+  justify-content: center;
+  min-width: 0;
+}
+.vm-simple-detail-btn {
+  width: 100%;
+  padding: 13px 16px;
+  background: none;
+  border: 1.5px solid rgba(255,255,255,0.18);
+  border-radius: 10px;
+  color: var(--text2, #9ca3af);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  min-height: 48px;
+}
+.vm-simple-detail-btn:active { background: rgba(255,255,255,0.06); }
+.vm-simple-actions .btn-primary {
+  width: 100%;
+}
+
+/* ─── 詳細ビュー ─── */
+.vm-detail-view {
+  padding-bottom: 4px;
+}
+.vm-back-to-simple {
+  display: block;
+  margin: 10px 18px 0;
+  padding: 10px 4px;
+  background: none;
+  border: none;
+  color: var(--accent, #4ADE80);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 /* ─── カレンダードット（音声メモ用） ─── */
@@ -6415,4 +6702,4 @@ html.draw-dialog-active .bottom-nav {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
+}
