@@ -3115,6 +3115,14 @@ function closeAreaDetailPanel() {
   if (gCanvasDB) { gCanvasDB.width = 0; gCanvasDB.height = 0; }
   const gCanvasEst = document.getElementById('adp-growth-est-canvas');
   if (gCanvasEst) { gCanvasEst.width = 0; gCanvasEst.height = 0; }
+
+  // 作物未選択時の各結果パネルをデフォルト表示に戻す（前回選択作物の残留表示を防止）
+  const fertResult = document.getElementById('fert-result');
+  if (fertResult) fertResult.innerHTML = '<div class="empty-mini">作物を選択すると施肥概算が表示されます。</div>';
+  const riskResult = document.getElementById('risk-result');
+  if (riskResult) riskResult.innerHTML = '<div class="empty-mini">作物を選択するとリスク・注意点が表示されます。</div>';
+  const calendarResult = document.getElementById('calendar-result');
+  if (calendarResult) calendarResult.innerHTML = '<div class="empty-mini">作物を選択すると生育カレンダーが表示されます。</div>';
 }
 
 // ─── 作物タップ → 選択して各タブへ反映 ───

@@ -644,7 +644,9 @@ function runAnalysis(areaName) {
 // ─── 月別作業カレンダー ───
 /**
  * renderWorkCalendar(crop)
- * crop.calendar の sow / manage / harvest / order を月グリッドで可視化する
+ * crop.calendar の sowing / sow / seedling / transplant / manage / harvest を月グリッドで可視化する
+ * 月値は数値（1〜12）・月キー文字列のいずれでも可（_adpGrowthCalToIdxで正規化）
+ * 注：prep（休眠・準備期間）とorder（未実装・cropDB実データなし）は対象外
  */
 function renderWorkCalendar(crop) {
   const el = document.getElementById('calendar-result');
@@ -657,32 +659,44 @@ function renderWorkCalendar(crop) {
 
   const cal   = crop.calendar;
   const MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-  const KEYS   = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
 
-  // フェーズ定義
+  // フェーズ定義（sowingとsowは別行＝通常農法の播種 と 採集系の採集準備）
   const phases = [
-    { key: 'sow',     label: '播種',   color: 'var(--green3)',  icon: '🌱' },
-    { key: 'manage',  label: '管理',   color: 'var(--amber)',   icon: '🌿' },
-    { key: 'harvest', label: '収穫',   color: 'var(--green)',   icon: '🌾' },
-    { key: 'order',   label: '注文',   color: 'var(--text2)',   icon: '📦' },
+    { key: 'sowing',     label: '播種',     color: 'var(--green3)', icon: '🌱' },
+    { key: 'sow',        label: '採集準備', color: 'var(--green3)', icon: '🌾' },
+    { key: 'seedling',   label: '育苗',     color: 'var(--green2)', icon: '🌿' },
+    { key: 'transplant', label: '定植',     color: 'var(--amber)',  icon: '🪴' },
+    { key: 'manage',     label: '管理',     color: 'var(--amber)',  icon: '🛠️' },
+    { key: 'harvest',    label: '収穫',     color: 'var(--green)',  icon: '🌟' },
   ];
 
-  // 各フェーズの月セットを作成
+  // 各フェーズの月indexセット（0-11）を作成。_adpGrowthCalToIdxが数値月／文字列キー両対応で正規化する
   const phaseSets = phases.map(p => ({
     ...p,
-    months: new Set(Array.isArray(cal[p.key]) ? cal[p.key] : []),
+    months: new Set(
+      typeof _adpGrowthCalToIdx === 'function'
+        ? _adpGrowthCalToIdx(cal[p.key])
+        : []
+    ),
   }));
+
+  const activePhases = phaseSets.filter(p => p.months.size > 0);
+
+  if (!activePhases.length) {
+    el.innerHTML = '<div class="empty-mini">カレンダーデータなし</div>';
+    return;
+  }
 
   // ヘッダー行（月名）
   const headerCells = MONTHS.map((m, i) => {
-    const isActive = phaseSets.some(p => p.months.has(KEYS[i]));
+    const isActive = activePhases.some(p => p.months.has(i));
     return `<div class="wc-head-cell ${isActive ? 'wc-head-active' : ''}">${m}</div>`;
   }).join('');
 
   // 各フェーズ行
-  const phaseRows = phaseSets.filter(p => p.months.size > 0).map(p => {
-    const cells = KEYS.map(k => {
-      const on = p.months.has(k);
+  const phaseRows = activePhases.map(p => {
+    const cells = MONTHS.map((_, i) => {
+      const on = p.months.has(i);
       return `<div class="wc-cell ${on ? 'wc-cell-on' : ''}"
         style="${on ? `background:${p.color};opacity:0.85` : ''}"></div>`;
     }).join('');
@@ -697,21 +711,16 @@ function renderWorkCalendar(crop) {
     `;
   }).join('');
 
-  if (!phaseRows) {
-    el.innerHTML = '<div class="empty-mini">カレンダーデータなし</div>';
-    return;
-  }
-
   el.innerHTML = `
     <div class="wc-wrap">
-      <div class="wc-title">${crop.name} — 作業カレンダー</div>
+      <div class="wc-title">${escHtml(crop.name)} — 作業カレンダー</div>
       <div class="wc-header">
         <div class="wc-phase-label"></div>
         <div class="wc-cells">${headerCells}</div>
       </div>
       ${phaseRows}
       <div class="wc-legend">
-        ${phaseSets.filter(p => p.months.size > 0).map(p =>
+        ${activePhases.map(p =>
           `<span class="wc-legend-item">
             <span class="wc-legend-dot" style="background:${p.color}"></span>${p.label}
           </span>`
