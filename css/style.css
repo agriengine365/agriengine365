@@ -5392,31 +5392,6 @@ html.draw-dialog-active .bottom-nav {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cdp-header-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
-}
-.cdp-score {
-  font-size: 1.05rem;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 6px;
-}
-.cdp-score.score-high { color: #16a34a; background: #dcfce7; }
-.cdp-score.score-mid  { color: #d97706; background: #fef3c7; }
-.cdp-score.score-low  { color: #dc2626; background: #fee2e2; }
-
-.cdp-viable {
-  font-size: 0.75rem;
-  font-weight: 600;
-  padding: 2px 7px;
-  border-radius: 10px;
-}
-.cdp-viable-ok { color: #15803d; background: #dcfce7; }
-.cdp-viable-ng { color: #b91c1c; background: #fee2e2; }
-
 .cdp-close {
   background: none;
   border: none;
@@ -5428,111 +5403,7 @@ html.draw-dialog-active .bottom-nav {
   flex-shrink: 0;
 }
 
-/* ボディ（スクロール可） */
-.cdp-body {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  padding: 12px 16px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
 
-/* セクション共通 */
-.cdp-section {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.cdp-section-title {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--text-muted, #6b7280);
-  letter-spacing: 0.04em;
-  padding-bottom: 4px;
-  border-bottom: 1px solid var(--border, #1e3a22);
-}
-
-/* スコア根拠 */
-.cdp-detail-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-}
-.cdp-detail-label {
-  width: 90px;
-  flex-shrink: 0;
-  color: var(--text, #e8f5e9);
-}
-.cdp-detail-pts {
-  width: 38px;
-  flex-shrink: 0;
-  font-weight: 600;
-  text-align: right;
-  color: var(--text, #e8f5e9);
-}
-.cdp-detail-bar {
-  flex: 1;
-  height: 6px;
-  background: var(--border, #1e3a22);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.cdp-detail-bar-fill {
-  height: 100%;
-  background: var(--primary, #22c55e);
-  border-radius: 3px;
-  transition: width 0.3s;
-}
-.cdp-detail-note {
-  font-size: 0.72rem;
-  color: var(--text-muted, #9ca3af);
-  flex-shrink: 0;
-}
-
-/* 生育期間 */
-.cdp-gp {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: var(--text, #e8f5e9);
-  padding: 4px 0;
-}
-
-/* リスク */
-.cdp-risk-row {
-  font-size: 0.84rem;
-  color: #fbbf24;
-  line-height: 1.5;
-}
-
-/* 収益 */
-.cdp-profit-row {
-  font-size: 0.86rem;
-  color: var(--text, #e8f5e9);
-  line-height: 1.6;
-}
-
-/* 「この作物で各タブを更新」ボタン */
-.cdp-select-wrap {
-  padding-top: 4px;
-}
-.cdp-select-btn {
-  width: 100%;
-  padding: 13px;
-  background: var(--primary, #16a34a);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  font-size: 0.95rem;
-  font-weight: 700;
-  cursor: pointer;
-  letter-spacing: 0.02em;
-  transition: opacity 0.15s;
-}
-.cdp-select-btn:active { opacity: 0.8; }
-
-/* ═══════════════════════════════════════════
    サマリーバー「作物を選ぶ」ボタン
    ═══════════════════════════════════════════ */
 .adp-select-crop-btn {
@@ -5694,11 +5565,13 @@ html.draw-dialog-active .bottom-nav {
    ─ area.js ⑤で使用 ─
    ═══════════════════════════════════════════ */
 
-/* 閉じた状態：season-block-wrapとscore-compareは非表示 */
+/* 閉じた状態：season-block-wrap・score-compare・詳細リスクは非表示 */
 .cr-item .season-block-wrap,
 .cr-item .adp-score-compare,
 .cr-item .cr-alert,
-.adp-cr-item .season-block-wrap {
+.cr-item .cr-risk-detail-wrap,
+.adp-cr-item .season-block-wrap,
+.adp-cr-item .cr-risk-detail-wrap {
   max-height: 0;
   overflow: hidden;
   opacity: 0;
@@ -5709,8 +5582,10 @@ html.draw-dialog-active .bottom-nav {
 .cr-item-open .season-block-wrap,
 .cr-item-open .adp-score-compare,
 .cr-item-open .cr-alert,
-.adp-cr-item-open .season-block-wrap {
-  max-height: 300px;
+.cr-item-open .cr-risk-detail-wrap,
+.adp-cr-item-open .season-block-wrap,
+.adp-cr-item-open .cr-risk-detail-wrap {
+  max-height: 400px;
   opacity: 1;
 }
 
@@ -5802,6 +5677,150 @@ html.draw-dialog-active .bottom-nav {
 }
 .heat-high .heat-count {
   color: #dc2626;
+}
+
+/* ═══════════════════════════════════════════
+   詳細リスク行 (.cr-risk-detail-wrap 内)
+   タップ展開時のみ表示。霜・冷害・日照不足は
+   .cr-risk-row（heat-rowと同じ配色ロジック）、
+   寒暖差は .cr-bonus-row（緑系・ボーナス表示）。
+   ═══════════════════════════════════════════ */
+
+.cr-risk-detail-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* ─── 霜・冷害・日照不足（risk-none/low/mid/high） ─── */
+.cr-risk-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 3px 12px 4px;
+  border-radius: 4px;
+}
+
+.risk-label {
+  color: var(--text-muted, #6b7280);
+  font-size: 10px;
+  min-width: 52px;
+}
+
+.risk-stars {
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.risk-count {
+  color: var(--text-muted, #6b7280);
+  font-size: 10px;
+  margin-left: auto;
+}
+
+.risk-none {
+  background: transparent;
+}
+.risk-none .risk-stars {
+  color: var(--text-muted, #6b7280);
+}
+
+.risk-low {
+  background: rgba(251, 191, 36, 0.10);
+}
+.risk-low .risk-stars {
+  color: var(--amber, #fbbf24);
+}
+.risk-low .risk-count {
+  color: #b45309;
+}
+
+.risk-mid {
+  background: rgba(249, 115, 22, 0.12);
+}
+.risk-mid .risk-stars {
+  color: #f97316;
+}
+.risk-mid .risk-count {
+  color: #c2410c;
+}
+
+.risk-high {
+  background: rgba(248, 113, 113, 0.12);
+}
+.risk-high .risk-stars {
+  color: var(--red, #f87171);
+}
+.risk-high .risk-count {
+  color: #dc2626;
+}
+
+/* ─── 寒暖差「品質ボーナス」（risk表示ではなく緑系の加点表示） ─── */
+.cr-bonus-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  padding: 3px 12px 4px;
+  border-radius: 4px;
+}
+
+.bonus-label {
+  color: var(--text-muted, #6b7280);
+  font-size: 10px;
+  min-width: 70px;
+}
+
+.bonus-stars {
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+.bonus-count {
+  color: var(--text-muted, #6b7280);
+  font-size: 10px;
+  margin-left: auto;
+}
+
+/* best: 日較差大（品質形成に有利）→ 緑濃 */
+.bonus-best {
+  background: rgba(34, 197, 94, 0.14);
+}
+.bonus-best .bonus-stars {
+  color: var(--primary, #22c55e);
+}
+.bonus-best .bonus-count {
+  color: #16a34a;
+}
+
+/* good: 日較差やや大 → 緑薄 */
+.bonus-good {
+  background: rgba(34, 197, 94, 0.08);
+}
+.bonus-good .bonus-stars {
+  color: #4ade80;
+}
+.bonus-good .bonus-count {
+  color: #16a34a;
+}
+
+/* mid: 日較差小（効果は限定的）→ ニュートラル */
+.bonus-mid {
+  background: transparent;
+}
+.bonus-mid .bonus-stars {
+  color: var(--text-muted, #6b7280);
+}
+
+/* low: 日較差極小（ボーナスほぼなし）→ グレー（リスクの赤は使わない） */
+.bonus-low {
+  background: transparent;
+}
+.bonus-low .bonus-stars {
+  color: var(--text-muted, #4b5563);
 }
 
 /* ─── 基本DBモードノート ─── */
