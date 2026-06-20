@@ -6728,4 +6728,13 @@ html.draw-dialog-active .bottom-nav {
   display: flex;
   flex-direction: column;
   gap: 10px;
-}
+}
+/* ═══════════════════════════════════════════
+   条件設定タブ — 栽培方式／評価基準ミラーセクション
+   （サマリーバーのトグルを条件設定タブにも統合表示するための区切り線）
+   ═══════════════════════════════════════════ */
+.adp-rk-cond-divider {
+  height: 1px;
+  background: var(--border, #2a3d2c);
+  margin: 4px 0 14px;
+}

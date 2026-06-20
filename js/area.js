@@ -559,10 +559,10 @@ function _adpEnsureView() {
           <button class="adp-cult-btn"        data-mode="heatedGreenhouse" onclick="_adpSwitchCultivation('heatedGreenhouse')">加温</button>
         </div>
         <div class="adp-sb-eval-toggle">
-          <button class="adp-eval-mode-btn active" id="adp-eval-btn-db"
-            onclick="_adpSetClimateMode(false)">📊 基本DB</button>
-          <button class="adp-eval-mode-btn" id="adp-eval-btn-climate"
-            onclick="_adpSetClimateMode(true)">🌿 <span id="adp-eval-climate-label">エリア気候</span></button>
+          <button class="adp-eval-mode-btn active" id="adp-eval-btn-db" data-eval="db"
+            onclick="_adpSetClimateMode(false)">📊 一般データベース</button>
+          <button class="adp-eval-mode-btn" id="adp-eval-btn-climate" data-eval="climate"
+            onclick="_adpSetClimateMode(true)">🌿 <span class="adp-eval-climate-label">エリア気候</span></button>
         </div>
       </div>
 
@@ -773,18 +773,17 @@ function _adpCloseRankingDialog() {
 function _adpSetClimateMode(isClimate) {
   _adpClimateMode = isClimate;
 
-  // トグルボタン active 同期（サマリーバー）
+  // トグルボタン active 同期（サマリーバー／条件設定タブの両方を含む全インスタンス）
   document.querySelectorAll('.adp-eval-mode-btn').forEach(btn => {
-    const isDb = btn.id === 'adp-eval-btn-db';
+    const isDb = btn.dataset.eval === 'db';
     btn.classList.toggle('active', isDb ? !isClimate : isClimate);
   });
 
-  // 気候ボタンのラベルをエリア名に更新
-  const clLabel = document.getElementById('adp-eval-climate-label');
-  if (clLabel) {
-    const areaName = currentAreaData?.name;
-    clLabel.textContent = areaName ? `${areaName}気候` : 'エリア気候';
-  }
+  // 気候ボタンのラベルをエリア名に更新（サマリーバー／条件設定タブの両方に反映）
+  const areaName = currentAreaData?.name;
+  document.querySelectorAll('.adp-eval-climate-label').forEach(clLabel => {
+    clLabel.textContent = areaName ? `${areaName}の気候` : 'エリア気候';
+  });
 
   // 気候推定モード時はランキングキャッシュを生成
   if (isClimate && !_adpClimateRanking) {
@@ -1374,18 +1373,19 @@ function _adpRenderRanking(area) {
   // スコア計算のみ（DOM描画はダイアログを開いた時に行う）
   currentAreaData.cultivationMode = 'openField';
 
-  // サマリーバーの栽培方式ボタンを初期化状態に同期
+  // 栽培方式ボタンを初期化状態に同期（サマリーバー／条件設定タブの両方を含む全インスタンス）
   document.querySelectorAll('.adp-cult-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.mode === 'openField');
   });
-  // DB/気候トグルを初期化（DB側をactive）
+  // DB/気候トグルを初期化（一般データベース側をactive）
   document.querySelectorAll('.adp-eval-mode-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.id === 'adp-eval-btn-db');
+    btn.classList.toggle('active', btn.dataset.eval === 'db');
   });
-  // 気候ボタンのエリア名ラベルを更新
-  const _clLabelInit = document.getElementById('adp-eval-climate-label');
-  if (_clLabelInit && currentAreaData?.name) {
-    _clLabelInit.textContent = `${currentAreaData.name}気候`;
+  // 気候ボタンのエリア名ラベルを更新（サマリーバー／条件設定タブの両方に反映）
+  if (currentAreaData?.name) {
+    document.querySelectorAll('.adp-eval-climate-label').forEach(el => {
+      el.textContent = `${currentAreaData.name}の気候`;
+    });
   }
 
   const result = buildAnalysisResult(currentAreaData);
@@ -1729,7 +1729,7 @@ function _adpRenderClimateRankingList(el, pane) {
   }).join('');
 
   el.innerHTML =
-    `<div class="adp-climate-mode-note">🌿 ${currentAreaData?.name ?? 'エリア'}気候：旬別気温・日照から播種適期を算出</div>` +
+    `<div class="adp-climate-mode-note">🌿 ${currentAreaData?.name ?? 'エリア'}の気候：旬別気温・日照から播種適期を算出</div>` +
     itemsHtml;
 }
 
@@ -1802,7 +1802,7 @@ function _adpRenderRankingList() {
     `;
   }).join('');
 
-  el.innerHTML = '<div class="adp-db-mode-note">📊 基本DB：DB平年値ベースの適正スコア</div>' + summaryHtml + itemsHtml;
+  el.innerHTML = '<div class="adp-db-mode-note">📊 一般データベース：DB平年値ベースの適正スコア</div>' + summaryHtml + itemsHtml;
 }
 
 // ═══════════════════════════════════════════
@@ -3530,7 +3530,33 @@ function _awRenderConditions() {
   const wrap = document.getElementById('adp-rk-cond-wrap');
   if (!wrap) return;
 
+  const cultMode  = currentAreaData?.cultivationMode || 'openField';
+  const isClimate = _adpClimateMode;
+  const areaName  = currentAreaData?.name || _awArea?.name || null;
+  const climateLabel = areaName ? `${areaName}の気候` : 'エリア気候';
+
   wrap.innerHTML = `
+    <div class="adp-rk-cond-group">
+      <div class="adp-rk-cond-label">🌡️ 栽培方式</div>
+      <div class="adp-rk-cond-row">
+        <button class="adp-cult-btn ${cultMode === 'openField' ? 'active' : ''}"
+          data-mode="openField" onclick="_adpSwitchCultivation('openField')">露地</button>
+        <button class="adp-cult-btn ${cultMode === 'greenhouse' ? 'active' : ''}"
+          data-mode="greenhouse" onclick="_adpSwitchCultivation('greenhouse')">ハウス</button>
+        <button class="adp-cult-btn ${cultMode === 'heatedGreenhouse' ? 'active' : ''}"
+          data-mode="heatedGreenhouse" onclick="_adpSwitchCultivation('heatedGreenhouse')">加温</button>
+      </div>
+    </div>
+    <div class="adp-rk-cond-group">
+      <div class="adp-rk-cond-label">🧭 評価基準</div>
+      <div class="adp-rk-cond-row">
+        <button class="adp-eval-mode-btn ${!isClimate ? 'active' : ''}" data-eval="db"
+          onclick="_adpSetClimateMode(false)">📊 一般データベース</button>
+        <button class="adp-eval-mode-btn ${isClimate ? 'active' : ''}" data-eval="climate"
+          onclick="_adpSetClimateMode(true)">🌿 <span class="adp-eval-climate-label">${escHtml(climateLabel)}</span></button>
+      </div>
+    </div>
+    <div class="adp-rk-cond-divider"></div>
     <div class="adp-rk-cond-groups">
       ${FARM_COND_GROUPS.map(g => `
         <div class="adp-rk-cond-group">
@@ -3585,8 +3611,11 @@ function _awBuildAreaData() {
     return null;
   }
 
-  // 設備条件 → 栽培方式（ハウスありならhouse補正、それ以外は露地として計算）
-  const cultivationMode = _awFarmCond.equipment === 'greenhouse' ? 'greenhouse' : 'openField';
+  // 実際の栽培方式は「栽培方式」トグル（_adpSwitchCultivation／条件設定タブのミラー）が単一の管理元。
+  // _awFarmCond.equipment は営農条件スコア専用の好み軸（水田利用可を含む）であり、ここでは参照しない
+  // （以前はここで equipment から再計算しており、条件チップを1つ変更するだけで「加温」設定が
+  // 　無条件に消えるバグがあったため修正）。
+  const cultivationMode = currentAreaData?.cultivationMode || 'openField';
 
   let ad;
   if (typeof normalizeAreaData === 'function') {
