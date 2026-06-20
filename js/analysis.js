@@ -380,6 +380,10 @@ function _renderRiskResult(crop) {
     return;
   }
 
+  // ─ 🌡️ 気候リスク（霜・冷害・高温・日照不足・寒暖差ボーナス） ─
+  //  旧：area.jsの適合度ランキングカード内に表示していたものをこちらへ集約。
+  const climateRiskHtml = _buildClimateRiskHtml(crop);
+
   // ─ 輪作セクション（family + continuousCropYears ベース） ─
   const rotationHtml = _buildRotationSection(crop);
 
@@ -398,11 +402,100 @@ function _renderRiskResult(crop) {
         </div>
       `;
     }).join('');
-  } else if (!rotationHtml) {
+  } else if (!rotationHtml && !climateRiskHtml) {
     risksHtml = '<div class="empty-mini">リスクデータなし</div>';
   }
 
-  el.innerHTML = rotationHtml + risksHtml;
+  el.innerHTML = climateRiskHtml + rotationHtml + risksHtml;
+}
+
+// ─── 🌡️ 気候リスクセクション（霜・冷害・高温・日照不足・寒暖差ボーナス） ───
+/**
+ * _buildClimateRiskHtml(crop)
+ *
+ * area.js の適合度ランキングカードに表示していた5種気候リスクを
+ * ⚠️リスクタブ側へ集約するためのセクションHTMLを生成する。
+ *
+ * ① 気候推定モード時：area.js が保持する _adpClimateRanking キャッシュ
+ *    （Phenologyベースの播種適期ウィンドウで算出済み・最も精度が高い）を再利用。
+ * ② DBモード時（または①で対象作物が見つからない場合）：
+ *    currentAreaData.climate.decadeArr から「生育期間の平均日数」を用いて
+ *    最も温暖な旬を中心とした簡易ウィンドウを仮算出し、calcAllRisks で算出する
+ *    （旧 _adpRenderRankingList の算出ロジックと同一）。
+ * 気候データが一切ない場合は空文字を返す（セクション自体を非表示にする）。
+ */
+function _buildClimateRiskHtml(crop) {
+  if (!crop) return '';
+
+  let hr = null; // 高温リスク（calcHeatRisk の返却値）
+  let ar = null; // 5種リスク一式（calcAllRisks の返却値）
+
+  // ① 気候推定モード：computeClimateRanking 済みキャッシュを再利用
+  if (typeof _adpClimateMode !== 'undefined' && _adpClimateMode
+      && typeof _adpClimateRanking !== 'undefined' && _adpClimateRanking) {
+    const entry = _adpClimateRanking.find(r => r.crop.id === crop.id);
+    if (entry?.allRisks) {
+      hr = entry.heatRisk;
+      ar = entry.allRisks;
+    }
+  }
+
+  // ② DBモード（または①で未取得）：decadeArrから簡易ウィンドウを仮算出
+  if (!ar) {
+    const decadeArr = currentAreaData?.climate?.decadeArr ?? null;
+    if (decadeArr && typeof calcAllRisks === 'function') {
+      const gpMin = crop.conditions?.growthPeriodMin ?? 60;
+      const gpMax = crop.conditions?.growthPeriodMax ?? gpMin + 30;
+      const gpDecades = Math.round(((gpMin + gpMax) / 2) / 10);
+      // 最も温暖な旬を播種起点として仮算出（簡易）
+      const tMean = decadeArr.tMean || decadeArr.tMax;
+      let startD = 0;
+      if (tMean) {
+        let best = -Infinity;
+        tMean.forEach((t, idx) => { if (t != null && t > best) { best = t; startD = idx; } });
+        startD = (startD - Math.round(gpDecades / 2) + 36) % 36;
+      }
+      const endD = (startD + gpDecades - 1) % 36;
+      ar = calcAllRisks(crop, decadeArr, startD, endD);
+      hr = ar.heat;
+    }
+  }
+
+  if (!ar) return '';
+
+  const heatHtml = hr
+    ? (() => {
+        const lvCls = hr.riskLevel === 'none' ? 'heat-none'
+                    : hr.riskLevel === 'low'  ? 'heat-low'
+                    : hr.riskLevel === 'mid'  ? 'heat-mid'
+                    : 'heat-high';
+        const countTxt = hr.hotDecadeCount > 0
+          ? `<span class="heat-count">約${hr.hotDayApprox ?? hr.hotDecadeCount * 10}日以上 (${hr.threshold}℃超)</span>`
+          : '';
+        return `<div class="cr-heat-row ${lvCls}">
+          <span class="heat-label">高温リスク</span>
+          <span class="heat-stars">${hr.riskStars}</span>
+          ${countTxt}
+        </div>`;
+      })()
+    : '';
+
+  const detailRisksHtml = `<div class="cr-risk-detail-wrap">
+      ${_crRiskRowHtml('霜リスク',   ar.frost,
+          (ar.frost && ar.frost.frostDecadeCount > 0) ? `約${ar.frost.frostDayApprox}日 (0℃未満)` : '')}
+      ${_crRiskRowHtml('冷害リスク', ar.chill,
+          (ar.chill && ar.chill.chillDecadeCount > 0) ? `約${ar.chill.chillDecadeCount * 10}日 (${ar.chill.chillThreshold}℃未満)` : '')}
+      ${_crRiskRowHtml('日照不足',   ar.sunDeficit,
+          ar.sunDeficit ? `充足率${ar.sunDeficit.sufficiencyPct}%` : '')}
+      ${_crBonusRowHtml(ar.diurnal)}
+    </div>`;
+
+  return `
+    <div class="adpc-section-title"><span>🌡️ 気候リスク（栽培期間中）</span></div>
+    <div style="padding:2px 0 10px;border-bottom:1px solid var(--border);margin-bottom:4px;">
+      ${heatHtml}
+      ${detailRisksHtml}
+    </div>`;
 }
 
 // ─── 輪作セクション（科名 + 連作可能年数） ───
