@@ -19,6 +19,65 @@ L.tileLayer(CONFIG.TILE_URL, {
 
 const drawnItems = new L.FeatureGroup().addTo(map);
 
+// ─── 保存済みエリア常時表示レイヤー ───
+// drawnItems（描画中／分析選択中の1件専用）とは別系統。
+// loadAreas() 実行時（初期表示・保存・編集・削除後）に全件を描き直す。
+const SAVED_AREA_COLOR = '#5b7c99'; // 控えめなグレーブルー（CONFIG.DRAW_COLORとは区別）
+const savedAreasLayer  = new L.FeatureGroup().addTo(map);
+
+// ─── 保存済み全エリアを地図に描画（area.js の loadAreas() から呼ばれる） ───
+function renderSavedAreasOnMap(areas) {
+  savedAreasLayer.clearLayers();
+
+  (areas || []).forEach(area => {
+    if (!area.geojson) return;
+    let geojsonData;
+    try {
+      geojsonData = typeof area.geojson === 'string' ? JSON.parse(area.geojson) : area.geojson;
+    } catch(e) { return; }
+
+    const layer = L.geoJSON(geojsonData, {
+      style: {
+        color:       SAVED_AREA_COLOR,
+        weight:      1.5,
+        fillOpacity: 0.06,
+        opacity:     0.55,
+        interactive: true,
+      },
+    });
+
+    layer.eachLayer(l => {
+      // 重心に常時表示ラベル（Leafletのpermanent tooltipがポリゴン重心を自動算出）
+      l.bindTooltip(escHtml(area.name || '無名エリア'), {
+        permanent:  true,
+        direction:  'center',
+        className:  'saved-area-label',
+        interactive: true, // ラベル自体のクリックも拾えるようにする
+      });
+      // ポリゴンタップ → 分析画面を開く
+      l.on('click', () => selectArea(area));
+      // ラベルタップ → 同じく分析画面を開く（ポリゴンが薄くてヒットしにくい場合の保険）
+      l.on('tooltipopen', (e) => {
+        const tipEl = e.tooltip.getElement();
+        if (tipEl && !tipEl._savedAreaClickBound) {
+          tipEl._savedAreaClickBound = true;
+          tipEl.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            selectArea(area);
+          });
+        }
+      });
+    });
+
+    layer.addTo(savedAreasLayer);
+  });
+
+  // 選択中エリア（drawnItems）の強調表示が常に最前面に来るようにする
+  if (typeof drawnItems !== 'undefined' && drawnItems.bringToFront) {
+    drawnItems.bringToFront();
+  }
+}
+
 // ─── カスタム描画完了（polygonDraw.js から呼ばれる）───
 async function onDrawPolygonComplete(layer) {
   await updateAreaStats(layer);

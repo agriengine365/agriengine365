@@ -4238,6 +4238,36 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text2);
 }
 
+/* ─── 未入力件数バッジ（タップでenv編集ダイアログへ） ─── */
+.area-badge-missing {
+  background: rgba(251, 191, 36, 0.15);
+  color: var(--amber);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  cursor: pointer;
+}
+.area-badge-missing:active {
+  background: rgba(251, 191, 36, 0.28);
+}
+
+/* ─── 保存済みエリア：地図常時表示ラベル（permanent tooltip） ─── */
+.leaflet-tooltip.saved-area-label {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0.92;
+}
+.leaflet-tooltip.saved-area-label::before {
+  display: none; /* Leaflet標準の吹き出し矢印を消す */
+}
+
 /* ─── アクションボタン群 ─── */
 .area-item-actions {
   display: flex;

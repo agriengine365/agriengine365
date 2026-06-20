@@ -105,6 +105,9 @@ async function loadAreas() {
 
   document.getElementById('areas-count').textContent = `${areas.length} エリア`;
 
+  // 保存済み全エリアを地図に常時表示（初期表示・保存・編集・削除後すべてここを通る）
+  if (typeof renderSavedAreasOnMap === 'function') renderSavedAreasOnMap(areas);
+
   if (areas.length === 0) {
     list.innerHTML = '<div class="empty"><div class="icon">🗾</div>保存されたエリアはありません。</div>';
     return;
@@ -130,6 +133,7 @@ function renderAreaItem(area, container) {
   const power    = env.hasPower === true ? 'あり' : env.hasPower === false ? 'なし' : '—';
   const wildlife = { low:'低', medium:'中', high:'高' }[env.wildlifeRisk] || '—';
   const hasEnv   = Object.keys(env).some(k => env[k] != null && k !== 'monthlyJson' && k !== 'decadeJson');
+  const missingCount = typeof countMissingEnvFields === 'function' ? countMissingEnvFields(env) : 0;
 
   // 詳細フィールド表示ヘルパー
   function envRow(label, value) {
@@ -161,6 +165,7 @@ function renderAreaItem(area, container) {
       <span class="area-badge">☔ ${rain}mm</span>
       <span class="area-badge">🌱 ${soil}</span>
       ${env.irrigationSource ? `<span class="area-badge">💧 ${irrigSrc}</span>` : ''}
+      ${missingCount > 0 ? `<span class="area-badge area-badge-missing">📝 未入力${missingCount}件</span>` : ''}
     </div>
     <div class="area-summary-badges area-summary-badges-2">
       ${env.frostFreeDays != null ? `<span class="area-badge area-badge-sub">❄️ 無霜${ffDays}日</span>` : ''}
@@ -270,6 +275,16 @@ function renderAreaItem(area, container) {
     if (e.target.closest('button')) return;
     selectArea(area);
   });
+  // 未入力件数バッジ：タップで直接env編集ダイアログを開く（▼詳細展開をスキップ）
+  if (missingCount > 0) {
+    const missingBadge = div.querySelector('.area-badge-missing');
+    if (missingBadge) {
+      missingBadge.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof openEnvEditDialog === 'function') openEnvEditDialog(area);
+      });
+    }
+  }
   container.appendChild(div);
 }
 

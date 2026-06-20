@@ -69,6 +69,36 @@ function createEmptyEnv() {
   return { ...ENV_SCHEMA };
 }
 
+// ─── 編集ダイアログで実際に入力可能な32項目（未入力件数バッジ用） ───
+// _envWeatherHtml/_envTerrainHtml/_envWaterHtml/_envFarmingHtml/_envRegionHtml
+// の data-env-key と完全一致させること。新フィールドをダイアログに追加した
+// 場合はここにも追記する。stationNo/stationName/distKm（読み取り専用表示）と
+// monthlyJson/decadeJson（配列データ）はユーザー入力項目ではないため含めない。
+const ENV_EDITABLE_KEYS = [
+  // 🌡️ 気象（12）
+  'tempMean', 'tempMinJan', 'tempMax8', 'rain', 'sunshineHours',
+  'frostFreeDays', 'gdd', 'daysBelow0', 'maxSnowDepth', 'windSpeedMean',
+  'strongWindDays', 'coldLakeRisk',
+  // 🏔️ 地形・土壌（9）
+  'slope', 'aspect', 'shadingRisk', 'soilType', 'ph',
+  'organicMatter', 'waterRetention', 'salinityRisk', 'croppingHistory',
+  // 💧 水利（4）
+  'irrigationSource', 'irrigationDistM', 'drainageFacility', 'groundwaterLevel',
+  // 🚜 営農条件（4）
+  'fieldShapeScore', 'roadWidthM', 'hasPower', 'distToCollectionKm',
+  // 🏘️ 地域環境（3）
+  'agriculturalZone', 'wildlifeRisk', 'surroundingLandUse',
+];
+
+// ─── 未入力（null/空文字）件数をカウント ───
+function countMissingEnvFields(env) {
+  if (!env) return ENV_EDITABLE_KEYS.length;
+  return ENV_EDITABLE_KEYS.reduce((n, key) => {
+    const v = env[key];
+    return n + (v == null || v === '' ? 1 : 0);
+  }, 0);
+}
+
 // ─── AMeDASデータ → env オブジェクト生成 ───
 // AmedasLoader.getClimateAt() の返却値を env に変換する
 function buildEnvFromClimate(climateData, existingEnv = {}) {
