@@ -86,12 +86,6 @@ async function commitSaveArea({ name, memo, soilType }) {
   }
 }
 
-// ─── 旧 autoSaveArea (互換用・現在は未使用) ───
-async function autoSaveArea() {
-  // ウィザードフローに移行したため、map.js の CREATED イベントから
-  // showWizard() を呼ぶようになっています。
-}
-
 // ─── エリア一覧読み込み ───
 async function loadAreas() {
   const list = document.getElementById('areas-list');
@@ -1021,11 +1015,6 @@ function _adpRenderProfitRankingList() {
   }).join('');
 }
 
-// ─── ウィザードパネルの開閉（Step2でadp-wizard-panel廃止のためno-op化。条件設定はランキングタブのサブタブへ移行） ───
-function _adpToggleWizardPanel() {
-  // 呼び出し元（ヘッダーの「条件設定」ボタン）は削除済み。Step4までの間の無害化スタブ。
-}
-
 // ─── サマリーバー更新 ───
 function _adpUpdateSummaryBar({ cropName, areaName, score, mode, confPct, confLabel } = {}) {
   const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.textContent = val; };
@@ -1398,33 +1387,6 @@ function _adpEnsureCultivationToggle() {
   // サマリーバーのトグルで一元管理するためダイアログへの挿入は行わない
 }
 
-function _adpInsertCultivationToggle(paneId, toggleId) {
-  if (document.getElementById(toggleId)) return;
-  const rankPane = document.getElementById(paneId);
-  if (!rankPane) return;
-
-  const modes = [
-    { id: 'openField',        label: '露地' },
-    { id: 'greenhouse',       label: 'ハウス' },
-    { id: 'heatedGreenhouse', label: '加温ハウス' },
-  ];
-
-  const current = currentAreaData?.cultivationMode || 'openField';
-
-  const wrap = document.createElement('div');
-  wrap.id        = toggleId;
-  wrap.className = 'adp-cult-toggle';
-  wrap.innerHTML = modes.map(m => `
-    <button class="adp-cult-btn${m.id === current ? ' active' : ''}"
-      data-mode="${m.id}"
-      onclick="_adpSwitchCultivation('${m.id}')">
-      ${m.label}
-    </button>
-  `).join('');
-
-  rankPane.prepend(wrap);
-}
-
 // ─── 栽培方式切替（気温適性・生育期間ペイン共通） ───
 function _adpSwitchCultivation(mode) {
   if (!currentAreaData) return;
@@ -1584,6 +1546,41 @@ function _buildSeasonBlockHtml(crop, estimatedSeason) {
 }
 
 // ─── 気候推定ランキングリスト描画（chart / growth 共通） ───
+// ─── 個別リスク行HTML生成（霜・冷害・日照不足リスク共通） ───
+//  label     : 表示ラベル（例：'霜リスク'）
+//  riskObj   : calcFrostRisk/calcChillRisk/calcSunDeficitRisk の返却値（null可）
+//  countText : 補足テキスト（例：'約20日 (0℃未満)'）。空文字なら非表示。
+function _crRiskRowHtml(label, riskObj, countText) {
+  if (!riskObj) return '';
+  const lvCls = 'risk-' + riskObj.riskLevel; // risk-none / risk-low / risk-mid / risk-high
+  return `<div class="cr-risk-row ${lvCls}">
+    <span class="risk-label">${label}</span>
+    <span class="risk-stars">${riskObj.riskStars}</span>
+    ${countText ? `<span class="risk-count">${countText}</span>` : ''}
+  </div>`;
+}
+
+// ─── 寒暖差「品質ボーナス」行HTML生成（diurnal専用） ───
+//  diurnal.riskLevel は「寒暖差のなさ」へのリスクとして定義されているため、
+//  ボーナス表示ではスター・配色を反転させる（大きいほど良い指標として見せる）。
+function _crBonusRowHtml(diurnal) {
+  if (!diurnal) return '';
+  const bonusCls = {
+    none: 'bonus-best',  // 日較差大 → ボーナス最大
+    low:  'bonus-good',
+    mid:  'bonus-mid',
+    high: 'bonus-low',   // 日較差極小 → ボーナスほぼなし
+  }[diurnal.riskLevel] || 'bonus-mid';
+  const bonusStars = {
+    none: '★★★★', low: '★★★☆', mid: '★★☆☆', high: '★☆☆☆',
+  }[diurnal.riskLevel] || '★★☆☆';
+  return `<div class="cr-bonus-row ${bonusCls}">
+    <span class="bonus-label">寒暖差ボーナス</span>
+    <span class="bonus-stars">${bonusStars}</span>
+    <span class="bonus-count">平均日較差 ${diurnal.avgRange}℃</span>
+  </div>`;
+}
+
 function _adpRenderClimateRankingList(el, pane) {
   if (!_adpClimateRanking) {
     el.innerHTML = '<div class="empty-mini">気候データ取得中です。しばらくしてから再度タップしてください。</div>';
@@ -1675,6 +1672,20 @@ function _adpRenderClimateRankingList(el, pane) {
         })()
       : '';
 
+    // ── 詳細リスク行（霜・冷害・日照不足・寒暖差ボーナス／タップ展開時のみ表示） ──
+    const ar = r.allRisks;
+    const detailRisksHtml = ar
+      ? `<div class="cr-risk-detail-wrap">
+          ${_crRiskRowHtml('霜リスク',   ar.frost,
+              (ar.frost && ar.frost.frostDecadeCount > 0) ? `約${ar.frost.frostDayApprox}日 (0℃未満)` : '')}
+          ${_crRiskRowHtml('冷害リスク', ar.chill,
+              (ar.chill && ar.chill.chillDecadeCount > 0) ? `約${ar.chill.chillDecadeCount * 10}日 (${ar.chill.chillThreshold}℃未満)` : '')}
+          ${_crRiskRowHtml('日照不足',   ar.sunDeficit,
+              ar.sunDeficit ? `充足率${ar.sunDeficit.sufficiencyPct}%` : '')}
+          ${_crBonusRowHtml(ar.diurnal)}
+        </div>`
+      : '';
+
     const idAttr = pane === 'growth' ? `adp-cr-item` : `cr-item`;
     return `
       <div class="${idAttr}${isSelected ? ' selected' : ''}" onclick="adpCropTap(this, '${r.crop.id}')">
@@ -1690,6 +1701,7 @@ function _adpRenderClimateRankingList(el, pane) {
           <div class="cr-bar-fill ${scoreCls}" style="width:${r.score}%"></div>
         </div>
         ${heatHtml}
+        ${detailRisksHtml}
         <div class="season-block-wrap">${seasonHtml}</div>
       </div>`;
   }).join('');
@@ -1749,11 +1761,14 @@ function _adpRenderRankingList() {
     // 播種収穫ブロック（DBモードでは気候推定なし）
     const seasonHtml = _buildSeasonBlockHtml(s.crop, null);
 
-    // ── 高温リスク（DBモード：decadeArrがあれば算出） ──
+    // ── 5種リスク（DBモード：decadeArrがあれば算出） ──
+    //  DB側では播種・収穫旬が未定のため、作物の生育期間（平均）から
+    //  最も温暖な旬を中心とした概算ウィンドウを仮算出し、その期間で
+    //  calcAllRisks を一括実行する（気候推定モードと同じ5種構造）。
     const decadeArr = currentAreaData?.climate?.decadeArr ?? null;
     let heatHtml = '';
-    if (decadeArr && typeof calcHeatRisk === 'function') {
-      // DB側では播種・収穫旬が未定のため生育期間全体を概算
+    let detailRisksHtml = '';
+    if (decadeArr && typeof calcAllRisks === 'function') {
       const gpMin = s.crop.conditions?.growthPeriodMin ?? 60;
       const gpMax = s.crop.conditions?.growthPeriodMax ?? gpMin + 30;
       const gpDecades = Math.round(((gpMin + gpMax) / 2) / 10);
@@ -1766,7 +1781,8 @@ function _adpRenderRankingList() {
         startD = (startD - Math.round(gpDecades / 2) + 36) % 36;
       }
       const endD = (startD + gpDecades - 1) % 36;
-      const hr = calcHeatRisk(s.crop, decadeArr, startD, endD);
+      const ar = calcAllRisks(s.crop, decadeArr, startD, endD);
+      const hr = ar.heat;
       if (hr) {
         const lvCls = hr.riskLevel === 'none' ? 'heat-none'
                     : hr.riskLevel === 'low'  ? 'heat-low'
@@ -1781,6 +1797,15 @@ function _adpRenderRankingList() {
           ${countTxt}
         </div>`;
       }
+      detailRisksHtml = `<div class="cr-risk-detail-wrap">
+          ${_crRiskRowHtml('霜リスク',   ar.frost,
+              (ar.frost && ar.frost.frostDecadeCount > 0) ? `約${ar.frost.frostDayApprox}日 (0℃未満)` : '')}
+          ${_crRiskRowHtml('冷害リスク', ar.chill,
+              (ar.chill && ar.chill.chillDecadeCount > 0) ? `約${ar.chill.chillDecadeCount * 10}日 (${ar.chill.chillThreshold}℃未満)` : '')}
+          ${_crRiskRowHtml('日照不足',   ar.sunDeficit,
+              ar.sunDeficit ? `充足率${ar.sunDeficit.sufficiencyPct}%` : '')}
+          ${_crBonusRowHtml(ar.diurnal)}
+        </div>`;
     }
 
     return `
@@ -1799,6 +1824,7 @@ function _adpRenderRankingList() {
         </div>
         ${compareHtml ? `<div class="adp-score-compare">${compareHtml}</div>` : ''}
         ${heatHtml}
+        ${detailRisksHtml}
         ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
         <div class="season-block-wrap">${seasonHtml}</div>
       </div>
@@ -3146,147 +3172,7 @@ function adpCropTap(el, cropId) {
   }
 }
 
-// ─── 作物詳細シート（下から出るポップアップ） ───
-function _adpOpenCropDetailSheet(cropId) {
-  const ad = currentAreaData;
-  if (!ad) return;
 
-  // scoreEntry取得
-  const scoreEntry = (typeof _crScores !== 'undefined')
-    ? _crScores.find(s => s.crop.id === cropId)
-    : null;
-
-  // cropオブジェクト取得
-  let crop = scoreEntry?.crop ?? null;
-  if (!crop && typeof CROP_DB !== 'undefined') {
-    crop = CROP_DB.find ? CROP_DB.find(c => c.id === cropId)
-         : Object.values(CROP_DB).flat().find(c => c.id === cropId);
-  }
-  if (!crop) return;
-
-  // スコア根拠（details配列から各軸を抽出）
-  const details = scoreEntry?.details ?? [];
-  const detailRows = details.map(d => {
-    if (!d.label && !d.key) return '';
-    const label = d.label ?? d.key;
-    const pts   = d.score != null ? `${d.score}点` : '';
-    const note  = d.note  ? `<span class="cdp-detail-note">${escHtml(d.note)}</span>` : '';
-    const bar   = d.score != null
-      ? `<div class="cdp-detail-bar"><div class="cdp-detail-bar-fill" style="width:${Math.min(d.score,100)}%"></div></div>`
-      : '';
-    return `<div class="cdp-detail-row">`
-      + `<span class="cdp-detail-label">${escHtml(label)}</span>`
-      + `<span class="cdp-detail-pts">${pts}</span>`
-      + `${bar}${note}`
-      + `</div>`;
-  }).join('');
-
-  // 生育期間
-  const gpMin = crop.conditions?.growthPeriodMin;
-  const gpMax = crop.conditions?.growthPeriodMax;
-  const gpHtml = (gpMin != null || gpMax != null)
-    ? `<div class="cdp-section"><div class="cdp-section-title">🕐 生育期間</div>`
-      + `<div class="cdp-gp">${gpMin ?? '?'}〜${gpMax ?? '?'}日</div></div>`
-    : '';
-
-  // 播種・収穫時期
-  const decadeArr = ad.climate?.decadeArr;
-  let estSeason = null;
-  if (decadeArr && typeof Phenology !== 'undefined') {
-    const _cultMode3194 = ad.cultivationMode || currentAreaData?.cultivationMode || 'openField';
-    const wins = Phenology.sowingWindows(decadeArr, crop, _cultMode3194);
-    if (wins?.length) estSeason = _buildEstimatedSeasonLabel(wins[0]);
-  }
-  const seasonHtml = _buildSeasonBlockHtml(crop, estSeason);
-
-  // リスク一覧（crop.risksまたはbuildSingleCropAnalysis）
-  let risksHtml = '';
-  const single = (typeof buildSingleCropAnalysis === 'function')
-    ? buildSingleCropAnalysis(cropId, ad) : null;
-  const riskItems = crop.risks ?? single?.risks ?? [];
-  if (riskItems.length) {
-    risksHtml = `<div class="cdp-section"><div class="cdp-section-title">⚠️ リスク</div>`
-      + riskItems.map(r => `<div class="cdp-risk-row">・${escHtml(typeof r === 'string' ? r : r.label ?? r.name ?? JSON.stringify(r))}</div>`).join('')
-      + `</div>`;
-  } else if (scoreEntry?.alert) {
-    risksHtml = `<div class="cdp-section"><div class="cdp-section-title">⚠️ リスク</div>`
-      + `<div class="cdp-risk-row">・${escHtml(scoreEntry.alert)}</div></div>`;
-  }
-
-  // 収益概算（profitability）
-  let profitHtml = '';
-  const prof = scoreEntry?.profitability ?? single?.profitability ?? null;
-  if (prof) {
-    const rows = [];
-    if (prof.revenueMin != null && prof.revenueMax != null)
-      rows.push(`売上：${_fmtMoney(prof.revenueMin)}〜${_fmtMoney(prof.revenueMax)}`);
-    if (prof.costMin != null && prof.costMax != null)
-      rows.push(`コスト：${_fmtMoney(prof.costMin)}〜${_fmtMoney(prof.costMax)}`);
-    if (prof.profitMin != null && prof.profitMax != null)
-      rows.push(`利益：${_fmtMoney(prof.profitMin)}〜${_fmtMoney(prof.profitMax)}`);
-    if (rows.length) {
-      profitHtml = `<div class="cdp-section"><div class="cdp-section-title">💴 収益概算（10a）</div>`
-        + rows.map(r => `<div class="cdp-profit-row">${r}</div>`).join('')
-        + `</div>`;
-    }
-  }
-
-  // スコア表示クラス
-  const score = scoreEntry?.score ?? null;
-  const scoreCls = score == null ? '' : score >= 70 ? 'score-high' : score >= 40 ? 'score-mid' : 'score-low';
-  const viableTag = scoreEntry
-    ? (scoreEntry.viable
-        ? '<span class="cdp-viable cdp-viable-ok">✓ 栽培可</span>'
-        : '<span class="cdp-viable cdp-viable-ng">✗ 条件厳しい</span>')
-    : '';
-
-  // シート生成（既存を使いまわし）
-  let sheet = document.getElementById('adp-crop-detail-sheet');
-  if (!sheet) {
-    sheet = document.createElement('div');
-    sheet.id = 'adp-crop-detail-sheet';
-    sheet.className = 'adp-crop-detail-sheet';
-    document.body.appendChild(sheet);
-    // 背景タップで閉じる
-    sheet.addEventListener('click', e => {
-      if (e.target === sheet) _adpCloseCropDetailSheet();
-    });
-  }
-
-  sheet.innerHTML = `
-    <div class="cdp-inner">
-      <div class="cdp-handle"></div>
-      <div class="cdp-header">
-        <div class="cdp-crop-name">${escHtml(crop.name)}</div>
-        <div class="cdp-header-right">
-          ${score != null ? `<span class="cdp-score ${scoreCls}">${score}%</span>` : ''}
-          ${viableTag}
-        </div>
-        <button class="cdp-close" onclick="_adpCloseCropDetailSheet()">✕</button>
-      </div>
-      <div class="cdp-body">
-        ${detailRows ? `<div class="cdp-section"><div class="cdp-section-title">📊 スコア根拠</div>${detailRows}</div>` : ''}
-        <div class="cdp-section"><div class="cdp-section-title">📅 播種・収穫時期</div>${seasonHtml}</div>
-        ${gpHtml}
-        ${risksHtml}
-        ${profitHtml}
-        <div class="cdp-select-wrap">
-          <button class="cdp-select-btn" onclick="_adpSelectCropForAnalysis('${cropId}')">
-            ✅ この作物で各タブを更新
-          </button>
-        </div>
-      </div>
-    </div>`;
-
-  sheet.classList.add('open');
-}
-
-function _adpCloseCropDetailSheet() {
-  const sheet = document.getElementById('adp-crop-detail-sheet');
-  if (sheet) sheet.classList.remove('open');
-}
-
-// ─── 収益表示用フォーマット ───
 function _fmtMoney(val) {
   if (val == null) return '—';
   return val >= 10000
@@ -3296,7 +3182,6 @@ function _fmtMoney(val) {
 
 // ─── 「この作物で各タブを更新」→ 各ペインに反映 ───
 function _adpSelectCropForAnalysis(cropId) {
-  _adpCloseCropDetailSheet();
   _adpCloseRankingDialog();
 
   const ad = currentAreaData;
@@ -3658,11 +3543,6 @@ function _awDefaultFarmCond() {
 
 // アプリ起動時に一度だけ初期化（以降はデフォルトボタンでのみリセット）
 _awFarmCond = _awDefaultFarmCond();
-
-// ─── ウィザードパネルクローズ（旧互換・no-op化） ───
-function closeAnalysisWizard() {
-  // adp-wizard-panelはStep2で廃止済み。呼び出し元の残骸に対する安全スタブ。
-}
 
 // ═══════════════════════════════════════════
 //  Step 1: 営農条件入力
