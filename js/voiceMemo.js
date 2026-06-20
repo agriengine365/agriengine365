@@ -136,35 +136,61 @@ const VM_UNIT_PATTERN = /(\d+(?:\.\d+)?)\s*(トン|t(?:on)?|ｔ|kg|ｋｇ|キロ
 // ─────────────────────────────────────────
 
 // ─── 単一日付フラグメントを解析 ───
-// 戻り値: { date: 'YYYY-MM-DD', monthUnknown: bool }
+// 戻り値: { date: 'YYYY-MM-DD', monthUnknown: bool, dateUnresolved: bool, matchedText: string|null }
+// monthUnknown: 日は分かるが月が不明（月選択 UIで補完）
+// dateUnresolved: 手がかりが一切見つからず「今日」を仮置きした（手動修正必須）
+// matchedText: 日付として消費した生文字列（数量・単位抽出から除外するために使う）
 function _vmParseDateFragment(text) {
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
   const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const lastDayOfMonth = (year, month0) => new Date(year, month0 + 1, 0).getDate();
 
-  if (/今日|本日|きょう/.test(text)) return { date: fmt(now), monthUnknown: false };
-  if (/昨日|きのう/.test(text)) {
-    const d = new Date(now); d.setDate(d.getDate() - 1);
-    return { date: fmt(d), monthUnknown: false };
-  }
-  if (/明後日|あさって/.test(text)) {
+  let m;
+  if ((m = text.match(/今日|本日|きょう/))) return { date: fmt(now), monthUnknown: false, dateUnresolved: false, matchedText: m[0] };
+  if ((m = text.match(/明後日|あさって/))) {
     const d = new Date(now); d.setDate(d.getDate() + 2);
-    return { date: fmt(d), monthUnknown: false };
+    return { date: fmt(d), monthUnknown: false, dateUnresolved: false, matchedText: m[0] };
   }
-  if (/明日|あした|あす/.test(text)) {
+  if ((m = text.match(/明日|あした|あす/))) {
     const d = new Date(now); d.setDate(d.getDate() + 1);
-    return { date: fmt(d), monthUnknown: false };
+    return { date: fmt(d), monthUnknown: false, dateUnresolved: false, matchedText: m[0] };
   }
-  // 来週〇曜
-  const weekMatch = text.match(/来週\s*(月|火|水|木|金|土|日)/);
+  if ((m = text.match(/昨日|きのう/))) {
+    const d = new Date(now); d.setDate(d.getDate() - 1);
+    return { date: fmt(d), monthUnknown: false, dateUnresolved: false, matchedText: m[0] };
+  }
+  // （N）日後 ─ 「3日後」など。「〇日」単体より先に判定して誤認を防ぐ
+  const daysAfterMatch = text.match(/(\d{1,3})\s*日後/);
+  if (daysAfterMatch) {
+    const d = new Date(now); d.setDate(d.getDate() + parseInt(daysAfterMatch[1]));
+    return { date: fmt(d), monthUnknown: false, dateUnresolved: false, matchedText: daysAfterMatch[0] };
+  }
+  // 再来週〇曜（来週より先に判定）── 「今週の月曜」を基準に+14してから対象曜日へ
+  const reweekMatch = text.match(/再来週\s*(?:の\s*)?(月|火|水|木|金|土|日)?/);
+  if (reweekMatch) {
+    const dowMap = { '月':1,'火':2,'水':3,'木':4,'金':5,'土':6,'日':0 };
+    const d = new Date(now);
+    const daysSinceMonday = (d.getDay() - 1 + 7) % 7;
+    d.setDate(d.getDate() - daysSinceMonday + 14); // 再来週の月曜
+    if (reweekMatch[1]) {
+      const targetOffset = (dowMap[reweekMatch[1]] - 1 + 7) % 7;
+      d.setDate(d.getDate() + targetOffset);
+    }
+    return { date: fmt(d), monthUnknown: false, dateUnresolved: false, matchedText: reweekMatch[0] };
+  }
+  // 来週〇曜 ── 「今週の月曜」を基準に+7してから対象曜日へ
+  const weekMatch = text.match(/来週\s*(?:の\s*)?(月|火|水|木|金|土|日)/);
   if (weekMatch) {
     const dowMap = { '月':1,'火':2,'水':3,'木':4,'金':5,'土':6,'日':0 };
     const d = new Date(now);
-    const diff = ((dowMap[weekMatch[1]] - d.getDay() + 7) % 7) || 7;
-    d.setDate(d.getDate() + diff + 7);
-    return { date: fmt(d), monthUnknown: false };
+    const daysSinceMonday = (d.getDay() - 1 + 7) % 7;
+    d.setDate(d.getDate() - daysSinceMonday + 7); // 来週の月曜
+    const targetOffset = (dowMap[weekMatch[1]] - 1 + 7) % 7;
+    d.setDate(d.getDate() + targetOffset);
+    return { date: fmt(d), monthUnknown: false, dateUnresolved: false, matchedText: weekMatch[0] };
   }
-  // 今週〇曜 / 〇曜日
+  // 今週〇曜 / 〇曜日（次に来るその曜日。指定なしの「〇曜日」もここでカバー）
   const thiswMatch = text.match(/(今週\s*)?(月|火|水|木|金|土|日)曜/);
   if (thiswMatch) {
     const dowMap = { '月':1,'火':2,'水':3,'木':4,'金':5,'土':6,'日':0 };
@@ -172,42 +198,66 @@ function _vmParseDateFragment(text) {
     let diff = (dowMap[thiswMatch[2]] - d.getDay() + 7) % 7;
     if (diff === 0) diff = 7;
     d.setDate(d.getDate() + diff);
-    return { date: fmt(d), monthUnknown: false };
+    return { date: fmt(d), monthUnknown: false, dateUnresolved: false, matchedText: thiswMatch[0] };
   }
-  // 〇月〇日（月が明示されている）
+  // 〇月〇日（月が明示されている）── 年補正は行わず常に今年として扱う（作業メモは過去記録が多いため）
   const mdMatch = text.match(/(\d{1,2})月\s*(\d{1,2})日/);
   if (mdMatch) {
     const d = new Date(now.getFullYear(), parseInt(mdMatch[1])-1, parseInt(mdMatch[2]));
-    if (d < now && (now - d) > 86400000) d.setFullYear(d.getFullYear() + 1);
-    return { date: fmt(d), monthUnknown: false };
+    return { date: fmt(d), monthUnknown: false, dateUnresolved: false, matchedText: mdMatch[0] };
+  }
+  // 今月末 / 月末
+  const monthEndMatch = text.match(/(今月末|月末)/);
+  if (monthEndMatch) {
+    const day = lastDayOfMonth(now.getFullYear(), now.getMonth());
+    const d = new Date(now.getFullYear(), now.getMonth(), day);
+    return { date: fmt(d), monthUnknown: false, dateUnresolved: false, matchedText: monthEndMatch[0] };
+  }
+  // 来月（の〇日）
+  const nextMonthMatch = text.match(/来月\s*(?:の)?\s*(\d{1,2})?日?/);
+  if (nextMonthMatch && text.includes('来月')) {
+    const day = nextMonthMatch[1] ? parseInt(nextMonthMatch[1]) : 1;
+    const d = new Date(now.getFullYear(), now.getMonth() + 1, day);
+    return { date: fmt(d), monthUnknown: false, dateUnresolved: false, matchedText: nextMonthMatch[0] };
+  }
+  // 先月（の〇日）
+  const lastMonthMatch = text.match(/先月\s*(?:の)?\s*(\d{1,2})?日?/);
+  if (lastMonthMatch && text.includes('先月')) {
+    const day = lastMonthMatch[1] ? parseInt(lastMonthMatch[1]) : 1;
+    const d = new Date(now.getFullYear(), now.getMonth() - 1, day);
+    return { date: fmt(d), monthUnknown: false, dateUnresolved: false, matchedText: lastMonthMatch[0] };
   }
   // 〇日のみ（月が不明）→ monthUnknown フラグを立てて今月の日付を仮置き
-  const dayMatch = text.match(/(?<![月\d])(\d{1,2})日/);
+  const dayMatch = text.match(/(?<![月\d])(\d{1,2})日(?!後)(?!間)/);
   if (dayMatch) {
     const day = parseInt(dayMatch[1]);
     // 今月の日付として仮置き（ダイアログで月を確認する）
     const d = new Date(now.getFullYear(), now.getMonth(), day);
-    return { date: fmt(d), monthUnknown: true };
+    return { date: fmt(d), monthUnknown: true, dateUnresolved: false, matchedText: dayMatch[0] };
   }
-  return { date: fmt(now), monthUnknown: false };
+  // どのパターンにも一致しない ── 「今日」として黙説しに確定せず、手動確認を促す
+  return { date: fmt(now), monthUnknown: false, dateUnresolved: true, matchedText: null };
 }
 
 // ─── テキスト全体から作業日・出荷日を分離して解析 ───
-// 戻り値: { workDate, shipDate, workMonthUnknown, shipMonthUnknown }
+// 戻り値: { workDate, shipDate, workMonthUnknown, shipMonthUnknown, workDateUnresolved, shipDateUnresolved }
 function vmParseDate(text) {
   const now = new Date();
   const pad = n => String(n).padStart(2, '0');
   const fmt = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
 
+  // 日付手がかり文字クラス（新表現：先月・今月末・月末・再来週・N日後 にも対応）
+  const DC = '今昨明あ来先今週月末再\\d〇';
+
   // 出荷日コンテキスト：「出荷は〇日」「〇日に出荷」パターン
   const shipCtxPatterns = [
-    /出荷(?:は|が|を|日)?[はがをに]?\s*([今昨明あ来今週\d〇].{0,10}?(?:日|曜))/,
-    /([今昨明あ来今週\d〇].{0,10}?(?:日|曜))[にはがを]?出荷/,
+    new RegExp(`出荷(?:は|が|を|日)?[はがをに]?\\s*([${DC}].{0,12}?(?:日|曜|後))`),
+    new RegExp(`([${DC}].{0,12}?(?:日|曜|後))[にはがを]?出荷`),
   ];
   // 作業日コンテキスト：「収穫は〇日」「〇日に定植」など
   const workCtxPatterns = [
-    /(?:収穫|定植|播種|作業|耕起|施肥|防除|除草|灌水|乾燥|籾摺り)(?:は|が|を|日)?[はがをに]?\s*([今昨明あ来今週\d〇].{0,10}?(?:日|曜))/,
-    /([今昨明あ来今週\d〇].{0,10}?(?:日|曜))[にはがを]?(?:収穫|定植|播種|作業|耕起|施肥|防除|除草|灌水)/,
+    new RegExp(`(?:収穫|定植|播種|作業|耕起|施肥|防除|除草|灌水|乾燥|籾摺り)(?:は|が|を|日)?[はがをに]?\\s*([${DC}].{0,12}?(?:日|曜|後))`),
+    new RegExp(`([${DC}].{0,12}?(?:日|曜|後))[にはがを]?(?:収穫|定植|播種|作業|耕起|施肥|防除|除草|灌水)`),
   ];
 
   let shipRaw = null, workRaw = null;
@@ -226,11 +276,20 @@ function vmParseDate(text) {
   // どちらも取れなかった場合はテキスト全体から1つ取得
   const fallback = _vmParseDateFragment(text);
 
+  // 日付として消費された生文字列（数量・単位抽出から除外するために使う）
+  const dateMatchedTexts = [
+    workResult ? workResult.matchedText : (workRaw ? null : fallback.matchedText),
+    shipResult ? shipResult.matchedText : null,
+  ].filter(Boolean);
+
   return {
-    workDate:         workResult ? workResult.date  : fallback.date,
-    shipDate:         shipResult ? shipResult.date  : null,
-    workMonthUnknown: workResult ? workResult.monthUnknown : fallback.monthUnknown,
-    shipMonthUnknown: shipResult ? shipResult.monthUnknown : false,
+    workDate:           workResult ? workResult.date  : fallback.date,
+    shipDate:           shipResult ? shipResult.date  : null,
+    workMonthUnknown:   workResult ? workResult.monthUnknown : fallback.monthUnknown,
+    shipMonthUnknown:   shipResult ? shipResult.monthUnknown : false,
+    workDateUnresolved: workResult ? workResult.dateUnresolved : fallback.dateUnresolved,
+    shipDateUnresolved: shipResult ? shipResult.dateUnresolved : false,
+    dateMatchedTexts,
   };
 }
 
@@ -243,10 +302,19 @@ function vmParseText(rawText) {
 
   // 日付（作業日・出荷日を分離）
   const dateResult = vmParseDate(text);
-  const workDate         = dateResult.workDate;
-  const shipDate         = dateResult.shipDate;
-  const workMonthUnknown = dateResult.workMonthUnknown;
-  const shipMonthUnknown = dateResult.shipMonthUnknown;
+  const workDate           = dateResult.workDate;
+  const shipDate           = dateResult.shipDate;
+  const workMonthUnknown   = dateResult.workMonthUnknown;
+  const shipMonthUnknown   = dateResult.shipMonthUnknown;
+  const workDateUnresolved = dateResult.workDateUnresolved;
+  const shipDateUnresolved = dateResult.shipDateUnresolved;
+
+  // 日付として消費済みの文字列をテキストから除去（数量・単位抽出が「15日」「3日後」等を
+  // 誤って数量として拾わないようにするため。タグ・作物・資材の判定には影響させない）
+  let textForUnit = text;
+  for (const mt of dateResult.dateMatchedTexts) {
+    if (mt) textForUnit = textForUnit.split(mt).join('');
+  }
 
   // ─── タグ：スコアリング方式 ───
   const scores = VM_TAG_DICT
@@ -288,9 +356,10 @@ function vmParseText(rawText) {
     if (text.includes(m)) { material = m; break; }
   }
 
-  // 数量・単位
+  // 数量・単位（日付除去済みテキストから抽出。「3日間作業」のような期間表現の「日」は
+  // 日付として消費されていなければそのまま拾える）
   let quantity = null;
-  const unitMatch = text.match(VM_UNIT_PATTERN);
+  const unitMatch = textForUnit.match(VM_UNIT_PATTERN);
   if (unitMatch) quantity = unitMatch[0];
 
   // 出荷先
@@ -305,6 +374,7 @@ function vmParseText(rawText) {
   return {
     workDate, shipDate,
     workMonthUnknown, shipMonthUnknown,
+    workDateUnresolved, shipDateUnresolved,
     tag, tagCandidates, tagAmbiguous,
     crop, material, quantity, shipping, hasShippingWord,
     areaId,
@@ -556,6 +626,14 @@ function _vmBuildDialogHTML(parsed, rawText, areaId) {
         <select class="vm-select vm-month-sel" id="vm-ship-month">${monthOpts}</select>
       </div>` : '';
 
+  // 日付が一切特定できなかった場合の警告（月選択UIとは別。手動で日付inputを直接修正させる）
+  const workDateUnresolvedHTML = parsed.workDateUnresolved
+    ? `<div class="vm-date-unresolved-hint">⚠️ 日付が特定できませんでした。手動で選んでください</div>`
+    : '';
+  const shipDateUnresolvedHTML = parsed.shipDateUnresolved
+    ? `<div class="vm-date-unresolved-hint">⚠️ 日付が特定できませんでした。手動で選んでください</div>`
+    : '';
+
   // 出荷先タイプ
   const shippingTypes = [
     { key: 'ja',          label: '🌾 JA' },
@@ -612,12 +690,14 @@ function _vmBuildDialogHTML(parsed, rawText, areaId) {
           <div class="vm-field-row">
             <div class="vm-field">
               <label class="vm-label">作業日</label>
-              <input class="vm-input" type="date" id="vm-work-date" value="${parsed.workDate}">
+              <input class="vm-input${parsed.workDateUnresolved ? ' vm-input-unresolved' : ''}" type="date" id="vm-work-date" value="${parsed.workDate}">
+              ${workDateUnresolvedHTML}
               ${workMonthPickerHTML}
             </div>
             <div class="vm-field">
               <label class="vm-label">出荷日</label>
-              <input class="vm-input" type="date" id="vm-ship-date" value="${parsed.shipDate || ''}">
+              <input class="vm-input${parsed.shipDateUnresolved ? ' vm-input-unresolved' : ''}" type="date" id="vm-ship-date" value="${parsed.shipDate || ''}">
+              ${shipDateUnresolvedHTML}
               ${shipMonthPickerHTML}
             </div>
           </div>
@@ -763,6 +843,12 @@ function _vmApplyParsedToDialog(text, additive) {
   fill('vm-quantity',  p.quantity);
   fill('vm-ship-item', p.crop);
   fill('vm-ship-qty',  p.quantity);
+
+  // 日付未解決の強調表示を更新（追加録音で日付が新たに確定した場合は警告を外す）
+  const workDateEl = document.getElementById('vm-work-date');
+  if (workDateEl && !p.workDateUnresolved) workDateEl.classList.remove('vm-input-unresolved');
+  const shipDateEl = document.getElementById('vm-ship-date');
+  if (shipDateEl && !p.shipDateUnresolved) shipDateEl.classList.remove('vm-input-unresolved');
 
   if (p.tag && p.tag !== 'その他') {
     const sel = document.getElementById('vm-tag');

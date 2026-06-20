@@ -4124,6 +4124,19 @@ html.draw-dialog-active .bottom-nav {
   border-color: var(--accent, #4ADE80);
 }
 .vm-textarea { resize: none; }
+
+/* ─── 日付特定不能の警告（音声メモ確認ダイアログ） ─── */
+.vm-input-unresolved {
+  border-color: var(--amber) !important;
+  background: #2a2310;
+}
+.vm-date-unresolved-hint {
+  font-size: 11px;
+  color: var(--amber);
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
 .vm-confirm-footer {
   display: flex;
   gap: 8px;
