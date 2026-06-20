@@ -1011,7 +1011,7 @@ function vmMicButtonHTML() {
     </button>
     <div id="vm-recording-overlay" class="vm-recording-overlay" style="display:none;">
       <span class="vm-rec-dot"></span>
-      <span id="vm-interim-text" class="vm-interim-text">録音中...</span>
+      <span id="vm-interim-text" class="vm-interim-text">音声認識中...</span>
       <button class="vm-stop-btn" onclick="vmStopListening()">停止</button>
     </div>
   `;
