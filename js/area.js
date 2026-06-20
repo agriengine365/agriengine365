@@ -660,6 +660,7 @@ function _adpEnsureView() {
               <button class="cr-tab-major"        data-major="fiber"     onclick="crSwitchMajor('fiber')">繊維</button>
             </div>
             <div class="cr-tabs-minor" id="cr-tabs-minor" style="display:none;"></div>
+            <button class="adp-rk-cond-shortcut" onclick="_adpRkSwitchPane('cond')">⚙️ 条件設定</button>
           </div>
           <div id="crop-ranking"><div class="empty-mini">計算中...</div></div>
         </div>
@@ -678,6 +679,7 @@ function _adpEnsureView() {
               <button class="cr-tab-major"        data-major="fiber"     onclick="crSwitchMajor('fiber')">繊維</button>
             </div>
             <div class="cr-tabs-minor" id="cr-tabs-minor-profit" style="display:none;"></div>
+            <button class="adp-rk-cond-shortcut" onclick="_adpRkSwitchPane('cond')">⚙️ 条件設定</button>
           </div>
           <div id="crop-ranking-profit"><div class="empty-mini">計算中...</div></div>
         </div>
@@ -1668,38 +1670,43 @@ function _adpRenderClimateRankingList(el, pane) {
     const est = _buildEstimatedSeasonLabel(r);
     const seasonHtml = _buildSeasonBlockHtml(r.crop, est);
 
-    // ── 高温リスク行 ──
-    const hr = r.heatRisk;
-    const heatHtml = hr
-      ? (() => {
-          const lvCls = hr.riskLevel === 'none' ? 'heat-none'
-                      : hr.riskLevel === 'low'  ? 'heat-low'
-                      : hr.riskLevel === 'mid'  ? 'heat-mid'
-                      : 'heat-high';
-          const countTxt = hr.hotDecadeCount > 0
-            ? `<span class="heat-count">約${hr.hotDayApprox ?? hr.hotDecadeCount * 10}日以上 (${hr.threshold}℃超)</span>`
-            : '';
-          return `<div class="cr-heat-row ${lvCls}">
-            <span class="heat-label">高温リスク</span>
-            <span class="heat-stars">${hr.riskStars}</span>
-            ${countTxt}
-          </div>`;
-        })()
-      : '';
+    // ── 高温リスク行・詳細リスク行（霜・冷害・日照不足・寒暖差ボーナス） ──
+    //  「適合度ランキング」(pane==='ranking')では⚠️リスクタブへ表示を集約するため非表示。
+    //  「生育期間」(pane==='growth')のリストでは従来通り表示する。
+    let heatHtml = '';
+    let detailRisksHtml = '';
+    if (pane !== 'ranking') {
+      const hr = r.heatRisk;
+      heatHtml = hr
+        ? (() => {
+            const lvCls = hr.riskLevel === 'none' ? 'heat-none'
+                        : hr.riskLevel === 'low'  ? 'heat-low'
+                        : hr.riskLevel === 'mid'  ? 'heat-mid'
+                        : 'heat-high';
+            const countTxt = hr.hotDecadeCount > 0
+              ? `<span class="heat-count">約${hr.hotDayApprox ?? hr.hotDecadeCount * 10}日以上 (${hr.threshold}℃超)</span>`
+              : '';
+            return `<div class="cr-heat-row ${lvCls}">
+              <span class="heat-label">高温リスク</span>
+              <span class="heat-stars">${hr.riskStars}</span>
+              ${countTxt}
+            </div>`;
+          })()
+        : '';
 
-    // ── 詳細リスク行（霜・冷害・日照不足・寒暖差ボーナス／タップ展開時のみ表示） ──
-    const ar = r.allRisks;
-    const detailRisksHtml = ar
-      ? `<div class="cr-risk-detail-wrap">
-          ${_crRiskRowHtml('霜リスク',   ar.frost,
-              (ar.frost && ar.frost.frostDecadeCount > 0) ? `約${ar.frost.frostDayApprox}日 (0℃未満)` : '')}
-          ${_crRiskRowHtml('冷害リスク', ar.chill,
-              (ar.chill && ar.chill.chillDecadeCount > 0) ? `約${ar.chill.chillDecadeCount * 10}日 (${ar.chill.chillThreshold}℃未満)` : '')}
-          ${_crRiskRowHtml('日照不足',   ar.sunDeficit,
-              ar.sunDeficit ? `充足率${ar.sunDeficit.sufficiencyPct}%` : '')}
-          ${_crBonusRowHtml(ar.diurnal)}
-        </div>`
-      : '';
+      const ar = r.allRisks;
+      detailRisksHtml = ar
+        ? `<div class="cr-risk-detail-wrap">
+            ${_crRiskRowHtml('霜リスク',   ar.frost,
+                (ar.frost && ar.frost.frostDecadeCount > 0) ? `約${ar.frost.frostDayApprox}日 (0℃未満)` : '')}
+            ${_crRiskRowHtml('冷害リスク', ar.chill,
+                (ar.chill && ar.chill.chillDecadeCount > 0) ? `約${ar.chill.chillDecadeCount * 10}日 (${ar.chill.chillThreshold}℃未満)` : '')}
+            ${_crRiskRowHtml('日照不足',   ar.sunDeficit,
+                ar.sunDeficit ? `充足率${ar.sunDeficit.sufficiencyPct}%` : '')}
+            ${_crBonusRowHtml(ar.diurnal)}
+          </div>`
+        : '';
+    }
 
     const idAttr = pane === 'growth' ? `adp-cr-item` : `cr-item`;
     return `
@@ -1765,63 +1772,16 @@ function _adpRenderRankingList() {
       ? `<span class="cr-gp-badge">${gpMin ?? '?'}〜${gpMax ?? '?'}日</span>`
       : '';
 
-    // 補正比較
-    const { compareHtml } = _adpBuildScoreCompare(s.crop.id, s.score, mode);
+    // 順位変動バッジ（栽培方式間のランク変化のみ。詳細な補正比較・気候リスクはStep上、
+    // それぞれ「条件設定」「⚠️リスクタブ」へ集約済みのためここでは表示しない）
     const rankDiff = ofScores ? _adpCalcRankDiff(s.crop.id, i, ofScores) : null;
     const rankDiffHtml = rankDiff != null && rankDiff !== 0
       ? `<span class="adp-rank-diff ${rankDiff > 0 ? 'adp-diff-up' : 'adp-diff-down'}">`
         + (rankDiff > 0 ? `▲${rankDiff}` : `▼${Math.abs(rankDiff)}`) + `</span>`
       : '';
 
-    // 播種収穫ブロック（DBモードでは気候推定なし）
+    // 播種収穫ブロック（DBモードでは気候推定なし）／アコーディオンで開閉する唯一の表示内容
     const seasonHtml = _buildSeasonBlockHtml(s.crop, null);
-
-    // ── 5種リスク（DBモード：decadeArrがあれば算出） ──
-    //  DB側では播種・収穫旬が未定のため、作物の生育期間（平均）から
-    //  最も温暖な旬を中心とした概算ウィンドウを仮算出し、その期間で
-    //  calcAllRisks を一括実行する（気候推定モードと同じ5種構造）。
-    const decadeArr = currentAreaData?.climate?.decadeArr ?? null;
-    let heatHtml = '';
-    let detailRisksHtml = '';
-    if (decadeArr && typeof calcAllRisks === 'function') {
-      const gpMin = s.crop.conditions?.growthPeriodMin ?? 60;
-      const gpMax = s.crop.conditions?.growthPeriodMax ?? gpMin + 30;
-      const gpDecades = Math.round(((gpMin + gpMax) / 2) / 10);
-      // 最も温暖な旬を播種起点として仮算出（簡易）
-      const tMean = decadeArr.tMean || decadeArr.tMax;
-      let startD = 0;
-      if (tMean) {
-        let best = -Infinity;
-        tMean.forEach((t, idx) => { if (t != null && t > best) { best = t; startD = idx; } });
-        startD = (startD - Math.round(gpDecades / 2) + 36) % 36;
-      }
-      const endD = (startD + gpDecades - 1) % 36;
-      const ar = calcAllRisks(s.crop, decadeArr, startD, endD);
-      const hr = ar.heat;
-      if (hr) {
-        const lvCls = hr.riskLevel === 'none' ? 'heat-none'
-                    : hr.riskLevel === 'low'  ? 'heat-low'
-                    : hr.riskLevel === 'mid'  ? 'heat-mid'
-                    : 'heat-high';
-        const countTxt = hr.hotDecadeCount > 0
-          ? `<span class="heat-count">約${hr.hotDayApprox ?? hr.hotDecadeCount * 10}日以上 (${hr.threshold}℃超)</span>`
-          : '';
-        heatHtml = `<div class="cr-heat-row ${lvCls}">
-          <span class="heat-label">高温リスク</span>
-          <span class="heat-stars">${hr.riskStars}</span>
-          ${countTxt}
-        </div>`;
-      }
-      detailRisksHtml = `<div class="cr-risk-detail-wrap">
-          ${_crRiskRowHtml('霜リスク',   ar.frost,
-              (ar.frost && ar.frost.frostDecadeCount > 0) ? `約${ar.frost.frostDayApprox}日 (0℃未満)` : '')}
-          ${_crRiskRowHtml('冷害リスク', ar.chill,
-              (ar.chill && ar.chill.chillDecadeCount > 0) ? `約${ar.chill.chillDecadeCount * 10}日 (${ar.chill.chillThreshold}℃未満)` : '')}
-          ${_crRiskRowHtml('日照不足',   ar.sunDeficit,
-              ar.sunDeficit ? `充足率${ar.sunDeficit.sufficiencyPct}%` : '')}
-          ${_crBonusRowHtml(ar.diurnal)}
-        </div>`;
-    }
 
     return `
       <div class="cr-item${isSelected ? ' cr-item-open' : ''}"
@@ -1837,10 +1797,6 @@ function _adpRenderRankingList() {
         <div class="cr-bar-track">
           <div class="cr-bar-fill ${scoreCls}" style="width:${s.score}%"></div>
         </div>
-        ${compareHtml ? `<div class="adp-score-compare">${compareHtml}</div>` : ''}
-        ${heatHtml}
-        ${detailRisksHtml}
-        ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
         <div class="season-block-wrap">${seasonHtml}</div>
       </div>
     `;

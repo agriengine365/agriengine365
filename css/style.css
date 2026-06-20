@@ -6697,6 +6697,32 @@ html.draw-dialog-active .bottom-nav {
   flex-wrap: wrap;
 }
 
+/* ── 条件設定ショートカットボタン（適合度／収益ランキング内・作物選択欄の右下） ── */
+.adp-rk-cond-shortcut {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text2);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.adp-rk-cond-shortcut:hover {
+  background: var(--bg2, var(--bg3));
+  border-color: var(--green3);
+  color: var(--text1, var(--text2));
+}
+.adp-rk-cond-shortcut:active {
+  opacity: 0.75;
+}
+
 /* ── シミュレーターフォーム ── */
 .adp-rk-sim-form {
   display: flex;
