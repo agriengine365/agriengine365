@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════════
 //  CROP_DB — 作物データベース
 //  223件 重複統合済み・calendar(sow/harvest)全件更新
-//  最終更新: kihada_herb/yomogi_herb の calendar欠損を解消
-//    （生薬用途のため山菜版とは収穫期が異なる：黄柏剥皮5-6月／もぐさ用葉6-7月）
+//  最終更新: legume5件(chickpea/lentil/mung_bean/lima_bean/runner_bean)のprice欠損を解消
+//    （国内卸データなし品目は輸入小売参考値、runner_beanは国産「白花豆」相場を採用）
 // ═══════════════════════════════════════════════════════════
 
 // eslint-disable-next-line no-unused-vars
@@ -14561,7 +14561,11 @@ const CROP_DB = [
       "max": 250,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 800,
+      "max": 1200,
+      "unit": "円/kg（国内栽培ほぼなし・輸入品小売参考値）"
+    },
     "risks": []
   },
   {
@@ -14623,7 +14627,11 @@ const CROP_DB = [
       "max": 180,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 700,
+      "max": 1300,
+      "unit": "円/kg（国内栽培ほぼなし・輸入品小売参考値）"
+    },
     "risks": []
   },
   {
@@ -14685,7 +14693,11 @@ const CROP_DB = [
       "max": 200,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 800,
+      "max": 1200,
+      "unit": "円/kg（国内栽培ほぼなし・輸入品小売参考値）"
+    },
     "risks": []
   },
   {
@@ -14747,7 +14759,11 @@ const CROP_DB = [
       "max": 250,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（直接相場データなし・類似大粒乾燥豆からの推定値）"
+    },
     "risks": []
   },
   {
@@ -14809,7 +14825,11 @@ const CROP_DB = [
       "max": 250,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 4000,
+      "max": 5000,
+      "unit": "円/kg（国産「白花豆」として高級菜豆市場で流通・豆問屋実勢価格）"
+    },
     "risks": []
   }
 ];
