@@ -3,14 +3,6 @@
 //  土地評価・土地プロフィール・適合レンジはADPパネル側へ移動済み
 // ═══════════════════════════════════════════
 
-// ─── scoreClass ガード（engine.js未ロード時のフォールバック） ───
-if (typeof scoreClass === 'undefined') {
-  window.scoreClass = function(score) {
-    if (score >= 80) return 'score-high';
-    if (score >= 55) return 'score-mid';
-    return 'score-low';
-  };
-}
 // ─── escHtml ガード（ui.js未ロード時のフォールバック） ───
 if (typeof escHtml === 'undefined') {
   window.escHtml = function(str) {
@@ -289,7 +281,8 @@ function _crBuildGauges(crop, profile) {
 }
 
 // ─── rangeGauge（共通） ───
-function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+// 2026-06: clamp() は engine.js 側の定義に一本化（index.htmlでengine.jsが
+// 先に読み込まれるため、ここでの再定義は不要だった）
 
 function rangeStatus(value, min, max) {
   if (!Number.isFinite(Number(value))) return 'missing';

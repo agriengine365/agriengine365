@@ -557,86 +557,9 @@ function calcConfidence(areaData) {
   return { pct: pts, items };
 }
 
-// ─── RENDER HELPERS ───
-
-/**
- * renderCropRanking(results, containerEl)
- *
- * scoreCrop() の結果配列を受け取り、#crop-ranking に描画する。
- * viable:false の品目には赤いアラートバナーを表示する。
- *
- * @param {Array}   results     scoreCrop() の返却値配列（score降順ソート済みを推奨）
- * @param {Element} containerEl 描画先 DOM 要素
- */
-function renderCropRanking(results, containerEl) {
-  if (!containerEl) return;
-  containerEl.innerHTML = '';
-
-  if (!results || results.length === 0) {
-    containerEl.innerHTML = '<p style="color:var(--text3);font-size:12px;">対象作物なし</p>';
-    return;
-  }
-
-  results.forEach((r, i) => {
-    const { crop, score, details, viable, alert: alertMsg, cultivationMode } = r;
-
-    // ── ラッパー ──
-    const wrap = document.createElement('div');
-    wrap.className = 'crop-rank-item' + (viable ? '' : ' crop-rank-unavailable');
-
-    // ── ヘッダー行 ──
-    const header = document.createElement('div');
-    header.className = 'crop-rank-header';
-    header.innerHTML = `
-      <span class="crop-rank-no">${i + 1}</span>
-      <span class="crop-rank-name">${crop.name}</span>
-      <span class="crop-rank-score ${scoreClass(score)}">${viable ? score + '%' : '—'}</span>
-    `;
-    wrap.appendChild(header);
-
-    // ── 栽培不可アラート ──
-    if (!viable && alertMsg) {
-      const banner = document.createElement('div');
-      banner.className = 'crop-alert-banner';
-      banner.innerHTML = `⚠️ ${alertMsg}`;
-      wrap.appendChild(banner);
-    }
-
-    // ── スコアバー（viable のときのみ） ──
-    if (viable) {
-      const barWrap = document.createElement('div');
-      barWrap.className = 'crop-score-bar-wrap';
-      barWrap.innerHTML = `
-        <div class="crop-score-bar-track">
-          <div class="crop-score-bar-fill ${scoreClass(score)}" style="width:${score}%"></div>
-        </div>
-      `;
-      wrap.appendChild(barWrap);
-    }
-
-    // ── 詳細（アコーディオン） ──
-    const detWrap = document.createElement('div');
-    detWrap.className = 'crop-rank-details';
-    details.forEach(d => {
-      const row = document.createElement('div');
-      row.className = 'crop-detail-row';
-      const icon = d.ok === true ? '✓' : d.ok === false ? '✗' : '–';
-      const cls  = d.ok === true ? 'det-ok' : d.ok === false ? 'det-ng' : 'det-na';
-      row.innerHTML = `<span class="det-icon ${cls}">${icon}</span><span class="det-text">${d.text}</span>`;
-      detWrap.appendChild(row);
-    });
-    wrap.appendChild(detWrap);
-
-    containerEl.appendChild(wrap);
-  });
-}
-
-/** スコア帯に応じた CSS クラスを返す */
-function scoreClass(score) {
-  if (score >= 80) return 'score-high';
-  if (score >= 55) return 'score-mid';
-  return 'score-low';
-}
+// 2026-06削除: renderCropRanking()/scoreClass() は #crop-ranking への描画用に
+// 開発初期に実装されたが、現在は area.js の _adpRenderRankingList() が実際の
+// 描画を担っており、どこからも呼ばれていないデッドコードだったため削除した。
 
 // ─── FERTILIZER ───
 function calcFertilizer(crop, areaSqm) {
