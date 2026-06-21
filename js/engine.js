@@ -932,9 +932,15 @@ function calculateProfitability(crop, areaData, scoreResult, landProfile, farmCo
 
   // 気温乖離補正: 年均気温と作物最適気温の差に基づくペナルティ
   // 最適気温 = (tempMeanMin + tempMeanMax) / 2
+  // 2026-06修正: scoreCrop()側で旬別データによる精密判定(気温25点)が
+  // 既に行われている場合(scoreResult.decadeMatchが非null)、ここで年平均
+  // ベースの粗い基準により再度ペナルティをかけると二重評価になるため適用しない。
+  // 旬別データがない場合(年平均フォールバック判定)のみ、このtempFactorで補正する。
   const cond    = crop.conditions || {};
+  const hasDecadeJudgment = !!(scoreResult && scoreResult.decadeMatch);
   let tempFactor = 1.0;
-  if (cond.tempMeanMin != null && cond.tempMeanMax != null && landProfile.avgTemp != null) {
+  if (!hasDecadeJudgment &&
+      cond.tempMeanMin != null && cond.tempMeanMax != null && landProfile.avgTemp != null) {
     const tOpt = (cond.tempMeanMin + cond.tempMeanMax) / 2;
     const diff  = Math.abs(landProfile.avgTemp - tOpt);
     // 2℃以内: ペナルティなし / 2〜8℃: 線形減少 / 8℃超: 最大20%減
@@ -1184,13 +1190,17 @@ function calcFarmingConditionScore(crop, conditions) {
 }
 
 // ─── 環境適性スコアと営農条件スコアの合成 ───
-// 環境適性(0-100) : 営農条件(0-20) = 100:20 ≒ 83.3%:16.7% の加重平均。
-// 環境適性（気候・土壌マッチ度）を主指標、営農条件を補助指標とする設計。
+// 環境適性(0-100) : 営農条件(0-20、合成時0.5倍で実質10点相当) ≒ 100:10 の加重平均。
+// 2026-06修正: 営農条件側の影響が強すぎる(理論上±16.7点)との判断により、
+// 重みを100:20→100:10相当に縮小。calcFarmingConditionScore()自体の内訳採点
+// (優先軸5/設備4/期間4/販売先4/規模経験3 = 20点満点)は変更せず、
+// 合成時にfarmingScoreを0.5倍してから正規化する方式で実装する。
 const ENV_SCORE_MAX     = 100;
-const FARMING_SCORE_MAX = 20;
+const FARMING_SCORE_MAX = 20;            // calcFarmingConditionScore()の内訳満点（変更なし）
+const FARMING_WEIGHT    = 0.5;           // 合成時の重み係数（20点 × 0.5 = 実質10点相当）
 function combineWithFarmingScore(baseScore, farmingScore) {
-  const combinedMax = ENV_SCORE_MAX + FARMING_SCORE_MAX; // 120
-  return Math.min(100, Math.round((baseScore + farmingScore) * 100 / combinedMax));
+  const combinedMax = ENV_SCORE_MAX + FARMING_SCORE_MAX * FARMING_WEIGHT; // 100 + 10 = 110
+  return Math.min(100, Math.round((baseScore + farmingScore * FARMING_WEIGHT) * 100 / combinedMax));
 }
 
 function buildAnalysisResult(areaData) {
