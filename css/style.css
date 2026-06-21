@@ -6689,12 +6689,20 @@ html.draw-dialog-active .bottom-nav {
 }
 
 /* ── 適合度ランキング フィルタ行 ── */
+/* 2026-06修正: 親要素(.adp-rk-pane)がoverflow-y:autoでスクロール領域のため、
+   この行も一緒に流れて見えなくなっていた。sticky化して画面上部に固定する。
+   .adp-rk-paneのpadding(12px)を打ち消すため左右に負マージン＋同量のpaddingを入れている。 */
 .adp-rk-match-controls {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 0 4px;
+  padding: 6px 12px 4px;
   flex-wrap: wrap;
+  position: sticky;
+  top: -12px;
+  z-index: 5;
+  background: var(--panel);
+  margin: -12px -12px 0;
 }
 
 /* ── 条件設定ショートカットボタン（適合度／収益ランキング内・作物選択欄の右下） ── */
