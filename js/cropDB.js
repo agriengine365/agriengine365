@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════
 //  CROP_DB — 作物データベース
 //  223件 重複統合済み・calendar(sow/harvest)全件更新
-//  最終更新: 重複削除(kurumi_forest/ginnan_nut/sansho_mi/takenoko_forest) + calendar埋め
+//  最終更新: kihada_herb/yomogi_herb の calendar欠損を解消
+//    （生薬用途のため山菜版とは収穫期が異なる：黄柏剥皮5-6月／もぐさ用葉6-7月）
 // ═══════════════════════════════════════════════════════════
 
 // eslint-disable-next-line no-unused-vars
@@ -12542,7 +12543,16 @@ const CROP_DB = [
       "growthPeriodMin": 365,
       "growthPeriodMax": 365
     },
-    "calendar": null,
+    "calendar": {
+      "transplant": [
+        3,
+        4
+      ],
+      "harvest": [
+        5,
+        6
+      ]
+    },
     "fertilizer": null,
     "yield": null,
     "price": null,
@@ -12662,7 +12672,16 @@ const CROP_DB = [
       "growthPeriodMin": 150,
       "growthPeriodMax": 180
     },
-    "calendar": null,
+    "calendar": {
+      "transplant": [
+        9,
+        10
+      ],
+      "harvest": [
+        6,
+        7
+      ]
+    },
     "fertilizer": null,
     "yield": null,
     "price": null,
