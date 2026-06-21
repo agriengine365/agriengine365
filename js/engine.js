@@ -49,7 +49,18 @@ const SUNSHINE_DEFAULT_ENGINE = {
  *   - cultivationMode : 'openField' | 'greenhouse' | 'heatedGreenhouse'
  *                       未指定は 'openField' として扱う
  *
- * 配点:  緯度25 + 標高20 + 気温25 + 土壌15 + pH15(nullなら除外)
+ * 配点:  緯度25 + 標高20 + 気温25 + 土壌15 + 降水量15 + 日照10 + pH15
+ *        満点125点 → score/maxScore*100 でパーセント換算
+ *
+ * 欠損データの扱い（2026-06 見直し）:
+ *   - エリア側データ欠損（pH未入力等）        : 軸ごと除外（maxScoreから外す）
+ *   - 作物DB側データ欠損（latMin/elevMax等）  : 中間点50%を付与（除外しない）
+ *     ※ cropDB.js 側の data 未整備が原因のケースが大半のため、
+ *       「除外」にすると軸数が減って他作物と相対比較できなくなる／
+ *       「満点」にすると逆にデータ不備が有利に働くため、中間点で中立化する。
+ *   - 降水量・pHの作物側欠損（rainfallMin/Max・phMin/Max）は従来通り除外。
+ *     データ件数が少なく(12/223件)、評価不能とみなす方が安全なため現状維持。
+ *
  * 返却:  { crop, score, details, viable, alert, cultivationMode }
  */
 function scoreCrop(crop, areaData) {
@@ -84,13 +95,27 @@ function scoreCrop(crop, areaData) {
   // ════════════════════════════════════════
   //  viable は常に true（スコアのみで評価）
   //  ※ 最低下限気温による除外は廃止
+  //  ※ 2026-06見直し: 下限除外の復活は見送り、代わりに各軸で
+  //     「深刻な不適合（スコアが実質0に到達）」を検知して
+  //     alert メッセージに集約する方式に変更。
+  //     viable=false への分岐（analysis.js / area.js のNG表示）は
+  //     現状到達しない設計上のフォールバックとして意図的に残している。
   // ════════════════════════════════════════
   const viable = true;
   let alert    = null;
 
+  // 深刻な不適合を軸ごとに記録 → 最後に優先度順で alert に集約
+  let severeTemp = null;
+  let severeLat  = null;
+  let severeElev = null;
+  let severeSoil = null;
+  let severeRain = null;
+  let severePh   = null;
+
   // ════════════════════════════════════════
   //  1. 緯度スコア (25点)
-  //     latMin/latMax がない場合はスキップ
+  //     latMin/latMax が作物DBに未定義の場合 → 中間点50%(12.5点)
+  //     ※ 除外ではなく中間点とする理由は JSDoc 参照
   // ════════════════════════════════════════
   const c0 = crop.conditions;
   if (lat !== null && c0.latMin != null && c0.latMax != null) {
@@ -103,14 +128,17 @@ function scoreCrop(crop, areaData) {
       const s    = Math.max(0, 25 - dist * 10);
       score += s;
       details.push({ ok: s > 0, text: `緯度 ${lat.toFixed(2)}° — 適正外 (${c0.latMin}–${c0.latMax}°)` });
+      if (s <= 0) severeLat = `緯度がこの作物の適正範囲から大きく外れています（${c0.latMin}〜${c0.latMax}°、現在地${lat.toFixed(1)}°）`;
     }
   } else if (c0.latMin == null || c0.latMax == null) {
-    details.push({ ok: null, text: '緯度範囲データなし — 緯度軸は評価対象外' });
+    maxScore += 25;
+    score += 12.5;
+    details.push({ ok: null, text: '緯度範囲データなし（作物DB未整備）— 中間値50%を使用' });
   }
 
   // ════════════════════════════════════════
   //  2. 標高スコア (20点)
-  //     elevMax がない場合はスキップ
+  //     elevMax が作物DBに未定義の場合 → 中間点50%(10点)
   // ════════════════════════════════════════
   if (crop.conditions.elevMax != null) {
     maxScore += 20;
@@ -123,10 +151,13 @@ function scoreCrop(crop, areaData) {
         const s    = Math.max(0, 20 - over / 20);
         score += s;
         details.push({ ok: false, text: `標高 ${Math.round(elev)}m — 上限(${crop.conditions.elevMax}m)超過` });
+        if (s <= 0) severeElev = `標高がこの作物の上限を大幅に超過しています（上限${crop.conditions.elevMax}m、現在地${Math.round(elev)}m）`;
       }
     }
   } else {
-    details.push({ ok: null, text: '標高制限データなし — 標高軸は評価対象外' });
+    maxScore += 20;
+    score += 10;
+    details.push({ ok: null, text: '標高制限データなし（作物DB未整備）— 中間値50%を使用' });
   }
 
   // ════════════════════════════════════════
@@ -289,6 +320,7 @@ function scoreCrop(crop, areaData) {
         monthlyMatch,
         decadeMatch,
       });
+      if (maxDiff >= 10) severeTemp = `加温が必要な期間の気温差が非常に大きく（最大${maxDiff}℃）、現実的な加温コストを超える可能性があります`;
     } else {
       const matchCount = decadeMatch.filter(v => v === true).length;
       const matchLabel = `${matchCount}/${total}旬適合`;
@@ -298,6 +330,7 @@ function scoreCrop(crop, areaData) {
         monthlyMatch,
         decadeMatch,
       });
+      if (total > 0 && matchCount < total * 0.3) severeTemp = `生育期間の気温適合度が低く（${matchLabel}）、生育不良のリスクが高い組み合わせです`;
     }
   } else if (rawBase !== null) {
     // フォールバック: 年均気温（旬別データなし）
@@ -312,6 +345,7 @@ function scoreCrop(crop, areaData) {
         : Math.max(0.1, 0.4 - (diff - 10) * 0.06);
       score += Math.round(25 * pts);
       details.push({ ok: diff < 10, text: `加温ハウス — 年均気温差 ${diff.toFixed(1)}℃補填` });
+      if (diff >= 10) severeTemp = `加温が必要な気温差が非常に大きく（${diff.toFixed(1)}℃）、現実的な加温コストを超える可能性があります`;
     } else {
       // 下限: ハウス時は閾値を-4緩和、上限: rawBase をそのまま比較
       const effectiveTMin = (c.tempMeanMin ?? -Infinity) - (isHouseMode ? 4 : 0);
@@ -323,6 +357,8 @@ function scoreCrop(crop, areaData) {
       } else {
         const effMinLabel = isHouseMode ? `${c.tempMeanMin}-4` : c.tempMeanMin;
         details.push({ ok: false, text: `推定年均気温 ${rawBase.toFixed(1)}℃ — 適正外(${effMinLabel}–${c.tempMeanMax}℃)` });
+        const tempDist = rawBase < effectiveTMin ? (effectiveTMin - rawBase) : (rawBase - (c.tempMeanMax ?? Infinity));
+        if (tempDist >= 3) severeTemp = `推定年均気温が適正範囲から大きく外れています（${effMinLabel}〜${c.tempMeanMax}℃、推定${rawBase.toFixed(1)}℃）`;
       }
     }
   }
@@ -335,23 +371,34 @@ function scoreCrop(crop, areaData) {
     // soilTypes が未定義の場合は [] でフォールバック
     const soilTypes = Array.isArray(crop.conditions.soilTypes) ? crop.conditions.soilTypes : [];
     if (soilType && soilType !== 'unknown') {
-      if (soilTypes.length === 0 || soilTypes.includes(soilType)) {
+      if (soilTypes.length === 0) {
+        // 作物DB側に土壌タイプ条件が未整備 → 中間点50%(7.5点)
+        // ※ 以前は無条件満点だったが、データ不備が有利になる逆転現象を防ぐため変更
+        score += 7.5;
+        details.push({ ok: null, text: '土壌タイプデータなし（作物DB未整備）— 中間値50%を使用' });
+      } else if (soilTypes.includes(soilType)) {
         score += 15;
-        details.push({ ok: true,  text: soilTypes.length === 0 ? '土壌タイプデータなし — 適合とみなす' : '土壌タイプ — 適合' });
+        details.push({ ok: true, text: '土壌タイプ — 適合' });
       } else {
         details.push({ ok: false, text: '土壌タイプ — 非推奨（土壌改良を要検討）' });
+        severeSoil = `エリアの土壌タイプ（${soilType}）はこの作物には非推奨です。土壌改良を要検討してください`;
       }
     } else {
-      // 未入力: 中間値 7点
+      // エリア側 未入力: 中間値 7点（従来どおり）
       score += 7;
       details.push({ ok: null, text: '土壌タイプ未入力 — 推定値使用' });
     }
   }
 
   // ════════════════════════════════════════
-  //  5. 降水量スコア (15点) ※仮置き TODO: 配点・ロジック調整
-  //     rainfallMin/Max がない場合はスキップ
+  //  5. 降水量スコア (15点)
+  //     2026-06 再設計: pH・標高と同系統の「適正範囲からの逸脱距離に
+  //     対する線形減衰」に統一。750mm乖離で配点0になる傾斜
+  //     （pHは3.0pH幅で0点、標高は400m超過で0点と同程度の厳しさ）。
+  //     rainfallMin/Max が作物DBにない場合（12/223件）は引き続き除外。
+  //     エリア側rainは緯度推定または実測AMeDASでほぼ常に値があるため対象外。
   // ════════════════════════════════════════
+  const RAIN_FALLOFF_DISTANCE = 750; // mm: この距離乖離で配点が0になる
   {
     const rain    = climate?.rain ?? null;
     const rMin    = crop.conditions.rainfallMin ?? null;
@@ -362,14 +409,14 @@ function scoreCrop(crop, areaData) {
         score += 15;
         details.push({ ok: true,  text: `年間降水量 ${rain}mm — 適正範囲(${rMin}–${rMax}mm)` });
       } else {
-        // TODO: 線形減点ロジックは後で調整
         const dist = Math.min(Math.abs(rain - rMin), Math.abs(rain - rMax));
-        const s    = Math.max(0, 15 - Math.round(dist / 50));
+        const s    = Math.max(0, 15 - (dist / RAIN_FALLOFF_DISTANCE) * 15);
         score += s;
         details.push({ ok: s > 0, text: `年間降水量 ${rain}mm — 適正外(${rMin}–${rMax}mm)` });
+        if (s <= 0) severeRain = `年間降水量がこの作物の適正範囲から大きく外れています（${rMin}〜${rMax}mm、推定${rain}mm）`;
       }
     } else {
-      details.push({ ok: null, text: '降水量データなし — 降水量軸は評価対象外' });
+      details.push({ ok: null, text: '降水量データなし（作物DB未整備）— 降水量軸は評価対象外' });
     }
   }
 
@@ -457,10 +504,24 @@ function scoreCrop(crop, areaData) {
       const s    = Math.max(0, 15 - Math.round(dist / 0.1) * 0.5);
       score += s;
       details.push({ ok: false, text: `土壌pH ${ph.toFixed(1)} — 適正外(${phMin}–${phMax})、矯正推奨` });
+      if (s <= 0) severePh = `土壌pHがこの作物の適正範囲から大きく外れています（${phMin}〜${phMax}、現在${ph.toFixed(1)}）。矯正が必須です`;
     }
   } else {
     // pH 情報なし: maxScore に加算せず評価不能扱い
     details.push({ ok: null, text: 'pH未入力 — pH軸は評価対象外' });
+  }
+
+  // ════════════════════════════════════════
+  //  深刻な不適合を優先度順に集約してalertへ
+  //  優先度: 気温 > 緯度/標高（地理的制約） > 土壌 > 降水量 > pH
+  //  最大2件まで表示（banner/cr-alertが長くなりすぎないよう制限）
+  // ════════════════════════════════════════
+  {
+    const severeIssues = [severeTemp, severeLat, severeElev, severeSoil, severeRain, severePh]
+      .filter(Boolean);
+    if (severeIssues.length > 0) {
+      alert = severeIssues.slice(0, 2).join('／');
+    }
   }
 
   // ════════════════════════════════════════
@@ -1106,6 +1167,16 @@ function calcFarmingConditionScore(crop, conditions) {
   return { score: Math.min(20, Math.round(pts)), details };
 }
 
+// ─── 環境適性スコアと営農条件スコアの合成 ───
+// 環境適性(0-100) : 営農条件(0-20) = 100:20 ≒ 83.3%:16.7% の加重平均。
+// 環境適性（気候・土壌マッチ度）を主指標、営農条件を補助指標とする設計。
+const ENV_SCORE_MAX     = 100;
+const FARMING_SCORE_MAX = 20;
+function combineWithFarmingScore(baseScore, farmingScore) {
+  const combinedMax = ENV_SCORE_MAX + FARMING_SCORE_MAX; // 120
+  return Math.min(100, Math.round((baseScore + farmingScore) * 100 / combinedMax));
+}
+
 function buildAnalysisResult(areaData) {
   const landProfile     = buildLandProfile(areaData);
   const scoringAreaData = areaDataFromLandProfile(areaData, landProfile);
@@ -1123,8 +1194,8 @@ function buildAnalysisResult(areaData) {
         const fs        = calcFarmingConditionScore(crop, farmCond);
         farmingScore    = fs.score;
         farmingDetails  = fs.details;
-        // 既存スコア(0-100)に対して最大+20点加算後、100点満点に正規化
-        totalScore = Math.min(100, Math.round(scoreResult.score * (100 / 120) + farmingScore * (100 / 120)));
+        // 環境適性(0-100)と営農条件(0-20)を100点満点に正規化して合成
+        totalScore = combineWithFarmingScore(scoreResult.score, farmingScore);
       }
 
       return {
@@ -1187,7 +1258,7 @@ function buildSingleCropAnalysis(cropId, areaData) {
     const fs       = calcFarmingConditionScore(crop, farmCond);
     farmingScore   = fs.score;
     farmingDetails = fs.details;
-    totalScore     = Math.min(100, Math.round(scoreResult.score * (100 / 120) + farmingScore * (100 / 120)));
+    totalScore     = combineWithFarmingScore(scoreResult.score, farmingScore);
   }
 
   const adjustedScoreResult = {

@@ -156,6 +156,13 @@ function _crFilteredScores() {
 // Phase3以降: adp-view開中はcrSwitchMajor/crSwitchMinor/runAnalysis内の分岐により
 // _adpRenderRankingList() / _adpRenderGrowthRankingList()（area.js）が直接呼ばれ、
 // この_crRenderList()自体は呼び出されない（adp-view非展開時のみ使われる経路）。
+//
+// ※ s.viable について（2026-06）:
+//   engine.js の scoreCrop() は viable を常時 true で返す設計のため、
+//   このファイル内の `s.viable ? ... : 'NG'` 分岐は現状到達しない。
+//   下限気温による完全除外は将来的な再導入の余地を残すため、
+//   表示ロジックはあえて削除せずフォールバックとして残している。
+//   現行版での「深刻な不適合」の伝達は s.alert（cr-alert）が担う。
 function _crRenderList() {
   const el = document.getElementById('crop-ranking');
   if (!el) return;
