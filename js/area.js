@@ -3588,6 +3588,13 @@ function _awSetCondition(key, value) {
   _awFarmCond[key] = value;
   _awRunAnalysis();               // currentAreaData.farmingConditions更新＋各タブ再計算
   _awRenderConditions();          // チップの選択状態を再描画
+  // 2026-06修正: 適合度ランキングペインが表示中の再描画呼び出しが抜けており、
+  // 作物選択中（_adpSelectedCropIdあり）に条件を変更すると#crop-rankingが
+  // runSingleCropAnalysis()で上書きした単一作物カードのままになり、
+  // 一覧の順位変化が画面に反映されないバグがあったため追加。
+  if (_adpRkCurrentPane === 'match') {
+    _adpRenderRankingList();
+  }
   // 収益ランキングペインが表示中なら即時再描画
   if (_adpRkCurrentPane === 'profit') {
     _adpRenderProfitRankingList();
@@ -3753,6 +3760,10 @@ function _awResetConditions() {
   _awFarmCond = _awDefaultFarmCond();
   _awRunAnalysis();
   _awRenderConditions();
+  // 2026-06修正: _awSetCondition()と同様、matchペイン表示中の再描画漏れを修正
+  if (_adpRkCurrentPane === 'match') {
+    _adpRenderRankingList();
+  }
   if (_adpRkCurrentPane === 'profit') {
     _adpRenderProfitRankingList();
   }
