@@ -550,20 +550,9 @@ function _adpEnsureView() {
     <!-- サマリーバー（常時表示） -->
     <div class="adp-summary-bar" id="adp-summary-bar">
 
-      <!-- 行1: 操作トグル -->
-      <div class="adp-summary-controls">
-        <button class="adp-select-crop-btn" onclick="adpOpenCropSelectFromSummary()" title="作物を選ぶ">🌱 作物を選ぶ</button>
-        <div class="adp-sb-cult-toggle">
-          <button class="adp-cult-btn active" data-mode="openField"        onclick="_adpSwitchCultivation('openField')">露地</button>
-          <button class="adp-cult-btn"        data-mode="greenhouse"       onclick="_adpSwitchCultivation('greenhouse')">ハウス</button>
-          <button class="adp-cult-btn"        data-mode="heatedGreenhouse" onclick="_adpSwitchCultivation('heatedGreenhouse')">加温</button>
-        </div>
-        <div class="adp-sb-eval-toggle">
-          <button class="adp-eval-mode-btn active" id="adp-eval-btn-db" data-eval="db"
-            onclick="_adpSetClimateMode(false)">📊 一般データベース</button>
-          <button class="adp-eval-mode-btn" id="adp-eval-btn-climate" data-eval="climate"
-            onclick="_adpSetClimateMode(true)">🌿 <span class="adp-eval-climate-label">エリア気候</span></button>
-        </div>
+      <!-- 行1: 条件編集ショートカット（作物選択・栽培方式・評価基準はランキング>条件設定タブへ統合） -->
+      <div class="adp-summary-shortcut">
+        <button class="adp-cond-shortcut-btn" onclick="_adpJumpToCondTab()">⚙️ 条件を編集</button>
       </div>
 
       <!-- 行2: 結果表示 -->
@@ -578,6 +567,7 @@ function _adpEnsureView() {
             <span class="adp-summary-score-label">総合スコア</span>
           </div>
           <div class="adp-summary-mode" id="adp-summary-mode">露地</div>
+          <div class="adp-summary-evalmode" id="adp-summary-evalmode">📊 DB</div>
           <div class="adp-summary-conf-wrap">
             <div class="conf-bar-track adp-summary-conf-track">
               <div class="conf-bar-fill" id="adp-conf-bar" style="width:0%"></div>
@@ -590,27 +580,27 @@ function _adpEnsureView() {
 
     </div>
 
-    <!-- サブタブバー（7タブ＋比較は条件付き） -->
+    <!-- サブタブバー（8タブ＋比較は条件付き） -->
     <div class="adp-subtabs" id="adp-subtabs">
-      <button class="adp-subtab active" data-subtab="ranking"  onclick="_adpSwitchSubTab('ranking')">🏆 ランキング</button>
-      <button class="adp-subtab"        data-subtab="growth"   onclick="_adpSwitchSubTab('growth')">📈 生育期間</button>
-      <button class="adp-subtab"        data-subtab="fert"     onclick="_adpSwitchSubTab('fert')">🧪 施肥</button>
-      <button class="adp-subtab"        data-subtab="risk"     onclick="_adpSwitchSubTab('risk')">⚠️ リスク</button>
-      <button class="adp-subtab"        data-subtab="calendar" onclick="_adpSwitchSubTab('calendar')">📅 カレンダー</button>
-      <button class="adp-subtab"        data-subtab="match"    onclick="_adpSwitchSubTab('match')">📊 適合度</button>
+      <button class="adp-subtab active" data-subtab="ranking"   onclick="_adpSwitchSubTab('ranking')">🏆 ランキング</button>
+      <button class="adp-subtab"        data-subtab="growth"    onclick="_adpSwitchSubTab('growth')">📈 生育期間</button>
+      <button class="adp-subtab"        data-subtab="tempchart" onclick="_adpSwitchSubTab('tempchart')">🌡️ 適温グラフ</button>
+      <button class="adp-subtab"        data-subtab="fert"      onclick="_adpSwitchSubTab('fert')">🧪 施肥</button>
+      <button class="adp-subtab"        data-subtab="risk"      onclick="_adpSwitchSubTab('risk')">⚠️ リスク</button>
+      <button class="adp-subtab"        data-subtab="calendar"  onclick="_adpSwitchSubTab('calendar')">📅 カレンダー</button>
+      <button class="adp-subtab"        data-subtab="match"     onclick="_adpSwitchSubTab('match')">📊 適合度</button>
       <button class="adp-subtab adp-subtab-compare" data-subtab="compare" onclick="_adpSwitchSubTab('compare')" style="display:none;">⚖️ 比較</button>
     </div>
 
     <!-- コンテンツ領域 -->
     <div class="adp-view-body">
 
-      <!-- ① 🏆 ランキング（条件設定／グラフ／適合度ランキング／収益ランキング／収益シミュレーターの5サブタブ） -->
+      <!-- ① 🏆 ランキング（条件設定／適合度ランキング／収益ランキング／収益シミュレーターの4サブタブ） -->
       <div class="adp-pane adp-pane-combined" id="adp-pane-ranking">
 
         <!-- ランキングタブ内ネストサブタブバー -->
         <div class="adp-rk-subtabs" id="adp-rk-subtabs">
           <button class="adp-rk-subtab active" data-rk-pane="cond"   onclick="_adpRkSwitchPane('cond')">条件設定</button>
-          <button class="adp-rk-subtab"        data-rk-pane="chart"  onclick="_adpRkSwitchPane('chart')">グラフ</button>
           <button class="adp-rk-subtab"        data-rk-pane="match"  onclick="_adpRkSwitchPane('match')">適合度ランキング</button>
           <button class="adp-rk-subtab"        data-rk-pane="profit" onclick="_adpRkSwitchPane('profit')">収益ランキング</button>
           <button class="adp-rk-subtab"        data-rk-pane="sim"    onclick="_adpRkSwitchPane('sim')">収益シミュレーター</button>
@@ -621,32 +611,7 @@ function _adpEnsureView() {
           <div id="adp-rk-cond-wrap"></div>
         </div>
 
-        <!-- 2) グラフ（旧adp-pane-rankingの中身をそのまま移植） -->
-        <div class="adp-rk-pane" id="adp-rk-pane-chart" style="display:none;">
-          <div class="adp-chart-sticky">
-            <!-- 🌤️ 気候サマリー（年均気温・年降水量・年間日照・標高+pH／気候帯） -->
-            <div id="adpc-climate-summary" class="adpc-climate-summary-wrap"></div>
-
-            <div class="adp-temp-chart-header">
-              <span class="adp-temp-chart-sub" id="adp-temp-chart-sub">作物を選択すると適正温度を重畳表示</span>
-            </div>
-            <div class="adp-temp-chart-wrap">
-              <canvas id="adp-temp-canvas"></canvas>
-            </div>
-            <div class="adp-temp-legend" id="adp-temp-legend"></div>
-
-            <!-- ☀️ 旬別日照チャート -->
-            <div class="adp-temp-chart-header">
-              <span class="adp-temp-chart-sub" id="adp-sun-chart-sub">旬別日照時間</span>
-            </div>
-            <div class="adp-temp-chart-wrap adp-sun-chart-wrap">
-              <canvas id="adp-sun-canvas"></canvas>
-            </div>
-            <div class="adp-temp-legend" id="adp-sun-legend"></div>
-          </div>
-        </div>
-
-        <!-- 3) 適合度ランキング（旧adp-ranking-dialogの中身をそのまま移植） -->
+        <!-- 2) 適合度ランキング（旧adp-ranking-dialogの中身をそのまま移植） -->
         <div class="adp-rk-pane" id="adp-rk-pane-match" style="display:none;">
           <div class="adp-rk-match-controls">
             <div class="cr-tabs-major" id="cr-tabs-major">
@@ -665,7 +630,7 @@ function _adpEnsureView() {
           <div id="crop-ranking"><div class="empty-mini">計算中...</div></div>
         </div>
 
-        <!-- 4) 収益ランキング -->
+        <!-- 3) 収益ランキング -->
         <div class="adp-rk-pane" id="adp-rk-pane-profit" style="display:none;">
           <div class="adp-rk-match-controls">
             <div class="cr-tabs-major" id="cr-tabs-major-profit">
@@ -684,7 +649,7 @@ function _adpEnsureView() {
           <div id="crop-ranking-profit"><div class="empty-mini">計算中...</div></div>
         </div>
 
-        <!-- 5) 収益シミュレーター（枠組みのみ・Step5で実装） -->
+        <!-- 4) 収益シミュレーター（枠組みのみ・Step5で実装） -->
         <div class="adp-rk-pane" id="adp-rk-pane-sim" style="display:none;">
           <div id="adp-rk-sim-wrap" class="empty-mini">収益シミュレーターは準備中です（Step5で実装）。</div>
         </div>
@@ -718,6 +683,31 @@ function _adpEnsureView() {
 
         </div>
 
+      </div>
+
+      <!-- ③ 適温グラフ（気候サマリー＋気温チャート＋旬別日照チャート。旧ランキング内ネストタブ「グラフ」から最上位タブへ復帰） -->
+      <div class="adp-pane adp-pane-combined" id="adp-pane-tempchart" style="display:none;">
+        <div class="adp-chart-sticky">
+          <!-- 🌤️ 気候サマリー（年均気温・年降水量・年間日照・標高+pH／気候帯） -->
+          <div id="adpc-climate-summary" class="adpc-climate-summary-wrap"></div>
+
+          <div class="adp-temp-chart-header">
+            <span class="adp-temp-chart-sub" id="adp-temp-chart-sub">作物を選択すると適正温度を重畳表示</span>
+          </div>
+          <div class="adp-temp-chart-wrap">
+            <canvas id="adp-temp-canvas"></canvas>
+          </div>
+          <div class="adp-temp-legend" id="adp-temp-legend"></div>
+
+          <!-- ☀️ 旬別日照チャート -->
+          <div class="adp-temp-chart-header">
+            <span class="adp-temp-chart-sub" id="adp-sun-chart-sub">旬別日照時間</span>
+          </div>
+          <div class="adp-temp-chart-wrap adp-sun-chart-wrap">
+            <canvas id="adp-sun-canvas"></canvas>
+          </div>
+          <div class="adp-temp-legend" id="adp-sun-legend"></div>
+        </div>
       </div>
 
       <!-- ④ 施肥（Phase3で実装） -->
@@ -813,8 +803,14 @@ function _adpSetClimateMode(isClimate) {
   }
 }
 
-// ─── サブタブ切替（7タブ構成） ───
-const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'fert', 'risk', 'calendar', 'match', 'compare'];
+// ─── 条件編集ショートカット（サマリーバー行1 → ランキング>条件設定タブへジャンプ） ───
+function _adpJumpToCondTab() {
+  _adpSwitchSubTab('ranking');
+  _adpRkSwitchPane('cond');
+}
+
+// ─── サブタブ切替（8タブ構成） ───
+const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'compare'];
 let _adpCurrentSubTab = 'ranking'; // 現在のサブタブ
 
 function _adpSwitchSubTab(name) {
@@ -837,13 +833,19 @@ function _adpSwitchSubTab(name) {
   });
   // グラフペインを表示したときに再描画（offsetWidth が 0→正常になるため）
   if (name === 'growth') {
-    // 生育期間ペイン用トグルを確実に生成してからモードを同期
-    _adpEnsureCultivationToggle();
+    // 栽培方式トグルは条件設定タブが単一管理元のため、active状態のみ同期
     const currentMode = currentAreaData?.cultivationMode || 'openField';
     document.querySelectorAll('.adp-cult-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.mode === currentMode);
     });
     setTimeout(() => _adpRenderGrowthChart(_adpSelectedCropId), 30);
+  }
+  // 適温グラフペインを表示したときに再描画（offsetWidth が 0→正常になるため）
+  if (name === 'tempchart') {
+    setTimeout(() => {
+      _adpRenderTempChart(_adpSelectedCropId);
+      _adpRenderSunshineChart();
+    }, 30);
   }
   if (name === 'calendar') {
     // マイクボタン注入（voiceMemo.js）
@@ -875,8 +877,8 @@ function _adpSwitchSubTab(name) {
   }
 }
 
-// ─── 🏆ランキングタブ内サブタブ切替（5分割：条件設定/グラフ/適合度ランキング/収益ランキング/シミュレーター） ───
-const ADP_RK_PANE_KEYS = ['cond', 'chart', 'match', 'profit', 'sim'];
+// ─── 🏆ランキングタブ内サブタブ切替（4分割：条件設定/適合度ランキング/収益ランキング/シミュレーター） ───
+const ADP_RK_PANE_KEYS = ['cond', 'match', 'profit', 'sim'];
 let _adpRkCurrentPane  = 'cond'; // 現在のランキング内サブタブ
 
 // ─── 収益シミュレーター用モジュール変数 ───
@@ -905,10 +907,6 @@ function _adpRkSwitchPane(paneKey) {
     el.style.display = (p === paneKey) ? '' : 'none';
   });
 
-  // グラフペイン表示時にチャート再描画（offsetWidth が 0→正常になるため）
-  if (paneKey === 'chart') {
-    setTimeout(() => _adpRenderTempChart(_adpSelectedCropId), 30);
-  }
   // 適合度ランキングペイン表示時にリスト再描画
   if (paneKey === 'match') {
     _adpRenderRankingList();
@@ -1031,21 +1029,38 @@ function _adpRenderProfitRankingList() {
   }).join('');
 }
 
-// ─── サマリーバー更新 ───
-function _adpUpdateSummaryBar({ cropName, areaName, score, mode, confPct, confLabel } = {}) {
+// ─── サマリーバー更新（条件設定タブ先頭の作物名表示も同期） ───
+function _adpEvalModeLabel() {
+  return _adpClimateMode ? '🌿 気候' : '📊 DB';
+}
+function _awSelectedCropName() {
+  if (!_adpSelectedCropId) return null;
+  const scoreEntry = (typeof _crScores !== 'undefined')
+    ? _crScores.find(s => s.crop.id === _adpSelectedCropId) : null;
+  const crop = scoreEntry?.crop
+    ?? (typeof CROP_DB !== 'undefined'
+        ? (CROP_DB.find ? CROP_DB.find(c => c.id === _adpSelectedCropId)
+          : Object.values(CROP_DB).flat().find(c => c.id === _adpSelectedCropId))
+        : null);
+  return crop?.name ?? null;
+}
+function _adpUpdateSummaryBar({ cropName, areaName, score, mode, evalMode, confPct, confLabel } = {}) {
   const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.textContent = val; };
-  set('adp-summary-crop',  cropName  ?? '—');
-  set('adp-summary-area',  areaName  ?? '—');
-  set('adp-summary-score', score != null ? score + '%' : '—');
-  set('adp-summary-mode',  mode      ?? '');
-  set('adp-conf-pct',      confPct   ?? '0%');
-  set('adp-conf-label',    confLabel ?? '—');
+  set('adp-summary-crop',     cropName  ?? '—');
+  set('adp-summary-area',     areaName  ?? '—');
+  set('adp-summary-score',    score != null ? score + '%' : '—');
+  set('adp-summary-mode',     mode      ?? '');
+  set('adp-summary-evalmode', evalMode  ?? '');
+  set('adp-conf-pct',         confPct   ?? '0%');
+  set('adp-conf-label',       confLabel ?? '—');
   const bar = document.getElementById('adp-conf-bar');
   if (bar && confPct != null) bar.style.width = confPct;
   const scoreEl = document.getElementById('adp-summary-score');
   if (scoreEl && score != null) {
     scoreEl.style.color = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--amber)' : 'var(--red)';
   }
+  // 条件設定タブ先頭の作物選択ボタン表示を同期
+  set('adp-rk-cond-crop-name', cropName ?? '🌱 作物を選ぶ');
 }
 
 // ─── カレンダー描画 ───
@@ -1399,10 +1414,6 @@ function _adpRenderRanking(area) {
   _crMinor  = null;
 }
 
-// ─── 栽培方式トグル（サマリーバーに移動済み・ダイアログへの挿入は不要） ───
-function _adpEnsureCultivationToggle() {
-  // サマリーバーのトグルで一元管理するためダイアログへの挿入は行わない
-}
 
 // ─── 栽培方式切替（気温適性・生育期間ペイン共通） ───
 function _adpSwitchCultivation(mode) {
@@ -3145,6 +3156,7 @@ function adpCropTap(el, cropId) {
         areaName: _adpArea?.name ?? null,
         score:    _scoreVal,
         mode:     modeLabels[ad?.cultivationMode] || '露地栽培',
+        evalMode: _adpEvalModeLabel(),
       });
       
     }
@@ -3223,6 +3235,7 @@ function _adpSelectCropForAnalysis(cropId) {
     areaName: _adpArea?.name ?? null,
     score:    _scoreVal,
     mode:     modeLabels[ad.cultivationMode] || '露地栽培',
+    evalMode: _adpEvalModeLabel(),
   });
   
 
@@ -3239,10 +3252,6 @@ function _adpSelectCropForAnalysis(cropId) {
   }
 }
 
-// ─── サマリーバー「作物を選ぶ」→ カテゴリ一覧シート ───
-function adpOpenCropSelectFromSummary() {
-  _adpOpenCropSelectSheet();
-}
 
 function _adpOpenCropSelectSheet() {
   // CROP_DB取得
@@ -3461,7 +3470,7 @@ const FARM_COND_GROUPS = [
       { value: 'easywork', label: '手間最小', icon: '🪶' },
       { value: 'lowrisk',  label: '低リスク', icon: '🛡️' },
   ]},
-  { key: 'equipment', label: '設備', icon: '🏗️', options: [
+  { key: 'equipment', label: '設備（好みスコア用）', icon: '🏗️', options: [
       { value: 'openField',  label: '露地のみ',   icon: '☀️' },
       { value: 'greenhouse', label: 'ハウスあり', icon: '🏠' },
       { value: 'paddy',      label: '水田利用可', icon: '💧' },
@@ -3534,8 +3543,18 @@ function _awRenderConditions() {
   const isClimate = _adpClimateMode;
   const areaName  = currentAreaData?.name || _awArea?.name || null;
   const climateLabel = areaName ? `${areaName}の気候` : 'エリア気候';
+  const selectedCropName = _awSelectedCropName();
 
   wrap.innerHTML = `
+    <div class="adp-rk-cond-group adp-rk-cond-crop-group">
+      <div class="adp-rk-cond-label">🌱 対象作物</div>
+      <div class="adp-rk-cond-row">
+        <button class="adp-select-crop-btn" onclick="_adpOpenCropSelectSheet()" id="adp-rk-cond-crop-btn">
+          <span id="adp-rk-cond-crop-name">${selectedCropName ? escHtml(selectedCropName) : '🌱 作物を選ぶ'}</span>
+        </button>
+      </div>
+    </div>
+    <div class="adp-rk-cond-divider"></div>
     <div class="adp-rk-cond-group">
       <div class="adp-rk-cond-label">🌡️ 栽培方式</div>
       <div class="adp-rk-cond-row">
@@ -3751,6 +3770,7 @@ function _awUpdateLivePreview() {
       areaName: _awArea?.name || null,
       score: scoreVal,
       mode: modeLabel,
+      evalMode: _adpEvalModeLabel(),
     });
   }
 }

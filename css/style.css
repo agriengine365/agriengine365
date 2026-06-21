@@ -6175,47 +6175,27 @@ html.draw-dialog-active .bottom-nav {
   padding: 0;
 }
 
-/* 行1: コントロール */
-.adp-summary-controls {
+/* 行1: 条件編集ショートカット（作物選択・栽培方式・評価基準はランキング>条件設定タブに統合済み） */
+.adp-summary-shortcut {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.adp-cond-shortcut-btn {
+  width: 100%;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 7px 10px 6px;
-  border-bottom: 1px solid var(--border, #1e3a22);
-  flex-wrap: wrap;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text2);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
 }
-
-/* 作物を選ぶボタン：マージン除去（flex内で管理） */
-.adp-summary-controls .adp-select-crop-btn {
-  margin-left: 0;
-  flex-shrink: 0;
-}
-
-/* 栽培方式トグル（サマリーバー内） */
-.adp-sb-cult-toggle {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
-.adp-sb-cult-toggle .adp-cult-btn {
-  padding: 3px 8px;
-  font-size: 11px;
-  flex: none;
-  border-radius: 6px;
-}
-
-/* DB/気候トグル（サマリーバー内） */
-.adp-sb-eval-toggle {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-  margin-left: auto;
-}
-.adp-sb-eval-toggle .adp-eval-mode-btn {
-  padding: 3px 8px;
-  font-size: 11px;
-  border-radius: 12px;
-  flex: none;
+.adp-cond-shortcut-btn:active {
+  opacity: 0.7;
 }
 
 /* 行2: 情報表示 */
@@ -6234,6 +6214,16 @@ html.draw-dialog-active .bottom-nav {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.adp-summary-mode,
+.adp-summary-evalmode {
+  font-size: 10px;
+  color: var(--text2);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
 }
 
 /* ランキングダイアログのevalトグルを非表示（サマリーバーに移動） */
