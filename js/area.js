@@ -4130,7 +4130,11 @@ function _simOnCropChange(newCropId) {
       if (sel) sel.value = _simSelectedCropId;
       return;
     }
+    // 2026-06修正: _simDirtyだけクリアし_simMemoryを消していなかったため、
+    // 「破棄」を選んでも同じ作物に戻ると入力値が復元されてしまうバグを修正。
+    // 他2箇所（_adpRkSwitchPane / closeAreaDetailPanel）と同様にキャッシュも削除する。
     _simDirty = false;
+    delete _simMemory[_simSelectedCropId];
   }
   _simSelectedCropId = newCropId;
   _adpRenderProfitSimulator();
