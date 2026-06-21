@@ -1269,7 +1269,12 @@ function buildSingleCropAnalysis(cropId, areaData) {
     farmingDetails,
   };
 
-  const profitability = calculateProfitability(crop, areaData, adjustedScoreResult, landProfile, farmCond, areaData.profitOverrides || null);
+  // 収益計算の適合率(suitabilityRate)は環境スコア(baseScore)のみを使用する。
+  // 営農条件(farmingScore)は priceMult/laborMult で別途反映済みのため、
+  // ここで totalScore(adjustedScoreResult.score) を渡すと二重に効いてしまう。
+  // buildAnalysisResult()（ランキング一覧）側は元々 scoreResult を渡しており、
+  // 本行はそれと整合させるための修正（2026-06）。
+  const profitability = calculateProfitability(crop, areaData, scoreResult, landProfile, farmCond, areaData.profitOverrides || null);
   const fertilizer    = calcFertilizer(crop, areaData.areaSqm || 0);
   const confidence    = calcConfidence(scoringAreaData);
 
