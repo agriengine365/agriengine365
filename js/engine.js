@@ -52,14 +52,18 @@ const SUNSHINE_DEFAULT_ENGINE = {
  * 配点:  緯度25 + 標高20 + 気温25 + 土壌15 + 降水量15 + 日照10 + pH15
  *        満点125点 → score/maxScore*100 でパーセント換算
  *
- * 欠損データの扱い（2026-06 見直し）:
- *   - エリア側データ欠損（pH未入力等）        : 軸ごと除外（maxScoreから外す）
- *   - 作物DB側データ欠損（latMin/elevMax等）  : 中間点50%を付与（除外しない）
- *     ※ cropDB.js 側の data 未整備が原因のケースが大半のため、
- *       「除外」にすると軸数が減って他作物と相対比較できなくなる／
- *       「満点」にすると逆にデータ不備が有利に働くため、中間点で中立化する。
- *   - 降水量・pHの作物側欠損（rainfallMin/Max・phMin/Max）は従来通り除外。
- *     データ件数が少なく(12/223件)、評価不能とみなす方が安全なため現状維持。
+ * 欠損データの扱い（2026-06 再見直し）:
+ *   - エリア側データ欠損（pH未入力・標高未取得等）            : 軸ごと除外（maxScoreから外す）
+ *   - 作物DB側データ欠損（latMin/elevMax/soilTypes/phMin等）  : 軸ごと除外（maxScoreから外す）
+ *     ※ 以前は緯度・標高・土壌のみ「中間点50%」を付与していたが、
+ *       herb等の特定カテゴリ（120/223件）に欠損が集中しており、
+ *       常に60点分（緯度25+標高20+土壌15、満点125点の48%）が固定値となって
+ *       土地適性に関わらずスコアの底上げ／頭打ちが起きる（=他カテゴリと
+ *       公平に比較できない）ことが判明したため廃止。
+ *       全軸「除外」に統一し、評価できる軸だけで％換算する方式とした。
+ *       （トレードオフ：評価軸が少ない作物はスコアの振れ幅が大きくなる）
+ *     ※ pHはこれまでドキュメント上は除外と記載しつつ実装ではデフォルト
+ *       範囲(5.0-7.5)で採点されてしまっていたため、本見直しで実装を修正。
  *
  * 返却:  { crop, score, details, viable, alert, cultivationMode }
  */
@@ -114,11 +118,12 @@ function scoreCrop(crop, areaData) {
 
   // ════════════════════════════════════════
   //  1. 緯度スコア (25点)
-  //     latMin/latMax が作物DBに未定義の場合 → 中間点50%(12.5点)
-  //     ※ 除外ではなく中間点とする理由は JSDoc 参照
+  //     latMin/latMax が作物DBに未定義の場合 → 軸を除外（maxScoreから外す）
   // ════════════════════════════════════════
   const c0 = crop.conditions;
-  if (lat !== null && c0.latMin != null && c0.latMax != null) {
+  if (c0.latMin == null || c0.latMax == null) {
+    details.push({ ok: null, text: '緯度範囲データなし（作物DB未整備）— 緯度軸は評価対象外' });
+  } else if (lat !== null) {
     maxScore += 25;
     if (lat >= c0.latMin && lat <= c0.latMax) {
       score += 25;
@@ -130,17 +135,15 @@ function scoreCrop(crop, areaData) {
       details.push({ ok: s > 0, text: `緯度 ${lat.toFixed(2)}° — 適正外 (${c0.latMin}–${c0.latMax}°)` });
       if (s <= 0) severeLat = `緯度がこの作物の適正範囲から大きく外れています（${c0.latMin}〜${c0.latMax}°、現在地${lat.toFixed(1)}°）`;
     }
-  } else if (c0.latMin == null || c0.latMax == null) {
-    maxScore += 25;
-    score += 12.5;
-    details.push({ ok: null, text: '緯度範囲データなし（作物DB未整備）— 中間値50%を使用' });
   }
 
   // ════════════════════════════════════════
   //  2. 標高スコア (20点)
-  //     elevMax が作物DBに未定義の場合 → 中間点50%(10点)
+  //     elevMax が作物DBに未定義の場合 → 軸を除外（maxScoreから外す）
   // ════════════════════════════════════════
-  if (crop.conditions.elevMax != null) {
+  if (crop.conditions.elevMax == null) {
+    details.push({ ok: null, text: '標高制限データなし（作物DB未整備）— 標高軸は評価対象外' });
+  } else {
     maxScore += 20;
     if (elev !== null) {
       if (elev <= crop.conditions.elevMax) {
@@ -154,10 +157,6 @@ function scoreCrop(crop, areaData) {
         if (s <= 0) severeElev = `標高がこの作物の上限を大幅に超過しています（上限${crop.conditions.elevMax}m、現在地${Math.round(elev)}m）`;
       }
     }
-  } else {
-    maxScore += 20;
-    score += 10;
-    details.push({ ok: null, text: '標高制限データなし（作物DB未整備）— 中間値50%を使用' });
   }
 
   // ════════════════════════════════════════
@@ -365,28 +364,28 @@ function scoreCrop(crop, areaData) {
 
   // ════════════════════════════════════════
   //  4. 土壌スコア (15点)
+  //     soilTypes が作物DBに未定義の場合 → 軸を除外（maxScoreから外す）
   // ════════════════════════════════════════
-  maxScore += 15;
   {
     // soilTypes が未定義の場合は [] でフォールバック
     const soilTypes = Array.isArray(crop.conditions.soilTypes) ? crop.conditions.soilTypes : [];
-    if (soilType && soilType !== 'unknown') {
-      if (soilTypes.length === 0) {
-        // 作物DB側に土壌タイプ条件が未整備 → 中間点50%(7.5点)
-        // ※ 以前は無条件満点だったが、データ不備が有利になる逆転現象を防ぐため変更
-        score += 7.5;
-        details.push({ ok: null, text: '土壌タイプデータなし（作物DB未整備）— 中間値50%を使用' });
-      } else if (soilTypes.includes(soilType)) {
-        score += 15;
-        details.push({ ok: true, text: '土壌タイプ — 適合' });
-      } else {
-        details.push({ ok: false, text: '土壌タイプ — 非推奨（土壌改良を要検討）' });
-        severeSoil = `エリアの土壌タイプ（${soilType}）はこの作物には非推奨です。土壌改良を要検討してください`;
-      }
+    if (soilTypes.length === 0) {
+      details.push({ ok: null, text: '土壌タイプデータなし（作物DB未整備）— 土壌軸は評価対象外' });
     } else {
-      // エリア側 未入力: 中間値 7点（従来どおり）
-      score += 7;
-      details.push({ ok: null, text: '土壌タイプ未入力 — 推定値使用' });
+      maxScore += 15;
+      if (soilType && soilType !== 'unknown') {
+        if (soilTypes.includes(soilType)) {
+          score += 15;
+          details.push({ ok: true, text: '土壌タイプ — 適合' });
+        } else {
+          details.push({ ok: false, text: '土壌タイプ — 非推奨（土壌改良を要検討）' });
+          severeSoil = `エリアの土壌タイプ（${soilType}）はこの作物には非推奨です。土壌改良を要検討してください`;
+        }
+      } else {
+        // エリア側 未入力: 中間値 7点（従来どおり）
+        score += 7;
+        details.push({ ok: null, text: '土壌タイプ未入力 — 推定値使用' });
+      }
     }
   }
 
@@ -486,14 +485,17 @@ function scoreCrop(crop, areaData) {
 
   // ════════════════════════════════════════
   //  7. pH スコア (15点)
-  //     null のとき: maxScore から除外（評価不能）
-  //     フォールバック: phMin=5.0 / phMax=7.5
+  //     エリア側(ph)・作物DB側(phMin/phMax)のどちらかが欠損 → 軸を除外
+  //     2026-06修正: 旧実装はcrop側phMin/phMax欠損時にデフォルト値
+  //     (5.0-7.5)で採点してしまっており、ドキュメントの「除外」と
+  //     実装が不一致だったため修正（対象12/223件）。
   // ════════════════════════════════════════
-  if (ph !== null) {
+  if (c0.phMin == null || c0.phMax == null) {
+    details.push({ ok: null, text: 'pH範囲データなし（作物DB未整備）— pH軸は評価対象外' });
+  } else if (ph !== null) {
     maxScore += 15;
-    const c      = crop.conditions;
-    const phMin  = (c.phMin  !== undefined && c.phMin  !== null) ? c.phMin  : 5.0;
-    const phMax  = (c.phMax  !== undefined && c.phMax  !== null) ? c.phMax  : 7.5;
+    const phMin = c0.phMin;
+    const phMax = c0.phMax;
 
     if (ph >= phMin && ph <= phMax) {
       score += 15;
@@ -507,7 +509,7 @@ function scoreCrop(crop, areaData) {
       if (s <= 0) severePh = `土壌pHがこの作物の適正範囲から大きく外れています（${phMin}〜${phMax}、現在${ph.toFixed(1)}）。矯正が必須です`;
     }
   } else {
-    // pH 情報なし: maxScore に加算せず評価不能扱い
+    // pH 情報なし(エリア側): maxScore に加算せず評価不能扱い
     details.push({ ok: null, text: 'pH未入力 — pH軸は評価対象外' });
   }
 
@@ -854,10 +856,21 @@ const MARKETABLE_BASE = {
  * 成分:
  *   envRate    : 圃場環境リスク（洪水・干ばつ・積雪の平均）× 0.20
  *   cropRate   : 作物固有リスク（リスク項目のレベル別加算）
+ *                risks未記載（空配列）の場合はDEFAULT_CROP_RISK_RATEを適用
  *   continuousRate: 連作障害リスク（continuousCropYears=1 → 5%、それ以外 → 2%）
  *
  * 上限: 45%（過大な控除を防ぐ）
  */
+// risksが未記載(空配列)の作物に適用するデフォルト控除率。
+// 「リスクがゼロ」ではなく「データ未確認」を意味する値として扱う。
+// 2026-06導入: risks記載済み73作物(223件中)の実測cropRate平均値
+// （16.3%、中央値16.0%）に基づく。
+// 導入理由: risks=0件→控除0%のままだと、米・麦・大豆等のデータを
+// 丁寧に整備した主要作物(cropRate16〜28%)ほど収益で不利になり、
+// herb/oil/fiber(全件risks=0件)等のデータが薄いカテゴリが常に
+// 有利になる逆転現象が起きていたため。
+const DEFAULT_CROP_RISK_RATE = 0.16;
+
 function calculateRiskDeductionRate(crop, landProfile) {
   // 環境リスク: 3指標の平均（0〜100）を 0〜1 に正規化し 0.20 を乗じる
   const envAvg = (
@@ -868,9 +881,12 @@ function calculateRiskDeductionRate(crop, landProfile) {
   const envRate = (envAvg / 100) * 0.20;
 
   // 作物固有リスク: high=8% / medium=4% / low=1.5%
-  const cropRate = (crop.risks || []).reduce((sum, r) => {
-    return sum + (r.level === 'high' ? 0.08 : r.level === 'medium' ? 0.04 : 0.015);
-  }, 0);
+  // risks未記載(空配列)の場合はデータ未確認とみなしデフォルト値を適用
+  const cropRate = (crop.risks && crop.risks.length > 0)
+    ? crop.risks.reduce((sum, r) => {
+        return sum + (r.level === 'high' ? 0.08 : r.level === 'medium' ? 0.04 : 0.015);
+      }, 0)
+    : DEFAULT_CROP_RISK_RATE;
 
   // 連作障害リスク
   const continuousRate = crop.conditions?.continuousCropYears <= 1 ? 0.05 : 0.02;
