@@ -2431,19 +2431,22 @@ html.draw-dialog-active #draw-scope {
 }
 .adp-analyze-btn:hover { opacity: 0.85; }
 
-/* ── サブタブバー ── */
+/* ── サブタブバー（8タブ対応: 横スクロール＋やや密にして折り返し/オーバーフローを防止） ── */
 .adp-subtabs {
   display: flex;
   flex-shrink: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
   border-bottom: 1px solid var(--border);
   background: var(--bg2);
 }
+.adp-subtabs::-webkit-scrollbar { display: none; }
 .adp-subtab {
-  flex: 1;
-  padding: 10px 4px;
-  font-size: 11px;
+  flex: 1 0 auto;
+  padding: 9px 4px;
+  font-size: 10px;
   font-family: var(--mono);
-  letter-spacing: 0.03em;
+  letter-spacing: 0.02em;
   color: var(--text3);
   background: none;
   border: none;
