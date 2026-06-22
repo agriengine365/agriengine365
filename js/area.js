@@ -548,35 +548,54 @@ function _adpEnsureView() {
       </div>
     </div>
 
-    <!-- サマリーバー（常時表示） -->
+    <!-- サマリーバー（常時表示・一本化リデザイン） -->
     <div class="adp-summary-bar" id="adp-summary-bar">
 
-      <!-- 行1: 条件編集ショートカット（作物選択・栽培方式・評価基準はランキング>条件設定タブへ統合） -->
-      <div class="adp-summary-shortcut">
-        <button class="adp-cond-shortcut-btn" onclick="_adpJumpToCondTab()">⚙️ 条件を編集</button>
+      <!-- 未選択時ガイド -->
+      <div class="adp-summary-guide" id="adp-summary-guide">
+        <span class="adp-summary-guide-icon">🌱</span>
+        <span class="adp-summary-guide-text">まず条件設定から作物を選んでください</span>
+        <button class="adp-summary-guide-btn" onclick="_adpJumpToCondTab()">⚙️ 条件を設定する</button>
       </div>
 
-      <!-- 行2: 結果表示 -->
-      <div class="adp-summary-info">
-        <div class="adp-summary-left">
-          <span class="adp-summary-crop" id="adp-summary-crop">—</span>
-          <span class="adp-summary-area" id="adp-summary-area">—</span>
-        </div>
-        <div class="adp-summary-right">
-          <div class="adp-summary-score-wrap">
-            <span class="adp-summary-score" id="adp-summary-score">—</span>
-            <span class="adp-summary-score-label">総合スコア</span>
-          </div>
-          <div class="adp-summary-mode" id="adp-summary-mode">露地</div>
-          <div class="adp-summary-evalmode" id="adp-summary-evalmode">📊 DB</div>
-          <div class="adp-summary-conf-wrap">
-            <div class="conf-bar-track adp-summary-conf-track">
-              <div class="conf-bar-fill" id="adp-conf-bar" style="width:0%"></div>
-            </div>
-            <span id="adp-conf-pct" class="adp-summary-conf-pct">0%</span>
-            <span id="adp-conf-label" class="adp-summary-conf-label">—</span>
+      <!-- 選択済み結果表示 -->
+      <div class="adp-summary-result" id="adp-summary-result" style="display:none">
+
+        <!-- 行1: 作物名 ＋ バッジ（栽培方式・評価モード） -->
+        <div class="adp-sum-row adp-sum-row-header">
+          <span class="adp-sum-crop" id="adp-summary-crop">—</span>
+          <span class="adp-sum-area" id="adp-summary-area">—</span>
+          <div class="adp-sum-badges">
+            <span class="adp-sum-badge adp-sum-badge-mode" id="adp-summary-mode"></span>
+            <span class="adp-sum-badge adp-sum-badge-eval" id="adp-summary-evalmode"></span>
           </div>
         </div>
+
+        <!-- 行2: 適合度バー -->
+        <div class="adp-sum-row adp-sum-row-bar">
+          <span class="adp-sum-bar-label">適合度</span>
+          <div class="adp-sum-bar-track">
+            <div class="adp-sum-bar-fill adp-sum-bar-score" id="adp-sum-score-bar" style="width:0%"></div>
+          </div>
+          <span class="adp-sum-bar-pct" id="adp-summary-score">—</span>
+          <span class="adp-sum-bar-grade" id="adp-sum-score-grade"></span>
+        </div>
+
+        <!-- 行3: 信頼度バー -->
+        <div class="adp-sum-row adp-sum-row-bar">
+          <span class="adp-sum-bar-label">信頼度</span>
+          <div class="adp-sum-bar-track">
+            <div class="adp-sum-bar-fill adp-sum-bar-conf" id="adp-conf-bar" style="width:0%"></div>
+          </div>
+          <span class="adp-sum-bar-pct" id="adp-conf-pct">—</span>
+          <span class="adp-sum-bar-grade" id="adp-conf-label"></span>
+        </div>
+
+        <!-- 行4: 条件変更ボタン -->
+        <div class="adp-sum-row adp-sum-row-action">
+          <button class="adp-sum-cond-btn" onclick="_adpJumpToCondTab()">⚙️ 条件を変更する</button>
+        </div>
+
       </div>
 
     </div>
@@ -1049,19 +1068,58 @@ function _awSelectedCropName() {
 }
 function _adpUpdateSummaryBar({ cropName, areaName, score, mode, evalMode, confPct, confLabel } = {}) {
   const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.textContent = val; };
-  set('adp-summary-crop',     cropName  ?? '—');
-  set('adp-summary-area',     areaName  ?? '—');
-  set('adp-summary-score',    score != null ? score + '%' : '—');
-  set('adp-summary-mode',     mode      ?? '');
-  set('adp-summary-evalmode', evalMode  ?? '');
-  set('adp-conf-pct',         confPct   ?? '0%');
-  set('adp-conf-label',       confLabel ?? '—');
-  const bar = document.getElementById('adp-conf-bar');
-  if (bar && confPct != null) bar.style.width = confPct;
-  const scoreEl = document.getElementById('adp-summary-score');
-  if (scoreEl && score != null) {
-    scoreEl.style.color = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--amber)' : 'var(--red)';
+
+  const hasCrop = cropName != null && cropName !== '—' && cropName !== '';
+  const guide  = document.getElementById('adp-summary-guide');
+  const result = document.getElementById('adp-summary-result');
+  if (guide)  guide.style.display  = hasCrop ? 'none'  : 'flex';
+  if (result) result.style.display = hasCrop ? 'block' : 'none';
+
+  if (!hasCrop) {
+    // 条件設定タブ先頭の作物選択ボタン表示を同期
+    set('adp-rk-cond-crop-name', '🌱 作物を選ぶ');
+    return;
   }
+
+  set('adp-summary-crop',     cropName);
+  set('adp-summary-area',     areaName ?? '—');
+  set('adp-summary-mode',     mode     ?? '');
+  set('adp-summary-evalmode', evalMode ?? '');
+
+  // 適合度バー
+  const scoreNum = score != null ? Number(score) : null;
+  const scoreBar = document.getElementById('adp-sum-score-bar');
+  const scoreEl  = document.getElementById('adp-summary-score');
+  const gradeEl  = document.getElementById('adp-sum-score-grade');
+  if (scoreNum != null) {
+    if (scoreBar) scoreBar.style.width = scoreNum + '%';
+    if (scoreEl)  scoreEl.textContent  = scoreNum + '%';
+    const gradeColor = scoreNum >= 70 ? 'var(--green)' : scoreNum >= 40 ? 'var(--amber)' : 'var(--red)';
+    if (scoreBar) scoreBar.style.background = gradeColor;
+    if (scoreEl)  scoreEl.style.color       = gradeColor;
+    if (gradeEl) {
+      gradeEl.textContent = scoreNum >= 70 ? '適合' : scoreNum >= 40 ? '要検討' : '不適';
+      gradeEl.style.color = gradeColor;
+    }
+  }
+
+  // 信頼度バー
+  const confNum = confPct != null ? parseInt(confPct) : null;
+  const confBar  = document.getElementById('adp-conf-bar');
+  const confPctEl = document.getElementById('adp-conf-pct');
+  const confLblEl = document.getElementById('adp-conf-label');
+  if (confNum != null) {
+    if (confBar)   confBar.style.width    = confNum + '%';
+    if (confPctEl) confPctEl.textContent  = confNum + '%';
+  }
+  // confLabel は呼び出し元から渡されるが、日本語に変換して上書き
+  const confJa = confNum == null ? '—'
+    : confNum >= 75 ? '高い'
+    : confNum >= 50 ? '普通'
+    : confNum >= 25 ? '低い'
+    : 'とても低い';
+  if (confLblEl) confLblEl.textContent = confJa;
+
   // 条件設定タブ先頭の作物選択ボタン表示を同期
   set('adp-rk-cond-crop-name', cropName ?? '🌱 作物を選ぶ');
 }
@@ -1947,6 +2005,11 @@ function _adpRenderClimateSummary(area) {
       value: climate.tempMean != null ? climate.tempMean.toFixed(1) : '—',
       unit:  '℃',
       color: _adpTempColor(climate.tempMean),
+      hint:  climate.tempMean == null ? null
+           : climate.tempMean >= 18 ? '温暖'
+           : climate.tempMean >= 13 ? '標準的'
+           : climate.tempMean >= 8  ? 'やや寒冷'
+           : '寒冷',
     },
     {
       icon:  '🌧️',
@@ -1954,6 +2017,11 @@ function _adpRenderClimateSummary(area) {
       value: climate.rain != null ? Math.round(climate.rain).toLocaleString() : '—',
       unit:  'mm',
       color: '#60a5fa',
+      hint:  climate.rain == null ? null
+           : climate.rain >= 2000 ? '多雨'
+           : climate.rain >= 1200 ? '標準的'
+           : climate.rain >= 700  ? '降水少なめ'
+           : '乾燥気味',
     },
     {
       icon:  '☀️',
@@ -1961,30 +2029,49 @@ function _adpRenderClimateSummary(area) {
       value: sunshine != null ? Math.round(sunshine).toLocaleString() : '—',
       unit:  'h',
       color: '#fbbf24',
+      hint:  sunshine == null ? null
+           : sunshine >= 2000 ? '日照豊富'
+           : sunshine >= 1500 ? '標準的'
+           : '日照少なめ',
     },
     {
       icon:  '🏔️',
-      label: '標高/pH',
+      label: '標高',
       value: elev != null ? Math.round(elev).toLocaleString() : '—',
       unit:  'm',
-      sub:   ph != null ? `pH ${ph.toFixed(1)}` : null,
       color: 'var(--text2)',
+      hint:  elev == null ? null
+           : elev >= 600 ? '高冷地'
+           : elev >= 200 ? '中標高'
+           : '平地',
+    },
+    {
+      icon:  '🧪',
+      label: '土壌pH',
+      value: ph != null ? ph.toFixed(1) : '—',
+      unit:  '',
+      color: ph == null ? 'var(--text2)' : ph >= 7.5 ? '#f87171' : ph >= 6.0 ? '#4ade80' : '#fbbf24',
+      hint:  ph == null ? null
+           : ph >= 7.5 ? 'アルカリ性'
+           : ph >= 6.0 ? '弱酸性（適正）'
+           : '酸性',
     },
   ];
 
   const badge = isStation
     ? `<span class="adpc-badge-ok">${climate.stationName}${climate.distKm != null ? '&nbsp;' + climate.distKm + 'km' : ''}</span>`
-    : `<span class="adpc-badge-warn">推定値</span>`;
+    : `<span class="adpc-badge-warn">📍 推定値（観測局なし）</span>`;
 
   el.innerHTML = `
-    <div class="adpc-mini-summary">
+    <div class="adpc-mini-summary adpc-mini-summary-5">
       ${cards.map(c => `
         <div class="adpc-mini-stat">
           <span class="adpc-mini-stat-icon">${c.icon}</span>
           <div class="adpc-mini-stat-body">
             <span class="adpc-mini-stat-label">${c.label}</span>
             <span class="adpc-mini-stat-value" style="color:${c.color}">${c.value}<span class="adpc-mini-stat-unit">${c.unit}</span></span>
-            ${c.sub ? `<span class="adpc-mini-stat-sub">${c.sub}</span>` : ''}
+            ${c.hint ? `<span class="adpc-mini-stat-hint">${c.hint}</span>` : ''}
+            ${c.sub  ? `<span class="adpc-mini-stat-sub">${c.sub}</span>`  : ''}
           </div>
         </div>
       `).join('')}

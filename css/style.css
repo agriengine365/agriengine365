@@ -6871,3 +6871,168 @@ html.draw-dialog-active .bottom-nav {
   background: var(--border, #2a3d2c);
   margin: 4px 0 14px;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   サマリーバー 一本化リデザイン
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 未選択ガイド */
+.adp-summary-guide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px;
+  text-align: center;
+}
+.adp-summary-guide-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+.adp-summary-guide-text {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.4;
+}
+.adp-summary-guide-btn {
+  padding: 7px 16px;
+  font-size: 12px;
+  color: var(--green);
+  background: var(--bg3);
+  border: 1px solid var(--green);
+  border-radius: 20px;
+  cursor: pointer;
+  margin-top: 2px;
+}
+.adp-summary-guide-btn:active { opacity: 0.7; }
+
+/* 選択済み結果ブロック */
+.adp-summary-result {
+  padding: 8px 12px 6px;
+}
+
+/* 各行の共通ルール */
+.adp-sum-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.adp-sum-row:last-child { margin-bottom: 0; }
+
+/* 行1: 作物名・エリア名・バッジ */
+.adp-sum-row-header {
+  flex-wrap: wrap;
+  row-gap: 3px;
+}
+.adp-sum-crop {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.adp-sum-area {
+  font-size: 11px;
+  color: var(--text2);
+  flex-shrink: 0;
+}
+.adp-sum-badges {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.adp-sum-badge {
+  font-size: 10px;
+  color: var(--text2);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* 行2・3: バー行 */
+.adp-sum-row-bar {
+  gap: 6px;
+}
+.adp-sum-bar-label {
+  font-size: 10px;
+  color: var(--text3);
+  width: 36px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.adp-sum-bar-track {
+  flex: 1;
+  height: 6px;
+  background: var(--bg3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.adp-sum-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+.adp-sum-bar-score { background: var(--green); }
+.adp-sum-bar-conf  { background: #60a5fa; }
+.adp-sum-bar-pct {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--text);
+  min-width: 30px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.adp-sum-bar-grade {
+  font-size: 10px;
+  font-weight: 600;
+  min-width: 44px;
+  flex-shrink: 0;
+}
+
+/* 行4: 条件変更ボタン */
+.adp-sum-row-action {
+  justify-content: center;
+  margin-top: 2px;
+}
+.adp-sum-cond-btn {
+  padding: 6px 20px;
+  font-size: 11px;
+  color: var(--text2);
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  cursor: pointer;
+  width: 100%;
+}
+.adp-sum-cond-btn:active { opacity: 0.7; }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   気候サマリー 5枚カード化＋ひとこと補足
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 5枚グリッド: 3列＋2列 (デフォルト) → 3+2 */
+.adpc-mini-summary-5 {
+  grid-template-columns: repeat(3, 1fr);
+}
+/* 5枚目（標高・pH）はモバイル4列時も継続 */
+@media (max-width: 380px) {
+  .adpc-mini-summary-5 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ラベルを8px→11pxに拡大 */
+.adpc-mini-summary-5 .adpc-mini-stat-label {
+  font-size: 11px;
+}
+
+/* ひとこと補足 */
+.adpc-mini-stat-hint {
+  font-size: 9px;
+  color: var(--text3);
+  white-space: nowrap;
+  margin-top: 1px;
+}
