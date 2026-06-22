@@ -5107,13 +5107,63 @@ html.draw-dialog-active .bottom-nav {
   gap: 4px;
 }
 
+.wc-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 0 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
 .wc-title {
   font-size: 12px;
   font-weight: 600;
   color: var(--text2);
-  padding: 0 0 6px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 2px;
+}
+
+.wc-save-btn {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--green, #4ade80);
+  background: rgba(74,222,128,0.12);
+  color: var(--green, #4ade80);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, opacity 0.15s;
+}
+.wc-save-btn:hover { background: rgba(74,222,128,0.22); }
+
+.wc-save-btn-saved {
+  background: rgba(74,222,128,0.28);
+}
+
+.wc-remove-btn {
+  border-color: rgba(239,68,68,0.7);
+  background: rgba(239,68,68,0.10);
+  color: rgba(248,113,113,0.95);
+}
+.wc-remove-btn:hover { background: rgba(239,68,68,0.18); }
+
+.adp-saved-cal-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+  margin: 14px 0 8px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
+.wc-saved-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 10px 8px;
+  margin-bottom: 8px;
 }
 
 .wc-header,
@@ -5792,6 +5842,25 @@ html.draw-dialog-active .bottom-nav {
   background: var(--green, #4ade80);
   color: #0a1a0c;
   border-color: var(--green, #4ade80);
+}
+
+/* 月絞り込みタブ（カテゴリタブと同じ行・青系で区別） */
+.css-tab-divider {
+  flex-shrink: 0;
+  width: 1px;
+  align-self: stretch;
+  background: var(--border, #1e3a22);
+  margin: 2px 2px;
+}
+.css-month-btn {
+  border-color: rgba(96,165,250,0.55);
+  background: rgba(96,165,250,0.08);
+  color: #cfe3fb;
+}
+.css-month-btn.active {
+  background: #60a5fa;
+  border-color: #60a5fa;
+  color: #0a1a0c;
 }
 
 /* サブカテゴリタブ */

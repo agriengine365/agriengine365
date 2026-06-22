@@ -483,6 +483,7 @@ async function openAreaDetailPanel(area) {
 
   _adpRenderCalendar();
   _adpRenderDayRecords();
+  _adpRenderSavedCalendarsList();
 
   // 同一エリアのキャッシュがあれば即スコア計算
   const areaKey = area.id || area.name;
@@ -731,6 +732,7 @@ function _adpEnsureView() {
         </div>
         <div class="adp-cal-growth-wrap" id="adp-cal-growth-wrap">
           <div id="calendar-result" class="empty-mini">作物を選択すると生育カレンダーが表示されます。</div>
+          <div id="adp-saved-calendars-wrap"></div>
         </div>
       </div>
 
@@ -855,6 +857,7 @@ function _adpSwitchSubTab(name) {
     }
     _adpRenderCalendar();
     _adpRenderDayRecords();
+    _adpRenderSavedCalendarsList();
   }
   // ── 作物選択済み時の各ペイン再描画 ──
   if (_adpSelectedCropId) {
@@ -1250,6 +1253,104 @@ function vmDeleteAndRefresh(id) {
   if (typeof vmDelete === 'function') vmDelete(id);
   _adpRenderCalendar();
   _adpRenderDayRecords();
+}
+
+// ─── 生育カレンダーの保存（📌保存した作物）───
+/**
+ * _adpToggleCalendarCrop(cropId)
+ * 作業カレンダーの保存トグル。保存済みなら解除、未保存なら追加。
+ * currentAreaData.savedCalendarCrops = { [cropId]: { savedAt } } をFirestore/localStorageへ永続化。
+ * （_simSaveProfitOverrides/_simResetCropと同じ永続化パターンを踏襲）
+ */
+async function _adpToggleCalendarCrop(cropId) {
+  if (!cropId || !currentAreaData) return;
+  const id = currentAreaData.id || _adpArea?.id;
+  if (!id) return;
+
+  currentAreaData.savedCalendarCrops = currentAreaData.savedCalendarCrops || {};
+  const alreadySaved = !!currentAreaData.savedCalendarCrops[cropId];
+
+  try {
+    if (alreadySaved) {
+      // 解除
+      delete currentAreaData.savedCalendarCrops[cropId];
+      if (typeof db !== 'undefined' && db && !String(id).startsWith('local_')) {
+        const del = {};
+        del[`savedCalendarCrops.${cropId}`] = firebase.firestore.FieldValue.delete();
+        await db.collection('areas').doc(id).update(del);
+      } else {
+        const stored = JSON.parse(localStorage.getItem(CONFIG.AREAS_KEY) || '[]');
+        const idx = stored.findIndex(a => a.id === id);
+        if (idx !== -1 && stored[idx].savedCalendarCrops) {
+          delete stored[idx].savedCalendarCrops[cropId];
+          localStorage.setItem(CONFIG.AREAS_KEY, JSON.stringify(stored));
+        }
+      }
+      showToast('保存を解除しました', 'green');
+    } else {
+      // 追加
+      const payload = { savedAt: new Date().toISOString() };
+      currentAreaData.savedCalendarCrops[cropId] = payload;
+      if (typeof db !== 'undefined' && db && !String(id).startsWith('local_')) {
+        await db.collection('areas').doc(id).update({ [`savedCalendarCrops.${cropId}`]: payload });
+      } else {
+        const stored = JSON.parse(localStorage.getItem(CONFIG.AREAS_KEY) || '[]');
+        const idx = stored.findIndex(a => a.id === id);
+        if (idx !== -1) {
+          stored[idx].savedCalendarCrops = stored[idx].savedCalendarCrops || {};
+          stored[idx].savedCalendarCrops[cropId] = payload;
+          localStorage.setItem(CONFIG.AREAS_KEY, JSON.stringify(stored));
+        }
+      }
+      showToast('カレンダーを保存しました ✓', 'green');
+    }
+  } catch (e) {
+    showToast('保存に失敗しました', 'amber');
+    console.error(e);
+    return;
+  }
+
+  // 現在表示中の作物カレンダー（ヘッダーのボタン状態）を再描画
+  if (cropId === _adpSelectedCropId && typeof renderWorkCalendar === 'function') {
+    const crop = _adpGrowthFindCrop(cropId);
+    renderWorkCalendar(crop);
+  }
+  _adpRenderSavedCalendarsList();
+}
+
+/**
+ * _adpRenderSavedCalendarsList()
+ * 「📌 保存した作物」一覧をカレンダータブ内に描画する。
+ * 各カードは buildWorkCalendarHTML()（analysis.js）で組み立て、✕削除ボタン付き。
+ */
+function _adpRenderSavedCalendarsList() {
+  const wrap = document.getElementById('adp-saved-calendars-wrap');
+  if (!wrap) return;
+
+  const saved = currentAreaData?.savedCalendarCrops || {};
+  const cropIds = Object.keys(saved).sort((a, b) => (saved[a]?.savedAt || '').localeCompare(saved[b]?.savedAt || ''));
+
+  if (!cropIds.length) {
+    wrap.innerHTML = '';
+    return;
+  }
+
+  const cardsHtml = cropIds.map(cropId => {
+    const crop = _adpGrowthFindCrop(cropId);
+    if (!crop) return '';
+    const titleButtonHtml = `
+      <button class="wc-save-btn wc-remove-btn" onclick="_adpToggleCalendarCrop('${cropId}')">✕ 削除</button>
+    `;
+    const bodyHtml = (typeof buildWorkCalendarHTML === 'function')
+      ? buildWorkCalendarHTML(crop, { titleButtonHtml })
+      : '';
+    return `<div class="wc-saved-card">${bodyHtml}</div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="adp-saved-cal-header">📌 保存した作物（${cropIds.length}）</div>
+    ${cardsHtml}
+  `;
 }
 
 // ─── 編集パネル HTML ───
@@ -3253,6 +3354,13 @@ function _adpSelectCropForAnalysis(cropId) {
 }
 
 
+// 作物の播種/育苗「始まり月」を返す（calendar.sowing優先、なければseedling。
+// 両配列とも昇順ソート済み実データのためarr[0]で開始月として安全に使える）
+function _adpCropStartMonth(crop) {
+  const arr = crop?.calendar?.sowing || crop?.calendar?.seedling;
+  return (Array.isArray(arr) && arr.length) ? arr[0] : null;
+}
+
 function _adpOpenCropSelectSheet() {
   // CROP_DB取得
   let allCrops = [];
@@ -3277,6 +3385,9 @@ function _adpOpenCropSelectSheet() {
     { key: 'oil',       label: '油脂' },
     { key: 'fiber',     label: '繊維' },
   ];
+
+  // 月絞り込み定義（播種/育苗の「始まり月」。1〜12月の12タブ）
+  const MONTHS_FILTER = ['1','2','3','4','5','6','7','8','9','10','11','12'];
 
   // 大カテゴリ → DB category キーのマッピング
   const CAT_MAP = {
@@ -3314,17 +3425,32 @@ function _adpOpenCropSelectSheet() {
   // シート状態
   let _selectedCat    = 'all';
   let _selectedSubcat = null; // null = サブカテゴリ未選択（大カテゴリ全体）
+  let _selectedMonth  = null; // null = 月絞り込みなし。1〜12（数値）
 
-  // 作物リスト HTML 生成
-  function buildList(cat, subcat) {
-    let list;
+  // 作物リスト HTML 生成（カテゴリ ∪ 月 のOR結合。月未選択時は従来通りカテゴリのみ）
+  function buildList(cat, subcat, month) {
+    let catList;
     if (cat === 'all') {
-      list = allCrops;
+      catList = allCrops;
     } else if (subcat) {
-      list = allCrops.filter(c => c.category === subcat);
+      catList = allCrops.filter(c => c.category === subcat);
     } else {
-      list = allCrops.filter(c => (CAT_MAP[cat] || [cat]).includes(c.category));
+      catList = allCrops.filter(c => (CAT_MAP[cat] || [cat]).includes(c.category));
     }
+
+    let list;
+    if (month != null) {
+      const monthList = allCrops.filter(c => _adpCropStartMonth(c) === month);
+      if (cat === 'all') {
+        list = monthList;
+      } else {
+        const seen = new Set(catList.map(c => c.id));
+        list = catList.concat(monthList.filter(c => !seen.has(c.id)));
+      }
+    } else {
+      list = catList;
+    }
+
     if (!list.length) return '<div class="css-empty">該当作物なし</div>';
     return list.map(c => `
       <div class="css-crop-item" onclick="_adpSelectCropFromSheet('${c.id}')">
@@ -3343,6 +3469,16 @@ function _adpOpenCropSelectSheet() {
         onclick="_adpCropSelectSwitchSubcat('${s.key}')">${s.label}</button>`
     ).join('');
     return `<div class="css-subcat-tabs" id="css-subcat-tabs">${tabsHtml}</div>`;
+  }
+
+  // 月タブ HTML 生成（カテゴリタブと同じ行に並べる。sowing/seedlingデータを持たない作物は対象外）
+  function buildMonthTabs(currentMonth) {
+    return MONTHS_FILTER.map(mStr => {
+      const m = Number(mStr);
+      return `<button class="css-cat-btn css-month-btn${currentMonth === m ? ' active' : ''}"
+        data-month="${m}"
+        onclick="_adpCropSelectSwitchMonth(${m})">${mStr}月</button>`;
+    }).join('');
   }
 
   // シート生成（初回のみDOM追加）
@@ -3371,9 +3507,9 @@ function _adpOpenCropSelectSheet() {
         <div class="cdp-crop-name">🌱 作物を選ぶ</div>
         <button class="cdp-close" onclick="_adpCloseCropSelectSheet()">✕</button>
       </div>
-      <div class="css-cat-tabs" id="css-cat-tabs">${catTabsHtml}</div>
+      <div class="css-cat-tabs" id="css-cat-tabs">${catTabsHtml}<span class="css-tab-divider"></span>${buildMonthTabs(null)}</div>
       <div id="css-subcat-wrap"></div>
-      <div class="css-list" id="css-list">${buildList('all', null)}</div>
+      <div class="css-list" id="css-list">${buildList('all', null, null)}</div>
     </div>`;
 
   sheet.classList.add('open');
@@ -3381,19 +3517,20 @@ function _adpOpenCropSelectSheet() {
   // タブ切り替え用の関数・状態をシートに保持
   sheet._buildList       = buildList;
   sheet._buildSubcatTabs = buildSubcatTabs;
-  sheet._getState        = () => ({ cat: _selectedCat, subcat: _selectedSubcat });
-  sheet._setState        = (cat, subcat) => { _selectedCat = cat; _selectedSubcat = subcat; };
+  sheet._getState        = () => ({ cat: _selectedCat, subcat: _selectedSubcat, month: _selectedMonth });
+  sheet._setState        = (cat, subcat, month) => { _selectedCat = cat; _selectedSubcat = subcat; _selectedMonth = month; };
 }
 
 function _adpCropSelectSwitchCat(cat) {
   const sheet = document.getElementById('adp-crop-select-sheet');
   if (!sheet) return;
 
-  // 状態更新（サブカテゴリはリセット）
-  sheet._setState(cat, null);
+  // 状態更新（サブカテゴリはリセット、月絞り込みは維持＝OR結合のため）
+  const { month } = sheet._getState();
+  sheet._setState(cat, null, month);
 
   // 大タブ active 切り替え
-  sheet.querySelectorAll('.css-cat-btn').forEach(btn => {
+  sheet.querySelectorAll('.css-cat-btn:not(.css-month-btn)').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.cat === cat);
   });
 
@@ -3405,18 +3542,18 @@ function _adpCropSelectSwitchCat(cat) {
 
   // 作物リスト 再描画
   const listEl = document.getElementById('css-list');
-  if (listEl) listEl.innerHTML = sheet._buildList(cat, null);
+  if (listEl) listEl.innerHTML = sheet._buildList(cat, null, month);
 }
 
 function _adpCropSelectSwitchSubcat(subcat) {
   const sheet = document.getElementById('adp-crop-select-sheet');
   if (!sheet) return;
 
-  const { cat, subcat: prevSubcat } = sheet._getState();
+  const { cat, subcat: prevSubcat, month } = sheet._getState();
 
   // 同じサブカテゴリをタップ → 解除（トグル）
   const nextSubcat = (prevSubcat === subcat) ? null : subcat;
-  sheet._setState(cat, nextSubcat);
+  sheet._setState(cat, nextSubcat, month);
 
   // サブタブ active 切り替え
   sheet.querySelectorAll('.css-subcat-btn').forEach(btn => {
@@ -3425,7 +3562,27 @@ function _adpCropSelectSwitchSubcat(subcat) {
 
   // 作物リスト 再描画
   const listEl = document.getElementById('css-list');
-  if (listEl) listEl.innerHTML = sheet._buildList(cat, nextSubcat);
+  if (listEl) listEl.innerHTML = sheet._buildList(cat, nextSubcat, month);
+}
+
+function _adpCropSelectSwitchMonth(month) {
+  const sheet = document.getElementById('adp-crop-select-sheet');
+  if (!sheet) return;
+
+  const { cat, subcat, month: prevMonth } = sheet._getState();
+
+  // 同じ月をタップ → 解除（トグル）
+  const nextMonth = (prevMonth === month) ? null : month;
+  sheet._setState(cat, subcat, nextMonth);
+
+  // 月タブ active 切り替え（カテゴリタブには影響しない＝独立した絞り込み軸）
+  sheet.querySelectorAll('.css-month-btn').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.month) === nextMonth);
+  });
+
+  // 作物リスト 再描画（カテゴリ ∪ 月 のOR結合）
+  const listEl = document.getElementById('css-list');
+  if (listEl) listEl.innerHTML = sheet._buildList(cat, subcat, nextMonth);
 }
 
 function _adpCloseCropSelectSheet() {

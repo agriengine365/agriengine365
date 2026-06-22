@@ -736,19 +736,16 @@ function runAnalysis(areaName) {
 
 // ─── 月別作業カレンダー ───
 /**
- * renderWorkCalendar(crop)
- * crop.calendar の sowing / sow / seedling / transplant / manage / harvest を月グリッドで可視化する
- * 月値は数値（1〜12）・月キー文字列のいずれでも可（_adpGrowthCalToIdxで正規化）
+ * buildWorkCalendarHTML(crop, opts)
+ * crop.calendar の sowing / sow / seedling / transplant / manage / harvest を月グリッドで可視化するHTML文字列を返す。
+ * 単独の作物カレンダー表示（renderWorkCalendar）と、保存済み作物一覧（_adpRenderSavedCalendarsList）の
+ * 両方から呼ばれる共通ビルダー。DOM書き込みは行わない（呼び出し側の責務）。
  * 注：prep（休眠・準備期間）とorder（未実装・cropDB実データなし）は対象外
+ *
+ * opts.titleButtonHtml: タイトル行右側に差し込むボタンHTML（保存/保存済み/削除など。呼び出し側で組み立てる）
  */
-function renderWorkCalendar(crop) {
-  const el = document.getElementById('calendar-result');
-  if (!el) return;
-
-  if (!crop || !crop.calendar) {
-    el.innerHTML = '<div class="empty-mini">カレンダーデータなし</div>';
-    return;
-  }
+function buildWorkCalendarHTML(crop, opts = {}) {
+  if (!crop || !crop.calendar) return '<div class="empty-mini">カレンダーデータなし</div>';
 
   const cal   = crop.calendar;
   const MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
@@ -775,10 +772,7 @@ function renderWorkCalendar(crop) {
 
   const activePhases = phaseSets.filter(p => p.months.size > 0);
 
-  if (!activePhases.length) {
-    el.innerHTML = '<div class="empty-mini">カレンダーデータなし</div>';
-    return;
-  }
+  if (!activePhases.length) return '<div class="empty-mini">カレンダーデータなし</div>';
 
   // ヘッダー行（月名）
   const headerCells = MONTHS.map((m, i) => {
@@ -804,9 +798,12 @@ function renderWorkCalendar(crop) {
     `;
   }).join('');
 
-  el.innerHTML = `
+  return `
     <div class="wc-wrap">
-      <div class="wc-title">${escHtml(crop.name)} — 作業カレンダー</div>
+      <div class="wc-title-row">
+        <div class="wc-title">${escHtml(crop.name)} — 作業カレンダー</div>
+        ${opts.titleButtonHtml || ''}
+      </div>
       <div class="wc-header">
         <div class="wc-phase-label"></div>
         <div class="wc-cells">${headerCells}</div>
@@ -822,6 +819,30 @@ function renderWorkCalendar(crop) {
     </div>
   `;
 }
+
+/**
+ * renderWorkCalendar(crop)
+ * #calendar-result に「現在選択中の作物」の作業カレンダーを描画する。
+ * ヘッダーに保存（💾保存／✓保存済み）トグルボタンを付ける。
+ */
+function renderWorkCalendar(crop) {
+  const el = document.getElementById('calendar-result');
+  if (!el) return;
+
+  if (!crop || !crop.calendar) {
+    el.innerHTML = '<div class="empty-mini">カレンダーデータなし</div>';
+    return;
+  }
+
+  const isSaved = !!(currentAreaData?.savedCalendarCrops && currentAreaData.savedCalendarCrops[crop.id]);
+  const titleButtonHtml = `
+    <button class="wc-save-btn ${isSaved ? 'wc-save-btn-saved' : ''}"
+      onclick="_adpToggleCalendarCrop('${crop.id}')">${isSaved ? '✓ 保存済み' : '💾 保存'}</button>
+  `;
+
+  el.innerHTML = buildWorkCalendarHTML(crop, { titleButtonHtml });
+}
+
 
 // ─── 比較テーブル ───
 /**
