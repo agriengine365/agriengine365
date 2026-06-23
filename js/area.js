@@ -3448,6 +3448,13 @@ function _adpCropStartMonth(crop) {
   return (Array.isArray(arr) && arr.length) ? arr[0] : null;
 }
 
+// 月と月の「循環距離」を返す（1〜12月を環状とみなし、12⇄1月のような年跨ぎも正しく1とする）
+// 例: _adpMonthCircularDiff(12, 1) === 1 / _adpMonthCircularDiff(6, 9) === 3
+function _adpMonthCircularDiff(a, b) {
+  const d = Math.abs(a - b) % 12;
+  return Math.min(d, 12 - d);
+}
+
 function _adpOpenCropSelectSheet() {
   // CROP_DB取得
   let allCrops = [];
@@ -3527,8 +3534,12 @@ function _adpOpenCropSelectSheet() {
 
     let list;
     if (month != null) {
-      // AND結合：カテゴリ絞り込み済みリストの中で、さらに開始月が一致するもののみ
-      list = catList.filter(c => _adpCropStartMonth(c) === month);
+      // AND結合：カテゴリ絞り込み済みリストの中で、さらに開始月が「選択月の前後1ヶ月以内」
+      // （前月・当月・翌月の3ヶ月、12⇄1月の年跨ぎも_adpMonthCircularDiffで正しく扱う）のもののみ
+      list = catList.filter(c => {
+        const sm = _adpCropStartMonth(c);
+        return sm != null && _adpMonthCircularDiff(sm, month) <= 1;
+      });
     } else {
       list = catList;
     }
