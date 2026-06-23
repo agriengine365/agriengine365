@@ -5732,7 +5732,7 @@ html.draw-dialog-active .bottom-nav {
 .cdp-inner {
   background: var(--surface, #172119);
   width: 100%;
-  max-height: 88dvh;
+  height: 88dvh;
   border-radius: 18px 18px 0 0;
   display: flex;
   flex-direction: column;
@@ -5844,14 +5844,6 @@ html.draw-dialog-active .bottom-nav {
   border-color: var(--green, #4ade80);
 }
 
-/* カテゴリ/月トリガー間の区切り線 */
-.css-tab-divider {
-  flex-shrink: 0;
-  width: 1px;
-  align-self: stretch;
-  background: var(--border, #1e3a22);
-  margin: 2px 4px;
-}
 
 /* 月絞り込みアコーディオントリガー */
 .css-month-trigger {
@@ -5929,16 +5921,24 @@ html.draw-dialog-active .bottom-nav {
 /* サブカテゴリタブ */
 .css-subcat-tabs {
   display: flex;
+  align-items: center;
   gap: 5px;
   padding: 6px 12px 8px;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   flex-shrink: 0;
+  min-height: 40px;
   border-bottom: 1px solid var(--border, #1e3a22);
   background: rgba(0,0,0,0.12);
 }
 .css-subcat-tabs::-webkit-scrollbar { display: none; }
+
+/* サブカテゴリ行の月トリガーを右端に固定 */
+.css-subcat-tabs .css-month-trigger {
+  margin-left: auto;
+  flex-shrink: 0;
+}
 
 .css-subcat-btn {
   flex-shrink: 0;

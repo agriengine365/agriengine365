@@ -3541,23 +3541,22 @@ function _adpOpenCropSelectSheet() {
       </div>`).join('');
   }
 
-  // サブカテゴリタブ HTML 生成
-  function buildSubcatTabs(cat, currentSubcat) {
+  // サブカテゴリタブ HTML 生成（サブカテゴリなしでも月トリガーのため常に行を返す）
+  function buildSubcatTabs(cat, currentSubcat, currentMonth) {
     const subs = SUBCAT_MAP[cat] || [];
-    if (!subs.length) return '';
     const tabsHtml = subs.map(s =>
       `<button class="css-subcat-btn${currentSubcat === s.key ? ' active' : ''}"
         data-subcat="${s.key}"
         onclick="_adpCropSelectSwitchSubcat('${s.key}')">${s.label}</button>`
     ).join('');
-    return `<div class="css-subcat-tabs" id="css-subcat-tabs">${tabsHtml}</div>`;
+    return `<div class="css-subcat-tabs" id="css-subcat-tabs">${tabsHtml}${buildMonthTrigger(currentMonth)}</div>`;
   }
 
   // 月アコーディオントリガーボタン HTML 生成
   function buildMonthTrigger(currentMonth) {
     const label = currentMonth != null
       ? `${currentMonth}月 <span class="css-month-clear" onclick="event.stopPropagation();_adpCropSelectSwitchMonth(${currentMonth})">✕</span>`
-      : '栽培開始月で絞る';
+      : '栽培開始月で選ぶ';
     return `<button class="css-month-trigger${currentMonth != null ? ' has-month' : ''}" id="css-month-trigger"
       onclick="_adpCropSelectToggleMonthPanel()">${label} <span class="css-month-arrow">▾</span></button>`;
   }
@@ -3599,9 +3598,9 @@ function _adpOpenCropSelectSheet() {
         <div class="cdp-crop-name">🌱 作物を選ぶ</div>
         <button class="cdp-close" onclick="_adpCloseCropSelectSheet()">✕</button>
       </div>
-      <div class="css-cat-tabs" id="css-cat-tabs">${catTabsHtml}<span class="css-tab-divider"></span>${buildMonthTrigger(null)}</div>
+      <div class="css-cat-tabs" id="css-cat-tabs">${catTabsHtml}</div>
       ${buildMonthPanel(null)}
-      <div id="css-subcat-wrap"></div>
+      <div id="css-subcat-wrap">${buildSubcatTabs('all', null, null)}</div>
       <div class="css-list" id="css-list">${buildList('all', null, null)}</div>
     </div>`;
 
@@ -3632,7 +3631,7 @@ function _adpCropSelectSwitchCat(cat) {
   // サブカテゴリタブ 再描画
   const subcatWrap = document.getElementById('css-subcat-wrap');
   if (subcatWrap) {
-    subcatWrap.innerHTML = sheet._buildSubcatTabs(cat, null);
+    subcatWrap.innerHTML = sheet._buildSubcatTabs(cat, null, month);
   }
 
   // 作物リスト 再描画
@@ -3683,15 +3682,11 @@ function _adpCropSelectSwitchMonth(month) {
     btn.classList.toggle('active', Number(btn.dataset.month) === nextMonth);
   });
 
-  // トリガーボタン表示更新
-  const trigger = document.getElementById('css-month-trigger');
-  if (trigger && sheet._buildMonthTrigger) {
-    trigger.outerHTML; // 再生成はinnerHTMLで差し替え
-    const catTabsEl = document.getElementById('css-cat-tabs');
-    if (catTabsEl) {
-      const oldTrigger = catTabsEl.querySelector('#css-month-trigger');
-      if (oldTrigger) oldTrigger.outerHTML = sheet._buildMonthTrigger(nextMonth);
-    }
+  // トリガーボタン表示更新（サブカテゴリ行内のトリガーを差し替え）
+  const subcatTabsEl = document.getElementById('css-subcat-tabs');
+  if (subcatTabsEl && sheet._buildMonthTrigger) {
+    const oldTrigger = subcatTabsEl.querySelector('#css-month-trigger');
+    if (oldTrigger) oldTrigger.outerHTML = sheet._buildMonthTrigger(nextMonth);
   }
 
   // パネルを閉じる（月選択後は自動クローズ）
