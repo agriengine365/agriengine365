@@ -3677,18 +3677,6 @@ html.draw-dialog-active #draw-scope {
   overflow: hidden;
 }
 
-/* ─── 適温グラフタブ：adp-chart-sticky をスクロール領域に変更 ─── */
-#adp-pane-tempchart {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-#adp-pane-tempchart .adp-chart-sticky {
-  position: static;  /* sticky解除 */
-  overflow: visible;
-  border-bottom: none;
-  padding-bottom: 24px;
-}
-
 /* 上部固定グラフブロック */
 .adp-chart-sticky {
   flex-shrink: 0;
@@ -6974,23 +6962,17 @@ html.draw-dialog-active .bottom-nav {
 
 /* 5枚グリッド: 3列＋2列 (デフォルト) → 3+2 */
 .adpc-mini-summary-5 {
-  grid-template-columns: repeat(5, 1fr);
-  gap: 4px;
-  margin-bottom: 4px;
+  grid-template-columns: repeat(3, 1fr);
 }
+/* 5枚目（標高・pH）はモバイル4列時も継続 */
 @media (max-width: 380px) {
   .adpc-mini-summary-5 {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-/* ラベル */
+/* ラベルを8px→11pxに拡大 */
 .adpc-mini-summary-5 .adpc-mini-stat-label {
-  font-size: 8px;
-}
-
-/* 値を小さめに */
-.adpc-mini-summary-5 .adpc-mini-stat-value {
   font-size: 11px;
 }
 
@@ -7000,12 +6982,6 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text3);
   white-space: nowrap;
   margin-top: 1px;
-}
-
-/* カード自体の高さを詰める */
-.adpc-mini-summary-5 .adpc-mini-stat {
-  padding: 4px 5px;
-  gap: 4px;
 }
 
 /* ═══════════════════════════════════════════
@@ -7509,4 +7485,68 @@ html.draw-dialog-active .bottom-nav {
   resize: vertical;
   min-height: 72px;
   line-height: 1.6;
+}
+/* ═══════════════════════════════════════════
+   天気予報帯（16日・横スクロール）
+   ═══════════════════════════════════════════ */
+.adp-wx-bar {
+  margin: 0 0 6px;
+  border-bottom: 1px solid var(--border);
+}
+.adp-wx-scroll {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding: 6px 12px 6px;
+}
+.adp-wx-scroll::-webkit-scrollbar { display: none; }
+
+.adp-wx-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 40px;
+  padding: 4px 3px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  cursor: default;
+}
+.adp-wx-card.adp-wx-today {
+  background: rgba(74,222,128,.1);
+  outline: 1.5px solid var(--green3);
+}
+
+.adp-wx-date {
+  font-size: 9px;
+  color: var(--text3);
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.adp-wx-dow {
+  font-size: 8px;
+  color: var(--text3);
+}
+.adp-wx-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+.adp-wx-hi {
+  font-size: 10px;
+  font-weight: 700;
+  color: #f87171;
+  line-height: 1;
+}
+.adp-wx-lo {
+  font-size: 10px;
+  color: #60a5fa;
+  line-height: 1;
+}
+.adp-wx-pop {
+  font-size: 9px;
+  line-height: 1;
 }
