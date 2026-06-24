@@ -553,12 +553,24 @@ function vmParseText(rawText) {
   const tagAmbiguous = scores.length >= 2 && (scores[0].score - scores[1].score) <= 1;
   const tag = tagCandidates[0] || 'その他';
 
-  // 作物（cropDBから動的取得）
+  // 作物（CROP_DBから動的取得）
+  // name例：「コメ（水稲）」→「コメ」「水稲」に分割してマッチ
   let crop = null;
-  if (typeof cropDB !== 'undefined' && Array.isArray(cropDB)) {
-    for (const c of cropDB) {
-      const names = [c.name, c.nameEn, ...(c.aliases || [])].filter(Boolean);
-      if (names.some(n => text.includes(n))) { crop = c.name; break; }
+  if (typeof CROP_DB !== 'undefined' && Array.isArray(CROP_DB)) {
+    for (const c of CROP_DB) {
+      if (!c.name) continue;
+      // 括弧内外を分割：「コメ（水稲）」→ ['コメ', '水稲']
+      const rawName = c.name;
+      const tokens = [];
+      const parenMatch = rawName.match(/^(.+?)[\s　]*[（(](.+?)[）)](.*)$/);
+      if (parenMatch) {
+        tokens.push(parenMatch[1].trim());   // 括弧前：「コメ」
+        tokens.push(parenMatch[2].trim());   // 括弧内：「水稲」
+        if (parenMatch[3].trim()) tokens.push(parenMatch[3].trim());
+      } else {
+        tokens.push(rawName.trim());
+      }
+      if (tokens.some(t => t && text.includes(t))) { crop = rawName; break; }
     }
   }
 
