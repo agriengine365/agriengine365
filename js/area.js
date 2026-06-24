@@ -464,6 +464,9 @@ async function openAreaDetailPanel(area) {
   _adpClimateMode    = false;
   _adpClimateRanking = null;
   _adpClimateLoaded  = false;
+  // カレンダー表示モードをリセット（エリア切替時にリスト表示が残らないよう）
+  _adpCalView    = 'grid';
+  _adpCalSegment = 'visit';
 
   // 作物選択状態をリセット（エリア再オープン時に前回選択が残らないよう）
   _adpSelectedCropId = null;
@@ -1370,11 +1373,15 @@ function _adpRenderSummaryCard(byDate, y, mo, todayStr) {
       else if (r.isSchedule)   totalSchedule++;
     });
   });
+  const today = new Date();
+  const isCurrentMonth = (y === today.getFullYear() && mo === today.getMonth());
+  const isFutureMonth  = y > today.getFullYear() || (y === today.getFullYear() && mo > today.getMonth());
+  const scheduleLabel  = isFutureMonth ? '予定' : isCurrentMonth ? '今後の予定' : '予定（記録済）';
   const label = `${y}年${mo+1}月`;
   el.innerHTML = `
     <div class="adp-cal-summary-card">
       <span class="adp-cal-summary-item">📋 ${label}の記録：<strong>${totalRec}</strong>件</span>
-      <span class="adp-cal-summary-item">📌 今後の予定：<strong>${totalSchedule}</strong>件</span>
+      <span class="adp-cal-summary-item">📌 ${scheduleLabel}：<strong>${totalSchedule}</strong>件</span>
     </div>`;
 }
 
@@ -1453,12 +1460,6 @@ function _adpGoToday() {
   _adpRenderDayRecords();
 }
 
-      ${dowHTML}
-      ${cellsHTML}
-    </div>
-  `;
-}
-
 function _adpChangeMonth(delta) {
   _adpMonth += delta;
   if (_adpMonth < 0)  { _adpYear--;  _adpMonth = 11; }
@@ -1473,6 +1474,13 @@ function _adpSelectDate(dateStr) {
   _adpEditId  = null;
   _adpRenderCalendar();
   _adpRenderDayRecords();
+  // リスト表示時は記録カードが画面外になりやすいのでスクロール
+  if (_adpSelDate && _adpCalView === 'list') {
+    requestAnimationFrame(() => {
+      const el = document.getElementById('adp-day-records-wrap');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  }
 }
 
 // ─── 選択日記録リスト ───
@@ -1669,14 +1677,16 @@ function _adpRenderSavedCalendarsList(showAll = false) {
     return `<div class="wc-saved-card">${bodyHtml}</div>`;
   }).join('');
 
-  const moreBtn = hidden > 0
-    ? `<button class="adp-saved-cal-more-btn" onclick="_adpRenderSavedCalendarsList(true)">もっと見る（+${hidden}件）</button>`
+  const toggleBtn = cropIds.length > LIMIT
+    ? showAll
+      ? `<button class="adp-saved-cal-more-btn" onclick="_adpRenderSavedCalendarsList(false)">折りたたむ ▲</button>`
+      : `<button class="adp-saved-cal-more-btn" onclick="_adpRenderSavedCalendarsList(true)">もっと見る（+${hidden}件） ▼</button>`
     : '';
 
   wrap.innerHTML = `
     <div class="adp-saved-cal-header">📌 保存した作物（${cropIds.length}）</div>
     ${cardsHtml}
-    ${moreBtn}
+    ${toggleBtn}
   `;
 }
 
