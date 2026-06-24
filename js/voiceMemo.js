@@ -282,7 +282,60 @@ function vmFilterText(rawText) {
   if (!result || /^[\s\u3000\-・。、！？!?0-9０-９]+$/.test(result)) {
     return '（解析済み）';
   }
-  return result;
+
+  // ── 1-A：結果内の単語重複を除去 ──
+  return _vmDeduplicateWords(result);
+}
+
+/**
+ * テキスト内の重複単語を除去する（1-A）
+ * 例：「施肥施肥10kg」→「施肥10kg」
+ */
+function _vmDeduplicateWords(text) {
+  if (!text || !_vmAllowedWords) return text;
+  const words = [..._vmAllowedWords].sort((a, b) => b.length - a.length);
+  let result = text;
+  for (const word of words) {
+    const re = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    const matches = result.match(re);
+    if (matches && matches.length > 1) {
+      let first = true;
+      result = result.replace(re, () => {
+        if (first) { first = false; return word; }
+        return '';
+      });
+    }
+  }
+  return result.replace(/[\s\u3000]{2,}/g, '　').trim();
+}
+
+/**
+ * 既存テキストに追加テキストをマージする（1-B）
+ * 追加側にある単語は追加側で上書き、ない単語は既存を保持
+ * 例：既存「トマト施肥10kg」＋追加「施肥15kg」→「トマト　施肥15kg」
+ */
+function _vmMergeTexts(existing, added) {
+  if (!existing) return added;
+  if (!added)    return existing;
+  if (!_vmAllowedWords) _vmAllowedWords = _vmBuildAllowedWords();
+
+  const words = [..._vmAllowedWords].sort((a, b) => b.length - a.length);
+
+  // 追加テキストに含まれる単語セットを収集
+  const addedWords = new Set();
+  for (const word of words) {
+    if (added.includes(word)) addedWords.add(word);
+  }
+
+  // 既存テキストから追加側に含まれる単語を除去
+  let cleanedExisting = existing;
+  for (const word of addedWords) {
+    const re = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+    cleanedExisting = cleanedExisting.replace(re, '');
+  }
+  cleanedExisting = cleanedExisting.replace(/[\s\u3000]{2,}/g, '　').trim();
+
+  return cleanedExisting ? cleanedExisting + '　' + added : added;
 }
 
 // タグスコアリング：出荷系タグのボーナスウェイト
@@ -1134,23 +1187,18 @@ function vmSetSchedule(isSchedule, isManual = true) {
 function vmDlgAddRecording(areaId) {
   if (_vmListening) { vmStopListening(); return; }
   vmStartListening(areaId, (addedText) => {
-    // 認識テキストに追記（既存メモ欄と完全一致する文はスキップして重複表示を防ぐ）
+    const filteredAdded = vmFilterText(addedText);
+    const isUnparsed = filteredAdded === '（解析済み）';
+
     const ta = document.getElementById('vm-raw-text');
-    let isDuplicate = false;
-    if (ta) {
-      const existing = ta.value || '';
-      // 既存テキストを文区切り（句点・全角スペース・改行）で分割し、
-      // 追加テキストがすでに同一文として含まれていればスキップ
-      const existingSegments = existing.split(/[　\s。]+/).map(s => s.trim()).filter(Boolean);
-      const filteredAdded = vmFilterText(addedText);
-      isDuplicate = existingSegments.includes(filteredAdded.trim());
-      if (!isDuplicate) {
-        ta.value = (existing ? existing + '　' : '') + filteredAdded;
-      }
+    if (ta && !isUnparsed) {
+      // 1-B：既存テキストと単語レベルでマージ（追加側上書き）
+      ta.value = _vmMergeTexts(ta.value || '', filteredAdded);
     }
-    // 追加テキストを解析してフィールドに反映（重複時もフィールド補完は行う）
+    // フィールド補完は常に実行（解析不明でも日付・タグが取れる場合がある）
     _vmApplyParsedToDialog(addedText, true);
-    showToast(isDuplicate ? '（同じ内容のため追加をスキップしました）' : '🎤 テキストを追加しました', isDuplicate ? '' : 'green');
+
+    showToast(isUnparsed ? '🎤 フィールドを補完しました' : '🎤 テキストを追加しました', 'green');
   });
 }
 
