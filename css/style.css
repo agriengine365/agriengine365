@@ -3677,6 +3677,18 @@ html.draw-dialog-active #draw-scope {
   overflow: hidden;
 }
 
+/* ─── 適温グラフタブ：adp-chart-sticky をスクロール領域に変更 ─── */
+#adp-pane-tempchart {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+#adp-pane-tempchart .adp-chart-sticky {
+  position: static;  /* sticky解除 */
+  overflow: visible;
+  border-bottom: none;
+  padding-bottom: 24px;
+}
+
 /* 上部固定グラフブロック */
 .adp-chart-sticky {
   flex-shrink: 0;
@@ -6962,17 +6974,23 @@ html.draw-dialog-active .bottom-nav {
 
 /* 5枚グリッド: 3列＋2列 (デフォルト) → 3+2 */
 .adpc-mini-summary-5 {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-bottom: 4px;
 }
-/* 5枚目（標高・pH）はモバイル4列時も継続 */
 @media (max-width: 380px) {
   .adpc-mini-summary-5 {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
-/* ラベルを8px→11pxに拡大 */
+/* ラベル */
 .adpc-mini-summary-5 .adpc-mini-stat-label {
+  font-size: 8px;
+}
+
+/* 値を小さめに */
+.adpc-mini-summary-5 .adpc-mini-stat-value {
   font-size: 11px;
 }
 
@@ -6982,6 +7000,12 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text3);
   white-space: nowrap;
   margin-top: 1px;
+}
+
+/* カード自体の高さを詰める */
+.adpc-mini-summary-5 .adpc-mini-stat {
+  padding: 4px 5px;
+  gap: 4px;
 }
 
 /* ═══════════════════════════════════════════
