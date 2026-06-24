@@ -7550,3 +7550,62 @@ html.draw-dialog-active .bottom-nav {
   font-size: 9px;
   line-height: 1;
 }
+
+/* ═══════════════════════════════════════════
+   作物選択バー（分析・実務 セグメント直下）
+   ═══════════════════════════════════════════ */
+.adp-crop-bar {
+  padding: 6px 12px 4px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.adp-crop-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.adp-crop-bar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px 5px 8px;
+  background: var(--surface2);
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+  min-height: 32px;
+}
+.adp-crop-bar-btn.selected {
+  background: rgba(74,222,128,.1);
+  border-color: var(--green3);
+  color: var(--green);
+}
+.adp-crop-bar-btn:active {
+  opacity: .75;
+}
+.adp-crop-bar-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+.adp-crop-bar-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adp-crop-bar-arrow {
+  font-size: 9px;
+  opacity: .6;
+  margin-left: 1px;
+}
+/* 分析バー：バー部分 */
+.adp-crop-bar-bars {
+  margin-top: 5px;
+}
+.adp-crop-bar-analysis .adp-sum-row-bar {
+  margin-bottom: 3px;
+}

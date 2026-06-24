@@ -512,6 +512,12 @@ async function openAreaDetailPanel(area) {
   _simDirty          = false;
   _simMemory         = {};
 
+  // localStorage から作物選択を復元
+  const areaId = area.id || area.name || '';
+  const savedAnalysisCrop = localStorage.getItem(`adpCropAnalysis_${areaId}`);
+  const savedWorkCrop     = localStorage.getItem(`adpCropWork_${areaId}`);
+  if (savedAnalysisCrop) _adpSelectedCropId = savedAnalysisCrop;
+
   _adpEnsureView();
 
   // ── ヘッダー更新 ──
@@ -533,9 +539,13 @@ async function openAreaDetailPanel(area) {
   const view = document.getElementById('adp-view');
   view.classList.add('open');
 
-  // ── 最初のサブタブ（🏆ランキング＝条件設定から開始）を表示 ──
-  _adpSwitchSubTab('ranking');
-  _adpRkSwitchPane('cond');
+  // ── 最初のセグメント・サブタブ（実務＞カレンダー）を表示 ──
+  _adpSwitchSeg('practice');
+  _adpSwitchSubTab('calendar');
+
+  // 実務用作物バーを復元表示
+  if (savedWorkCrop) _adpUpdateCropBar('practice', savedWorkCrop);
+  if (savedAnalysisCrop) _adpUpdateCropBar('analysis', savedAnalysisCrop);
 
   // ── 保存済み栽培方式を適用（currentAreaDataはこの時点で確定済み） ──
   if (_adpPendingCultMode && currentAreaData) {
@@ -628,30 +638,34 @@ function _adpEnsureView() {
       </div>
     </div>
 
-    <!-- サマリーバー（常時表示・一本化リデザイン） -->
-    <div class="adp-summary-bar" id="adp-summary-bar">
+    <!-- セグメントコントロール（実務 / 分析） -->
+    <div class="adp-nav-segment" id="adp-nav-segment">
+      <button class="adp-seg-btn active" data-seg="practice"  onclick="_adpSwitchSeg('practice')">実務</button>
+      <button class="adp-seg-btn"        data-seg="analysis"  onclick="_adpSwitchSeg('analysis')">分析</button>
+    </div>
 
-      <!-- 未選択時ガイド -->
-      <div class="adp-summary-guide" id="adp-summary-guide">
-        <span class="adp-summary-guide-icon">🌱</span>
-        <span class="adp-summary-guide-text">まず条件設定から作物を選んでください</span>
-        <button class="adp-summary-guide-btn" onclick="_adpJumpToCondTab()">⚙️ 条件を設定する</button>
+    <!-- 作物選択バー：実務用（セグメント直下） -->
+    <div class="adp-crop-bar" id="adp-crop-bar-practice">
+      <button class="adp-crop-bar-btn" onclick="_adpOpenCropSelectSheet('practice')" id="adp-crop-bar-btn-practice">
+        <span class="adp-crop-bar-icon">🌱</span>
+        <span class="adp-crop-bar-name" id="adp-crop-bar-name-practice">作物を選ぶ</span>
+        <span class="adp-crop-bar-arrow">▼</span>
+      </button>
+    </div>
+
+    <!-- 作物選択バー：分析用（適合度・信頼度バー付き） -->
+    <div class="adp-crop-bar adp-crop-bar-analysis" id="adp-crop-bar-analysis" style="display:none;">
+      <div class="adp-crop-bar-row">
+        <button class="adp-crop-bar-btn" onclick="_adpOpenCropSelectSheet('analysis')" id="adp-crop-bar-btn-analysis">
+          <span class="adp-crop-bar-icon">🌱</span>
+          <span class="adp-crop-bar-name" id="adp-crop-bar-name-analysis">作物を選ぶ</span>
+          <span class="adp-crop-bar-arrow">▼</span>
+        </button>
+        <span class="adp-sum-badge adp-sum-badge-mode" id="adp-summary-mode"></span>
+        <span class="adp-sum-badge adp-sum-badge-eval" id="adp-summary-evalmode"></span>
       </div>
-
-      <!-- 選択済み結果表示 -->
-      <div class="adp-summary-result" id="adp-summary-result" style="display:none">
-
-        <!-- 行1: 作物名 ＋ バッジ（栽培方式・評価モード） -->
-        <div class="adp-sum-row adp-sum-row-header">
-          <span class="adp-sum-crop" id="adp-summary-crop">—</span>
-          <span class="adp-sum-area" id="adp-summary-area">—</span>
-          <div class="adp-sum-badges">
-            <span class="adp-sum-badge adp-sum-badge-mode" id="adp-summary-mode"></span>
-            <span class="adp-sum-badge adp-sum-badge-eval" id="adp-summary-evalmode"></span>
-          </div>
-        </div>
-
-        <!-- 行2: 適合度バー -->
+      <!-- 適合度バー（選択済み時のみ表示） -->
+      <div class="adp-crop-bar-bars" id="adp-crop-bar-bars" style="display:none;">
         <div class="adp-sum-row adp-sum-row-bar">
           <span class="adp-sum-bar-label">適合度</span>
           <div class="adp-sum-bar-track">
@@ -660,8 +674,6 @@ function _adpEnsureView() {
           <span class="adp-sum-bar-pct" id="adp-summary-score">—</span>
           <span class="adp-sum-bar-grade" id="adp-sum-score-grade"></span>
         </div>
-
-        <!-- 行3: 信頼度バー -->
         <div class="adp-sum-row adp-sum-row-bar">
           <span class="adp-sum-bar-label">信頼度</span>
           <div class="adp-sum-bar-track">
@@ -670,35 +682,22 @@ function _adpEnsureView() {
           <span class="adp-sum-bar-pct" id="adp-conf-pct">—</span>
           <span class="adp-sum-bar-grade" id="adp-conf-label"></span>
         </div>
-
-        <!-- 行4: 条件変更ボタン -->
-        <div class="adp-sum-row adp-sum-row-action">
-          <button class="adp-sum-cond-btn" onclick="_adpJumpToCondTab()">⚙️ 条件を変更する</button>
-        </div>
-
       </div>
-
     </div>
 
-    <!-- セグメントコントロール（分析 / 実務） -->
-    <div class="adp-nav-segment" id="adp-nav-segment">
-      <button class="adp-seg-btn active" data-seg="analysis" onclick="_adpSwitchSeg('analysis')">分析</button>
-      <button class="adp-seg-btn"        data-seg="practice"  onclick="_adpSwitchSeg('practice')">実務</button>
-    </div>
-
-    <!-- サブタブバー：分析グループ -->
-    <div class="adp-subtabs" id="adp-subtabs-analysis">
-      <button class="adp-subtab active" data-subtab="ranking"   onclick="_adpSwitchSubTab('ranking')">🏆 ランキング</button>
-      <button class="adp-subtab"        data-subtab="growth"    onclick="_adpSwitchSubTab('growth')">📈 生育期間</button>
-      <button class="adp-subtab"        data-subtab="tempchart" onclick="_adpSwitchSubTab('tempchart')">🌡️ 適温グラフ</button>
-      <button class="adp-subtab"        data-subtab="match"     onclick="_adpSwitchSubTab('match')">📊 適合度</button>
-    </div>
-
-    <!-- サブタブバー：実務グループ（初期非表示） -->
-    <div class="adp-subtabs" id="adp-subtabs-practice" style="display:none;">
+    <!-- サブタブバー：実務グループ -->
+    <div class="adp-subtabs" id="adp-subtabs-practice">
+      <button class="adp-subtab active" data-subtab="calendar"  onclick="_adpSwitchSubTab('calendar')">📅 カレンダー</button>
       <button class="adp-subtab"        data-subtab="fert"      onclick="_adpSwitchSubTab('fert')">🧪 施肥</button>
       <button class="adp-subtab"        data-subtab="risk"      onclick="_adpSwitchSubTab('risk')">⚠️ リスク</button>
-      <button class="adp-subtab"        data-subtab="calendar"  onclick="_adpSwitchSubTab('calendar')">📅 カレンダー</button>
+    </div>
+
+    <!-- サブタブバー：分析グループ（初期非表示） -->
+    <div class="adp-subtabs" id="adp-subtabs-analysis" style="display:none;">
+      <button class="adp-subtab" data-subtab="ranking"   onclick="_adpSwitchSubTab('ranking')">🏆 ランキング</button>
+      <button class="adp-subtab" data-subtab="growth"    onclick="_adpSwitchSubTab('growth')">📈 生育期間</button>
+      <button class="adp-subtab" data-subtab="tempchart" onclick="_adpSwitchSubTab('tempchart')">🌡️ 適温グラフ</button>
+      <button class="adp-subtab" data-subtab="match"     onclick="_adpSwitchSubTab('match')">📊 適合度</button>
     </div>
 
     <!-- コンテンツ領域 -->
@@ -944,11 +943,11 @@ const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'cale
 
 // セグメント → 所属タブのマッピング
 const ADP_SEG_TABS = {
+  practice: ['calendar', 'fert', 'risk'],
   analysis: ['ranking', 'growth', 'tempchart', 'match'],
-  practice: ['fert', 'risk', 'calendar'],
 };
 
-let _adpCurrentSeg = 'analysis'; // 現在のセグメント
+let _adpCurrentSeg = 'practice'; // 現在のセグメント（デフォルト実務）
 
 /**
  * _adpSwitchSeg(seg)
@@ -968,6 +967,12 @@ function _adpSwitchSeg(seg) {
   const practiceBar = document.getElementById('adp-subtabs-practice');
   if (analysisBar) analysisBar.style.display = (seg === 'analysis') ? '' : 'none';
   if (practiceBar) practiceBar.style.display = (seg === 'practice') ? '' : 'none';
+
+  // 作物バー切り替え
+  const cropBarPractice = document.getElementById('adp-crop-bar-practice');
+  const cropBarAnalysis = document.getElementById('adp-crop-bar-analysis');
+  if (cropBarPractice) cropBarPractice.style.display = (seg === 'practice') ? '' : 'none';
+  if (cropBarAnalysis) cropBarAnalysis.style.display = (seg === 'analysis') ? '' : 'none';
 
   // そのセグメントの先頭タブへ切り替え
   const firstTab = (ADP_SEG_TABS[seg] || [])[0];
@@ -990,6 +995,11 @@ function _adpSwitchSubTab(name) {
     const practiceBar = document.getElementById('adp-subtabs-practice');
     if (analysisBar) analysisBar.style.display = (_seg === 'analysis') ? '' : 'none';
     if (practiceBar) practiceBar.style.display = (_seg === 'practice') ? '' : 'none';
+    // 作物バー切り替え
+    const cropBarPractice = document.getElementById('adp-crop-bar-practice');
+    const cropBarAnalysis = document.getElementById('adp-crop-bar-analysis');
+    if (cropBarPractice) cropBarPractice.style.display = (_seg === 'practice') ? '' : 'none';
+    if (cropBarAnalysis) cropBarAnalysis.style.display = (_seg === 'analysis') ? '' : 'none';
   }
 
   // タブボタン
@@ -1235,10 +1245,13 @@ function _adpUpdateSummaryBar({ cropName, areaName, score, mode, evalMode, confP
   const set = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.textContent = val; };
 
   const hasCrop = cropName != null && cropName !== '—' && cropName !== '';
-  const guide  = document.getElementById('adp-summary-guide');
-  const result = document.getElementById('adp-summary-result');
-  if (guide)  guide.style.display  = hasCrop ? 'none'  : 'flex';
-  if (result) result.style.display = hasCrop ? 'block' : 'none';
+
+  // 分析用作物バー更新
+  _adpUpdateCropBar('analysis', hasCrop ? cropName : null);
+
+  // 適合度・信頼度バーの表示切り替え（分析セグメントのみ）
+  const barsEl = document.getElementById('adp-crop-bar-bars');
+  if (barsEl) barsEl.style.display = hasCrop ? '' : 'none';
 
   if (!hasCrop) {
     // 条件設定タブ先頭の作物選択ボタン表示を同期
@@ -1246,8 +1259,6 @@ function _adpUpdateSummaryBar({ cropName, areaName, score, mode, evalMode, confP
     return;
   }
 
-  set('adp-summary-crop',     cropName);
-  set('adp-summary-area',     areaName ?? '—');
   set('adp-summary-mode',     mode     ?? '');
   set('adp-summary-evalmode', evalMode ?? '');
 
@@ -1277,7 +1288,6 @@ function _adpUpdateSummaryBar({ cropName, areaName, score, mode, evalMode, confP
     if (confBar)   confBar.style.width    = confNum + '%';
     if (confPctEl) confPctEl.textContent  = confNum + '%';
   }
-  // confLabel は呼び出し元から渡されるが、日本語に変換して上書き
   const confJa = confNum == null ? '—'
     : confNum >= 75 ? '高い'
     : confNum >= 50 ? '普通'
@@ -1287,6 +1297,27 @@ function _adpUpdateSummaryBar({ cropName, areaName, score, mode, evalMode, confP
 
   // 条件設定タブ先頭の作物選択ボタン表示を同期
   set('adp-rk-cond-crop-name', cropName ?? '🌱 作物を選ぶ');
+}
+
+/**
+ * 作物選択バーの表示を更新する
+ * @param {'analysis'|'practice'} seg
+ * @param {string|null} cropName  null = 未選択状態に戻す
+ */
+function _adpUpdateCropBar(seg, cropName) {
+  const nameEl = document.getElementById(`adp-crop-bar-name-${seg}`);
+  const iconEl = nameEl?.closest('.adp-crop-bar-btn')?.querySelector('.adp-crop-bar-icon');
+  const btnEl  = document.getElementById(`adp-crop-bar-btn-${seg}`);
+  if (!nameEl) return;
+  if (cropName) {
+    nameEl.textContent = cropName;
+    if (iconEl) iconEl.textContent = '🌿';
+    if (btnEl)  btnEl.classList.add('selected');
+  } else {
+    nameEl.textContent = '作物を選ぶ';
+    if (iconEl) iconEl.textContent = '🌱';
+    if (btnEl)  btnEl.classList.remove('selected');
+  }
 }
 
 // ─── カレンダー表示モード ───
@@ -3798,6 +3829,10 @@ function _adpSelectCropForAnalysis(cropId) {
 
   _adpSelectedCropId = cropId;
 
+  // localStorage に分析用作物を保存
+  const areaId = _adpArea?.id || _adpArea?.name || '';
+  if (areaId) localStorage.setItem(`adpCropAnalysis_${areaId}`, cropId);
+
   const scoreEntry = (typeof _crScores !== 'undefined')
     ? _crScores.find(s => s.crop.id === _adpSelectedCropId)
     : null;
@@ -4085,10 +4120,48 @@ function _openCropPickerSheet(config) {
 }
 
 /** 後方互換ラッパー：条件設定タブからの既存呼び出しを維持 */
-function _adpOpenCropSelectSheet() {
+// 現在どのセグメントから作物シートを開いたか
+let _adpCropSelectSeg = 'analysis';
+
+function _adpOpenCropSelectSheet(seg) {
+  _adpCropSelectSeg = seg || _adpCurrentSeg || 'analysis';
   _openCropPickerSheet({
-    onSelect: (cropId) => _adpSelectCropForAnalysis(cropId),
+    onSelect: (cropId) => {
+      const areaId = _adpArea?.id || _adpArea?.name || '';
+      if (_adpCropSelectSeg === 'practice') {
+        // 実務：バー更新 + localStorage保存 + 各実務タブへ反映
+        localStorage.setItem(`adpCropWork_${areaId}`, cropId);
+        _adpUpdateCropBar('practice', _adpCropIdToName(cropId));
+        const crop = _adpGetCropById(cropId);
+        if (crop) {
+          if (typeof _renderFertResult  === 'function') _renderFertResult(crop);
+          if (typeof _renderRiskResult  === 'function') _renderRiskResult(crop);
+          if (typeof renderWorkCalendar === 'function') renderWorkCalendar(crop);
+        }
+      } else {
+        // 分析：既存フロー + localStorage保存
+        localStorage.setItem(`adpCropAnalysis_${areaId}`, cropId);
+        _adpSelectCropForAnalysis(cropId);
+      }
+    },
   });
+}
+
+/** cropId → crop名を返すユーティリティ */
+function _adpCropIdToName(cropId) {
+  if (!cropId || typeof CROP_DB === 'undefined') return cropId;
+  const crop = CROP_DB.find
+    ? CROP_DB.find(c => c.id === cropId)
+    : Object.values(CROP_DB).flat().find(c => c.id === cropId);
+  return crop?.name ?? cropId;
+}
+
+/** cropId → crop オブジェクトを返すユーティリティ */
+function _adpGetCropById(cropId) {
+  if (!cropId || typeof CROP_DB === 'undefined') return null;
+  return CROP_DB.find
+    ? CROP_DB.find(c => c.id === cropId)
+    : Object.values(CROP_DB).flat().find(c => c.id === cropId);
 }
 
 function _adpCropSelectSwitchCat(cat) {
