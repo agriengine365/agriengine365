@@ -434,8 +434,28 @@ let _adpClimateLoaded  = false; // true=AMeDAS取得試行済み（成功/失敗
 
 async function openAreaDetailPanel(area) {
   _adpArea    = area;
-  _awArea     = area;   // 条件設定フォームのエリア参照を更新（_awFarmCondは引き継ぎ）
+  _awArea     = area;   // 条件設定フォームのエリア参照を更新
   const now   = new Date();
+
+  // ── 保存済み条件設定を復元 ──
+  if (area.farmingConditions && typeof area.farmingConditions === 'object') {
+    _awFarmCond = { ..._awDefaultFarmCond(), ...area.farmingConditions };
+  } else {
+    _awFarmCond = _awDefaultFarmCond();
+  }
+  // 栽培方式の復元（cultivationModeはarea直下に保存）
+  if (area.cultivationMode) {
+    // currentAreaDataはこの後の処理で確定するため、openAreaDetailPanel末尾で再適用
+    _adpPendingCultMode = area.cultivationMode;
+  } else {
+    _adpPendingCultMode = null;
+  }
+  // 評価モードの復元
+  if (area.savedEvalMode) {
+    _adpClimateMode = (area.savedEvalMode === 'climate');
+  } else {
+    _adpClimateMode = false;
+  }
   _adpYear    = now.getFullYear();
   _adpMonth   = now.getMonth();
   _adpSelDate = null;
@@ -474,6 +494,19 @@ async function openAreaDetailPanel(area) {
   // ── 最初のサブタブ（🏆ランキング＝条件設定から開始）を表示 ──
   _adpSwitchSubTab('ranking');
   _adpRkSwitchPane('cond');
+
+  // ── 保存済み栽培方式を適用（currentAreaDataはこの時点で確定済み） ──
+  if (_adpPendingCultMode && currentAreaData) {
+    currentAreaData.cultivationMode = _adpPendingCultMode;
+    document.querySelectorAll('.adp-cult-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === _adpPendingCultMode);
+    });
+    _adpPendingCultMode = null;
+  }
+  // ── 保存済み評価モードをUIに反映 ──
+  if (area.savedEvalMode) {
+    _adpSetClimateMode(_adpClimateMode);
+  }
 
   // 🌿 土地環境系（landProfile依存・AMeDAS不要・常時表示）
   _adpRenderEnvDonut(area);
@@ -787,6 +820,7 @@ function _adpCloseRankingDialog() {
 // ─── 評価モード切替（DB ↔ 気候推定） ───
 function _adpSetClimateMode(isClimate) {
   _adpClimateMode = isClimate;
+  _awSaveFarmCond();              // 評価モードをエリアごとに永続化
 
   // トグルボタン active 同期（サマリーバー／条件設定タブの両方を含む全インスタンス）
   document.querySelectorAll('.adp-eval-mode-btn').forEach(btn => {
@@ -1628,6 +1662,7 @@ function _adpRenderRanking(area) {
 function _adpSwitchCultivation(mode) {
   if (!currentAreaData) return;
   currentAreaData.cultivationMode = mode;
+  _awSaveFarmCond();              // 栽培方式をエリアごとに永続化
 
   // 両ペインのトグルUI連動更新（.adp-cult-btn すべて対象）
   document.querySelectorAll('.adp-cult-btn').forEach(btn => {
@@ -3895,7 +3930,41 @@ const AW_STEP_TITLES = ['営農条件入力']; // 旧ウィザード互換・参
 // ─── 条件設定状態 ───
 let _awArea           = null;     // 選択中エリアデータ（openAreaDetailPanelで更新）
 let _awFarmCond       = null;     // 営農条件（6項目）：アプリ起動時に初期化、デフォルトボタンでリセット
+let _adpPendingCultMode = null;   // openAreaDetailPanel内で栽培方式復元に使う一時変数
 let _awAllScores      = [];       // buildAnalysisResult().cropScores のキャッシュ
+
+/**
+ * _awSaveFarmCond()
+ * 現在の _awFarmCond・cultivationMode・_adpClimateMode を
+ * エリアオブジェクト（_adpArea）に書き戻し localStorage / Firestore に永続化する。
+ */
+function _awSaveFarmCond() {
+  const area = _adpArea;
+  if (!area || !area.id) return;
+
+  area.farmingConditions = { ..._awFarmCond };
+  area.cultivationMode   = currentAreaData?.cultivationMode || 'openField';
+  area.savedEvalMode     = _adpClimateMode ? 'climate' : 'db';
+
+  try {
+    const stored = JSON.parse(localStorage.getItem(CONFIG.AREAS_KEY) || '[]');
+    const idx = stored.findIndex(a => a.id === area.id);
+    if (idx !== -1) {
+      stored[idx].farmingConditions = area.farmingConditions;
+      stored[idx].cultivationMode   = area.cultivationMode;
+      stored[idx].savedEvalMode     = area.savedEvalMode;
+      localStorage.setItem(CONFIG.AREAS_KEY, JSON.stringify(stored));
+    }
+  } catch(e) { console.warn('_awSaveFarmCond localStorage:', e); }
+
+  if (typeof db !== 'undefined' && db && area.id && !String(area.id).startsWith('local_')) {
+    db.collection('areas').doc(area.id).update({
+      farmingConditions: area.farmingConditions,
+      cultivationMode:   area.cultivationMode,
+      savedEvalMode:     area.savedEvalMode,
+    }).catch(e => console.warn('_awSaveFarmCond Firestore:', e));
+  }
+}
 
 function _awDefaultFarmCond() {
   return {
@@ -3986,6 +4055,7 @@ function _awSetCondition(key, value) {
   _awFarmCond[key] = value;
   _awRunAnalysis();               // currentAreaData.farmingConditions更新＋各タブ再計算
   _awRenderConditions();          // チップの選択状態を再描画
+  _awSaveFarmCond();              // エリアごとに永続化
   // 2026-06修正: 適合度ランキングペインが表示中の再描画呼び出しが抜けており、
   // 作物選択中（_adpSelectedCropIdあり）に条件を変更すると#crop-rankingが
   // runSingleCropAnalysis()で上書きした単一作物カードのままになり、
@@ -4153,6 +4223,39 @@ function _awUpdateLivePreview() {
 // ─── デフォルト条件にリセット ───
 function _awResetConditions() {
   _awFarmCond = _awDefaultFarmCond();
+  // エリアオブジェクト・localStorage・Firestoreから条件設定を削除
+  const area = _adpArea;
+  if (area) {
+    delete area.farmingConditions;
+    delete area.savedEvalMode;
+    // cultivationModeはデフォルト(openField)に戻す
+    area.cultivationMode = 'openField';
+    if (currentAreaData) currentAreaData.cultivationMode = 'openField';
+    document.querySelectorAll('.adp-cult-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.mode === 'openField');
+    });
+    _adpClimateMode = false;
+    _adpSetClimateMode(false);
+    // 永続化層から削除
+    try {
+      const stored = JSON.parse(localStorage.getItem(CONFIG.AREAS_KEY) || '[]');
+      const idx = stored.findIndex(a => a.id === area.id);
+      if (idx !== -1) {
+        delete stored[idx].farmingConditions;
+        delete stored[idx].savedEvalMode;
+        stored[idx].cultivationMode = 'openField';
+        localStorage.setItem(CONFIG.AREAS_KEY, JSON.stringify(stored));
+      }
+    } catch(e) { console.warn('_awResetConditions localStorage:', e); }
+    if (typeof db !== 'undefined' && db && area.id && !String(area.id).startsWith('local_')) {
+      const { FieldValue } = firebase.firestore;
+      db.collection('areas').doc(area.id).update({
+        farmingConditions: FieldValue.delete(),
+        savedEvalMode:     FieldValue.delete(),
+        cultivationMode:   'openField',
+      }).catch(e => console.warn('_awResetConditions Firestore:', e));
+    }
+  }
   _awRunAnalysis();
   _awRenderConditions();
   // 2026-06修正: _awSetCondition()と同様、matchペイン表示中の再描画漏れを修正

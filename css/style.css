@@ -3590,7 +3590,7 @@ html.draw-dialog-active #draw-scope {
   border-radius: 6px;
   border: 1.5px solid var(--border, #2a3d2c);
   background: transparent;
-  color: var(--text3, #5a7a5c);
+  color: var(--text2, #9ab8a0);
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
   letter-spacing: 0.02em;
@@ -6517,9 +6517,11 @@ html.draw-dialog-active .bottom-nav {
 .adp-rk-cond-wrap { padding: 4px 0; }
 .adp-rk-cond-group { margin-bottom: 14px; }
 .adp-rk-cond-label {
-  font-size: 0.78rem;
-  color: var(--text2);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text, #e0ede5);
   margin-bottom: 6px;
+  letter-spacing: 0.02em;
 }
 .adp-rk-cond-chips {
   display: flex;
@@ -6531,9 +6533,10 @@ html.draw-dialog-active .bottom-nav {
   border-radius: 20px;
   border: 1px solid var(--border);
   background: var(--bg3);
+  color: var(--text2, #b0c4b8);
   font-size: 0.8rem;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 .adp-rk-cond-chip.selected {
   background: var(--green);
