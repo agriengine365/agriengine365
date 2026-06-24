@@ -757,6 +757,9 @@ let _vmDlgWarnState = {
 // 予定／実績トグルをユーザーが手動操作したか（trueなら自動再判定で上書きしない）
 let _vmDlgScheduleTouched = false;
 
+// 補完質問フローの残りキュー
+let _vmQuestionQueue = [];
+
 function vmShowConfirmDialog(rawText, areaId) {
   _vmDlgTab = 'work';
   const parsed = vmParseText(rawText);
@@ -793,8 +796,8 @@ function _vmFormatDateJP(dateStr) {
   return `${m}月${d}日`;
 }
 
-// ─── シンプルビュー：要約4行のHTML組み立て ───
-// data = { workDate, tag, crop, quantity }
+// ─── シンプルビュー：要約5行のHTML組み立て ───
+// data = { workDate, tag, crop, quantity, note }
 function _vmBuildSimpleRowsHTML(data) {
   let dateLabel = _vmFormatDateJP(data.workDate) || '未確認';
   let dateWarn = false;
@@ -807,16 +810,18 @@ function _vmBuildSimpleRowsHTML(data) {
   }
 
   const tagLabel = data.tag && data.tag !== 'その他' ? data.tag : (data.tag || '未設定');
-  const tagWarn = _vmDlgWarnState.tagAmbiguous;
+  const tagWarn = _vmDlgWarnState.tagAmbiguous || !data.tag || data.tag === 'その他';
 
   const cropLabel = data.crop ? data.crop : '（未入力）';
   const qtyLabel  = data.quantity ? data.quantity : '（未入力）';
+  const noteLabel = data.note ? data.note : '（なし）';
 
   const rows = [
     { field: 'vm-work-date', label: '日付', value: dateLabel, warn: dateWarn },
     { field: 'vm-tag',       label: '作業', value: tagLabel,  warn: tagWarn },
     { field: 'vm-crop',      label: '作物', value: cropLabel, warn: false },
     { field: 'vm-quantity',  label: '量',   value: qtyLabel,  warn: false },
+    { field: 'vm-note',      label: '📝 メモ', value: noteLabel, warn: false },
   ];
 
   return rows.map(r => `
@@ -836,6 +841,7 @@ function _vmRefreshSimpleRows() {
     tag:      document.getElementById('vm-tag')?.value || '',
     crop:     document.getElementById('vm-crop')?.value.trim() || '',
     quantity: document.getElementById('vm-quantity')?.value.trim() || '',
+    note:     document.getElementById('vm-note')?.value.trim() || '',
   };
   rowsEl.innerHTML = _vmBuildSimpleRowsHTML(data);
 }
@@ -965,6 +971,9 @@ function _vmBuildDialogHTML(parsed, rawText, areaId) {
         </div>
         <input type="hidden" id="vm-is-schedule" value="0">
 
+        <!-- 補完質問フロー（不十分な項目がある時のみ表示） -->
+        <div class="vm-question-flow" id="vm-question-flow" style="display:none;"></div>
+
         <!-- 要約表示 -->
         <div class="vm-simple-rows" id="vm-simple-rows">${simpleRowsHTML}</div>
 
@@ -973,7 +982,7 @@ function _vmBuildDialogHTML(parsed, rawText, areaId) {
           <button type="button" class="vm-simple-mic-btn vm-dlg-mic-btn"
             onclick="vmDlgAddRecording('${areaId || ''}')">🎤 もう一度話す</button>
           <button type="button" class="vm-simple-detail-btn" onclick="vmSwitchView('detail')">詳しく入力する</button>
-          <button type="button" class="btn btn-primary" onclick="vmCommit('${areaId || ''}')">この内容で保存</button>
+          <button type="button" class="btn btn-primary" onclick="vmCheckAndCommit('${areaId || ''}')">この内容で保存</button>
         </div>
 
       </div><!-- /vm-simple-view -->
@@ -1043,9 +1052,9 @@ function _vmBuildDialogHTML(parsed, rawText, areaId) {
                 <input class="vm-input" type="text" id="vm-quantity"
                   value="${escHtml(parsed.quantity || '')}" placeholder="例：200kg">
               </div>
-              <div class="vm-field">
-                <label class="vm-label">メモ（任意）</label>
-                <input class="vm-input" type="text" id="vm-note" placeholder="補足など">
+              <div class="vm-field vm-field-note">
+                <label class="vm-label">📝 メモ（任意）</label>
+                <textarea class="vm-input vm-textarea-note" id="vm-note" rows="3" placeholder="補足・気づき・状況など自由に記入"></textarea>
               </div>
             </div>
           </div>
@@ -1087,7 +1096,7 @@ function _vmBuildDialogHTML(parsed, rawText, areaId) {
         <!-- フッター -->
         <div class="vm-confirm-footer">
           <button class="btn btn-ghost" onclick="vmCloseConfirmDialog()">キャンセル</button>
-          <button class="btn btn-primary" onclick="vmCommit('${areaId || ''}')">保存する</button>
+          <button class="btn btn-primary" onclick="vmCheckAndCommit('${areaId || ''}')">保存する</button>
         </div>
 
       </div><!-- /vm-detail-view -->
@@ -1249,19 +1258,154 @@ function _vmBindMonthPickers(parsed) {
   }
 }
 
+// ─── 日誌文の自動生成 ───
+function _vmBuildDiaryText({ workDate, tag, crop, material, quantity, isSchedule, areaId }) {
+  const parts = [];
+
+  // 日付
+  if (workDate) {
+    const d = new Date(workDate);
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    parts.push(`${m}月${day}日`);
+  }
+
+  // エリア名
+  if (areaId && typeof savedAreas !== 'undefined' && Array.isArray(savedAreas)) {
+    const area = savedAreas.find(a => a.id === areaId);
+    if (area?.name) parts.push(`${area.name}にて`);
+  }
+
+  // 作物＋タグ
+  const cropStr    = crop     ? `${crop}の` : '';
+  const tagStr     = tag && tag !== 'その他' ? tag : '作業';
+  const materialStr = material ? `（${material}` : '';
+  const qtyStr     = quantity  ? (materialStr ? ` ${quantity}）` : `（${quantity}）`) : (materialStr ? '）' : '');
+  parts.push(`${cropStr}${tagStr}${materialStr}${qtyStr}`);
+
+  // 予定／実績
+  parts.push(isSchedule ? 'を予定。' : 'を実施。');
+
+  return parts.join('、').replace('、を', 'を').replace('、て、', 'て');
+}
+
+// ─── 保存前チェック：不十分なら質問フローを起動 ───
+function vmCheckAndCommit(areaId) {
+  const tag  = document.getElementById('vm-tag')?.value || 'その他';
+  const dateUnresolved = _vmDlgWarnState.workDateUnresolved || _vmDlgWarnState.workMonthUnknown;
+  const tagInsufficient = !tag || tag === 'その他' || _vmDlgWarnState.tagAmbiguous;
+
+  // 不十分な項目をキューに積む（日付 → タグ の順）
+  _vmQuestionQueue = [];
+  if (dateUnresolved)   _vmQuestionQueue.push('date');
+  if (tagInsufficient)  _vmQuestionQueue.push('tag');
+
+  if (_vmQuestionQueue.length > 0) {
+    _vmShowNextQuestion(areaId);
+  } else {
+    vmCommit(areaId);
+  }
+}
+
+// ─── 次の質問を表示 ───
+function _vmShowNextQuestion(areaId) {
+  const qType = _vmQuestionQueue.shift();
+  if (!qType) { vmCommit(areaId); return; }
+
+  const container = document.getElementById('vm-question-flow');
+  if (!container) { vmCommit(areaId); return; }
+
+  let html = '';
+
+  if (qType === 'date') {
+    const today     = new Date();
+    const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+    const twoDays   = new Date(today); twoDays.setDate(today.getDate() - 2);
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const lbl = d => `${d.getMonth()+1}/${d.getDate()}`;
+    html = `
+      <div class="vm-question-banner">
+        <span class="vm-question-label">📅 いつの作業ですか？</span>
+        <div class="vm-question-btn-row">
+          <button class="vm-question-btn" onclick="_vmAnswerDate('${fmt(today)}','${areaId}')">今日（${lbl(today)}）</button>
+          <button class="vm-question-btn" onclick="_vmAnswerDate('${fmt(yesterday)}','${areaId}')">昨日（${lbl(yesterday)}）</button>
+          <button class="vm-question-btn" onclick="_vmAnswerDate('${fmt(twoDays)}','${areaId}')">一昨日（${lbl(twoDays)}）</button>
+          <button class="vm-question-btn vm-question-btn-other" onclick="vmFocusDetailField('vm-work-date')">その他の日付 →</button>
+        </div>
+      </div>`;
+  } else if (qType === 'tag') {
+    // スコア上位5タグ＋手動選択
+    const rawText = document.getElementById('vm-raw-text')?.value || '';
+    const parsed  = vmParseText(rawText);
+    const candidates = (parsed.tagCandidates || []).slice(0, 5);
+    // 候補がなければ頻出タグを提示
+    const defaults = ['施肥','除草','収穫','定植','防除'];
+    const tags = candidates.length > 0 ? candidates : defaults;
+    const btnHtml = tags.map(t =>
+      `<button class="vm-question-btn" onclick="_vmAnswerTag('${t}','${areaId}')">${t}</button>`
+    ).join('');
+    html = `
+      <div class="vm-question-banner">
+        <span class="vm-question-label">🌱 何をしましたか？</span>
+        <div class="vm-question-btn-row">
+          ${btnHtml}
+          <button class="vm-question-btn vm-question-btn-other" onclick="vmFocusDetailField('vm-tag')">他の作業 →</button>
+        </div>
+      </div>`;
+  }
+
+  container.innerHTML = html;
+  container.style.display = '';
+  // アニメーション
+  container.classList.remove('vm-question-in');
+  requestAnimationFrame(() => container.classList.add('vm-question-in'));
+}
+
+// ─── 日付回答 ───
+function _vmAnswerDate(dateStr, areaId) {
+  const el = document.getElementById('vm-work-date');
+  if (el) {
+    el.value = dateStr;
+    _vmDlgWarnState.workDateUnresolved = false;
+    _vmDlgWarnState.workMonthUnknown   = false;
+    el.classList.remove('vm-input-unresolved');
+  }
+  _vmRefreshSimpleRows();
+  _vmShowNextQuestion(areaId);
+}
+
+// ─── タグ回答 ───
+function _vmAnswerTag(tag, areaId) {
+  const sel = document.getElementById('vm-tag');
+  if (sel) sel.value = tag;
+  _vmDlgWarnState.tagAmbiguous = false;
+  _vmRefreshSimpleRows();
+  // 質問フロー非表示
+  const container = document.getElementById('vm-question-flow');
+  if (container) container.style.display = 'none';
+  _vmShowNextQuestion(areaId);
+}
+
 function vmCommit(areaId) {
   const rawTextRaw  = document.getElementById('vm-raw-text')?.value.trim() || '';
-  const rawText     = rawTextRaw; // フィールドはすでにフィルタ済みのため再フィルタ不要
+  const rawText     = rawTextRaw;
   const workDate   = document.getElementById('vm-work-date')?.value || '';
   const shipDate   = document.getElementById('vm-ship-date')?.value || null;
   const tag        = document.getElementById('vm-tag')?.value || 'その他';
   const crop       = document.getElementById('vm-crop')?.value.trim() || null;
   const material   = document.getElementById('vm-material')?.value.trim() || null;
   const quantity   = document.getElementById('vm-quantity')?.value.trim() || null;
-  const note       = document.getElementById('vm-note')?.value.trim() || null;
   const isSchedule = document.getElementById('vm-is-schedule')?.value === '1';
 
-  // 作業メモ保存（作業タブが対象）
+  // C. メモが空なら日誌文を自動生成して補完
+  let note = document.getElementById('vm-note')?.value.trim() || null;
+  if (!note) {
+    note = _vmBuildDiaryText({ workDate, tag, crop, material, quantity, isSchedule, areaId });
+    const noteEl = document.getElementById('vm-note');
+    if (noteEl) noteEl.value = note;
+  }
+
+  // 作業メモ保存
   if (_vmDlgTab === 'work' || true) {
     const memo = {
       id:         'vm_' + Date.now(),

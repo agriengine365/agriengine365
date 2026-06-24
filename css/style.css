@@ -7429,3 +7429,60 @@ html.draw-dialog-active .bottom-nav {
   cursor: pointer;
   text-align: center;
 }
+
+/* ═══════════════════════════════════════════
+   音声メモ — 補完質問フロー
+   ═══════════════════════════════════════════ */
+.vm-question-flow {
+  margin: 0 12px 8px;
+}
+.vm-question-banner {
+  background: rgba(74,222,128,.08);
+  border: 1.5px solid var(--green3);
+  border-radius: 12px;
+  padding: 12px 14px;
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity .2s, transform .2s;
+}
+.vm-question-flow.vm-question-in .vm-question-banner {
+  opacity: 1;
+  transform: translateY(0);
+}
+.vm-question-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+.vm-question-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.vm-question-btn {
+  padding: 8px 14px;
+  border: 1.5px solid var(--green3);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--green);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.vm-question-btn:active {
+  background: var(--green3);
+  color: #fff;
+}
+.vm-question-btn-other {
+  border-color: var(--border);
+  color: var(--text2);
+}
+
+/* ─── メモ textarea ─── */
+.vm-textarea-note {
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.6;
+}
