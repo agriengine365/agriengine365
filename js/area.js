@@ -600,16 +600,25 @@ function _adpEnsureView() {
 
     </div>
 
-    <!-- サブタブバー（8タブ＋比較は条件付き） -->
-    <div class="adp-subtabs" id="adp-subtabs">
+    <!-- セグメントコントロール（分析 / 実務） -->
+    <div class="adp-nav-segment" id="adp-nav-segment">
+      <button class="adp-seg-btn active" data-seg="analysis" onclick="_adpSwitchSeg('analysis')">分析</button>
+      <button class="adp-seg-btn"        data-seg="practice"  onclick="_adpSwitchSeg('practice')">実務</button>
+    </div>
+
+    <!-- サブタブバー：分析グループ -->
+    <div class="adp-subtabs" id="adp-subtabs-analysis">
       <button class="adp-subtab active" data-subtab="ranking"   onclick="_adpSwitchSubTab('ranking')">🏆 ランキング</button>
       <button class="adp-subtab"        data-subtab="growth"    onclick="_adpSwitchSubTab('growth')">📈 生育期間</button>
       <button class="adp-subtab"        data-subtab="tempchart" onclick="_adpSwitchSubTab('tempchart')">🌡️ 適温グラフ</button>
+      <button class="adp-subtab"        data-subtab="match"     onclick="_adpSwitchSubTab('match')">📊 適合度</button>
+    </div>
+
+    <!-- サブタブバー：実務グループ（初期非表示） -->
+    <div class="adp-subtabs" id="adp-subtabs-practice" style="display:none;">
       <button class="adp-subtab"        data-subtab="fert"      onclick="_adpSwitchSubTab('fert')">🧪 施肥</button>
       <button class="adp-subtab"        data-subtab="risk"      onclick="_adpSwitchSubTab('risk')">⚠️ リスク</button>
       <button class="adp-subtab"        data-subtab="calendar"  onclick="_adpSwitchSubTab('calendar')">📅 カレンダー</button>
-      <button class="adp-subtab"        data-subtab="match"     onclick="_adpSwitchSubTab('match')">📊 適合度</button>
-      <button class="adp-subtab adp-subtab-compare" data-subtab="compare" onclick="_adpSwitchSubTab('compare')" style="display:none;">⚖️ 比較</button>
     </div>
 
     <!-- コンテンツ領域 -->
@@ -762,11 +771,6 @@ function _adpEnsureView() {
         <div id="conf-detail" class="empty-mini" style="font-size:11px;color:var(--text2);line-height:1.8;">作物を選択するとエリア適合度の詳細が表示されます。</div>
       </div>
 
-      <!-- ⑧ 比較（複数作物選択時のみ表示・Phase3で実装） -->
-      <div class="adp-pane" id="adp-pane-compare" style="display:none;">
-        <div id="compare-result" class="empty-mini">複数の作物を選択すると比較テーブルが表示されます。</div>
-      </div>
-
     </div>
   `;
   document.body.appendChild(view);
@@ -831,11 +835,57 @@ function _adpJumpToCondTab() {
 }
 
 // ─── サブタブ切替（8タブ構成） ───
-const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'compare'];
+const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match'];
+
+// セグメント → 所属タブのマッピング
+const ADP_SEG_TABS = {
+  analysis: ['ranking', 'growth', 'tempchart', 'match'],
+  practice: ['fert', 'risk', 'calendar'],
+};
+
+let _adpCurrentSeg = 'analysis'; // 現在のセグメント
+
+/**
+ * _adpSwitchSeg(seg)
+ * セグメント（分析/実務）を切り替える。
+ * そのセグメントの先頭タブを自動選択する。
+ */
+function _adpSwitchSeg(seg) {
+  _adpCurrentSeg = seg;
+
+  // セグメントボタン active 切り替え
+  document.querySelectorAll('.adp-seg-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.seg === seg);
+  });
+
+  // タブバー表示切り替え
+  const analysisBar = document.getElementById('adp-subtabs-analysis');
+  const practiceBar = document.getElementById('adp-subtabs-practice');
+  if (analysisBar) analysisBar.style.display = (seg === 'analysis') ? '' : 'none';
+  if (practiceBar) practiceBar.style.display = (seg === 'practice') ? '' : 'none';
+
+  // そのセグメントの先頭タブへ切り替え
+  const firstTab = (ADP_SEG_TABS[seg] || [])[0];
+  if (firstTab) _adpSwitchSubTab(firstTab);
+}
+
 let _adpCurrentSubTab = 'ranking'; // 現在のサブタブ
 
 function _adpSwitchSubTab(name) {
   _adpCurrentSubTab = name;
+
+  // セグメント自動同期：外部から直接タブ名で呼ばれた場合に正しいバーを表示する
+  const _seg = Object.keys(ADP_SEG_TABS).find(s => ADP_SEG_TABS[s].includes(name));
+  if (_seg && _seg !== _adpCurrentSeg) {
+    _adpCurrentSeg = _seg;
+    document.querySelectorAll('.adp-seg-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.seg === _seg);
+    });
+    const analysisBar = document.getElementById('adp-subtabs-analysis');
+    const practiceBar = document.getElementById('adp-subtabs-practice');
+    if (analysisBar) analysisBar.style.display = (_seg === 'analysis') ? '' : 'none';
+    if (practiceBar) practiceBar.style.display = (_seg === 'practice') ? '' : 'none';
+  }
 
   // タブボタン
   document.querySelectorAll('.adp-subtab').forEach(btn => {
@@ -3455,7 +3505,18 @@ function _adpMonthCircularDiff(a, b) {
   return Math.min(d, 12 - d);
 }
 
-function _adpOpenCropSelectSheet() {
+/**
+ * _openCropPickerSheet(config)
+ * 共通作物選択シート。条件設定・収益シミュレーターの両方から利用する。
+ *
+ * @param {Object} config
+ * @param {function(cropId: string): void} config.onSelect  - 作物確定時コールバック
+ * @param {string} [config.title]  - ヘッダータイトル（省略時 '🌱 作物を選ぶ'）
+ */
+function _openCropPickerSheet(config) {
+  const _onSelect = config.onSelect;
+  const _title    = config.title || '🌱 作物を選ぶ';
+
   // CROP_DB取得
   let allCrops = [];
   if (typeof CROP_DB !== 'undefined') {
@@ -3520,9 +3581,10 @@ function _adpOpenCropSelectSheet() {
   let _selectedCat    = 'all';
   let _selectedSubcat = null; // null = サブカテゴリ未選択（大カテゴリ全体）
   let _selectedMonth  = null; // null = 月絞り込みなし。1〜12（数値）
+  let _searchText     = '';   // テキスト検索文字列
 
-  // 作物リスト HTML 生成（カテゴリ AND 月 のAND結合。月未選択時はカテゴリのみ）
-  function buildList(cat, subcat, month) {
+  // 作物リスト HTML 生成（カテゴリ AND 月 AND テキスト のAND結合）
+  function buildList(cat, subcat, month, searchText) {
     let catList;
     if (cat === 'all') {
       catList = allCrops;
@@ -3544,9 +3606,15 @@ function _adpOpenCropSelectSheet() {
       list = catList;
     }
 
+    // テキスト検索（作物名の部分一致、大文字小文字無視）
+    if (searchText) {
+      const q = searchText.toLowerCase();
+      list = list.filter(c => c.name.toLowerCase().includes(q));
+    }
+
     if (!list.length) return '<div class="css-empty">該当作物なし</div>';
     return list.map(c => `
-      <div class="css-crop-item" onclick="_adpSelectCropFromSheet('${c.id}')">
+      <div class="css-crop-item" onclick="_adpCropPickerSelect('${c.id}')">
         <span class="css-crop-name">${escHtml(c.name)}</span>
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
       </div>`).join('');
@@ -3606,13 +3674,16 @@ function _adpOpenCropSelectSheet() {
     <div class="cdp-inner">
       <div class="cdp-handle"></div>
       <div class="cdp-header">
-        <div class="cdp-crop-name">🌱 作物を選ぶ</div>
+        <div class="cdp-crop-name">${_title}</div>
         <button class="cdp-close" onclick="_adpCloseCropSelectSheet()">✕</button>
       </div>
+      <input type="search" class="css-search-input" id="css-search-input"
+        placeholder="作物名で検索…" value=""
+        oninput="_adpCropSelectSearch(this.value)">
       <div class="css-cat-tabs" id="css-cat-tabs">${catTabsHtml}</div>
       ${buildMonthPanel(null)}
       <div id="css-subcat-wrap">${buildSubcatTabs('all', null, null)}</div>
-      <div class="css-list" id="css-list">${buildList('all', null, null)}</div>
+      <div class="css-list" id="css-list">${buildList('all', null, null, '')}</div>
     </div>`;
 
   sheet.classList.add('open');
@@ -3622,17 +3693,31 @@ function _adpOpenCropSelectSheet() {
   sheet._buildSubcatTabs   = buildSubcatTabs;
   sheet._buildMonthTrigger = buildMonthTrigger;
   sheet._buildMonthPanel   = buildMonthPanel;
-  sheet._getState          = () => ({ cat: _selectedCat, subcat: _selectedSubcat, month: _selectedMonth });
-  sheet._setState          = (cat, subcat, month) => { _selectedCat = cat; _selectedSubcat = subcat; _selectedMonth = month; };
+  sheet._getState          = () => ({ cat: _selectedCat, subcat: _selectedSubcat, month: _selectedMonth, search: _searchText });
+  sheet._setState          = (cat, subcat, month, search) => {
+    _selectedCat    = cat;
+    _selectedSubcat = subcat;
+    _selectedMonth  = month;
+    if (search !== undefined) _searchText = search;
+  };
+  // コールバックをシートに保持（_adpCropPickerSelectから参照）
+  sheet._onSelect = _onSelect;
+}
+
+/** 後方互換ラッパー：条件設定タブからの既存呼び出しを維持 */
+function _adpOpenCropSelectSheet() {
+  _openCropPickerSheet({
+    onSelect: (cropId) => _adpSelectCropForAnalysis(cropId),
+  });
 }
 
 function _adpCropSelectSwitchCat(cat) {
   const sheet = document.getElementById('adp-crop-select-sheet');
   if (!sheet) return;
 
-  // 状態更新（サブカテゴリはリセット、月絞り込みは維持＝AND結合のため）
-  const { month } = sheet._getState();
-  sheet._setState(cat, null, month);
+  // 状態更新（サブカテゴリはリセット、月・テキスト検索は維持）
+  const { month, search } = sheet._getState();
+  sheet._setState(cat, null, month, search);
 
   // 大タブ active 切り替え
   sheet.querySelectorAll('.css-cat-btn').forEach(btn => {
@@ -3647,18 +3732,18 @@ function _adpCropSelectSwitchCat(cat) {
 
   // 作物リスト 再描画
   const listEl = document.getElementById('css-list');
-  if (listEl) listEl.innerHTML = sheet._buildList(cat, null, month);
+  if (listEl) listEl.innerHTML = sheet._buildList(cat, null, month, search);
 }
 
 function _adpCropSelectSwitchSubcat(subcat) {
   const sheet = document.getElementById('adp-crop-select-sheet');
   if (!sheet) return;
 
-  const { cat, subcat: prevSubcat, month } = sheet._getState();
+  const { cat, subcat: prevSubcat, month, search } = sheet._getState();
 
   // 同じサブカテゴリをタップ → 解除（トグル）
   const nextSubcat = (prevSubcat === subcat) ? null : subcat;
-  sheet._setState(cat, nextSubcat, month);
+  sheet._setState(cat, nextSubcat, month, search);
 
   // サブタブ active 切り替え
   sheet.querySelectorAll('.css-subcat-btn').forEach(btn => {
@@ -3667,7 +3752,7 @@ function _adpCropSelectSwitchSubcat(subcat) {
 
   // 作物リスト 再描画
   const listEl = document.getElementById('css-list');
-  if (listEl) listEl.innerHTML = sheet._buildList(cat, nextSubcat, month);
+  if (listEl) listEl.innerHTML = sheet._buildList(cat, nextSubcat, month, search);
 }
 
 function _adpCropSelectToggleMonthPanel() {
@@ -3682,11 +3767,11 @@ function _adpCropSelectSwitchMonth(month) {
   const sheet = document.getElementById('adp-crop-select-sheet');
   if (!sheet) return;
 
-  const { cat, subcat, month: prevMonth } = sheet._getState();
+  const { cat, subcat, month: prevMonth, search } = sheet._getState();
 
   // 同じ月をタップ → 解除（トグル）
   const nextMonth = (prevMonth === month) ? null : month;
-  sheet._setState(cat, subcat, nextMonth);
+  sheet._setState(cat, subcat, nextMonth, search);
 
   // 月グリッドボタン active 切り替え
   sheet.querySelectorAll('.css-month-btn').forEach(btn => {
@@ -3704,9 +3789,9 @@ function _adpCropSelectSwitchMonth(month) {
   const panel = document.getElementById('css-month-panel');
   if (panel) panel.classList.remove('open');
 
-  // 作物リスト 再描画（カテゴリ AND 月 のAND結合）
+  // 作物リスト 再描画（カテゴリ AND 月 AND テキスト のAND結合）
   const listEl = document.getElementById('css-list');
-  if (listEl) listEl.innerHTML = sheet._buildList(cat, subcat, nextMonth);
+  if (listEl) listEl.innerHTML = sheet._buildList(cat, subcat, nextMonth, search);
 }
 
 function _adpCloseCropSelectSheet() {
@@ -3714,9 +3799,23 @@ function _adpCloseCropSelectSheet() {
   if (sheet) sheet.classList.remove('open');
 }
 
-function _adpSelectCropFromSheet(cropId) {
-  _adpCloseCropSelectSheet();
-  _adpSelectCropForAnalysis(cropId);
+/** 作物アイテムタップ → コールバック呼び出し（旧 _adpSelectCropFromSheet を廃止・統合） */
+function _adpCropPickerSelect(cropId) {
+  const sheet = document.getElementById('adp-crop-select-sheet');
+  if (sheet && typeof sheet._onSelect === 'function') {
+    _adpCloseCropSelectSheet();
+    sheet._onSelect(cropId);
+  }
+}
+
+/** テキスト検索 oninput ハンドラ */
+function _adpCropSelectSearch(text) {
+  const sheet = document.getElementById('adp-crop-select-sheet');
+  if (!sheet) return;
+  const { cat, subcat, month } = sheet._getState();
+  sheet._setState(cat, subcat, month, text);
+  const listEl = document.getElementById('css-list');
+  if (listEl) listEl.innerHTML = sheet._buildList(cat, subcat, month, text);
 }
 
 // ═══════════════════════════════════════════
@@ -3789,7 +3888,6 @@ const AW_ITEM_DEFS = [
   { key: 'risk',     label: 'リスク・注意点', icon: '⚠️' },
   { key: 'calendar', label: '生育カレンダー', icon: '📅' },
   { key: 'match',    label: 'エリア適合度',   icon: '📊' },
-  { key: 'compare',  label: '比較',           icon: '⚖️' },
 ];
 
 const AW_STEP_TITLES = ['営農条件入力']; // 旧ウィザード互換・参照箇所が残る間は温存
@@ -3977,10 +4075,6 @@ function _awRunAnalysis() {
 
   const ad   = _awBuildAreaData();
   const name = _awArea.name || 'エリア';
-
-  // 比較タブは常に非表示（比較機能廃止）
-  const compareTab = document.querySelector('.adp-subtab-compare');
-  if (compareTab) compareTab.style.display = 'none';
 
   // 全作物スコア（営農条件込み）を再計算 → おすすめリスト・ライブプレビューの元データ
   if (typeof buildAnalysisResult === 'function') {
@@ -4353,10 +4447,9 @@ function _adpRenderProfitSimulator() {
   }
   const cropId = _simSelectedCropId;
 
-  // ドロップダウン用の選択肢を生成
-  const options = scores.map(s =>
-    `<option value="${escHtml(s.crop.id)}" ${s.crop.id === cropId ? 'selected' : ''}>${escHtml(s.crop.name)}</option>`
-  ).join('');
+  // 選択中作物の表示名を取得
+  const selectedScore = scores.find(s => s.crop.id === cropId);
+  const selectedCropName = selectedScore ? selectedScore.crop.name : '—';
 
   // 選択作物のデフォルト値
   const defs = _simGetDefaultValues(cropId);
@@ -4383,11 +4476,11 @@ function _adpRenderProfitSimulator() {
   wrap.innerHTML = `
     <div class="adp-rk-sim-form">
       <div class="adp-rk-sim-select-wrap">
-        <label for="sim-crop-select">作物</label>
-        <select id="sim-crop-select" class="adp-rk-sim-select"
-          onchange="_simOnCropChange(this.value)">
-          ${options}
-        </select>
+        <label>作物</label>
+        <div class="sim-crop-picker-row">
+          <span class="sim-crop-selected-name" id="sim-crop-selected-name">${escHtml(selectedCropName)}</span>
+          <button class="sim-crop-pick-btn" onclick="_simOpenCropPicker()">変更</button>
+        </div>
       </div>
       ${noPriceNote}
       <div class="adp-rk-sim-field">
@@ -4433,13 +4526,19 @@ function _adpRenderProfitSimulator() {
   _simUpdatePreview();
 }
 
-/** 作物ドロップダウン変更時 */
+/** シミュレーター：作物ピッカーシートを開く */
+function _simOpenCropPicker() {
+  _openCropPickerSheet({
+    title: '🌱 シミュレーター作物を選ぶ',
+    onSelect: (cropId) => _simOnCropChange(cropId),
+  });
+}
+
+/** 作物変更時（ピッカー選択コールバック） */
 function _simOnCropChange(newCropId) {
   if (_simDirty) {
     if (!confirm('未保存の変更があります。破棄してよろしいですか？')) {
-      // 元に戻す
-      const sel = document.getElementById('sim-crop-select');
-      if (sel) sel.value = _simSelectedCropId;
+      // キャンセル：何もしない（selectはもう存在しないため値を戻す処理は不要）
       return;
     }
     // 2026-06修正: _simDirtyだけクリアし_simMemoryを消していなかったため、

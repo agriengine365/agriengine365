@@ -5244,63 +5244,7 @@ html.draw-dialog-active .bottom-nav {
   flex-shrink: 0;
 }
 
-/* ═══════════════════════════════════════════
-   COMPARE TABLE — 比較テーブル（Phase 2）
-═══════════════════════════════════════════ */
 
-.cmp-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.cmp-table {
-  width: 100%;
-  min-width: 420px;
-  border-collapse: collapse;
-  font-size: 11px;
-}
-
-.cmp-table th {
-  text-align: left;
-  padding: 6px 8px;
-  font-size: 10px;
-  font-weight: 500;
-  color: var(--text3);
-  border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-
-.cmp-table td {
-  padding: 8px 8px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: middle;
-  white-space: nowrap;
-}
-
-.cmp-table tr:last-child td {
-  border-bottom: none;
-}
-
-.cmp-name {
-  font-weight: 600;
-  color: var(--text);
-  font-size: 12px !important;
-}
-
-.cmp-score {
-  font-family: var(--mono);
-  font-weight: 700;
-  font-size: 12px !important;
-}
-
-.cmp-profit {
-  font-family: var(--mono);
-  font-size: 11px !important;
-}
-
-.cmp-risk-high { color: var(--red); font-weight: 600; }
-.cmp-risk-mid  { color: var(--amber); }
-.cmp-risk-low  { color: var(--green2); }
 /* ═══════════════════════════════════════════
    ANALYSIS WIZARD — Phase 4 新UI
    （Step1: 営農条件 / Step2: 作物選択 / Step3: 分析項目）
@@ -7035,4 +6979,105 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text3);
   white-space: nowrap;
   margin-top: 1px;
+}
+
+/* ═══════════════════════════════════════════
+   CROP PICKER SHEET — テキスト検索
+═══════════════════════════════════════════ */
+
+.css-search-input {
+  display: block;
+  width: calc(100% - 32px);
+  margin: 8px 16px 4px;
+  padding: 8px 12px;
+  background: var(--surface2, #1e2b22);
+  border: 1px solid var(--border, #2e3d33);
+  border-radius: 8px;
+  color: var(--text, #e0ede5);
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.css-search-input:focus {
+  border-color: var(--green2, #4caf72);
+}
+
+.css-search-input::placeholder {
+  color: var(--text3, #6b7e72);
+}
+
+/* ═══════════════════════════════════════════
+   PROFIT SIMULATOR — 作物ピッカーボタン
+═══════════════════════════════════════════ */
+
+.sim-crop-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.sim-crop-selected-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #e0ede5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sim-crop-pick-btn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  background: var(--surface2, #1e2b22);
+  border: 1px solid var(--border, #2e3d33);
+  border-radius: 6px;
+  color: var(--green2, #4caf72);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.sim-crop-pick-btn:active {
+  background: var(--surface3, #253029);
+}
+
+/* ═══════════════════════════════════════════
+   NAV SEGMENT — 分析 / 実務 セグメントコントロール
+═══════════════════════════════════════════ */
+
+.adp-nav-segment {
+  display: flex;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 6px 12px 0;
+  gap: 4px;
+}
+
+.adp-seg-btn {
+  flex: 1;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--text3);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  text-align: center;
+  transition: color 0.18s, border-color 0.18s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.adp-seg-btn.active {
+  color: var(--green);
+  border-bottom-color: var(--green);
+}
+
+.adp-seg-btn:hover:not(.active) {
+  color: var(--text2);
 }
