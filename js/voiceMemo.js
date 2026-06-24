@@ -345,7 +345,19 @@ function _vmBuildAllowedWords() {
 }
 
 // キャッシュ（初回呼出時に生成）
+// G: CROP_DB遅延ロード対応 — CROP_DBが後からロードされた場合も自動再構築
 let _vmAllowedWords = null;
+let _vmCropDbLoaded = false;  // キャッシュ生成時にCROP_DBが存在したか
+
+function _vmGetAllowedWords() {
+  const cropDbNow = typeof CROP_DB !== 'undefined' && Array.isArray(CROP_DB) && CROP_DB.length > 0;
+  // CROP_DBが新たにロードされたらキャッシュを破棄して再構築
+  if (!_vmAllowedWords || (cropDbNow && !_vmCropDbLoaded)) {
+    _vmAllowedWords = _vmBuildAllowedWords();
+    _vmCropDbLoaded = cropDbNow;
+  }
+  return _vmAllowedWords;
+}
 
 /**
  * 音声認識テキストから未登録語を除去して返す。
@@ -357,7 +369,7 @@ let _vmAllowedWords = null;
  */
 function vmFilterText(rawText) {
   if (!rawText) return '';
-  if (!_vmAllowedWords) _vmAllowedWords = _vmBuildAllowedWords();
+  _vmAllowedWords = _vmGetAllowedWords();
 
   // 各登録語が出現する全区間を収集
   const spans = []; // { start, end }
@@ -403,8 +415,9 @@ function vmFilterText(rawText) {
  * 例：「施肥施肥10kg」→「施肥10kg」
  */
 function _vmDeduplicateWords(text) {
-  if (!text || !_vmAllowedWords) return text;
-  const words = [..._vmAllowedWords].sort((a, b) => b.length - a.length);
+  const _dw = _vmGetAllowedWords();
+  if (!text || !_dw) return text;
+  const words = [..._dw].sort((a, b) => b.length - a.length);
   let result = text;
   for (const word of words) {
     const re = new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
@@ -428,9 +441,8 @@ function _vmDeduplicateWords(text) {
 function _vmMergeTexts(existing, added) {
   if (!existing) return added;
   if (!added)    return existing;
-  if (!_vmAllowedWords) _vmAllowedWords = _vmBuildAllowedWords();
-
-  const words = [..._vmAllowedWords].sort((a, b) => b.length - a.length);
+  const _mw = _vmGetAllowedWords();
+  const words = [..._mw].sort((a, b) => b.length - a.length);
 
   // 追加テキストに含まれる単語セットを収集
   const addedWords = new Set();
@@ -450,6 +462,27 @@ function _vmMergeTexts(existing, added) {
 }
 
 // タグスコアリング：出荷系タグのボーナスウェイト
+// ─────────────────────────────────────────
+//  E. 音声認識誤変換補正辞書
+//  音声認識エンジンが出しやすい誤変換 → 正しい農業語
+//  vmParseText() が助詞ストリップ前に適用。
+// ─────────────────────────────────────────
+const VM_ASR_CORRECTIONS = {
+  // ── 作業語 ──
+  '収火':'収穫',   '収穫た':'収穫した',  '種まいた':'種をまいた',
+  'は種':'播種',   '播種き':'播種',      '定食':'定植',
+  '移食':'移植',   '整枝し':'整枝',      '選定':'剪定',
+  '剪枝':'剪定',   '肥料まいた':'施肥',  '農薬まいた':'農薬散布',
+  '散布した':'農薬散布',                  '水やりした':'灌水',
+  '草刈りした':'除草',                    '草取りした':'除草',
+  // ── 単位・数値 ──
+  'キログラム':'kg', 'キロリットル':'kl', 'ヘクタール':'ha',
+  // ── 作物名 ──
+  'とうきび':'トウモロコシ', 'なんきん':'カボチャ', 'とうなす':'カボチャ',
+  'ピーマン子':'ピーマン',   'みにとまと':'ミニトマト',
+  'ほうれん草':'ホウレンソウ', 'こまつな':'コマツナ',
+};
+
 const VM_TAG_BONUS = {
   '出荷':     3,
   '出荷調整': 3,
@@ -458,6 +491,33 @@ const VM_TAG_BONUS = {
 
 // 出荷系ワード（確認ダイアログに「出荷記録にも保存」ボタンを出す判定用）
 const VM_SHIPPING_WORDS = ['出荷','荷造り','梱包','JA','農協','市場','配送','出した','道の駅','直売','伝票','選果','選別','等級','規格','袋詰め','箱詰め'];
+
+// B. 口語数値 → 算用数字 正規化
+// 例：「十キロ」→「10キロ」「半箱」→「0.5箱」「一トン」→「1トン」
+function _vmNormalizeNumbers(text) {
+  const kanjiMap = {'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9,
+    '十':10,'百':100,'千':1000,'万':10000,
+    '壱':1,'弐':2,'参':3,'拾':10};
+  // 漢数字列を数値に変換
+  let result = text.replace(/[一二三四五六七八九十百千万壱弐参拾]+/g, m => {
+    let n = 0, tmp = 0;
+    for (const ch of m) {
+      const v = kanjiMap[ch];
+      if (v >= 10) { tmp = (tmp || 1) * v; if (v >= 1000) { n += tmp; tmp = 0; } }
+      else tmp += v;
+    }
+    return String(n + tmp) || m;
+  });
+  // 口語表現
+  result = result
+    .replace(/半([箱袋本株個玉房束枚ケースコンテナパックトレー俵反畝坪])/g, '0.5$1')
+    .replace(/ひと([箱袋本株個玉房束枚ケースコンテナパックトレー俵反畝坪キロトンkg])/g, '1$1')
+    .replace(/ふた([箱袋本株個玉房束枚ケースコンテナパックトレー俵反畝坪キロkg])/g, '2$1')
+    .replace(/みっ?つ/g, '3').replace(/よっ?つ/g, '4').replace(/いつ?つ/g, '5')
+    .replace(/むっ?つ/g, '6').replace(/なな?つ/g, '7').replace(/やっ?つ/g, '8')
+    .replace(/ここの?つ/g, '9').replace(/とお/g, '10');
+  return result;
+}
 
 // 数量・単位パターン（重い単位から順に判定）
 const VM_UNIT_PATTERN = /(\d+(?:\.\d+)?)\s*(トン|t(?:on)?|ｔ|kg|ｋｇ|キログラム|キロ|g|ｇ|グラム|kl|ｋｌ|キロリットル|L|ℓ|リットル|ml|ｍｌ|cc|俵|袋|本|株|粒|個|玉|房|束|枚|枚組|箱|ケース|コンテナ|パック|トレー|反|畝|坪|平米|㎡|アール|ha|ヘクタール|倍|回|時間|日)/;
@@ -629,9 +689,16 @@ function vmParseDate(text) {
 // ─────────────────────────────────────────
 
 function vmParseText(rawText) {
+  // E. 音声認識誤変換補正（助詞ストリップ前に適用）
+  const _corrKeys = Object.keys(VM_ASR_CORRECTIONS).sort((a, b) => b.length - a.length);
+  let _corrText = rawText;
+  for (const k of _corrKeys) {
+    if (_corrText.includes(k)) _corrText = _corrText.split(k).join(VM_ASR_CORRECTIONS[k]);
+  }
+
   // ③ 助詞ストリップ：照合精度向上のため助詞・格助詞を除去
   // 例：「トマトを収穫した」→「トマト収穫した」
-  const stripped = rawText.replace(/([^\d０-９])(を|の|が|は|に|で|と|も|へ|から|まで|より|ね|よ|さ|な)/g, '$1');
+  const stripped = _corrText.replace(/([^\d０-９])(を|の|が|は|に|で|と|も|へ|から|まで|より|ね|よ|さ|な)/g, '$1');
 
   // ④ 作物別名・品種名の正規化（VM_CROP_ALIASESで置換）
   // 例：「シャインマスカット」→「ブドウ」、「さくらんぼ」→「オウトウ（サクランボ）」
@@ -660,30 +727,40 @@ function vmParseText(rawText) {
     if (mt) textForUnit = textForUnit.split(mt).join('');
   }
 
-  // ─── タグ：スコアリング方式 ───
+  // ─── タグ：スコアリング方式（D: keyword weight対応）───
+  // keyword は文字列（weight=1）またはオブジェクト { kw, w } で重み指定可
   const scores = VM_TAG_DICT
     .filter(e => e.keywords.length > 0)
     .map(e => {
-      const hits = e.keywords.filter(kw => text.includes(kw)).length;
+      let score = 0;
+      for (const kw of e.keywords) {
+        if (typeof kw === 'string') {
+          if (text.includes(kw)) score += 1;
+        } else if (kw && typeof kw === 'object') {
+          if (text.includes(kw.kw)) score += (kw.w || 1);
+        }
+      }
       const bonus = VM_TAG_BONUS[e.tag] || 0;
-      return { tag: e.tag, score: hits + (hits > 0 ? bonus : 0) };
+      if (score > 0) score += bonus;
+      return { tag: e.tag, score };
     })
     .filter(s => s.score > 0)
     .sort((a, b) => b.score - a.score);
 
   // 上位3件を候補に
   const tagCandidates = scores.slice(0, 3).map(s => s.tag);
-  // 1位と2位のスコア差が1以下なら「曖昧」フラグ
-  const tagAmbiguous = scores.length >= 2 && (scores[0].score - scores[1].score) <= 1;
+  // A: 曖昧判定を改善 — 差が1位スコアの30%以下かつ絶対差2以下を「曖昧」とする
+  const tagAmbiguous = scores.length >= 2 &&
+    (scores[0].score - scores[1].score) <= Math.max(1, scores[0].score * 0.3);
   const tag = tagCandidates[0] || 'その他';
 
-  // 作物（CROP_DBから動的取得）
-  // name例：「コメ（水稲）」→「コメ」「水稲」に分割してマッチ
-  let crop = null;
+  // C. 作物（CROP_DBから動的取得・複数検出対応）
+  // 「トマトとキュウリを収穫」→ crop = 'トマト、キュウリ'
+  // 後方互換: 文字列のまま保存（area.jsのescHtml参照に影響なし）
+  const _detectedCrops = [];
   if (typeof CROP_DB !== 'undefined' && Array.isArray(CROP_DB)) {
     for (const c of CROP_DB) {
       if (!c.name) continue;
-      // 括弧内外を分割：「コメ（水稲）」→ ['コメ', '水稲']
       const rawName = c.name;
       const tokens = [];
       const parenMatch = rawName.match(/^(.+?)[\s　]*[（(](.+?)[）)](.*)$/);
@@ -694,9 +771,10 @@ function vmParseText(rawText) {
       } else {
         tokens.push(rawName.trim());
       }
-      if (tokens.some(t => t && text.includes(t))) { crop = rawName; break; }
+      if (tokens.some(t => t && text.includes(t))) _detectedCrops.push(rawName);
     }
   }
+  const crop = _detectedCrops.length === 0 ? null : _detectedCrops.join('、');
 
   // 圃場名（savedAreasから動的取得）
   let areaId = null;
@@ -715,7 +793,7 @@ function vmParseText(rawText) {
   // 数量・単位（日付除去済みテキストから抽出。「3日間作業」のような期間表現の「日」は
   // 日付として消費されていなければそのまま拾える）
   let quantity = null;
-  const unitMatch = textForUnit.match(VM_UNIT_PATTERN);
+  const unitMatch = _vmNormalizeNumbers(textForUnit).match(VM_UNIT_PATTERN);
   if (unitMatch) quantity = unitMatch[0];
 
   // 出荷先
@@ -763,6 +841,7 @@ function vmDelete(id) {
 // ─── 登録語キャッシュを強制リセット（cropDB遅延ロード後に呼ぶ） ───
 function vmResetAllowedWordsCache() {
   _vmAllowedWords = null;
+  _vmCropDbLoaded = false;
 }
 
 // ─────────────────────────────────────────
@@ -1227,7 +1306,7 @@ function _vmBuildDialogHTML(parsed, rawText, areaId) {
               <div class="vm-field">
                 <label class="vm-label">作物</label>
                 <input class="vm-input" type="text" id="vm-crop"
-                  value="${escHtml(parsed.crop || '')}" placeholder="例：トマト">
+                  value="${escHtml(parsed.crop || '')}" placeholder="例：トマト、キュウリ">
               </div>
               <div class="vm-field">
                 <label class="vm-label">資材</label>
