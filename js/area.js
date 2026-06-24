@@ -802,17 +802,18 @@ function _adpEnsureView() {
         <div class="adp-cal-visit-wrap" id="adp-cal-visit-wrap">
           <!-- まもなくの予定バナー -->
           <div id="adp-cal-upcoming-banner"></div>
-          <!-- 今月のまとめカード -->
-          <div id="adp-cal-summary-card"></div>
-          <!-- 音声メモヘッダー -->
-          <div class="vm-cal-header" id="vm-cal-header-wrap"></div>
-          <!-- グリッド／リスト表示切替 -->
-          <div class="adp-cal-view-toggle">
-            <button class="adp-cal-view-btn active" id="adp-cal-view-grid"
-                    onclick="_adpSetCalView('grid')">📅 カレンダー</button>
-            <button class="adp-cal-view-btn" id="adp-cal-view-list"
-                    onclick="_adpSetCalView('list')">📋 リスト</button>
+          <!-- 上部操作バー：音声入力 ＋ グリッド／リスト切替 -->
+          <div class="adp-cal-top-bar">
+            <div class="vm-cal-header" id="vm-cal-header-wrap"></div>
+            <div class="adp-cal-view-toggle">
+              <button class="adp-cal-view-btn active" id="adp-cal-view-grid"
+                      onclick="_adpSetCalView('grid')">📅 カレンダー</button>
+              <button class="adp-cal-view-btn" id="adp-cal-view-list"
+                      onclick="_adpSetCalView('list')">📋 リスト</button>
+            </div>
           </div>
+          <!-- まとめカード（リスト表示時のみJS側で描画） -->
+          <div id="adp-cal-summary-card"></div>
           <div id="adp-calendar-wrap"></div>
           <div id="adp-day-records-wrap"></div>
         </div>
@@ -1360,10 +1361,15 @@ function _adpRenderCalendar() {
   `;
 }
 
-// ─── まとめカード ───
+// ─── まとめカード（リスト表示時のみ描画） ───
 function _adpRenderSummaryCard(byDate, y, mo, todayStr) {
   const el = document.getElementById('adp-cal-summary-card');
   if (!el) return;
+  // グリッド表示時は非表示
+  if (_adpCalView !== 'list') {
+    el.innerHTML = '';
+    return;
+  }
   const monthStr = `${y}-${String(mo+1).padStart(2,'0')}`;
   let totalRec = 0, totalSchedule = 0;
   Object.entries(byDate).forEach(([date, recs]) => {
