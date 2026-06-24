@@ -224,6 +224,19 @@
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<!-- 共通確認モーダル -->
+<div class="confirm-modal-overlay" id="confirm-modal-overlay">
+  <div class="confirm-modal">
+    <p class="confirm-modal-message" id="confirm-modal-message"></p>
+    <div class="confirm-modal-actions">
+      <button class="confirm-modal-btn confirm-modal-cancel" id="confirm-modal-cancel"
+              onclick="_confirmModalAnswer(false)">キャンセル</button>
+      <button class="confirm-modal-btn confirm-modal-ok danger" id="confirm-modal-ok"
+              onclick="_confirmModalAnswer(true)">削除する</button>
+    </div>
+  </div>
+</div>
+
 <!-- ─── Scripts ─── -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>

@@ -328,3 +328,39 @@ function initSheet() {
   // BottomSheet廃止。スワイプ閉じのみ初期化
   initFsSwipe();
 }
+
+// ═══════════════════════════════════════════
+//  共通確認モーダル（confirm()代替）
+// ═══════════════════════════════════════════
+
+let _confirmResolve = null;
+
+/**
+ * confirm()の代替。Promiseを返す。
+ * @param {string} message   本文
+ * @param {string} [okLabel]    確定ボタンのラベル（デフォルト: '削除する'）
+ * @param {string} [cancelLabel] キャンセルラベル（デフォルト: 'キャンセル'）
+ * @param {boolean} [danger]  trueにすると確定ボタンが赤くなる
+ * @returns {Promise<boolean>}
+ */
+function showConfirmDialog(message, okLabel = '削除する', cancelLabel = 'キャンセル', danger = true) {
+  return new Promise(resolve => {
+    _confirmResolve = resolve;
+    const overlay = document.getElementById('confirm-modal-overlay');
+    const msgEl   = document.getElementById('confirm-modal-message');
+    const okBtn   = document.getElementById('confirm-modal-ok');
+    const cancelBtn = document.getElementById('confirm-modal-cancel');
+    if (!overlay) { resolve(window.confirm(message)); return; }
+    msgEl.textContent    = message;
+    okBtn.textContent    = okLabel;
+    cancelBtn.textContent = cancelLabel;
+    okBtn.className = 'confirm-modal-btn confirm-modal-ok' + (danger ? ' danger' : '');
+    overlay.classList.add('open');
+  });
+}
+
+function _confirmModalAnswer(result) {
+  const overlay = document.getElementById('confirm-modal-overlay');
+  if (overlay) overlay.classList.remove('open');
+  if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
+}

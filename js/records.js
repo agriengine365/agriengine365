@@ -344,8 +344,9 @@ function buildRecordListHTML(records) {
 }
 
 // ─── 記録削除 ───
-function deleteRecord(id) {
-  if (!confirm('この記録を削除しますか？')) return;
+async function deleteRecord(id) {
+  const ok = await showConfirmDialog('この記録を削除しますか？', '削除する', 'キャンセル', true);
+  if (!ok) return;
   recordsDelete(id);
   renderRecordTab();
   showToast('記録を削除しました');
