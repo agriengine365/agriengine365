@@ -430,7 +430,8 @@ let _adpMonth         = 0;
 let _adpSelDate       = null;   // 選択中の日付文字列 'YYYY-MM-DD'
 let _adpEditId        = null;   // 編集中レコードID
 let _adpClimateCache  = null;   // AMeDAS取得済み climate（再オープン用キャッシュ）
-let _adpSelectedCropId   = null;
+let _adpSelectedCropId   = null; // 分析側で選択中の作物ID
+let _adpPracticeCropId   = null; // 実務側で選択中の作物ID（分析側とは独立に保持）
 let _crOpenFieldScores   = null;  // 露地スコアキャッシュ（補正比較用）  // 気温グラフで強調表示中の作物ID
 let _adpClimateMode   = false;  // true=気候推定モード / false=DBモード
 let _adpClimateRanking = null;  // computeClimateRanking キャッシュ
@@ -508,6 +509,7 @@ async function openAreaDetailPanel(area) {
 
   // 作物選択状態をリセット（エリア再オープン時に前回選択が残らないよう）
   _adpSelectedCropId = null;
+  _adpPracticeCropId = null;
   _simSelectedCropId = null;
   _simDirty          = false;
   _simMemory         = {};
@@ -517,6 +519,7 @@ async function openAreaDetailPanel(area) {
   const savedAnalysisCrop = localStorage.getItem(`adpCropAnalysis_${areaId}`);
   const savedWorkCrop     = localStorage.getItem(`adpCropWork_${areaId}`);
   if (savedAnalysisCrop) _adpSelectedCropId = savedAnalysisCrop;
+  if (savedWorkCrop)     _adpPracticeCropId = savedWorkCrop;
 
   _adpEnsureView();
 
@@ -543,9 +546,10 @@ async function openAreaDetailPanel(area) {
   _adpSwitchSeg('practice');
   _adpSwitchSubTab('calendar');
 
-  // 実務用作物バーを復元表示
-  if (savedWorkCrop) _adpUpdateCropBar('practice', savedWorkCrop);
-  if (savedAnalysisCrop) _adpUpdateCropBar('analysis', savedAnalysisCrop);
+  // 実務用作物バーを復元表示（cropIdのまま渡すと表示名がID文字列になってしまうため、
+  // _adpCropIdToNameで変換してから渡す）
+  if (savedWorkCrop)     _adpUpdateCropBar('practice', _adpCropIdToName(savedWorkCrop));
+  if (savedAnalysisCrop) _adpUpdateCropBar('analysis', _adpCropIdToName(savedAnalysisCrop));
 
   // ── 保存済み栽培方式を適用（currentAreaDataはこの時点で確定済み） ──
   if (_adpPendingCultMode && currentAreaData) {
@@ -872,6 +876,22 @@ function _adpEnsureView() {
         <!-- 🌿 土地環境適合度ドーナツ（作物選択なしでも常時表示） -->
         <div id="adpc-env-donut-fixed" class="adpc-fixed-section"></div>
         <div id="conf-detail" class="empty-mini" style="font-size:11px;color:var(--text2);line-height:1.8;">作物を選択するとエリア適合度の詳細が表示されます。</div>
+
+        <!-- 分析対象作物のプレビュー（実務タブの選択とは独立。分析で選択中の作物／未選択時はランキング1位を表示） -->
+        <div class="adp-temp-chart-header">
+          <span class="adp-temp-chart-sub">🧪 施肥概算（分析対象作物）</span>
+        </div>
+        <div id="fert-result-analysis" class="empty-mini">作物を選択すると施肥概算が表示されます。</div>
+
+        <div class="adp-temp-chart-header">
+          <span class="adp-temp-chart-sub">⚠️ リスク・注意点（分析対象作物）</span>
+        </div>
+        <div id="risk-result-analysis" class="empty-mini">作物を選択するとリスク・注意点が表示されます。</div>
+
+        <div class="adp-temp-chart-header">
+          <span class="adp-temp-chart-sub">📅 栽培ごよみ（分析対象作物）</span>
+        </div>
+        <div id="calendar-result-analysis" class="empty-mini">作物を選択すると栽培ごよみが表示されます。</div>
       </div>
 
     </div>
@@ -1049,15 +1069,9 @@ function _adpSwitchSubTab(name) {
     _adpRenderSavedCalendarsList();
   }
   // ── 作物選択済み時の各ペイン再描画 ──
-  if (_adpSelectedCropId) {
-    const ad = currentAreaData;
-    const scoreEntry = (typeof _crScores !== 'undefined')
-      ? _crScores.find(s => s.crop.id === _adpSelectedCropId) : null;
-    const crop = scoreEntry?.crop
-      ?? (typeof CROP_DB !== 'undefined'
-          ? (CROP_DB.find ? CROP_DB.find(c => c.id === _adpSelectedCropId)
-            : Object.values(CROP_DB).flat().find(c => c.id === _adpSelectedCropId))
-          : null);
+  // fert/risk は実務タブのため、実務側選択(_adpPracticeCropId)を参照する（分析側_adpSelectedCropIdとは独立）。
+  if (_adpPracticeCropId) {
+    const crop = (typeof _adpGetCropById === 'function') ? _adpGetCropById(_adpPracticeCropId) : null;
 
     if (name === 'fert') {
       if (crop && typeof _renderFertResult === 'function') _renderFertResult(crop);
@@ -1810,9 +1824,12 @@ async function _adpToggleCalendarCrop(cropId) {
   }
 
   // 現在表示中の作物カレンダー（ヘッダーのボタン状態）を再描画
-  if (cropId === _adpSelectedCropId && typeof renderWorkCalendar === 'function') {
+  // 実務側(calendar-result)・分析側(calendar-result-analysis)どちらに表示中でも、
+  // 対象cropIdと一致していればそれぞれ再描画する（両方に表示されている場合は両方更新）
+  if (typeof renderWorkCalendar === 'function') {
     const crop = _adpGrowthFindCrop(cropId);
-    renderWorkCalendar(crop);
+    if (cropId === _adpPracticeCropId)  renderWorkCalendar(crop, 'calendar-result');
+    if (cropId === _adpSelectedCropId)  renderWorkCalendar(crop, 'calendar-result-analysis');
   }
   _adpRenderSavedCalendarsList();
 }
@@ -3779,9 +3796,10 @@ function adpCropTap(el, cropId) {
       const single = (crop && typeof buildSingleCropAnalysis === 'function')
         ? buildSingleCropAnalysis(cropId, ad) : null;
       if (crop) {
-        if (typeof _renderFertResult  === 'function') _renderFertResult(crop);
-        if (typeof _renderRiskResult  === 'function') _renderRiskResult(crop);
-        if (typeof renderWorkCalendar === 'function') renderWorkCalendar(crop);
+        // ランキングタップは分析側の操作なので、matchタブの分析専用枠に描画する
+        if (typeof _renderFertResult  === 'function') _renderFertResult(crop, 'fert-result-analysis');
+        if (typeof _renderRiskResult  === 'function') _renderRiskResult(crop, 'risk-result-analysis');
+        if (typeof renderWorkCalendar === 'function') renderWorkCalendar(crop, 'calendar-result-analysis');
       }
       // 適合度ペイン更新
       const confDetailEl = document.getElementById('conf-detail');
@@ -3852,11 +3870,11 @@ function _adpSelectCropForAnalysis(cropId) {
   _adpRenderTempChart(_adpSelectedCropId);
   _adpRenderGrowthChart(_adpSelectedCropId);
 
-  // 施肥・リスク・作業カレンダー
+  // 施肥・リスク・作業カレンダー（分析側の選択なので、matchタブの分析専用枠に描画する）
   if (crop) {
-    if (typeof _renderFertResult  === 'function') _renderFertResult(crop);
-    if (typeof _renderRiskResult  === 'function') _renderRiskResult(crop);
-    if (typeof renderWorkCalendar === 'function') renderWorkCalendar(crop);
+    if (typeof _renderFertResult  === 'function') _renderFertResult(crop, 'fert-result-analysis');
+    if (typeof _renderRiskResult  === 'function') _renderRiskResult(crop, 'risk-result-analysis');
+    if (typeof renderWorkCalendar === 'function') renderWorkCalendar(crop, 'calendar-result-analysis');
   }
 
   // 適合度ペイン
@@ -4129,7 +4147,8 @@ function _adpOpenCropSelectSheet(seg) {
     onSelect: (cropId) => {
       const areaId = _adpArea?.id || _adpArea?.name || '';
       if (_adpCropSelectSeg === 'practice') {
-        // 実務：バー更新 + localStorage保存 + 各実務タブへ反映
+        // 実務：状態更新 + バー更新 + localStorage保存 + 各実務タブへ反映
+        _adpPracticeCropId = cropId;
         localStorage.setItem(`adpCropWork_${areaId}`, cropId);
         _adpUpdateCropBar('practice', _adpCropIdToName(cropId));
         const crop = _adpGetCropById(cropId);

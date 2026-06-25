@@ -343,8 +343,9 @@ function rangeGauge({ label, value, unit = '', min, max, displayMin, displayMax,
 }
 
 // ─── 施肥結果描画 ───
-function _renderFertResult(crop) {
-  const el = document.getElementById('fert-result');
+// targetId: 描画先要素ID。実務タブ既定値は 'fert-result'、分析側からは 'fert-result-analysis' を渡す。
+function _renderFertResult(crop, targetId = 'fert-result') {
+  const el = document.getElementById(targetId);
   if (!el || !currentAreaData) return;
 
   if (!crop) {
@@ -371,8 +372,9 @@ function _renderFertResult(crop) {
 }
 
 // ─── リスク結果描画 ───
-function _renderRiskResult(crop) {
-  const el = document.getElementById('risk-result');
+// targetId: 描画先要素ID。実務タブ既定値は 'risk-result'、分析側からは 'risk-result-analysis' を渡す。
+function _renderRiskResult(crop, targetId = 'risk-result') {
+  const el = document.getElementById(targetId);
   if (!el) return;
 
   if (!crop) {
@@ -630,10 +632,10 @@ function runSingleCropAnalysis(areaName) {
     </div>
   `;
 
-  // ─ 収益・施肥・リスク・カレンダー描画 ─
-  _renderFertResultFromData(result.crop, result.fertilizer);
-  _renderRiskResult(result.crop);
-  renderWorkCalendar(result.crop);
+  // ─ 収益・施肥・リスク・カレンダー描画（分析側プレビュー：matchタブの専用枠に表示） ─
+  _renderFertResultFromData(result.crop, result.fertilizer, 'fert-result-analysis');
+  _renderRiskResult(result.crop, 'risk-result-analysis');
+  renderWorkCalendar(result.crop, 'calendar-result-analysis');
 
   // ─ サマリーバー更新（adp-view統合後は_adpUpdateSummaryBar経由） ─
   const modeLabels2 = { openField:'露地栽培', greenhouse:'ハウス', heatedGreenhouse:'加温ハウス' };
@@ -650,8 +652,9 @@ function runSingleCropAnalysis(areaName) {
 }
 
 // ─── 施肥結果描画（計算済みデータ受取版） ───
-function _renderFertResultFromData(crop, fert) {
-  const el = document.getElementById('fert-result');
+// targetId: 描画先要素ID。実務タブ既定値は 'fert-result'、分析側からは 'fert-result-analysis' を渡す。
+function _renderFertResultFromData(crop, fert, targetId = 'fert-result') {
+  const el = document.getElementById(targetId);
   if (!el) return;
   if (!fert) {
     el.innerHTML = '<div style="color:var(--text3);font-size:11px;">施肥データなし（この作物は施肥情報未登録）</div>';
@@ -708,16 +711,16 @@ function runAnalysis(areaName) {
     _crRenderList();
   }
 
-  // ─ 初期選択（トップ1作物）で収益・施肥・リスクを描画 ─
+  // ─ 初期選択（トップ1作物）で収益・施肥・リスクを描画（分析側プレビュー：matchタブの専用枠に表示） ─
   const top = result.topCrop;
   if (top) {
-    _renderFertResult(top.crop);
-    _renderRiskResult(top.crop);
-    renderWorkCalendar(top.crop);
+    _renderFertResult(top.crop, 'fert-result-analysis');
+    _renderRiskResult(top.crop, 'risk-result-analysis');
+    renderWorkCalendar(top.crop, 'calendar-result-analysis');
   } else {
-    _renderFertResult(null);
-    _renderRiskResult(null);
-    renderWorkCalendar(null);
+    _renderFertResult(null, 'fert-result-analysis');
+    _renderRiskResult(null, 'risk-result-analysis');
+    renderWorkCalendar(null, 'calendar-result-analysis');
   }
 
   // ─ サマリーバー更新（adp-view統合後は_adpUpdateSummaryBar経由） ─
@@ -821,12 +824,13 @@ function buildWorkCalendarHTML(crop, opts = {}) {
 }
 
 /**
- * renderWorkCalendar(crop)
- * #calendar-result に「現在選択中の作物」の作業カレンダーを描画する。
+ * renderWorkCalendar(crop, targetId)
+ * targetId（既定 'calendar-result'）に「現在選択中の作物」の作業カレンダーを描画する。
+ * 分析側からは 'calendar-result-analysis' を渡す。
  * ヘッダーに保存（💾保存／✓保存済み）トグルボタンを付ける。
  */
-function renderWorkCalendar(crop) {
-  const el = document.getElementById('calendar-result');
+function renderWorkCalendar(crop, targetId = 'calendar-result') {
+  const el = document.getElementById(targetId);
   if (!el) return;
 
   if (!crop || !crop.calendar) {
