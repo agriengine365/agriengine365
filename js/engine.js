@@ -1515,6 +1515,34 @@ function calcSunDeficitRisk(crop, decadeArr, startDecade, endDecade) {
   };
 }
 
+// ─── ④-b 日照スコア全旬計算（ヒートマップ用）─────────────────────
+/**
+ * calcSunScoreAllDecades(crop, decadeArr)
+ *
+ * 36旬全体に対して旬別日照スコア（0.0〜1.0）を計算して返す。
+ * calcSunDeficitRisk の内部ロジックを startDecade/endDecade の
+ * 制限なしに全旬へ適用したもの（適期ヒートマップ専用）。
+ *
+ * 返却: number[] (length=36)
+ *   各要素は 0.0〜1.0 のスコア。sun データがない旬は null。
+ *   decadeArr.sun が存在しない場合は null を返す。
+ */
+function calcSunScoreAllDecades(crop, decadeArr) {
+  if (!decadeArr?.sun || !Array.isArray(decadeArr.sun)) return null;
+
+  const cond   = crop.conditions || {};
+  const sunDef = SUNSHINE_DEFAULT_ENGINE[cond.category] || SUNSHINE_DEFAULT_ENGINE._default;
+  const sunDecadeMin = cond.sunDecadeMin ?? sunDef.min;
+  const sunDecadeOpt = cond.sunDecadeOpt ?? sunDef.opt;
+
+  return decadeArr.sun.map(s => {
+    if (s == null) return null;
+    if (s >= sunDecadeOpt)  return 1.0;
+    if (s >= sunDecadeMin)  return (s - sunDecadeMin) / (sunDecadeOpt - sunDecadeMin);
+    return Math.max(0, s / sunDecadeMin * 0.5);
+  });
+}
+
 // ─── ⑤ 寒暖差指数 ──────────────────────────────────────────────
 /**
  * calcDiurnalIndex(decadeArr, startDecade, endDecade)

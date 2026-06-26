@@ -7609,3 +7609,216 @@ html.draw-dialog-active .bottom-nav {
 .adp-crop-bar-analysis .adp-sum-row-bar {
   margin-bottom: 3px;
 }
+
+/* ═══════════════════════════════════════════
+   生育期間タブ内ネストサブタブ（📅暦グラフ/📊ガント/🌡️GDD/🗺️適期マップ/⚖️方式比較）
+   Phase1 追加分
+   ═══════════════════════════════════════════ */
+
+.adp-growth-subtabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  padding: 8px 12px 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.adp-growth-subtabs::-webkit-scrollbar { display: none; }
+
+.adp-growth-subtab {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: var(--text2);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.adp-growth-subtab:hover {
+  background: var(--bg3);
+  color: var(--text);
+}
+.adp-growth-subtab.active {
+  background: var(--bg3);
+  color: var(--green);
+  font-weight: 600;
+  border-bottom: 2px solid var(--green);
+}
+
+/* 各サブタブのペイン本体（表示中のもののみ flex:1 で残り領域を占有しスクロール可能） */
+.adp-growth-pane {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.adp-growth-placeholder {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 0.78rem;
+  color: var(--text3);
+  background: var(--bg3);
+  border-radius: 10px;
+  margin: 12px;
+}
+
+/* ═══════════════════════════════════════════
+   📊 ガントチャート（Phase 2）
+   ═══════════════════════════════════════════ */
+
+/* DB暦 / 気候推定 切替トグル */
+.adp-gantt-toggle-wrap {
+  display: flex;
+  gap: 6px;
+  padding: 10px 12px 6px;
+}
+.adp-gantt-toggle-btn {
+  flex: 1;
+  padding: 5px 0;
+  font-size: 0.72rem;
+  font-family: var(--sans);
+  background: var(--bg2);
+  color: var(--text2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s;
+  text-align: center;
+}
+.adp-gantt-toggle-btn:hover {
+  background: var(--bg3);
+  color: var(--text);
+}
+.adp-gantt-toggle-btn.active {
+  background: var(--bg3);
+  color: var(--green);
+  font-weight: 600;
+  border-color: var(--green3);
+}
+
+/* ガントチャートCanvas */
+.adp-gantt-chart-wrap {
+  margin: 0 12px 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg2);
+  overflow: hidden;
+}
+.adp-gantt-chart-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 200px;
+}
+
+/* ═══════════════════════════════════════════
+   🌡️ GDD積算専用グラフ（Phase 3）
+   ═══════════════════════════════════════════ */
+
+.adp-gdd-chart-wrap {
+  margin: 10px 12px 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg2);
+  overflow: hidden;
+}
+.adp-gdd-chart-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 240px;
+}
+
+/* ═══════════════════════════════════════════
+   🗺️ 旬別適期ヒートマップ（Phase 4）
+   ═══════════════════════════════════════════ */
+
+.adp-heatmap-wrap {
+  margin: 10px 12px 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg2);
+  overflow: hidden;
+}
+.adp-heatmap-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 160px;
+}
+
+/* ═══════════════════════════════════════════
+   ⚖️ 栽培方式別 収穫予測比較バー（Phase 5）
+   ═══════════════════════════════════════════ */
+
+.adp-compare-chart-wrap {
+  margin: 10px 12px 4px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg2);
+  overflow: hidden;
+}
+.adp-compare-chart-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 200px;
+}
+
+/* ═══════════════════════════════════════════
+   Phase 6: グラフ群 モバイル幅調整
+   ─ ≤380px：Canvas高さ縮小・サブタブ縮小・凡例折返し
+   ═══════════════════════════════════════════ */
+
+/* ── 凡例コンテナ：小画面で折り返し許可 ── */
+.adp-gantt-legend,
+.adp-gdd-legend,
+.adp-heatmap-legend,
+.adp-compare-legend,
+#adp-growth-db-legend,
+#adp-growth-est-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding: 4px 12px 6px;
+  min-height: 24px;
+}
+
+@media (max-width: 380px) {
+
+  /* サブタブ：文字・余白を縮小して5タブ収める */
+  .adp-growth-subtab {
+    padding: 5px 8px;
+    font-size: 0.70rem;
+  }
+
+  /* ガントチャート Canvas 高さ縮小 */
+  .adp-gantt-chart-wrap canvas {
+    height: 160px;
+  }
+
+  /* GDD Canvas 高さ縮小 */
+  .adp-gdd-chart-wrap canvas {
+    height: 190px;
+  }
+
+  /* ヒートマップ Canvas 高さ縮小（4行×旬なので縦を圧縮しすぎない） */
+  .adp-heatmap-wrap canvas {
+    height: 130px;
+  }
+
+  /* 方式比較 Canvas 高さ縮小 */
+  .adp-compare-chart-wrap canvas {
+    height: 160px;
+  }
+
+  /* 凡例テキスト：小画面ではやや小さく */
+  .adp-gantt-legend .adp-tl-item,
+  .adp-gdd-legend .adp-tl-item,
+  .adp-heatmap-legend .adp-tl-item,
+  .adp-compare-legend .adp-tl-item {
+    font-size: 9px;
+  }
+}
