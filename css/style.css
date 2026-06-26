@@ -7822,3 +7822,89 @@ html.draw-dialog-active .bottom-nav {
     font-size: 9px;
   }
 }
+
+/* ═══════════════════════════════════════════
+   サマリーバー：切替バッジボタン（Phase 6+）
+   ═══════════════════════════════════════════ */
+
+/* spanからbuttonになったバッジ：見た目は同じだが操作可能 */
+.adp-sum-badge-btn {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text2);
+  font-size: 10px;
+  border-radius: 10px;
+  padding: 2px 7px;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  font-family: var(--sans);
+  line-height: 1.6;
+}
+.adp-sum-badge-btn:hover,
+.adp-sum-badge-btn:active {
+  background: var(--bg4, var(--bg3));
+  color: var(--green);
+  border-color: var(--green3);
+}
+
+/* ═══════════════════════════════════════════
+   栽培方式切替ポップアップ
+   ═══════════════════════════════════════════ */
+
+/* 全面オーバーレイ（タップで閉じる） */
+.adp-cult-popup {
+  position: fixed;
+  inset: 0;
+  z-index: 3100;
+  align-items: flex-start;   /* display:flex 時に上寄せ */
+  justify-content: flex-end;
+  padding: 56px 12px 0;      /* ヘッダー高さ分オフセット */
+  background: rgba(0,0,0,0.25);
+}
+
+/* ポップアップ本体 */
+.adp-cult-popup-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 10px 8px;
+  min-width: 140px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+}
+
+.adp-cult-popup-title {
+  font-size: 10px;
+  color: var(--text3);
+  padding: 0 2px 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 2px;
+}
+
+.adp-cult-popup-btn {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--text2);
+  font-size: 12px;
+  font-family: var(--sans);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.adp-cult-popup-btn:hover {
+  background: var(--bg3);
+  color: var(--text);
+}
+.adp-cult-popup-btn.active {
+  background: var(--bg3);
+  color: var(--green);
+  font-weight: 600;
+  border-color: var(--green3);
+}

@@ -665,8 +665,10 @@ function _adpEnsureView() {
           <span class="adp-crop-bar-name" id="adp-crop-bar-name-analysis">作物を選ぶ</span>
           <span class="adp-crop-bar-arrow">▼</span>
         </button>
-        <span class="adp-sum-badge adp-sum-badge-mode" id="adp-summary-mode"></span>
-        <span class="adp-sum-badge adp-sum-badge-eval" id="adp-summary-evalmode"></span>
+        <button class="adp-sum-badge adp-sum-badge-btn adp-sum-badge-mode" id="adp-summary-mode"
+          onclick="_adpOpenCultPopup(event)" title="栽培方式を切り替え"></button>
+        <button class="adp-sum-badge adp-sum-badge-btn adp-sum-badge-eval" id="adp-summary-evalmode"
+          onclick="_adpToggleEvalMode()" title="評価基準を切り替え"></button>
       </div>
       <!-- 適合度バー（選択済み時のみ表示） -->
       <div class="adp-crop-bar-bars" id="adp-crop-bar-bars" style="display:none;">
@@ -946,7 +948,18 @@ function _adpEnsureView() {
       </div>
 
     </div>
-  `;
+
+    <!-- 栽培方式切替ポップアップ（サマリーバッジタップ用） -->
+    <div id="adp-cult-popup" class="adp-cult-popup" style="display:none;" onclick="_adpCloseCultPopup()">
+      <div class="adp-cult-popup-inner" onclick="event.stopPropagation()">
+        <div class="adp-cult-popup-title">🌡️ 栽培方式を選ぶ</div>
+        <button class="adp-cult-popup-btn" data-mode="openField"        onclick="_adpCultPopupSelect('openField')">🌾 露地</button>
+        <button class="adp-cult-popup-btn" data-mode="greenhouse"       onclick="_adpCultPopupSelect('greenhouse')">🏠 ハウス</button>
+        <button class="adp-cult-popup-btn" data-mode="heatedGreenhouse" onclick="_adpCultPopupSelect('heatedGreenhouse')">🔥 加温ハウス</button>
+      </div>
+    </div>
+
+  \`;
   document.body.appendChild(view);
 }
 
@@ -956,6 +969,31 @@ function _adpCloseRankingDialog() {
   dlg.classList.remove('open');
   dlg.setAttribute('aria-hidden', 'true');
   _adpRankingDlgPane = null;
+}
+
+// ─── サマリーバッジ：栽培方式ポップアップ ───
+function _adpOpenCultPopup(event) {
+  const popup = document.getElementById('adp-cult-popup');
+  if (!popup) return;
+  // 現在の方式を active 反映
+  const cur = currentAreaData?.cultivationMode || 'openField';
+  popup.querySelectorAll('.adp-cult-popup-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === cur);
+  });
+  popup.style.display = 'flex';
+}
+function _adpCloseCultPopup() {
+  const popup = document.getElementById('adp-cult-popup');
+  if (popup) popup.style.display = 'none';
+}
+function _adpCultPopupSelect(mode) {
+  _adpCloseCultPopup();
+  _adpSwitchCultivation(mode);
+}
+
+// ─── サマリーバッジ：評価基準トグル（DB ↔ 気候）───
+function _adpToggleEvalMode() {
+  _adpSetClimateMode(!_adpClimateMode);
 }
 
 // ─── 評価モード切替（DB ↔ 気候推定） ───
@@ -1321,11 +1359,23 @@ function _adpUpdateSummaryBar({ cropName, areaName, score, mode, evalMode, confP
   if (!hasCrop) {
     // 条件設定タブ先頭の作物選択ボタン表示を同期
     set('adp-rk-cond-crop-name', '🌱 作物を選ぶ');
+    // バッジボタンは作物未選択でも現在の設定を常時表示する
+    const _cultLabels = { openField:'露地', greenhouse:'ハウス', heatedGreenhouse:'加温' };
+    const _curMode = currentAreaData?.cultivationMode || 'openField';
+    const _mEl = document.getElementById('adp-summary-mode');
+    const _eEl = document.getElementById('adp-summary-evalmode');
+    if (_mEl) _mEl.textContent = (_cultLabels[_curMode] ?? '露地') + ' ▸';
+    if (_eEl) _eEl.textContent = (_adpClimateMode ? '🌿 気候' : '📊 DB') + ' ▸';
     return;
   }
 
-  set('adp-summary-mode',     mode     ?? '');
-  set('adp-summary-evalmode', evalMode ?? '');
+  // バッジボタン：テキスト＋操作可能を示す ▸ 付きで更新
+  const setBadge = (id, val) => {
+    const el = document.getElementById(id);
+    if (el && val != null) el.textContent = val + ' ▸';
+  };
+  setBadge('adp-summary-mode',     mode);
+  setBadge('adp-summary-evalmode', evalMode);
 
   // 適合度バー
   const scoreNum = score != null ? Number(score) : null;
@@ -3904,7 +3954,7 @@ function adpCropTap(el, cropId) {
       }
       // サマリーバー・作物バー更新
       const _scoreVal = scoreEntry?.score ?? (single?.scoreResult?.score ?? null);
-      const modeLabels = { openField:'露地栽培', greenhouse:'ハウス栽培', heatedGreenhouse:'加温ハウス' };
+      const modeLabels = { openField:'露地', greenhouse:'ハウス', heatedGreenhouse:'加温' };
       _adpUpdateSummaryBar({
         cropName: crop?.name ?? null,
         areaName: _adpArea?.name ?? null,
@@ -3987,7 +4037,7 @@ function _adpSelectCropForAnalysis(cropId) {
     : (single?.scoreResult?.score ?? null);
 
   // サマリーバー・作物バー更新
-  const modeLabels = { openField:'露地栽培', greenhouse:'ハウス栽培', heatedGreenhouse:'加温ハウス' };
+  const modeLabels = { openField:'露地', greenhouse:'ハウス', heatedGreenhouse:'加温' };
   _adpUpdateSummaryBar({
     cropName: crop?.name ?? null,
     areaName: _adpArea?.name ?? null,
@@ -4700,7 +4750,7 @@ function _awUpdateLivePreview() {
   const bar = document.getElementById('aw-live-preview');
 
   const ad = currentAreaData || {};
-  const modeLabels = { openField: '露地栽培', greenhouse: 'ハウス栽培', heatedGreenhouse: '加温ハウス' };
+  const modeLabels = { openField: '露地', greenhouse: 'ハウス', heatedGreenhouse: '加温' };
   const modeLabel  = modeLabels[ad.cultivationMode] || '露地栽培';
 
   let cropName = '—';
@@ -5301,72 +5351,12 @@ function _adpGanttDrawBar(ctx, PAD, gW, gH, rowCount, rowIdx, monthIdx, color, a
   ctx.fill();
 }
 
-// 横バー描画（旬単位・年またぎ対応）
-// startDecade〜endDecade を旬精度で塗る。年をまたぐ場合も正しく折り返す。
-function _adpGanttDrawBarDecade(ctx, PAD, gW, gH, rowCount, rowIdx, startDecade, endDecade, color, alpha) {
-  const barH  = Math.max(8, Math.floor((gH / rowCount) * 0.55));
-  const rowH  = gH / rowCount;
-  const y     = PAD.top + rowH * rowIdx + (rowH - barH) / 2;
-  const N     = _ADP_GROWTH_N; // 36
-
-  // 描画する旬インデックスのリストを生成（年またぎ考慮）
-  const decades = [];
-  if (endDecade >= startDecade) {
-    for (let i = startDecade; i <= endDecade; i++) decades.push(i);
-  } else {
-    // 年またぎ: 例 11月下旬(35) → 2月上旬(3)
-    for (let i = startDecade; i < 36; i++) decades.push(i);
-    for (let i = 0; i <= endDecade; i++) decades.push(i);
-  }
-
-  const decW = gW / N;
-  // 連続した旬をまとめて1本の矩形で描画（見た目をきれいに）
-  const fillColor = color.replace(/,\s*[\d.]+\)$/, `,${alpha})`);
-  ctx.fillStyle = fillColor;
-
-  let runStart = null;
-  const flush = (runEnd) => {
-    if (runStart === null) return;
-    const x = PAD.left + runStart * decW + 0.5;
-    const w = (runEnd - runStart + 1) * decW - 1;
-    const r = 3;
-    ctx.beginPath();
-    if (ctx.roundRect) {
-      ctx.roundRect(x, y, w, barH, r);
-    } else {
-      ctx.moveTo(x + r, y);
-      ctx.lineTo(x + w - r, y);
-      ctx.arcTo(x + w, y, x + w, y + r, r);
-      ctx.lineTo(x + w, y + barH - r);
-      ctx.arcTo(x + w, y + barH, x + w - r, y + barH, r);
-      ctx.lineTo(x + r, y + barH);
-      ctx.arcTo(x, y + barH, x, y + barH - r, r);
-      ctx.lineTo(x, y + r);
-      ctx.arcTo(x, y, x + r, y, r);
-      ctx.closePath();
-    }
-    ctx.fill();
-    runStart = null;
-  };
-
-  for (let k = 0; k < decades.length; k++) {
-    const d = decades[k];
-    if (runStart === null) {
-      runStart = d;
-    } else if (d !== decades[k - 1] + 1) {
-      // 不連続（年またぎの折り返し点）→ いったんflush
-      flush(decades[k - 1]);
-      runStart = d;
-    }
-  }
-  if (decades.length > 0) flush(decades[decades.length - 1]);
-}
-
-// 収穫予測マーカー（◆点）size省略時は5px
-function _adpGanttDrawHarvestDot(ctx, PAD, gW, gH, rowCount, rowIdx, decadeIdx, color, size = 5) {
+// 収穫予測マーカー（◆点）
+function _adpGanttDrawHarvestDot(ctx, PAD, gW, gH, rowCount, rowIdx, decadeIdx, color) {
   const rowH = gH / rowCount;
   const cy   = PAD.top + rowH * rowIdx + rowH / 2;
   const cx   = PAD.left + (decadeIdx / _ADP_GROWTH_N) * gW;
+  const size = 5;
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.moveTo(cx,        cy - size);
@@ -5480,17 +5470,17 @@ function _adpRenderGrowthGantt(cropId) {
   }
 
   if (sowingWindows.length > 0) {
-    // 播種/定植適期バー（旬単位精度・年またぎ対応）
+    // 播種/定植適期バー（旬index→月index近似：Math.floor(decade/3)）
     sowingWindows.slice(0, 3).forEach((win, rank) => {
       const alpha = rank === 0 ? 0.82 : 0.35 - rank * 0.05;
-      _adpGanttDrawBarDecade(ctx, PAD, gW, gH, rows.length, 0,
-        win.startDecade, win.endDecade, 'rgba(34,197,94,1)', alpha);
-      // 収穫予測マーカー（全位表示：1位は大きく・2〜3位は薄く）
-      if (win.harvestDecade != null) {
-        const hAlpha = rank === 0 ? 0.90 : 0.38 - rank * 0.08;
-        const hColor = 'rgba(167,139,250,' + hAlpha + ')';
-        const size   = rank === 0 ? 5 : 3;
-        _adpGanttDrawHarvestDot(ctx, PAD, gW, gH, rows.length, 1, win.harvestDecade, hColor, size);
+      const mStart = Math.floor(win.startDecade / 3);
+      const mEnd   = Math.floor(win.endDecade   / 3);
+      for (let m = mStart; m <= Math.min(mEnd, 11); m++) {
+        _adpGanttDrawBar(ctx, PAD, gW, gH, rows.length, 0, m, 'rgba(34,197,94,1)', alpha);
+      }
+      // 収穫予測マーカー（1位のみ）
+      if (rank === 0 && win.harvestDecade != null) {
+        _adpGanttDrawHarvestDot(ctx, PAD, gW, gH, rows.length, 1, win.harvestDecade, 'rgba(167,139,250,0.9)');
       }
     });
   }
@@ -5665,27 +5655,19 @@ function _adpRenderGrowthGDD(cropId) {
     }
   }
 
-  // ── ⑤ 播種ウィンドウ帯シェード（薄緑・年またぎ対応） ──
+  // ── ⑤ 播種ウィンドウ帯シェード（薄緑） ──
   if (sowingWindows.length > 0) {
-    const decW = gW / _ADP_GROWTH_N;
+    const decW = gW / (_ADP_GROWTH_N - 1);
     sowingWindows.slice(0, 3).forEach((win, rank) => {
       const alpha = 0.18 - rank * 0.05;
-      const s = win.startDecade;
-      const e = win.endDecade;
-      ctx.fillStyle = `rgba(34,197,94,${alpha})`;
-      if (e >= s) {
-        // 通常（年またぎなし）
-        const x0 = PAD.left + s * decW;
-        const rw = (e - s + 1) * decW;
-        ctx.fillRect(x0, PAD.top, Math.min(rw, PAD.left + gW - x0), gH);
-      } else {
-        // 年またぎ: 前半（s〜35）と後半（0〜e）に分けて描画
-        const x0a = PAD.left + s * decW;
-        const rwa = (35 - s + 1) * decW;
-        ctx.fillRect(x0a, PAD.top, Math.min(rwa, PAD.left + gW - x0a), gH);
-        const x0b = PAD.left;
-        const rwb = (e + 1) * decW;
-        ctx.fillRect(x0b, PAD.top, Math.min(rwb, gW), gH);
+      const s  = win.startDecade;
+      const e  = win.endDecade;
+      const x0 = toX(s) - decW / 2;
+      const x1 = e >= s ? toX(e) + decW / 2 : toX(e + 36) + decW / 2;
+      const rw = Math.min(x1 - x0, gW - (x0 - PAD.left));
+      if (rw > 0) {
+        ctx.fillStyle = `rgba(34,197,94,${alpha})`;
+        ctx.fillRect(Math.max(x0, PAD.left), PAD.top, Math.min(rw, gW), gH);
       }
     });
   }
@@ -5867,19 +5849,13 @@ function _hmTempScore(i, decadeArr, crop) {
 }
 
 // ── 降水スコア（旬ごと）: 仕様書 §6.2 ──
-// decadeArr.rain[i] があれば旬別値を優先。なければ月別を均等分配にフォールバック。
-function _hmRainScore(decadeIdx, crop, decadeArr, rainMonthly) {
-  // 旬別降水量を優先取得
-  let rPerDecade = null;
-  if (decadeArr?.rain && Array.isArray(decadeArr.rain) && decadeArr.rain[decadeIdx] != null) {
-    rPerDecade = decadeArr.rain[decadeIdx];
-  } else if (rainMonthly) {
-    const monthIdx = Math.floor(decadeIdx / 3);
-    const mk  = _ADP_GROWTH_MONTH_KEYS[monthIdx];
-    const rv  = rainMonthly[mk];
-    if (rv != null) rPerDecade = rv / 3; // 月降水量→旬降水量（均等分配）
-  }
-  if (rPerDecade == null) return null;
+// 月別降水量を旬に均等分配して評価
+function _hmRainScore(monthIdx, crop, rainMonthly) {
+  if (!rainMonthly) return null;
+  const mk  = _ADP_GROWTH_MONTH_KEYS[monthIdx];
+  const rv  = rainMonthly[mk];
+  if (rv == null) return null;
+  const rPerDecade = rv / 3; // 月降水量→旬降水量（均等分配）
 
   const aMin = crop.conditions.absRainMin;
   const rMin = crop.conditions.rainfallMin;
@@ -6009,7 +5985,7 @@ function _adpRenderGrowthHeatmap(cropId) {
     const x = PAD.left + i * cellW;
 
     const tScore = _hmTempScore(i, decadeArr, crop);
-    const rScore = _hmRainScore(i, crop, decadeArr, rainMonthly);
+    const rScore = _hmRainScore(monthIdx, crop, rainMonthly);
     const sScore = sunScores != null ? _hmSunScore(sunScores[i]) : null;
     const oScore = _hmOverallScore(tScore, rScore, sScore);
 
@@ -6075,11 +6051,8 @@ function _adpRenderGrowthHeatmap(cropId) {
   }
 
   // ── 凡例 ──
-  const hasSun   = sunScores !== null;
-  // AMeDAS日照データなし時は「グレー＝データなし」を凡例に明示
-  const noSunMsg = hasSun
-    ? ''
-    : '<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(42,61,44,0.5)"></span>日照データなし</span>';
+  const hasSun  = sunScores !== null;
+  const noSunMsg = hasSun ? '' : '<span class="adp-tl-item adp-tl-period" style="color:var(--text3)">日照データなし（日照行はグレー）</span>';
   if (legendEl) {
     legendEl.innerHTML =
       '<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(74,222,128,0.75)"></span>適正（緑）</span>'
@@ -6186,25 +6159,27 @@ function _adpRenderGrowthCompare(cropId) {
       return;
     }
 
-    // 播種/定植適期バー（上位3件：旬単位精度・年またぎ対応）
+    // 播種/定植適期バー（上位3件：濃→薄）
     m.wins.slice(0, 3).forEach((win, rank) => {
       const alpha  = isActive
         ? (rank === 0 ? 0.88 : 0.38 - rank * 0.05)
         : (rank === 0 ? 0.60 : 0.22 - rank * 0.05);
-      _adpGanttDrawBarDecade(ctx, PAD, gW, gH, _CMP_MODES.length, rowIdx,
-        win.startDecade, win.endDecade, m.color, alpha);
+      const mStart = Math.floor(win.startDecade / 3);
+      const mEnd   = Math.floor(win.endDecade   / 3);
+      for (let mo = mStart; mo <= Math.min(mEnd, 11); mo++) {
+        _adpGanttDrawBar(ctx, PAD, gW, gH, _CMP_MODES.length, rowIdx, mo, m.color, alpha);
+      }
     });
 
-    // 収穫予測マーカー（1〜3位：1位は大きく・2〜3位は薄く）
-    m.wins.slice(0, 3).forEach((win, rank) => {
-      if (win.harvestDecade == null) return;
-      const baseAlpha = isActive ? 0.95 : 0.55;
-      const hAlpha = rank === 0 ? baseAlpha : baseAlpha * (0.38 - rank * 0.08);
-      const hColor = 'rgba(167,139,250,' + Math.max(0, hAlpha) + ')';
-      const size   = rank === 0 ? 5 : 3;
-      _adpGanttDrawHarvestDot(ctx, PAD, gW, gH, _CMP_MODES.length, rowIdx,
-        win.harvestDecade, hColor, size);
-    });
+    // 収穫予測マーカー（1位のみ）
+    const best = m.wins[0];
+    if (best.harvestDecade != null) {
+      _adpGanttDrawHarvestDot(
+        ctx, PAD, gW, gH, _CMP_MODES.length, rowIdx,
+        best.harvestDecade,
+        isActive ? 'rgba(167,139,250,0.95)' : 'rgba(167,139,250,0.55)'
+      );
+    }
 
     // 現在選択中の方式は行全体に強調枠を追加
     if (isActive) {
