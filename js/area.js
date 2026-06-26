@@ -538,15 +538,12 @@ async function openAreaDetailPanel(area) {
   if (savedWorkCropRaw) {
     try {
       const parsed = JSON.parse(savedWorkCropRaw);
-      // 新形式: [{cropId, ratio}, ...]
       if (Array.isArray(parsed)) {
         _adpPracticecrops = parsed;
       } else if (typeof parsed === 'string') {
-        // 旧形式: 単一cropId文字列 → 移行
         _adpPracticecrops = [{ cropId: parsed, ratio: 100 }];
       }
     } catch {
-      // 旧形式: JSON.parseが失敗した生文字列
       _adpPracticecrops = [{ cropId: savedWorkCropRaw, ratio: 100 }];
     }
   }
@@ -1200,7 +1197,6 @@ function _adpSwitchSubTab(name) {
     _adpRenderSavedCalendarsList();
   }
   // ── 作物選択済み時の各ペイン再描画 ──
-  // fert/risk は実務タブのため、実務側選択(_adpPracticecrops)を参照する（分析側_adpSelectedCropIdとは独立）。
   if (_adpPracticecrops.length > 0) {
     if (name === 'fert') {
       if (typeof _renderFertResultMulti === 'function') _renderFertResultMulti(_adpPracticecrops);
@@ -1208,7 +1204,6 @@ function _adpSwitchSubTab(name) {
     if (name === 'risk') {
       if (typeof _renderRiskResultMulti === 'function') _renderRiskResultMulti(_adpPracticecrops);
     }
-    // match（適合度）ペインは _adpSelectCropForAnalysis で描画済みのためここでは再計算しない
   }
 }
 
@@ -1969,7 +1964,6 @@ async function _adpToggleCalendarCrop(cropId) {
   // 対象cropIdと一致していればそれぞれ再描画する（両方に表示されている場合は両方更新）
   if (typeof renderWorkCalendar === 'function') {
     const crop = _adpGrowthFindCrop(cropId);
-    // 実務側：複数作物カレンダーを再描画
     const isPractice = _adpPracticecrops.some(c => c.cropId === cropId);
     if (isPractice && typeof _renderCalendarMulti === 'function') _renderCalendarMulti(_adpPracticecrops, 'calendar-result');
     if (cropId === _adpSelectedCropId) renderWorkCalendar(crop, 'calendar-result-analysis');
@@ -4345,12 +4339,10 @@ function _adpOpenCropSelectSheet(seg) {
     onSelect: (cropId) => {
       const areaId = _adpArea?.id || _adpArea?.name || '';
       if (_adpCropSelectSeg === 'practice') {
-        // 重複チェック
         if (_adpPracticecrops.some(c => c.cropId === cropId)) {
           showToast('既に追加済みの作物です', 'amber');
           return;
         }
-        // 占有率を自動配分（均等割り）
         const newCount = _adpPracticecrops.length + 1;
         const baseRatio = Math.floor(100 / newCount);
         const rem = 100 - baseRatio * newCount;
@@ -4363,7 +4355,6 @@ function _adpOpenCropSelectSheet(seg) {
         _adpRenderPracticecrops();
         _adpRefreshPracticeTabs();
       } else {
-        // 分析：既存フロー + localStorage保存
         localStorage.setItem(`adpCropAnalysis_${areaId}`, cropId);
         _adpSelectCropForAnalysis(cropId);
       }
@@ -4390,13 +4381,11 @@ function _adpGetCropById(cropId) {
 
 // ─── 実務側複数作物ヘルパー ───
 
-/** 複数作物をlocalStorageに保存 */
 function _adpSavePracticecrops(areaId) {
   if (!areaId) return;
   localStorage.setItem(`adpCropWork_${areaId}`, JSON.stringify(_adpPracticecrops));
 }
 
-/** 占有率更新（スライダー変更時） */
 function _adpUpdatePracticeRatio(cropId, newRatio) {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   const idx = _adpPracticecrops.findIndex(c => c.cropId === cropId);
@@ -4407,7 +4396,6 @@ function _adpUpdatePracticeRatio(cropId, newRatio) {
   _adpRefreshPracticeTabs();
 }
 
-/** 作物削除 */
 function _adpRemovePracticeCrop(cropId) {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   _adpPracticecrops = _adpPracticecrops.filter(c => c.cropId !== cropId);
@@ -4416,25 +4404,21 @@ function _adpRemovePracticeCrop(cropId) {
   _adpRefreshPracticeTabs();
 }
 
-/** 占有率合計を返す */
 function _adpPracticeTotalRatio() {
   return _adpPracticecrops.reduce((s, c) => s + (c.ratio || 0), 0);
 }
 
-/** 占有面積（㎡）を返す */
 function _adpPracticeAreaSqm(ratio) {
   const total = currentAreaData?.areaSqm || 0;
   return Math.round(total * ratio / 100);
 }
 
-/** 実務タブ（施肥・リスク・カレンダー）を一括再描画 */
 function _adpRefreshPracticeTabs() {
   if (typeof _renderFertResultMulti === 'function')  _renderFertResultMulti(_adpPracticecrops);
   if (typeof _renderRiskResultMulti === 'function')  _renderRiskResultMulti(_adpPracticecrops);
   if (typeof _renderCalendarMulti   === 'function')  _renderCalendarMulti(_adpPracticecrops, 'calendar-result');
 }
 
-/** 実務側作物リストUIを描画 */
 function _adpRenderPracticecrops() {
   const listEl    = document.getElementById('adp-practice-crops-list');
   const barWrap   = document.getElementById('adp-practice-ratio-bar');
@@ -4447,7 +4431,6 @@ function _adpRenderPracticecrops() {
   const total = _adpPracticeTotalRatio();
   const over  = total > 100;
 
-  // 合計バー
   if (barWrap) barWrap.style.display = _adpPracticecrops.length >= 2 ? '' : 'none';
   if (totalEl) {
     totalEl.textContent = `${total}%`;
@@ -4457,12 +4440,9 @@ function _adpRenderPracticecrops() {
     fillEl.style.width      = `${Math.min(total, 100)}%`;
     fillEl.style.background = over ? 'var(--red)' : total === 100 ? 'var(--green)' : 'var(--green2)';
   }
-
-  // 追加ボタンの表示
-  if (addNameEl) addNameEl.textContent = _adpPracticecrops.length === 0 ? '作物を追加' : '作物を追加';
   if (addBtnEl)  addBtnEl.classList.toggle('selected', _adpPracticecrops.length > 0);
+  if (addNameEl) addNameEl.textContent = '作物を追加';
 
-  // 作物カードリスト
   if (!_adpPracticecrops.length) {
     listEl.innerHTML = '';
     return;
@@ -6372,3 +6352,5 @@ function _adpRenderGrowthCompare(cropId) {
       modeItems
       + `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(251,191,36,0.8)"></span>本日</span>`
       + `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(167,139,250,0.8)"></span>収穫予測</span>`;
+  }
+}
