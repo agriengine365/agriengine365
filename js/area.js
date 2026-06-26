@@ -247,7 +247,7 @@ function renderAreaItem(area, container) {
       </div>
     </div>
 
-    <!-- インラインエディット（名前・土壌・メモ） -->
+    <!-- インラインエディット（名前・土壌・栽培方式・メモ） -->
     <div class="inline-edit" id="edit-${area.id}" style="display:none;">
       <div class="field">
         <label>エリア名</label>
@@ -259,6 +259,14 @@ function renderAreaItem(area, container) {
           ${['sandy','loam','clay','peat','volcanic','unknown'].map(s => `
             <div class="soil-btn${area.meta?.soilType === s ? ' selected' : ''}" data-soil="${s}" onclick="selectIESoil(this)">${soilLabel(s)}</div>
           `).join('')}
+        </div>
+      </div>
+      <div class="field">
+        <label>栽培方式（実務マスター・分析タブのサマリーバッジはこれとは独立した一時切替です）</label>
+        <div class="ie-cult-row" style="display:flex;gap:8px;">
+          <button type="button" class="adp-cult-btn${(area.cultivationMode || 'openField') === 'openField' ? ' active' : ''}" data-mode="openField" onclick="selectIECult(this)">露地</button>
+          <button type="button" class="adp-cult-btn${area.cultivationMode === 'greenhouse' ? ' active' : ''}" data-mode="greenhouse" onclick="selectIECult(this)">ハウス</button>
+          <button type="button" class="adp-cult-btn${area.cultivationMode === 'heatedGreenhouse' ? ' active' : ''}" data-mode="heatedGreenhouse" onclick="selectIECult(this)">加温</button>
         </div>
       </div>
       <div class="field">
@@ -323,6 +331,12 @@ function selectIESoil(btn) {
   btn.classList.add('selected');
 }
 
+// ─── 栽培方式選択（インラインエディット内・実務マスター用）───
+function selectIECult(btn) {
+  btn.closest('.ie-cult-row').querySelectorAll('.adp-cult-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
 // ─── インラインエディット保存 ───
 async function saveInlineEdit(id) {
   const el      = document.getElementById('edit-' + id);
@@ -330,10 +344,12 @@ async function saveInlineEdit(id) {
   const memo    = el.querySelector('.ie-memo').value.trim();
   const soilBtn = el.querySelector('.soil-btn.selected');
   const soilType = soilBtn ? soilBtn.dataset.soil : null;
+  const cultBtn  = el.querySelector('.ie-cult-row .adp-cult-btn.active');
+  const cultivationMode = cultBtn ? cultBtn.dataset.mode : 'openField';
 
   if (!name) { showToast('エリア名を入力してください', 'amber'); return; }
 
-  const update = { name, memo, 'meta.soilType': soilType, 'landProfile.soilType': soilType };
+  const update = { name, memo, cultivationMode, 'meta.soilType': soilType, 'landProfile.soilType': soilType };
 
   try {
     if (db && !id.startsWith('local_')) {
@@ -344,6 +360,7 @@ async function saveInlineEdit(id) {
       if (idx !== -1) {
         stored[idx].name = name;
         stored[idx].memo = memo;
+        stored[idx].cultivationMode = cultivationMode;
         stored[idx].meta = stored[idx].meta || {};
         stored[idx].meta.soilType = soilType;
         stored[idx].landProfile = stored[idx].landProfile || buildLandProfile(stored[idx].meta || {});
@@ -432,6 +449,7 @@ let _adpEditId        = null;   // 編集中レコードID
 let _adpClimateCache  = null;   // AMeDAS取得済み climate（再オープン用キャッシュ）
 let _adpSelectedCropId   = null; // 分析側で選択中の作物ID
 let _adpPracticeCropId   = null; // 実務側で選択中の作物ID（分析側とは独立に保持）
+let _adpAnalysisCultMode = null; // 分析側で一時的に切り替え中の栽培方式（マスターはarea.cultivationMode・実務側のインライン編集で変更）
 let _crOpenFieldScores   = null;  // 露地スコアキャッシュ（補正比較用）  // 気温グラフで強調表示中の作物ID
 let _adpClimateMode   = false;  // true=気候推定モード / false=DBモード
 let _adpClimateRanking = null;  // computeClimateRanking キャッシュ
@@ -483,13 +501,10 @@ async function openAreaDetailPanel(area) {
   } else {
     _awFarmCond = _awDefaultFarmCond();
   }
-  // 栽培方式の復元（cultivationModeはarea直下に保存）
-  if (area.cultivationMode) {
-    // currentAreaDataはこの後の処理で確定するため、openAreaDetailPanel末尾で再適用
-    _adpPendingCultMode = area.cultivationMode;
-  } else {
-    _adpPendingCultMode = null;
-  }
+  // 栽培方式の復元：マスター値（area.cultivationMode）はここでは控えるだけ。
+  // 実際にどちらを使うか（分析一時値 vs マスター）の解決は areaId 確定後、
+  // currentAreaDataへの適用は openAreaDetailPanel 末尾で行う。
+  const _adpMasterCultMode = area.cultivationMode || 'openField';
   // 評価モードの復元
   if (area.savedEvalMode) {
     _adpClimateMode = (area.savedEvalMode === 'climate');
@@ -521,6 +536,10 @@ async function openAreaDetailPanel(area) {
   if (savedAnalysisCrop) _adpSelectedCropId = savedAnalysisCrop;
   if (savedWorkCrop)     _adpPracticeCropId = savedWorkCrop;
 
+  // 分析側の栽培方式一時値を復元（保存があれば優先、無ければマスター値にフォールバック）
+  const savedAnalysisCult = localStorage.getItem(`adpCultAnalysis_${areaId}`);
+  _adpAnalysisCultMode = savedAnalysisCult || _adpMasterCultMode;
+
   _adpEnsureView();
 
   // ── ヘッダー更新 ──
@@ -551,13 +570,12 @@ async function openAreaDetailPanel(area) {
   if (savedWorkCrop)     _adpUpdateCropBar('practice', _adpCropIdToName(savedWorkCrop));
   if (savedAnalysisCrop) _adpUpdateCropBar('analysis', _adpCropIdToName(savedAnalysisCrop));
 
-  // ── 保存済み栽培方式を適用（currentAreaDataはこの時点で確定済み） ──
-  if (_adpPendingCultMode && currentAreaData) {
-    currentAreaData.cultivationMode = _adpPendingCultMode;
+  // ── 復元した栽培方式（分析一時値を優先・なければマスター）を適用（currentAreaDataはこの時点で確定済み） ──
+  if (currentAreaData) {
+    currentAreaData.cultivationMode = _adpAnalysisCultMode;
     document.querySelectorAll('.adp-cult-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.mode === _adpPendingCultMode);
+      btn.classList.toggle('active', btn.dataset.mode === _adpAnalysisCultMode);
     });
-    _adpPendingCultMode = null;
   }
   // ── 保存済み評価モードをUIに反映 ──
   if (area.savedEvalMode) {
@@ -959,7 +977,7 @@ function _adpEnsureView() {
       </div>
     </div>
 
-  \`;
+  `;
   document.body.appendChild(view);
 }
 
@@ -975,8 +993,8 @@ function _adpCloseRankingDialog() {
 function _adpOpenCultPopup(event) {
   const popup = document.getElementById('adp-cult-popup');
   if (!popup) return;
-  // 現在の方式を active 反映
-  const cur = currentAreaData?.cultivationMode || 'openField';
+  // 現在の方式を active 反映（分析一時値を表示。マスターではない）
+  const cur = _adpAnalysisCultMode || 'openField';
   popup.querySelectorAll('.adp-cult-popup-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.mode === cur);
   });
@@ -2115,12 +2133,25 @@ function soilLabel(key) {
 function _adpRenderRanking(area) {
   if (typeof buildAnalysisResult !== 'function' || !currentAreaData) return;
 
-  // スコア計算のみ（DOM描画はダイアログを開いた時に行う）
-  currentAreaData.cultivationMode = 'openField';
+  // 表示に使う栽培方式：openAreaDetailPanelで復元済みの値（分析一時値 優先 / なければマスター）を使う。
+  // ここで無条件に'openField'へ固定すると、復元処理の結果がエリアを開くたびに消えてしまうため変更。
+  const mode = currentAreaData.cultivationMode || 'openField';
 
-  // 栽培方式ボタンを初期化状態に同期（サマリーバー／条件設定タブの両方を含む全インスタンス）
+  // 露地スコアのキャッシュ（補正比較用）は、表示モードに関わらず必ず露地基準で計算し直す
+  let openFieldResult;
+  if (mode === 'openField') {
+    openFieldResult = buildAnalysisResult(currentAreaData);
+  } else {
+    const savedMode = currentAreaData.cultivationMode;
+    currentAreaData.cultivationMode = 'openField';
+    openFieldResult = buildAnalysisResult(currentAreaData);
+    currentAreaData.cultivationMode = savedMode; // 表示モードに戻す
+  }
+  _crOpenFieldScores = openFieldResult.cropScores.map(s => ({ id: s.crop.id, score: s.score }));
+
+  // 栽培方式ボタンを復元済みモードに同期（サマリーバー／条件設定タブの両方を含む全インスタンス）
   document.querySelectorAll('.adp-cult-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.mode === 'openField');
+    btn.classList.toggle('active', btn.dataset.mode === mode);
   });
   // DB/気候トグルを初期化（一般データベース側をactive）
   document.querySelectorAll('.adp-eval-mode-btn').forEach(btn => {
@@ -2133,10 +2164,8 @@ function _adpRenderRanking(area) {
     });
   }
 
-  const result = buildAnalysisResult(currentAreaData);
-
-  // 露地スコアをキャッシュ（補正比較用）
-  _crOpenFieldScores = result.cropScores.map(s => ({ id: s.crop.id, score: s.score }));
+  // 表示用スコア：露地モードならキャッシュ済みのopenFieldResultを再利用、それ以外は復元モードで計算
+  const result = (mode === 'openField') ? openFieldResult : buildAnalysisResult(currentAreaData);
 
   // analysis.js のランキング状態を更新
   _crScores = result.cropScores;
@@ -2145,11 +2174,18 @@ function _adpRenderRanking(area) {
 }
 
 
-// ─── 栽培方式切替（気温適性・生育期間ペイン共通） ───
+// ─── 栽培方式切替（気温適性・生育期間ペイン共通）※分析側の一時値のみ変更。マスター(area.cultivationMode)はインライン編集経由でのみ変更 ───
 function _adpSwitchCultivation(mode) {
   if (!currentAreaData) return;
   currentAreaData.cultivationMode = mode;
-  _awSaveFarmCond();              // 栽培方式をエリアごとに永続化
+  _adpAnalysisCultMode = mode;
+
+  // 分析一時値としてlocalStorageに保存（マスターへの永続化は行わない）
+  const areaId = _adpArea?.id || _adpArea?.name || '';
+  if (areaId) {
+    try { localStorage.setItem(`adpCultAnalysis_${areaId}`, mode); }
+    catch(e) { console.warn('_adpSwitchCultivation localStorage:', e); }
+  }
 
   // 両ペインのトグルUI連動更新（.adp-cult-btn すべて対象）
   document.querySelectorAll('.adp-cult-btn').forEach(btn => {
@@ -2172,6 +2208,7 @@ function _adpSwitchCultivation(mode) {
     _adpSelectCropForAnalysis(_adpSelectedCropId);
   }
 }
+
 
 // ─── 補正比較ヘルパー ───
 
@@ -4504,20 +4541,19 @@ const AW_STEP_TITLES = ['営農条件入力']; // 旧ウィザード互換・参
 // ─── 条件設定状態 ───
 let _awArea           = null;     // 選択中エリアデータ（openAreaDetailPanelで更新）
 let _awFarmCond       = null;     // 営農条件（6項目）：アプリ起動時に初期化、デフォルトボタンでリセット
-let _adpPendingCultMode = null;   // openAreaDetailPanel内で栽培方式復元に使う一時変数
 let _awAllScores      = [];       // buildAnalysisResult().cropScores のキャッシュ
 
 /**
  * _awSaveFarmCond()
- * 現在の _awFarmCond・cultivationMode・_adpClimateMode を
+ * 現在の _awFarmCond・_adpClimateMode を
  * エリアオブジェクト（_adpArea）に書き戻し localStorage / Firestore に永続化する。
+ * ※ cultivationMode はここでは扱わない（マスターはインライン編集 saveInlineEdit() 経由のみで変更・保存する）。
  */
 function _awSaveFarmCond() {
   const area = _adpArea;
   if (!area || !area.id) return;
 
   area.farmingConditions = { ..._awFarmCond };
-  area.cultivationMode   = currentAreaData?.cultivationMode || 'openField';
   area.savedEvalMode     = _adpClimateMode ? 'climate' : 'db';
 
   try {
@@ -4525,7 +4561,6 @@ function _awSaveFarmCond() {
     const idx = stored.findIndex(a => a.id === area.id);
     if (idx !== -1) {
       stored[idx].farmingConditions = area.farmingConditions;
-      stored[idx].cultivationMode   = area.cultivationMode;
       stored[idx].savedEvalMode     = area.savedEvalMode;
       localStorage.setItem(CONFIG.AREAS_KEY, JSON.stringify(stored));
     }
@@ -4534,7 +4569,6 @@ function _awSaveFarmCond() {
   if (typeof db !== 'undefined' && db && area.id && !String(area.id).startsWith('local_')) {
     db.collection('areas').doc(area.id).update({
       farmingConditions: area.farmingConditions,
-      cultivationMode:   area.cultivationMode,
       savedEvalMode:     area.savedEvalMode,
     }).catch(e => console.warn('_awSaveFarmCond Firestore:', e));
   }
@@ -4561,7 +4595,6 @@ function _awRenderConditions() {
   const wrap = document.getElementById('adp-rk-cond-wrap');
   if (!wrap) return;
 
-  const cultMode  = currentAreaData?.cultivationMode || 'openField';
   const isClimate = _adpClimateMode;
   const areaName  = currentAreaData?.name || _awArea?.name || null;
   const climateLabel = areaName ? `${areaName}の気候` : 'エリア気候';
@@ -4577,17 +4610,6 @@ function _awRenderConditions() {
       </div>
     </div>
     <div class="adp-rk-cond-divider"></div>
-    <div class="adp-rk-cond-group">
-      <div class="adp-rk-cond-label">🌡️ 栽培方式</div>
-      <div class="adp-rk-cond-row">
-        <button class="adp-cult-btn ${cultMode === 'openField' ? 'active' : ''}"
-          data-mode="openField" onclick="_adpSwitchCultivation('openField')">露地</button>
-        <button class="adp-cult-btn ${cultMode === 'greenhouse' ? 'active' : ''}"
-          data-mode="greenhouse" onclick="_adpSwitchCultivation('greenhouse')">ハウス</button>
-        <button class="adp-cult-btn ${cultMode === 'heatedGreenhouse' ? 'active' : ''}"
-          data-mode="heatedGreenhouse" onclick="_adpSwitchCultivation('heatedGreenhouse')">加温</button>
-      </div>
-    </div>
     <div class="adp-rk-cond-group">
       <div class="adp-rk-cond-label">🧭 評価基準</div>
       <div class="adp-rk-cond-row">
@@ -4802,22 +4824,26 @@ function _awResetConditions() {
   if (area) {
     delete area.farmingConditions;
     delete area.savedEvalMode;
-    // cultivationModeはデフォルト(openField)に戻す
-    area.cultivationMode = 'openField';
+    // 栽培方式は分析一時値のみデフォルト(openField)に戻す。マスター(area.cultivationMode)はここでは変更しない
+    _adpAnalysisCultMode = 'openField';
     if (currentAreaData) currentAreaData.cultivationMode = 'openField';
     document.querySelectorAll('.adp-cult-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.mode === 'openField');
     });
+    const areaId = area.id || area.name || '';
+    if (areaId) {
+      try { localStorage.setItem(`adpCultAnalysis_${areaId}`, 'openField'); }
+      catch(e) { console.warn('_awResetConditions analysis cult localStorage:', e); }
+    }
     _adpClimateMode = false;
     _adpSetClimateMode(false);
-    // 永続化層から削除
+    // 永続化層から削除（farmingConditions・savedEvalModeのみ。cultivationModeはマスターのため触らない）
     try {
       const stored = JSON.parse(localStorage.getItem(CONFIG.AREAS_KEY) || '[]');
       const idx = stored.findIndex(a => a.id === area.id);
       if (idx !== -1) {
         delete stored[idx].farmingConditions;
         delete stored[idx].savedEvalMode;
-        stored[idx].cultivationMode = 'openField';
         localStorage.setItem(CONFIG.AREAS_KEY, JSON.stringify(stored));
       }
     } catch(e) { console.warn('_awResetConditions localStorage:', e); }
@@ -4826,7 +4852,6 @@ function _awResetConditions() {
       db.collection('areas').doc(area.id).update({
         farmingConditions: FieldValue.delete(),
         savedEvalMode:     FieldValue.delete(),
-        cultivationMode:   'openField',
       }).catch(e => console.warn('_awResetConditions Firestore:', e));
     }
   }
