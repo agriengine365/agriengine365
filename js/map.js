@@ -2,11 +2,38 @@
 //  MAP — Leaflet初期化・描画・ジオメトリ
 // ═══════════════════════════════════════════
 
+// ─── 前回終了時の地図位置（中心座標＋ズーム）を復元 ───
+// 保存は beforeunload 時のみ（_saveLastMapView）。ここでは起動時の読み込みのみ行う。
+const MAP_LAST_VIEW_KEY = 'agriMapLastView';
+
+function _loadLastMapView() {
+  try {
+    const raw = localStorage.getItem(MAP_LAST_VIEW_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw);
+    if (typeof v?.lat !== 'number' || typeof v?.lng !== 'number' || typeof v?.zoom !== 'number') return null;
+    return { center: [v.lat, v.lng], zoom: v.zoom };
+  } catch(e) {
+    console.warn('[MAP] 前回位置の復元に失敗:', e);
+    return null;
+  }
+}
+
+const _lastMapView = _loadLastMapView();
+
 const map = L.map('map', {
-  center:  CONFIG.MAP_CENTER,
-  zoom:    CONFIG.MAP_ZOOM,
+  center:  _lastMapView ? _lastMapView.center : CONFIG.MAP_CENTER,
+  zoom:    _lastMapView ? _lastMapView.zoom   : CONFIG.MAP_ZOOM,
   maxZoom: 20,
   zoomControl: false,
+});
+
+// ─── 終了時（タブを閉じる／離脱）に現在の地図位置を保存 ───
+window.addEventListener('beforeunload', () => {
+  try {
+    const c = map.getCenter();
+    localStorage.setItem(MAP_LAST_VIEW_KEY, JSON.stringify({ lat: c.lat, lng: c.lng, zoom: map.getZoom() }));
+  } catch(e) { /* 保存できなくても致命的ではないため無視 */ }
 });
 
 L.control.zoom({ position: 'bottomright' }).addTo(map);
