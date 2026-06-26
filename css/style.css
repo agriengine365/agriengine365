@@ -8054,3 +8054,19 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text1);
   margin-bottom: 8px;
 }
+
+/* 占有率スライダー：最後の作物（自動計算）*/
+.adp-pcc-slider-auto {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.adp-pcc-auto-badge {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--green);
+  background: rgba(74,222,128,.15);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 4px;
+  vertical-align: middle;
+}

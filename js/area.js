@@ -4390,7 +4390,15 @@ function _adpUpdatePracticeRatio(cropId, newRatio) {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   const idx = _adpPracticecrops.findIndex(c => c.cropId === cropId);
   if (idx < 0) return;
+  // 最後の作物は操作不可（自動計算）
+  const lastIdx = _adpPracticecrops.length - 1;
+  if (idx === lastIdx) return;
   _adpPracticecrops[idx].ratio = newRatio;
+  // 最後の作物に残りを全て割り当て
+  const sumOthers = _adpPracticecrops
+    .slice(0, lastIdx)
+    .reduce((s, c) => s + (c.ratio || 0), 0);
+  _adpPracticecrops[lastIdx].ratio = Math.max(0, 100 - sumOthers);
   _adpSavePracticecrops(areaId);
   _adpRenderPracticecrops();
   _adpRefreshPracticeTabs();
@@ -4448,7 +4456,9 @@ function _adpRenderPracticecrops() {
     return;
   }
 
-  listEl.innerHTML = _adpPracticecrops.map(({ cropId, ratio }) => {
+  const _lastCropIdx = _adpPracticecrops.length - 1;
+  listEl.innerHTML = _adpPracticecrops.map(({ cropId, ratio }, _ci) => {
+    const isLast = _ci === _lastCropIdx;
     const name   = _adpCropIdToName(cropId);
     const sqm    = _adpPracticeAreaSqm(ratio);
     const haDisp = sqm >= 10000 ? `${(sqm / 10000).toFixed(2)} ha` : `${sqm} ㎡`;
@@ -4460,10 +4470,10 @@ function _adpRenderPracticecrops() {
         </div>
         <div class="adp-pcc-slider-row">
           <input type="range" min="0" max="100" value="${ratio}"
-            class="adp-pcc-slider"
-            oninput="this.nextElementSibling.textContent=this.value+'%'; _adpUpdatePracticeRatio('${cropId}', Number(this.value))"
+            class="adp-pcc-slider${isLast ? ' adp-pcc-slider-auto' : ''}"
+            ${isLast ? 'disabled' : "oninput=\"this.nextElementSibling.textContent=this.value+'%'; _adpUpdatePracticeRatio('" + cropId + "', Number(this.value))\""}
           >
-          <span class="adp-pcc-ratio-label">${ratio}%</span>
+          <span class="adp-pcc-ratio-label">${ratio}%${isLast ? ' <span class=\'adp-pcc-auto-badge\'>自動</span>' : ''}</span>
         </div>
         <div class="adp-pcc-area-label">占有面積：約 ${haDisp}</div>
       </div>
