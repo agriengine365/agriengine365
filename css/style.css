@@ -7908,3 +7908,149 @@ html.draw-dialog-active .bottom-nav {
   font-weight: 600;
   border-color: var(--green3);
 }
+
+/* ════════════════════════════════════════════════════════════════
+   実務側：複数作物リスト UI（_adpRenderPracticecrops）
+   ════════════════════════════════════════════════════════════════ */
+
+/* 実務側作物バー全体ラッパー */
+.adp-practice-crops-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+}
+
+/* 作物カード */
+.adp-practice-crop-card {
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.adp-practice-crop-card:first-child {
+  border-top: 1px solid var(--border);
+}
+
+/* カードヘッダー（名前 ＋ 削除ボタン） */
+.adp-pcc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.adp-pcc-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text1);
+}
+.adp-pcc-remove {
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color .15s;
+}
+.adp-pcc-remove:hover { color: var(--red); }
+
+/* スライダー行 */
+.adp-pcc-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.adp-pcc-slider {
+  flex: 1;
+  accent-color: var(--green2);
+  cursor: pointer;
+}
+.adp-pcc-ratio-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text1);
+  min-width: 34px;
+  text-align: right;
+}
+
+/* 占有面積ラベル */
+.adp-pcc-area-label {
+  font-size: 10px;
+  color: var(--text3);
+  margin-top: 3px;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   施肥タブ：複数作物表示
+   ════════════════════════════════════════════════════════════════ */
+
+/* 合計サマリーボックス */
+.adp-multi-fert-summary {
+  background: var(--surface2, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+}
+
+/* 各作物カード */
+.adp-multi-fert-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.adp-mfc-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text1);
+  margin-bottom: 6px;
+}
+
+/* N/P/K 横並び */
+.adp-mfc-npk {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.adp-mfc-item {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text1);
+}
+.adp-mfc-item .label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  background: var(--border);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+.adp-mfc-item .unit {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--text3);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   リスクタブ：複数作物表示
+   ════════════════════════════════════════════════════════════════ */
+
+.adp-multi-risk-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.adp-mrc-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text1);
+  margin-bottom: 8px;
+}

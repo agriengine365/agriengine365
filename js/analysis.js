@@ -946,3 +946,243 @@ const FAMILY_NAME_JA = {
   Vitaceae: 'ブドウ科',
   Zingiberaceae: 'ショウガ科',
 };
+// ═══════════════════════════════════════════════════════════════════
+// ─── 実務側：複数作物対応描画関数 ───
+// ═══════════════════════════════════════════════════════════════════
+
+// 作物ごとの色パレット（カレンダー重ね表示用）
+const PRACTICE_CROP_COLORS = [
+  'var(--green)',  'var(--amber)',  '#5b9bd5', '#e07b54',
+  '#8e6bbf',       '#3aada8',      '#c94f7c', '#7a9e3e',
+];
+
+/**
+ * _renderFertResultMulti(practicecrops, targetId?)
+ * 複数作物の施肥量を合算サマリー＋各作物カードで表示。
+ * practicecrops: [{cropId, ratio}, ...]
+ */
+function _renderFertResultMulti(practicecrops, targetId = 'fert-result') {
+  const el = document.getElementById(targetId);
+  if (!el || !currentAreaData) return;
+
+  if (!practicecrops?.length) {
+    el.innerHTML = '<div class="empty-mini">作物を追加すると施肥概算が表示されます。</div>';
+    return;
+  }
+
+  const totalSqm = currentAreaData.areaSqm || 0;
+
+  let sumN = 0, sumP = 0, sumK = 0;
+  const cardHtmls = practicecrops.map(({ cropId, ratio }, i) => {
+    const crop = (typeof _adpGetCropById === 'function') ? _adpGetCropById(cropId) : null;
+    if (!crop) return '';
+    const sqm  = Math.round(totalSqm * ratio / 100);
+    const fert = (typeof calcFertilizer === 'function') ? calcFertilizer(crop, sqm) : null;
+    if (fert) {
+      sumN += parseFloat(fert.N) || 0;
+      sumP += parseFloat(fert.P) || 0;
+      sumK += parseFloat(fert.K) || 0;
+    }
+    const haDisp = sqm >= 10000 ? `${(sqm / 10000).toFixed(2)} ha` : `${sqm} ㎡`;
+    const color  = PRACTICE_CROP_COLORS[i % PRACTICE_CROP_COLORS.length];
+    return `
+      <div class="adp-multi-fert-card">
+        <div class="adp-mfc-title" style="border-left:3px solid ${color};padding-left:6px;">
+          ${escHtml(crop.name)} <span style="color:var(--text3);font-size:10px;">${ratio}% / ${haDisp}</span>
+        </div>
+        ${fert ? `
+          <div class="adp-mfc-npk">
+            <span class="adp-mfc-item"><span class="label">N</span>${fert.N}<span class="unit">kg</span></span>
+            <span class="adp-mfc-item"><span class="label">P</span>${fert.P}<span class="unit">kg</span></span>
+            <span class="adp-mfc-item"><span class="label">K</span>${fert.K}<span class="unit">kg</span></span>
+          </div>
+          <div class="notice notice-info" style="margin-top:4px;font-size:10px;">${fert.notes || ''}</div>
+        ` : '<div style="color:var(--text3);font-size:11px;">施肥データなし</div>'}
+      </div>
+    `;
+  }).join('');
+
+  const summaryHtml = practicecrops.length >= 2 ? `
+    <div class="adp-multi-fert-summary">
+      <div style="font-size:11px;font-weight:600;margin-bottom:6px;">合計施肥量（全作物）</div>
+      <div class="adp-mfc-npk">
+        <span class="adp-mfc-item"><span class="label">N</span>${sumN.toFixed(1)}<span class="unit">kg</span></span>
+        <span class="adp-mfc-item"><span class="label">P</span>${sumP.toFixed(1)}<span class="unit">kg</span></span>
+        <span class="adp-mfc-item"><span class="label">K</span>${sumK.toFixed(1)}<span class="unit">kg</span></span>
+      </div>
+    </div>
+  ` : '';
+
+  el.innerHTML = summaryHtml + cardHtmls;
+}
+
+/**
+ * _renderRiskResultMulti(practicecrops, targetId?)
+ * 複数作物のリスクを作物カードで並列表示＋同科チェック。
+ */
+function _renderRiskResultMulti(practicecrops, targetId = 'risk-result') {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+
+  if (!practicecrops?.length) {
+    el.innerHTML = '<div class="empty-mini">作物を追加するとリスク・注意点が表示されます。</div>';
+    return;
+  }
+
+  // 同科チェック
+  const crops = practicecrops.map(({ cropId }) =>
+    (typeof _adpGetCropById === 'function') ? _adpGetCropById(cropId) : null
+  ).filter(Boolean);
+
+  const familyMap = {};
+  crops.forEach(c => {
+    const fam = c.conditions?.family;
+    if (fam) (familyMap[fam] = familyMap[fam] || []).push(c.name);
+  });
+  const sameFamily = Object.entries(familyMap)
+    .filter(([, names]) => names.length >= 2)
+    .map(([fam, names]) => {
+      const famJa = (typeof FAMILY_NAME_JA !== 'undefined' && FAMILY_NAME_JA[fam]) ? FAMILY_NAME_JA[fam] : fam;
+      return `${names.join('・')} は同じ ${famJa} です（連作・病害リスクに注意）`;
+    });
+
+  const warningHtml = sameFamily.length ? `
+    <div class="notice notice-warn" style="margin-bottom:8px;">
+      ⚠️ 同科作物の組み合わせ<br>
+      ${sameFamily.map(s => `<div style="font-size:11px;margin-top:4px;">${escHtml(s)}</div>`).join('')}
+    </div>
+  ` : '';
+
+  const cardHtmls = practicecrops.map(({ cropId, ratio }, i) => {
+    const crop  = (typeof _adpGetCropById === 'function') ? _adpGetCropById(cropId) : null;
+    if (!crop) return '';
+    const color = PRACTICE_CROP_COLORS[i % PRACTICE_CROP_COLORS.length];
+
+    // 既存関数でHTML断片を組む（targetIdに直接描画せずHTML文字列を取得）
+    const climateRiskHtml  = (typeof _buildClimateRiskHtml  === 'function') ? _buildClimateRiskHtml(crop)  : '';
+    const rotationHtml     = (typeof _buildRotationSection  === 'function') ? _buildRotationSection(crop)  : '';
+    let risksHtml = '';
+    if (crop.risks?.length) {
+      risksHtml = crop.risks.map(r => {
+        const rc = r.level === 'high' ? 'var(--red)' : r.level === 'medium' ? 'var(--amber)' : 'var(--green2)';
+        return `<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid var(--border);">
+          <span style="color:${rc};font-size:10px;font-family:var(--mono);padding-top:2px;flex-shrink:0;">${r.level.toUpperCase()}</span>
+          <div><div style="font-size:12px;font-weight:500;">${escHtml(r.name)}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px;">${escHtml(r.note || '')}</div></div>
+        </div>`;
+      }).join('');
+    }
+    return `
+      <div class="adp-multi-risk-card">
+        <div class="adp-mrc-title" style="border-left:3px solid ${color};padding-left:6px;">
+          ${escHtml(crop.name)} <span style="color:var(--text3);font-size:10px;">${ratio}%</span>
+        </div>
+        ${climateRiskHtml}${rotationHtml}${risksHtml ||
+          (!climateRiskHtml && !rotationHtml ? '<div class="empty-mini">リスクデータなし</div>' : '')}
+      </div>
+    `;
+  }).join('');
+
+  el.innerHTML = warningHtml + cardHtmls;
+}
+
+/**
+ * _renderCalendarMulti(practicecrops, targetId?)
+ * 複数作物を色分けして同一カレンダーに重ねて表示。
+ */
+function _renderCalendarMulti(practicecrops, targetId = 'calendar-result') {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+
+  if (!practicecrops?.length) {
+    el.innerHTML = '<div class="empty-mini">作物を追加すると生育カレンダーが表示されます。</div>';
+    return;
+  }
+
+  const MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const phases = [
+    { key: 'sowing',     label: '播種',     icon: '🌱' },
+    { key: 'sow',        label: '採集準備', icon: '🌾' },
+    { key: 'seedling',   label: '育苗',     icon: '🌿' },
+    { key: 'transplant', label: '定植',     icon: '🪴' },
+    { key: 'manage',     label: '管理',     icon: '🛠️' },
+    { key: 'harvest',    label: '収穫',     icon: '🌟' },
+  ];
+
+  // 作物ごとの色・月セット構築
+  const cropEntries = practicecrops.map(({ cropId }, ci) => {
+    const crop  = (typeof _adpGetCropById === 'function') ? _adpGetCropById(cropId) : null;
+    if (!crop || !crop.calendar) return null;
+    const color = PRACTICE_CROP_COLORS[ci % PRACTICE_CROP_COLORS.length];
+    const phaseSets = phases.map(p => ({
+      ...p,
+      months: new Set(
+        typeof _adpGrowthCalToIdx === 'function' ? _adpGrowthCalToIdx(crop.calendar[p.key]) : []
+      ),
+    }));
+    return { crop, color, phaseSets };
+  }).filter(Boolean);
+
+  if (!cropEntries.length) {
+    el.innerHTML = '<div class="empty-mini">カレンダーデータなし</div>';
+    return;
+  }
+
+  // 使用フェーズ（いずれかの作物でデータがあるもの）
+  const activePhaseKeys = phases.filter(p =>
+    cropEntries.some(e => e.phaseSets.find(ps => ps.key === p.key)?.months.size > 0)
+  );
+
+  // 凡例
+  const legendHtml = cropEntries.map(({ crop, color }) => `
+    <span class="wc-legend-item">
+      <span class="wc-legend-dot" style="background:${color}"></span>${escHtml(crop.name)}
+    </span>
+  `).join('');
+
+  // ヘッダー行
+  const headerCells = MONTHS.map(m =>
+    `<div class="wc-head-cell wc-head-active">${m}</div>`
+  ).join('');
+
+  // フェーズ行：1セルに複数色を縦分割
+  const phaseRows = activePhaseKeys.map(phase => {
+    const cells = MONTHS.map((_, mi) => {
+      const matching = cropEntries.filter(e =>
+        e.phaseSets.find(ps => ps.key === phase.key)?.months.has(mi)
+      );
+      if (!matching.length) return `<div class="wc-cell"></div>`;
+      if (matching.length === 1) {
+        return `<div class="wc-cell wc-cell-on" style="background:${matching[0].color};opacity:0.85;"></div>`;
+      }
+      // 複数作物が重なる場合は縦分割グラデーション
+      const pct = 100 / matching.length;
+      const stops = matching.map((e, k) =>
+        `${e.color} ${k * pct}%, ${e.color} ${(k + 1) * pct}%`
+      ).join(', ');
+      return `<div class="wc-cell wc-cell-on" style="background:linear-gradient(to bottom,${stops});opacity:0.85;"></div>`;
+    }).join('');
+    return `
+      <div class="wc-row">
+        <div class="wc-phase-label">
+          <span class="wc-phase-icon">${phase.icon}</span><span>${phase.label}</span>
+        </div>
+        <div class="wc-cells">${cells}</div>
+      </div>
+    `;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="wc-wrap">
+      <div class="wc-title-row">
+        <div class="wc-title">生育カレンダー（重合表示）</div>
+      </div>
+      <div class="wc-legend" style="margin-bottom:8px;">${legendHtml}</div>
+      <div class="wc-header">
+        <div class="wc-phase-label"></div>
+        <div class="wc-cells">${headerCells}</div>
+      </div>
+      ${phaseRows}
+    </div>
+  `;
+}
