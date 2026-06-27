@@ -68,7 +68,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "育苗箱に薄播き（乾籾150g/箱）。出芽温度30℃、緑化後は外気慣らしを段階的に行う",
+        "transplant": "田植え適期は葉齢3.5〜4葉。深植えを避け、株間22〜25cm均一に",
+        "manage": "分げつ期は浅水管理。出穂前20日頃から中干しで根を鍛え、出穂後は間断灌漑に切り替える",
+        "harvest": "出穂後40〜45日、穂の85〜90％が黄化したら刈り取り。刈り遅れは胴割れの原因に"
+      }
     },
     "fertilizer": {
       "N": 8,
@@ -173,7 +181,15 @@ const CROP_DB = [
         2,
         3,
         4
-      ]
+      ],
+      "memo": {
+        "sowing": "地温15℃以上で播種。1穴2〜3粒、発芽後1本立ちに。排水良好な圃場を選ぶ",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "開花期の水分が最重要。干ばつ時は灌水。結莢期〜肥大期に窒素固定が活発",
+        "harvest": "葉が落ちて莢が茶色になったら収穫。脱粒前に早めに刈り取り、乾燥は水分13%以下に"
+      }
     },
     "fertilizer": {
       "N": 2,
@@ -278,7 +294,15 @@ const CROP_DB = [
         3,
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 2,
@@ -378,7 +402,15 @@ const CROP_DB = [
         3,
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "地温15℃以上、6月下旬〜7月上旬が播種適期。1穴2粒、株間30cm",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "開花後の高温乾燥に注意。多肥は禁物で茎葉の茂りすぎを防ぐ",
+        "harvest": "莢の80%が褐色になったら収穫。一度に全部熟さないため順次収穫または機械刈り"
+      }
     },
     "fertilizer": {
       "N": 4,
@@ -477,7 +509,15 @@ const CROP_DB = [
       "prep": [
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "播種量は5〜7kg/10a。条播きで播種深さ3〜4cm。播種前にpH6.0〜7.0に石灰調整",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "越冬前に麦踏みを2〜3回行い茎を強化。穂肥（幼穂形成期）は窒素過多に注意",
+        "harvest": "穂が黄化して茎も乾燥したら収穫。雨が続く前に刈り取り、乾燥調整で水分14.5%以下に"
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -582,7 +622,15 @@ const CROP_DB = [
         7,
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "小麦より早播きが基本。播種量6〜8kg/10a、条播き深さ3cm。排水不良圃場は高畦に",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "麦踏みで耐倒伏性を高める。春の追肥タイミングは穂ばらみ期直前が効果的",
+        "harvest": "穂が垂れて黄金色に変わり、粒が硬くなったら収穫。小麦より約2週間早い"
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -680,7 +728,15 @@ const CROP_DB = [
       ],
       "prep": [
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 8,
@@ -779,7 +835,15 @@ const CROP_DB = [
       "prep": [
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 8,
@@ -882,7 +946,15 @@ const CROP_DB = [
         4,
         5,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "播種量4〜5kg/10a、覆土1〜2cm。夏播き（6〜7月）と秋播き（8〜9月）の2作型がある",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "生育が速いため中耕・除草は早期に。着花後は灌水を控えて倒伏を防ぐ",
+        "harvest": "全体の8割程度の実が黒化したら収穫。刈り遅れると落粒が多くなるため適期収穫を徹底"
+      }
     },
     "fertilizer": {
       "N": 4,
@@ -983,7 +1055,15 @@ const CROP_DB = [
         2,
         3,
         4
-      ]
+      ],
+      "memo": {
+        "sowing": "5〜6月播種。条播き、株間15〜20cm。覆土1〜2cm。発芽温度20〜30℃",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "雑草に弱いため初期除草を徹底。倒伏対策に土寄せを行う",
+        "harvest": "穂が垂れて粒が固くなったら収穫。脱粒しやすいため早めに刈り取る"
+      }
     },
     "fertilizer": {
       "N": 6,
@@ -1084,7 +1164,15 @@ const CROP_DB = [
         2,
         3,
         4
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 5,
@@ -1186,7 +1274,15 @@ const CROP_DB = [
         2,
         3,
         4
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 5,
@@ -1280,7 +1376,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "地温10℃以上になってから播種。1穴2粒播きで後に1本立ちに間引く",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "雄穂出穂時に人工授粉（花粉をシルクに付ける）で着粒率を上げる。本葉5〜6枚で追肥",
+        "harvest": "シルクが茶褐色になり、粒が硬くなったら完熟。子実用は完全黄熟後に機械収穫"
+      }
     },
     "fertilizer": {
       "N": 14,
@@ -1384,7 +1488,15 @@ const CROP_DB = [
       "prep": [
         3,
         4
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 18,
@@ -1484,7 +1596,15 @@ const CROP_DB = [
       "prep": [
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "9〜10月播種。条播き3〜4kg/10a。発芽後は間引きながら越冬させる",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "春の追肥（窒素）で菜の花の収量が上がる。アブラムシの早期防除が重要",
+        "harvest": "菜の花として収穫する場合は蕾のうちに。種子採取は莢が黄褐色になったら刈り取る"
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -1592,7 +1712,15 @@ const CROP_DB = [
         1,
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "育苗期間は30〜35日。発芽適温20℃。セル苗128穴トレイが標準",
+        "sow": "",
+        "seedling": "本葉4〜5枚、茎径5mm以上が定植適期。老化苗は活着不良の原因になる",
+        "transplant": "株間35〜40cm。定植後すぐに灌水して活着を促す。春秋は防虫ネットで害虫を防ぐ",
+        "manage": "外葉15〜16枚で球が巻き始める。追肥は定植後3〜4週間後に硫安で窒素補給",
+        "harvest": "球頂を押して硬く締まったら収穫適期。割れ球・裂球は収穫遅れのサイン"
+      }
     },
     "fertilizer": {
       "N": 20,
@@ -1687,7 +1815,15 @@ const CROP_DB = [
         2,
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "1穴3〜4粒播き、後に1本立ちに。深耕（30cm以上）と石や固まりのない土が必須",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "間引きは本葉2〜3枚で2本、5〜6枚で1本立ちに。追肥は間引きのたびに施用",
+        "harvest": "播種後60〜80日が目安。根の肩が土から出てきて直径6〜7cmになったら収穫"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -1792,7 +1928,15 @@ const CROP_DB = [
         1,
         2,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "種が細かいので砂と混ぜて条播き。覆土は薄く（3mm）、乾燥防止に新聞紙などで被覆",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "発芽後は過湿・乾燥両方に注意。本葉3〜4枚で株間10cmに間引き",
+        "harvest": "根の肩径3cm以上、播種後100〜120日が目安。裂根防止に急な灌水は避ける"
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -1878,7 +2022,15 @@ const CROP_DB = [
       "prep": [
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "9月上旬が播種適期。セルトレイ128穴、1穴1〜2粒播き",
+        "sow": "",
+        "seedling": "草丈25〜30cm（鉛筆程度の太さ）が定植適期。極端な大苗は春に抽苔しやすい",
+        "transplant": "株間10〜15cm。植え付け深さは根が隠れる程度。浅植えにすると球が大きくなる",
+        "manage": "春の追肥は2月〜3月上旬が最後。それ以降の追肥は球の腐敗を招く",
+        "harvest": "倒伏率80%以上になったら収穫。晴天を見計らって引き抜き、2〜3日畑で乾燥させる"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -1979,7 +2131,15 @@ const CROP_DB = [
         12,
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "種芋は60〜70g前後に切り分けて切り口を乾かしてから植え付け。株間30cm",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "芽が出たら1〜2本に芽かき。土寄せは茎が20cmになったら実施（2回）。塊茎が露出すると緑化する",
+        "harvest": "地上部が黄化して倒れたら収穫適期。掘り上げは晴天が2〜3日続いてから実施"
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -2081,7 +2241,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "種芋から苗（挿し穂）を育てる。苗床は25〜30℃で管理。節2〜3つを土に挿す",
+        "transplant": "株間30〜35cm、マルチ栽培で収量が上がる。つる返しを行い不定根の発生を防ぐ",
+        "manage": "肥料は控えめに（窒素過多は葉ばかり繁茂する）。乾燥に強いが着芋期の水分は重要",
+        "harvest": "葉が黄化し始めたら収穫適期。傷をつけないよう丁寧に掘り上げ、キュアリング（30℃・1週間）で甘みが増す"
+      }
     },
     "fertilizer": {
       "N": 6,
@@ -2186,7 +2354,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "育苗箱に播種。覆土は薄く（5mm程度）、発芽温度28℃前後で管理",
+        "sow": "",
+        "seedling": "本葉2〜3枚で間引き。第1花房が見えたら定植適期。老化苗は避ける",
+        "transplant": "深植えにすると茎から不定根が出て活着が良くなる。支柱を立てて誘引準備",
+        "manage": "第1花房以下の脇芽はすべて除去。誘引は週1回を目安に。着果後カルシウム欠乏（尻腐れ）に注意",
+        "harvest": "果肩まで色づいたら収穫適期。完熟ほど糖度が上がる。朝の収穫が鮮度保持に有効"
+      }
     },
     "fertilizer": {
       "N": 18,
@@ -2299,7 +2475,15 @@ const CROP_DB = [
         12,
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "地温15℃以上が必要。育苗トレイに1粒播き、発芽後は28〜30℃で管理",
+        "sow": "",
+        "seedling": "本葉2〜3枚、根がポット底に回り始めたら定植適期",
+        "transplant": "株間50〜60cm。接木苗は接合部が土に埋まらないよう注意して定植",
+        "manage": "親づる5〜6節で摘芯して子づるを伸ばす。うどんこ病・べと病の予防散布を定期実施",
+        "harvest": "開花後7〜10日、果長20〜22cmで収穫。取り遅れると種が大きくなり食味が落ちる"
+      }
     },
     "fertilizer": {
       "N": 20,
@@ -2406,7 +2590,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "発芽温度30℃と高め。2月上旬から育苗開始。温床や電熱マットを活用",
+        "sow": "",
+        "seedling": "育苗期間は70〜80日と長い。本葉8〜9枚、第1花蕾が見えたら定植適期",
+        "transplant": "株間50〜60cm。定植後は防風対策と灌水で活着を促す",
+        "manage": "三本仕立てが基本。更新剪定（7月下旬〜8月）で秋ナスを狙う。乾燥させると果皮が硬くなる",
+        "harvest": "ヘタ下の白い帯（白首）がくっきりしているうちに収穫。果皮にツヤがあるうちが食べごろ"
+      }
     },
     "fertilizer": {
       "N": 22,
@@ -2512,7 +2704,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "ナスと同時期に育苗開始。発芽温度28〜30℃。育苗日数60〜70日",
+        "sow": "",
+        "seedling": "本葉8〜10枚、第1花蕾が見えたら定植適期。徒長苗は避ける",
+        "transplant": "株間45〜50cm。支柱立てと誘引を同時に準備する",
+        "manage": "第1果は小さいうちに除去して株の充実を優先。二本仕立てで管理が楽になる",
+        "harvest": "緑果（未熟）でも収穫可能。完熟赤果は糖度・ビタミンCが大幅に増加する"
+      }
     },
     "fertilizer": {
       "N": 18,
@@ -2616,7 +2816,15 @@ const CROP_DB = [
         2,
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "酸性土壌に弱い。pH6.3〜7.0に石灰調整してから播種。条播き、株間3〜4cm",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "本葉2〜3枚で間引き・除草。低温で甘みが増す。冬どりは不織布でトンネル保温",
+        "harvest": "草丈20〜25cmで収穫。寒締め（霜を当てる）でシュウ酸が減り甘みが増す"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -2724,7 +2932,15 @@ const CROP_DB = [
         1,
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "高温では発芽率が落ちる（25℃以上で休眠）。夏播きは冷蔵庫で催芽処理してから播種",
+        "sow": "",
+        "seedling": "本葉4〜5枚で定植。根鉢を崩さないよう取り扱いに注意",
+        "transplant": "株間25〜30cm。定植後は遮光して活着を促す。高温期は夕方定植が基本",
+        "manage": "",
+        "harvest": "結球レタスは球を押して硬く締まったら収穫。葉レタスは外葉から随時かき取れる"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -2830,7 +3046,15 @@ const CROP_DB = [
       "prep": [
         3,
         4
-      ]
+      ],
+      "memo": {
+        "sowing": "種子は早めに使い切る（発芽力が1〜2年で低下）。条播き、覆土5mm",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "軟白部を伸ばすため、3〜4回土寄せを行う。追肥は土寄せのたびに実施",
+        "harvest": "葉ネギは草丈40〜50cmで随時収穫。根深ネギは軟白部20cm以上で順次収穫"
+      }
     },
     "fertilizer": {
       "N": 20,
@@ -2919,7 +3143,15 @@ const CROP_DB = [
         4,
         5,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "育苗期間は25〜30日。夏播きは高温で徒長しやすいため遮光ネットを使用",
+        "sow": "",
+        "seedling": "",
+        "transplant": "株間50〜60cm。苗が小さいうちに定植するとゆっくり根が張り充実した株になる",
+        "manage": "頂花蕾収穫後に追肥すると側枝の収穫が続けられる。アオムシ・コナガの早期防除が重要",
+        "harvest": "花蕾が密で花が開く前に収穫。直径15cm前後が標準。遅れると黄化して商品価値が落ちる"
+      }
     },
     "fertilizer": {
       "N": 20,
@@ -3019,7 +3251,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "深耕（60cm以上）必須。直播きで株間10〜15cm。種は前日水に浸して発芽率を上げる",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "間引きは本葉2〜3枚で株間10cmに。追肥は生育中期（7〜8月）に窒素を補給",
+        "harvest": "播種後100〜120日、根長60〜80cmで収穫。掘り取りは折れないよう縦方向に丁寧に"
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -3122,7 +3362,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "地温15℃以上で播種。育苗の場合は3〜4月にポット播き",
+        "sow": "",
+        "seedling": "",
+        "transplant": "株間100cm以上。つるが伸びるスペースを十分確保する",
+        "manage": "親づる5〜6節で摘芯、子づる2〜3本を伸ばす。人工授粉は午前中の開花直後に実施",
+        "harvest": "着果後50〜55日、果梗（へた）がコルク化して表面に白粉が吹いたら収穫適期"
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -3220,7 +3468,15 @@ const CROP_DB = [
         12,
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "3〜4月に育苗。高接ぎ木栽培で連作障害を回避する",
+        "sow": "",
+        "seedling": "",
+        "transplant": "株間100〜120cm。マルチフィルムで地温を確保し活着を促す",
+        "manage": "子づる2〜3本を伸ばし他は除去。人工授粉で確実に着果させる。着果節から11〜15節の果実を残す",
+        "harvest": "受粉後35〜45日（品種による）。打音（ポンポン）と巻きひげの枯れ具合で判断"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -3307,7 +3563,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "地温10℃以上で播種。1穴2粒、後に1本立ちに間引く。株間30〜35cm",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "本葉5〜6枚で追肥・土寄せ。雄穂が出たら人工授粉で着粒率を上げる",
+        "harvest": "ひげが出て20〜25日後、穂を押して乳液が出たら収穫適期。収穫後は速やかに調理する"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -3401,7 +3665,15 @@ const CROP_DB = [
       "prep": [
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "9月下旬〜10月上旬に植え付け。鱗片を1片ずつ分けて尖った方を上にして植える",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "越冬後3月に追肥。ムカゴ（花茎）は5月に摘除して球の肥大に栄養を集中させる",
+        "harvest": "葉が黄化して倒れたら収穫。根を切らずに数株まとめて吊り干しで乾燥保存"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -3495,7 +3767,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "地温15℃以上になってから植え付け（5月頃）。種ショウガを50〜60g片に分けて植える",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "乾燥を嫌うため敷きわらで保湿。追肥は7月〜8月に2回実施",
+        "harvest": "葉しょうが（8月〜9月）と根しょうが（10〜11月地上部枯れ後）で収穫時期が異なる"
+      }
     },
     "fertilizer": {
       "N": 18,
@@ -3594,7 +3874,15 @@ const CROP_DB = [
         5,
         6,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "気温が下がる8月下旬〜9月が播種適期。高温期は結球しにくい",
+        "sow": "",
+        "seedling": "",
+        "transplant": "本葉4〜5枚で定植。株間35〜40cm。定植直後の高温・乾燥に注意",
+        "manage": "追肥は定植後2〜3週おきに3回。球形成期の水分管理が品質を左右する",
+        "harvest": "外葉ごと両手で包み、球頂を押して硬く締まったら収穫。裂球前に早め収穫"
+      }
     },
     "fertilizer": {
       "N": 20,
@@ -3700,7 +3988,15 @@ const CROP_DB = [
       "prep": [
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "ピーマンと同様に2月から育苗。発芽温度28℃以上が必要",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "完熟すると辛みが強くなる。草丈が高くなるため支柱を早めに準備",
+        "harvest": "緑〜赤に完熟するまで随時収穫可。乾燥唐辛子用は完熟後引き抜いて吊り干し"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -3804,7 +4100,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "早播きは晩霜に注意。トンネルやハウスで保温して4月から播種可能。株間25〜30cm",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "本葉2〜3枚で間引き。開花〜結莢期に水分が足りないと収量が落ちる",
+        "harvest": "莢が膨らみ、豆が莢の幅の8割を占めたら収穫適期。遅れると豆が硬くなる"
+      }
     },
     "fertilizer": {
       "N": 3,
@@ -3892,7 +4196,15 @@ const CROP_DB = [
         12,
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "育苗に1〜2年かかる多年生野菜。定植1年目は収穫せず株の充実に専念する",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "収穫後の残茎は冬枯れまで残して光合成させる。毎年春に堆肥と追肥を施用",
+        "harvest": "萌芽後、茎径1cm以上、草丈25〜30cmになったら土際から切り取る。1株から3〜5本が目安"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -3998,7 +4310,15 @@ const CROP_DB = [
         12,
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "4〜5月播種、株間10cm。定植1年目は収穫せず株の充実を優先",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "収穫後は追肥（窒素系）で速やかな再生を促す。数年ごとに株分けして更新",
+        "harvest": "草丈25〜30cmで株元から2cm残して刈り取る。年4〜5回収穫可能"
+      }
     },
     "fertilizer": {
       "N": 18,
@@ -4105,7 +4425,15 @@ const CROP_DB = [
       "prep": [
         1,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "発芽適温15〜20℃。好光性種子なので覆土なしで播種。育苗に60〜70日かかる",
+        "sow": "",
+        "seedling": "",
+        "transplant": "株間30〜40cm。定植後は乾燥防止に敷きわらと灌水を徹底",
+        "manage": "土寄せで茎の軟白化が進み食味が向上。ホウ素欠乏（茎の亀裂）に注意",
+        "harvest": "草丈50〜60cmで外葉から収穫。または株ごと引き抜いて出荷"
+      }
     },
     "fertilizer": {
       "N": 20,
@@ -4205,7 +4533,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "地温15℃以上（5月上旬〜）に植え付け。子芋や孫芋を種芋として使用",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "土寄せを2〜3回行い芋の肥大を促す。乾燥に弱いため梅雨明け後は灌水を欠かさず",
+        "harvest": "地上部が枯れたら収穫。掘り上げ後は子芋・孫芋に分けて保存。霜には弱い"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -4305,7 +4641,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "ムカゴや切り種芋を4〜5月に植え付け。深耕（60〜90cm）が収量を左右する",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "支柱に蔓を誘引。乾燥時は灌水し、芋の肥大期（夏〜秋）に追肥を忘れずに",
+        "harvest": "地上部が黄化・枯れた後に収穫。霜が降りる前に掘り上げて砂中保存すると長持ち"
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -4409,7 +4753,15 @@ const CROP_DB = [
       "prep": [
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "春播き（3〜4月）と秋播き（9月）が基本。株間10cm。半日陰でも育つ",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "ひょろひょろと伸びやすいため遮光して軟白化させると品質向上。乾燥を嫌う",
+        "harvest": "草丈20〜25cmで外葉から収穫。または株元から刈り取り再生を促す"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -4496,7 +4848,15 @@ const CROP_DB = [
       "prep": [
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "条播き、株間10〜15cm。春播きは抽苔に注意。9月播きの秋冬どりが品質良好",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "間引きは本葉3〜4枚で株間5cmに。摘芯後の脇芽伸長で長期収穫できる",
+        "harvest": "草丈20〜25cmで株ごと収穫、または先端を摘み取って側枝を伸ばして再収穫"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -4595,7 +4955,15 @@ const CROP_DB = [
       ],
       "prep": [
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "芽かき・摘果は着果後2〜3週以内に行う。1花叢1果が基本。袋かけで害虫・病気・色づきをコントロール",
+        "harvest": "品種ごとの満開後日数が目安（ふじは160〜180日）。ヨードデンプン反応で熟度を確認"
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -4695,7 +5063,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "摘果は生理落果後に実施。葉25〜30枚に1果が目安。カイガラムシ・ハダニの防除を徹底",
+        "harvest": "ハウスみかんは9月〜、露地は11〜12月。皮が橙色に着色したら収穫適期。糖度は11以上を目標に"
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -4794,7 +5170,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "芽かき・新梢管理・摘粒を徹底。開花前のジベレリン処理（50ppm）で種なし化。うどんこ病・べと病の防除が必須",
+        "harvest": "着色が進んで果粉が出始めたら収穫適期。糖度計で16以上を確認してから収穫"
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -4892,7 +5276,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "仕上げ摘果は満開後40〜45日。葉30〜35枚に1果の目安。袋かけは摘果後すぐに実施",
+        "harvest": "果実が品種特有の色になり、果肉がわずかに柔らかくなったら収穫。早朝収穫で品質保持"
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -4990,7 +5382,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "誘引・棚仕立てで受光量を確保。交差受粉が必須（単一品種では結実しない）。摘果は葉20〜25枚に1果",
+        "harvest": "果梗が簡単に取れるようになったら収穫適期。収穫後すぐが最も美味しく長期保存には向かない"
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -5088,7 +5488,15 @@ const CROP_DB = [
       ],
       "prep": [
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "甘柿は放任でも可だが、結果母枝の更新剪定で安定収量を維持。渋柿は収穫後に脱渋処理",
+        "harvest": "果皮がオレンジ色になり、果肉が少し軟化したら収穫適期。霜が降りると品質が落ちる"
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -5178,7 +5586,15 @@ const CROP_DB = [
         7,
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "9月中旬〜10月上旬に定植。クラウン（根元の茎部）が土に埋まらないよう浅植えに",
+        "manage": "ランナーは随時除去。第1花房着果後に追肥。ハウス栽培では12月から加温開始",
+        "harvest": "果実全体が赤く着色し、光沢が出たら収穫適期。ヘタのすぐ下まで赤くなってから"
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -5278,7 +5694,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "pHを4.5〜5.5に強酸性管理（ピートモス投入）。根が浅いのでマルチングで乾燥防止",
+        "harvest": "色づき後1週間程度おいて完熟させてから収穫。房の中でも熟度差があるため選果しながら収穫"
+      }
     },
     "fertilizer": {
       "N": 8,
@@ -5361,7 +5785,15 @@ const CROP_DB = [
         10,
         11,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "花粉が少ない品種は受粉樹が必須。生理落果後に摘果して1果あたりの葉枚数を確保",
+        "harvest": "果皮が品種特有の色になり、押すとわずかに弾力が出てきたら収穫適期"
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -5460,7 +5892,15 @@ const CROP_DB = [
       "prep": [
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "雌雄異株なので雄株が必須（雌10:雄1）。人工授粉か受粉樹を近くに植える。棚仕立てが基本",
+        "harvest": "霜が降りる前に収穫し、常温（15℃前後）で後熟させる。リンゴと一緒に置くとエチレンで早く追熟"
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -5537,7 +5977,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -5636,7 +6084,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -5734,7 +6190,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "雨による裂果防止にビニル傘かけが有効。受粉樹が必要。摘果は軽め（着果多め）で",
+        "harvest": "完熟すると落果しやすい。糖度が上がり果皮が品種特有の深い色になったら収穫"
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -5835,7 +6299,15 @@ const CROP_DB = [
       "prep": [
         11,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -5934,7 +6406,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "隔年結果になりやすい。成り年は摘果、裏年は肥培管理を強化してバランスを保つ",
+        "harvest": "黄色に着色したら収穫。青ゆず（9〜10月）は香りが強く加工用に。完熟（11〜12月）は絞り汁用に"
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -6023,7 +6503,15 @@ const CROP_DB = [
         12,
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -6122,7 +6610,15 @@ const CROP_DB = [
         7,
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "山の縁部・切り株の根元などに自生。根伏せで増殖可能。3〜4月に根を10〜15cmに切って植える",
+        "seedling": "",
+        "transplant": "",
+        "manage": "促成栽培は12〜1月に根株を掘り上げて温室に持ち込む（温度20〜25℃）",
+        "harvest": "新芽が15〜20cmに伸びたら根元から切り取る。頂芽のみ収穫し脇芽を残すと再収穫できる"
+      }
     },
     "fertilizer": {
       "N": 8,
@@ -6214,7 +6710,15 @@ const CROP_DB = [
         8,
         9,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "根茎（地下茎）の移植で増殖。根茎は秋〜早春に採取して10cmに切り分けて植え付け",
+        "seedling": "",
+        "transplant": "",
+        "manage": "繁殖力が強いため管理されたエリアで栽培。翌年以降も毎年収穫できる多年生",
+        "harvest": "先端が開く直前の巻き葉（コゴミ状）を収穫。固くなる前の15〜20cmが食べ頃"
+      }
     },
     "fertilizer": {
       "N": 8,
@@ -6306,7 +6810,15 @@ const CROP_DB = [
         8,
         9,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "地下茎の株分けで増殖。湿った半日陰が適地。一度定植すれば毎年収穫できる",
+        "seedling": "",
+        "transplant": "",
+        "manage": "花茎（フキノトウ）収穫後は葉が展開するまでそのまま管理。除草と水分管理が主作業",
+        "harvest": "フキノトウは花が開く前の2〜3月に収穫。葉柄（フキ）は5〜7月に外葉から随時収穫"
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -6383,7 +6895,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "根茎を3〜4月に植え付け。半日陰・腐植土が多い場所を好む",
+        "seedling": "",
+        "transplant": "",
+        "manage": "ミョウガは株が増えると収量も上がる多年生。毎年秋に古い茎を整理する程度でよい",
+        "harvest": "花穂が土から顔を出した直後が収穫適期。開花すると辛みが強くなるため早めに収穫"
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -6484,7 +7004,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "水わさびは渓流水（水温10〜18℃）が必須。畑わさびは半日陰で腐植土の多い冷涼地が適地",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "清流の水温と水質管理が品質を左右する。追肥は少量を月1回が基本",
+        "harvest": "わさびは2〜3年かけて根茎を肥大させてから収穫。根茎が2〜3cm径になったら随時収穫可"
+      }
     },
     "fertilizer": {
       "N": 8,
@@ -6582,7 +7110,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "原木（クヌギ・コナラ）に種駒を打ち込む（3〜4月）。菌床栽培はオガクズ培地に種菌接種",
+        "seedling": "",
+        "transplant": "",
+        "manage": "原木は伏せ込みで菌を蔓延させる（1〜2年）。湿度70〜80%の半日陰で管理",
+        "harvest": "傘が7〜8分開きで収穫。完全に開くと胞子が飛んで風味が落ちる"
+      }
     },
     "fertilizer": {
       "N": 0,
@@ -6668,7 +7204,15 @@ const CROP_DB = [
         7,
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 0,
@@ -6765,7 +7309,15 @@ const CROP_DB = [
         2,
         3,
         4
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "天然ものは老大木の根元に発生。栽培は菌床（コナラオガクズ）または原木に菌を植え付ける",
+        "seedling": "",
+        "transplant": "",
+        "manage": "菌床栽培は15〜20℃、湿度90%前後で管理。原木栽培は発生まで3〜5年かかる",
+        "harvest": "傘がまだ内側に巻いているうちに収穫。株全体をまとめて切り取る"
+      }
     },
     "fertilizer": {
       "N": 0,
@@ -6857,7 +7409,15 @@ const CROP_DB = [
         7,
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 8,
@@ -6949,7 +7509,15 @@ const CROP_DB = [
         8,
         9,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 8,
@@ -7046,7 +7614,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 0,
@@ -7150,7 +7726,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 0,
@@ -7238,7 +7822,15 @@ const CROP_DB = [
         2,
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -7303,7 +7895,15 @@ const CROP_DB = [
         2,
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "周年栽培可能。真夏と厳冬以外はほぼいつでも播種できる。条播き、株間4cm",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "間引きは本葉1〜2枚で2〜3cm間隔に。追肥は1〜2回、液肥が効果的",
+        "harvest": "草丈20〜25cmで収穫。軟らかく食べやすい若い段階での収穫が品質のポイント"
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -7365,7 +7965,15 @@ const CROP_DB = [
         2,
         3,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "周年栽培可能だが、高温と寒さに注意。株間10〜15cm。直播きまたはセル育苗",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "肥料食いで生育が速い。週1回の液肥施用が効果的。防虫ネット必須",
+        "harvest": "草丈20〜25cmで収穫。株ごと引き抜くか外葉からかき取る。花蕾が出る前に収穫"
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -7425,7 +8033,15 @@ const CROP_DB = [
         2,
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -7487,7 +8103,15 @@ const CROP_DB = [
         1,
         2,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "条播き、薄播きで筋蒔き。生育が早く周年栽培向き",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "べと病・白斑病に注意。過湿に弱いため排水管理を徹底する",
+        "harvest": "草丈15〜20cmのやわらかい段階で収穫。大きくなると辛みが増す"
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -7545,7 +8169,15 @@ const CROP_DB = [
         5,
         6,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -7604,7 +8236,15 @@ const CROP_DB = [
         1,
         2,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -7666,7 +8306,15 @@ const CROP_DB = [
         3,
         4,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -7721,7 +8369,15 @@ const CROP_DB = [
       "prep": [
         3,
         4
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -7779,7 +8435,15 @@ const CROP_DB = [
         5,
         6,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -7834,7 +8498,15 @@ const CROP_DB = [
         6,
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -7898,7 +8570,15 @@ const CROP_DB = [
         2,
         6,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -7959,7 +8639,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8019,7 +8707,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8079,7 +8775,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8132,7 +8836,15 @@ const CROP_DB = [
       "prep": [
         3,
         4
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8189,7 +8901,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8242,7 +8962,15 @@ const CROP_DB = [
       "prep": [
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8298,7 +9026,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8352,7 +9088,15 @@ const CROP_DB = [
       "prep": [
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8408,7 +9152,15 @@ const CROP_DB = [
       "prep": [
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8466,7 +9218,15 @@ const CROP_DB = [
         7,
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8523,7 +9283,15 @@ const CROP_DB = [
         7,
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8577,7 +9345,15 @@ const CROP_DB = [
       "prep": [
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8637,7 +9413,15 @@ const CROP_DB = [
         1,
         2,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8696,7 +9480,15 @@ const CROP_DB = [
         1,
         2,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8755,7 +9547,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8812,7 +9612,15 @@ const CROP_DB = [
         2,
         3,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8867,7 +9675,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8923,7 +9739,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -8975,7 +9799,15 @@ const CROP_DB = [
         12,
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9029,7 +9861,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9080,7 +9920,15 @@ const CROP_DB = [
       "prep": [
         11,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9132,7 +9980,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9184,7 +10040,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9239,7 +10103,15 @@ const CROP_DB = [
       "prep": [
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9290,7 +10162,15 @@ const CROP_DB = [
       "prep": [
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9343,7 +10223,15 @@ const CROP_DB = [
         10,
         11,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9395,7 +10283,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9447,7 +10343,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9501,7 +10405,15 @@ const CROP_DB = [
         12,
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9554,7 +10466,15 @@ const CROP_DB = [
         12,
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9608,7 +10528,15 @@ const CROP_DB = [
         12,
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9662,7 +10590,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9716,7 +10652,15 @@ const CROP_DB = [
         12,
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9770,7 +10714,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9825,7 +10777,15 @@ const CROP_DB = [
         2,
         3
       ],
-      "sow": null
+      "sow": null,
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9879,7 +10839,15 @@ const CROP_DB = [
         12,
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9932,7 +10900,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -9986,7 +10962,15 @@ const CROP_DB = [
         2,
         3
       ],
-      "sow": null
+      "sow": null,
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10046,7 +11030,15 @@ const CROP_DB = [
         1,
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10099,7 +11091,15 @@ const CROP_DB = [
         11,
         12,
         1
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10163,7 +11163,15 @@ const CROP_DB = [
       "prep": [
         1,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10204,7 +11212,15 @@ const CROP_DB = [
       "harvest": [
         2,
         3
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10248,7 +11264,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10289,7 +11313,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10330,7 +11362,15 @@ const CROP_DB = [
       "harvest": [
         5,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10371,7 +11411,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10412,7 +11460,15 @@ const CROP_DB = [
       "harvest": [
         5,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10453,7 +11509,15 @@ const CROP_DB = [
       "harvest": [
         4,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10494,7 +11558,15 @@ const CROP_DB = [
       "harvest": [
         3,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10535,7 +11607,15 @@ const CROP_DB = [
       "harvest": [
         3,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10579,7 +11659,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10620,7 +11708,15 @@ const CROP_DB = [
       "harvest": [
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10661,7 +11757,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10702,7 +11806,15 @@ const CROP_DB = [
       "harvest": [
         3,
         4
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10743,7 +11855,15 @@ const CROP_DB = [
       "harvest": [
         12,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10784,7 +11904,15 @@ const CROP_DB = [
       "harvest": [
         3,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10825,7 +11953,15 @@ const CROP_DB = [
       "harvest": [
         3,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10866,7 +12002,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10907,7 +12051,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10948,7 +12100,15 @@ const CROP_DB = [
       "harvest": [
         3,
         4
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -10989,7 +12149,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11030,7 +12198,15 @@ const CROP_DB = [
       "harvest": [
         3,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11071,7 +12247,15 @@ const CROP_DB = [
       "harvest": [
         6,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11112,7 +12296,15 @@ const CROP_DB = [
       "harvest": [
         6,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11153,7 +12345,15 @@ const CROP_DB = [
       "harvest": [
         3,
         4
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11194,7 +12394,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11235,7 +12443,15 @@ const CROP_DB = [
       "harvest": [
         5,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11276,7 +12492,15 @@ const CROP_DB = [
       "harvest": [
         6,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11317,7 +12541,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11358,7 +12590,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11399,7 +12639,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11440,7 +12688,15 @@ const CROP_DB = [
       "harvest": [
         5,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11481,7 +12737,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11522,7 +12786,15 @@ const CROP_DB = [
       "harvest": [
         4,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11563,7 +12835,15 @@ const CROP_DB = [
       "harvest": [
         5,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11604,7 +12884,15 @@ const CROP_DB = [
       "harvest": [
         5,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11648,7 +12936,15 @@ const CROP_DB = [
       "harvest": [
         10,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11689,7 +12985,15 @@ const CROP_DB = [
       "harvest": [
         1,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11733,7 +13037,15 @@ const CROP_DB = [
       "harvest": [
         6,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11774,7 +13086,15 @@ const CROP_DB = [
       "harvest": [
         7,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11815,7 +13135,15 @@ const CROP_DB = [
       "harvest": [
         9,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11856,7 +13184,15 @@ const CROP_DB = [
       "harvest": [
         12,
         2
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11897,7 +13233,15 @@ const CROP_DB = [
       "harvest": [
         7,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11941,7 +13285,15 @@ const CROP_DB = [
       "harvest": [
         5,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -11985,7 +13337,15 @@ const CROP_DB = [
       "harvest": [
         5,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "ランナーでよく広がるため鉢植えまたは区画管理推奨。挿し木での増殖が簡単",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "花が咲く前に摘芯してこんもり仕立てると香りが強まる。地下茎の広がりをセメント板などで制御",
+        "harvest": "開花前の葉が最も香りが強い。茎ごと切り取り使用量に合わせて随時収穫"
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12029,7 +13389,15 @@ const CROP_DB = [
       "harvest": [
         5,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12073,7 +13441,15 @@ const CROP_DB = [
       "harvest": [
         4,
         11
-      ]
+      ],
+      "memo": {
+        "sowing": "挿し木・株分けで増殖が容易。種からは発芽が遅い。水はけの良い土壌を好む",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "過湿に弱いため水のやり過ぎに注意。剪定後の枝を挿し木で株を更新できる",
+        "harvest": "周年収穫可能。開花前の若い枝を摘み取る。木質化した古い茎は使わない"
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12117,7 +13493,15 @@ const CROP_DB = [
       "harvest": [
         4,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12161,7 +13545,15 @@ const CROP_DB = [
       "harvest": [
         4,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12205,7 +13597,15 @@ const CROP_DB = [
       "harvest": [
         4,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12249,7 +13649,15 @@ const CROP_DB = [
       "harvest": [
         6,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12293,7 +13701,15 @@ const CROP_DB = [
       "harvest": [
         6,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "地温20℃以上が必要。4〜5月播き、または育苗してから定植。株間25〜30cm",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "花穂が出たら早めに摘芯して葉の収穫期間を延ばす。水分に敏感で低温（15℃以下）で黒変する",
+        "harvest": "草丈20〜30cmになったら上部1/3を摘み取る。開花前が香りが最も強い"
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12337,7 +13753,15 @@ const CROP_DB = [
       "harvest": [
         7,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "発芽率が低めのため多めに播く。好光性種子なので覆土は薄く（2mm以下）",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "摘芯で側枝を増やし長期収穫。アブラムシ・ハダニの発生に注意",
+        "harvest": "青じそは本葉10〜15枚以降から随時収穫。穂じそ・花じそは開花時に摘み取る"
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12381,7 +13805,15 @@ const CROP_DB = [
       "harvest": [
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12422,7 +13854,15 @@ const CROP_DB = [
       "harvest": [
         5,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12463,7 +13903,15 @@ const CROP_DB = [
       "harvest": [
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12507,7 +13955,15 @@ const CROP_DB = [
       "harvest": [
         9,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12551,7 +14007,15 @@ const CROP_DB = [
       "harvest": [
         5,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12595,7 +14059,15 @@ const CROP_DB = [
       "harvest": [
         10,
         11
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12636,7 +14108,15 @@ const CROP_DB = [
       "harvest": [
         1,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12680,7 +14160,15 @@ const CROP_DB = [
       "harvest": [
         6,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12724,7 +14212,15 @@ const CROP_DB = [
       "harvest": [
         9,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12768,7 +14264,15 @@ const CROP_DB = [
       "harvest": [
         10,
         11
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12809,7 +14313,15 @@ const CROP_DB = [
       "harvest": [
         5,
         5
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12850,7 +14362,15 @@ const CROP_DB = [
       "harvest": [
         5,
         6
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12891,7 +14411,15 @@ const CROP_DB = [
       "harvest": [
         9,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12932,7 +14460,15 @@ const CROP_DB = [
       "harvest": [
         9,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -12976,7 +14512,15 @@ const CROP_DB = [
       "harvest": [
         3,
         11
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": null,
@@ -13030,7 +14574,15 @@ const CROP_DB = [
       "harvest": [
         9,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "地温20℃以上が必要。5〜6月播種。1穴3粒播きで後に1本立ちに。覆土薄め",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "花が咲き終わったら追肥を止める。倒伏しやすいため支柱・合掌立てで対策",
+        "harvest": "下部の莢が割れ始めたら収穫。束ねて逆さに吊るし、容器の上で叩いて種を落とす"
+      }
     },
     "fertilizer": {
       "N": 5,
@@ -13093,7 +14645,15 @@ const CROP_DB = [
       "harvest": [
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "4〜5月播種。1穴2粒播きで後に1本立ちに。大型品種は株間60cm以上",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "倒伏対策に深めに株元を土寄せ。切り花用は摘芯せず、採種・食用は摘芯で分枝を促す",
+        "harvest": "花が終わり、花盤の裏面が黄化して種が固くなったら収穫。雨の少ない晴天の日に刈り取る"
+      }
     },
     "fertilizer": {
       "N": 8,
@@ -13155,7 +14715,15 @@ const CROP_DB = [
       "harvest": [
         9,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 8,
@@ -13217,7 +14785,15 @@ const CROP_DB = [
       "harvest": [
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 6,
@@ -13279,7 +14855,15 @@ const CROP_DB = [
       "harvest": [
         1,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 20,
@@ -13341,7 +14925,15 @@ const CROP_DB = [
       "harvest": [
         9,
         11
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -13403,7 +14995,15 @@ const CROP_DB = [
       "harvest": [
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 8,
@@ -13465,7 +15065,15 @@ const CROP_DB = [
       "harvest": [
         6,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 15,
@@ -13528,7 +15136,15 @@ const CROP_DB = [
       "harvest": [
         10,
         11
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -13590,7 +15206,15 @@ const CROP_DB = [
       "harvest": [
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -13652,7 +15276,15 @@ const CROP_DB = [
       "harvest": [
         10,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -13714,7 +15346,15 @@ const CROP_DB = [
       "harvest": [
         10,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -13776,7 +15416,15 @@ const CROP_DB = [
       "harvest": [
         4,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -13838,7 +15486,15 @@ const CROP_DB = [
       "harvest": [
         6,
         11
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 10,
@@ -13900,7 +15556,15 @@ const CROP_DB = [
       "harvest": [
         10,
         11
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 14,
@@ -13962,7 +15626,15 @@ const CROP_DB = [
       "harvest": [
         5,
         7
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -14024,7 +15696,15 @@ const CROP_DB = [
       "harvest": [
         5,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 14,
@@ -14086,7 +15766,15 @@ const CROP_DB = [
       "harvest": [
         9,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 14,
@@ -14148,7 +15836,15 @@ const CROP_DB = [
       "harvest": [
         5,
         11
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -14210,7 +15906,15 @@ const CROP_DB = [
       "harvest": [
         4,
         12
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 12,
@@ -14270,7 +15974,15 @@ const CROP_DB = [
       "harvest": [
         9,
         11
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": {
@@ -14326,7 +16038,15 @@ const CROP_DB = [
       "harvest": [
         8,
         11
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": {
@@ -14382,7 +16102,15 @@ const CROP_DB = [
       "harvest": [
         7,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": {
@@ -14435,7 +16163,15 @@ const CROP_DB = [
       "harvest": [
         9,
         11
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": {
@@ -14491,7 +16227,15 @@ const CROP_DB = [
       "harvest": [
         6,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": null,
     "yield": {
@@ -14549,7 +16293,15 @@ const CROP_DB = [
       "harvest": [
         7,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 5,
@@ -14615,7 +16367,15 @@ const CROP_DB = [
       "harvest": [
         7,
         8
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 5,
@@ -14681,7 +16441,15 @@ const CROP_DB = [
       "harvest": [
         8,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 5,
@@ -14747,7 +16515,15 @@ const CROP_DB = [
       "harvest": [
         8,
         10
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 5,
@@ -14813,7 +16589,15 @@ const CROP_DB = [
       "harvest": [
         7,
         9
-      ]
+      ],
+      "memo": {
+        "sowing": "",
+        "sow": "",
+        "seedling": "",
+        "transplant": "",
+        "manage": "",
+        "harvest": ""
+      }
     },
     "fertilizer": {
       "N": 5,
