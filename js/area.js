@@ -1195,6 +1195,10 @@ function _adpSwitchSubTab(name) {
     _adpRenderCalendar();
     _adpRenderDayRecords();
     _adpRenderSavedCalendarsList();
+    // 実務作物リストで栽培ごよみを事前描画（growthセグメントへ切替時に即表示できるよう）
+    if (typeof _renderCalendarMulti === 'function') {
+      _renderCalendarMulti(_adpPracticecrops, 'calendar-result');
+    }
   }
   // ── 作物選択済み時の各ペイン再描画 ──
   if (_adpPracticecrops.length > 0) {
@@ -1484,6 +1488,10 @@ function _adpSwitchCalSegment(seg) {
   const growthWrap = document.getElementById('adp-cal-growth-wrap');
   if (visitWrap)  visitWrap.style.display  = seg === 'visit'  ? '' : 'none';
   if (growthWrap) growthWrap.style.display = seg === 'growth' ? '' : 'none';
+  // 栽培ごよみ切替時：実務作物リストで描画トリガー
+  if (seg === 'growth' && typeof _renderCalendarMulti === 'function') {
+    _renderCalendarMulti(_adpPracticecrops, 'calendar-result');
+  }
 }
 
 function _adpSetCalView(mode) {

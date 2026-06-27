@@ -738,22 +738,42 @@ function runAnalysis(areaName) {
 }
 
 // ─── 月別作業カレンダー ───
+// ══════════════════════════════════════════════════════════════
+// 栽培ごよみ：旬グリッド（36マス）対応ビルダー
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * _calMonthToDecadeIdxs(arr)
+ * calendar の月配列（数値1-12 または文字列キー）を旬インデックス（0-35）に変換。
+ * 月 n → 上旬(n-1)*3, 中旬(n-1)*3+1, 下旬(n-1)*3+2 の3旬をすべてONにする。
+ */
+function _calMonthToDecadeIdxs(arr) {
+  if (!Array.isArray(arr)) return new Set();
+  const MONTH_KEYS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const idxs = new Set();
+  arr.forEach(v => {
+    let m = -1;
+    if (typeof v === 'number') m = v - 1;
+    else { const i = MONTH_KEYS.indexOf(v); if (i >= 0) m = i; }
+    if (m >= 0 && m <= 11) { idxs.add(m*3); idxs.add(m*3+1); idxs.add(m*3+2); }
+  });
+  return idxs;
+}
+
 /**
  * buildWorkCalendarHTML(crop, opts)
- * crop.calendar の sowing / sow / seedling / transplant / manage / harvest を月グリッドで可視化するHTML文字列を返す。
- * 単独の作物カレンダー表示（renderWorkCalendar）と、保存済み作物一覧（_adpRenderSavedCalendarsList）の
- * 両方から呼ばれる共通ビルダー。DOM書き込みは行わない（呼び出し側の責務）。
- * 注：prep（休眠・準備期間）とorder（未実装・cropDB実データなし）は対象外
- *
- * opts.titleButtonHtml: タイトル行右側に差し込むボタンHTML（保存/保存済み/削除など。呼び出し側で組み立てる）
+ * 旬グリッド（36マス：上旬/中旬/下旬）版の作業カレンダーHTML文字列を返す。
+ * opts.titleButtonHtml : タイトル行右側ボタンHTML
+ * opts.color           : カードのアクセントカラー（複数作物カード時に使用）
  */
 function buildWorkCalendarHTML(crop, opts = {}) {
   if (!crop || !crop.calendar) return '<div class="empty-mini">カレンダーデータなし</div>';
 
-  const cal   = crop.calendar;
+  const cal    = crop.calendar;
+  const color  = opts.color || null;
   const MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const JUNS   = ['上','中','下'];
 
-  // フェーズ定義（sowingとsowは別行＝通常農法の播種 と 採集系の採集準備）
   const phases = [
     { key: 'sowing',     label: '播種',     color: 'var(--green3)', icon: '🌱' },
     { key: 'sow',        label: '採集準備', color: 'var(--green3)', icon: '🌾' },
@@ -763,53 +783,52 @@ function buildWorkCalendarHTML(crop, opts = {}) {
     { key: 'harvest',    label: '収穫',     color: 'var(--green)',  icon: '🌟' },
   ];
 
-  // 各フェーズの月indexセット（0-11）を作成。_adpGrowthCalToIdxが数値月／文字列キー両対応で正規化する
   const phaseSets = phases.map(p => ({
     ...p,
-    months: new Set(
-      typeof _adpGrowthCalToIdx === 'function'
-        ? _adpGrowthCalToIdx(cal[p.key])
-        : []
-    ),
+    decadeIdxs: _calMonthToDecadeIdxs(cal[p.key]),
+    memo: cal.memo?.[p.key] || null,
   }));
 
-  const activePhases = phaseSets.filter(p => p.months.size > 0);
-
+  const activePhases = phaseSets.filter(p => p.decadeIdxs.size > 0);
   if (!activePhases.length) return '<div class="empty-mini">カレンダーデータなし</div>';
 
-  // ヘッダー行（月名）
-  const headerCells = MONTHS.map((m, i) => {
-    const isActive = activePhases.some(p => p.months.has(i));
-    return `<div class="wc-head-cell ${isActive ? 'wc-head-active' : ''}">${m}</div>`;
-  }).join('');
+  // 旬ヘッダー：月名は3セル分のセル結合風ラベル
+  const monthHeaders = MONTHS.map(m =>
+    `<div class="wc-month-group"><span class="wc-month-name">${m}</span><div class="wc-jun-labels"><span>上</span><span>中</span><span>下</span></div></div>`
+  ).join('');
 
-  // 各フェーズ行
+  // フェーズ行
   const phaseRows = activePhases.map(p => {
-    const cells = MONTHS.map((_, i) => {
-      const on = p.months.has(i);
-      return `<div class="wc-cell ${on ? 'wc-cell-on' : ''}"
-        style="${on ? `background:${p.color};opacity:0.85` : ''}"></div>`;
+    const cells = Array.from({ length: 36 }, (_, i) => {
+      const on = p.decadeIdxs.has(i);
+      return `<div class="wc-cell wc-dec-cell ${on ? 'wc-cell-on' : ''}" style="${on ? `background:${p.color};opacity:0.88` : ''}"></div>`;
     }).join('');
+    const memoHtml = p.memo
+      ? `<div class="wc-phase-memo"><span class="wc-memo-icon">💡</span>${escHtml(p.memo)}</div>`
+      : '';
     return `
-      <div class="wc-row">
-        <div class="wc-phase-label">
-          <span class="wc-phase-icon">${p.icon}</span>
-          <span>${p.label}</span>
+      <div class="wc-phase-block">
+        <div class="wc-row">
+          <div class="wc-phase-label">
+            <span class="wc-phase-icon">${p.icon}</span><span>${p.label}</span>
+          </div>
+          <div class="wc-cells wc-cells-36">${cells}</div>
         </div>
-        <div class="wc-cells">${cells}</div>
+        ${memoHtml}
       </div>
     `;
   }).join('');
 
+  const borderStyle = color ? `border-left:3px solid ${color};` : '';
   return `
-    <div class="wc-wrap">
+    <div class="wc-wrap" style="${borderStyle}">
       <div class="wc-title-row">
         <div class="wc-title">${escHtml(crop.name)} — 作業カレンダー</div>
         ${opts.titleButtonHtml || ''}
       </div>
-      <div class="wc-header">
+      <div class="wc-dec-header">
         <div class="wc-phase-label"></div>
-        <div class="wc-cells">${headerCells}</div>
+        <div class="wc-month-headers">${monthHeaders}</div>
       </div>
       ${phaseRows}
       <div class="wc-legend">
@@ -822,6 +841,7 @@ function buildWorkCalendarHTML(crop, opts = {}) {
     </div>
   `;
 }
+
 
 /**
  * renderWorkCalendar(crop, targetId)
@@ -1086,9 +1106,16 @@ function _renderRiskResultMulti(practicecrops, targetId = 'risk-result') {
   el.innerHTML = warningHtml + cardHtmls;
 }
 
+// ══════════════════════════════════════════════════════════════
+// 実務側：複数作物カレンダー描画（個別カード / 重ね表示 切替）
+// ══════════════════════════════════════════════════════════════
+
+// 表示モード状態 ('card' | 'overlay')
+let _calMultiMode = 'card';
+
 /**
  * _renderCalendarMulti(practicecrops, targetId?)
- * 複数作物を色分けして同一カレンダーに重ねて表示。
+ * 個別カード表示 / 重ね表示 を切り替えボタン付きで描画。
  */
 function _renderCalendarMulti(practicecrops, targetId = 'calendar-result') {
   const el = document.getElementById(targetId);
@@ -1098,6 +1125,56 @@ function _renderCalendarMulti(practicecrops, targetId = 'calendar-result') {
     el.innerHTML = '<div class="empty-mini">作物を追加すると生育カレンダーが表示されます。</div>';
     return;
   }
+
+  // 切替ボタンバー
+  const toggleBar = `
+    <div class="wc-mode-toggle">
+      <button class="wc-mode-btn ${_calMultiMode === 'card' ? 'active' : ''}"
+        onclick="_calMultiMode='card'; _renderCalendarMulti(window.__adpPracticecropsRef||[], '${targetId}')">
+        🗂️ 個別カード
+      </button>
+      <button class="wc-mode-btn ${_calMultiMode === 'overlay' ? 'active' : ''}"
+        onclick="_calMultiMode='overlay'; _renderCalendarMulti(window.__adpPracticecropsRef||[], '${targetId}')">
+        🔲 重ね表示
+      </button>
+    </div>
+  `;
+
+  // practicecropsへの参照をグローバルに保持（ボタンのonclickから参照するため）
+  window.__adpPracticecropsRef = practicecrops;
+
+  if (_calMultiMode === 'card') {
+    _renderCalendarCards(practicecrops, targetId, toggleBar);
+  } else {
+    _renderCalendarOverlay(practicecrops, targetId, toggleBar);
+  }
+}
+
+/**
+ * _renderCalendarCards — 作物ごとに個別カードで並べる
+ */
+function _renderCalendarCards(practicecrops, targetId, toggleBar) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+
+  const cards = practicecrops.map(({ cropId, ratio }, ci) => {
+    const crop  = (typeof _adpGetCropById === 'function') ? _adpGetCropById(cropId) : null;
+    if (!crop || !crop.calendar) return '';
+    const color = PRACTICE_CROP_COLORS[ci % PRACTICE_CROP_COLORS.length];
+    const ratioHtml = `<span class="wc-crop-ratio">${ratio}%</span>`;
+    const titleButtonHtml = ratioHtml;
+    return `<div class="wc-crop-card">${buildWorkCalendarHTML(crop, { titleButtonHtml, color })}</div>`;
+  }).join('');
+
+  el.innerHTML = toggleBar + (cards || '<div class="empty-mini">カレンダーデータなし</div>');
+}
+
+/**
+ * _renderCalendarOverlay — 全作物を1枚の旬グリッドに色分け重ね表示
+ */
+function _renderCalendarOverlay(practicecrops, targetId, toggleBar) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
 
   const MONTHS = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
   const phases = [
@@ -1109,28 +1186,24 @@ function _renderCalendarMulti(practicecrops, targetId = 'calendar-result') {
     { key: 'harvest',    label: '収穫',     icon: '🌟' },
   ];
 
-  // 作物ごとの色・月セット構築
   const cropEntries = practicecrops.map(({ cropId }, ci) => {
-    const crop  = (typeof _adpGetCropById === 'function') ? _adpGetCropById(cropId) : null;
+    const crop = (typeof _adpGetCropById === 'function') ? _adpGetCropById(cropId) : null;
     if (!crop || !crop.calendar) return null;
     const color = PRACTICE_CROP_COLORS[ci % PRACTICE_CROP_COLORS.length];
     const phaseSets = phases.map(p => ({
       ...p,
-      months: new Set(
-        typeof _adpGrowthCalToIdx === 'function' ? _adpGrowthCalToIdx(crop.calendar[p.key]) : []
-      ),
+      decadeIdxs: _calMonthToDecadeIdxs(crop.calendar[p.key]),
     }));
     return { crop, color, phaseSets };
   }).filter(Boolean);
 
   if (!cropEntries.length) {
-    el.innerHTML = '<div class="empty-mini">カレンダーデータなし</div>';
+    el.innerHTML = toggleBar + '<div class="empty-mini">カレンダーデータなし</div>';
     return;
   }
 
-  // 使用フェーズ（いずれかの作物でデータがあるもの）
-  const activePhaseKeys = phases.filter(p =>
-    cropEntries.some(e => e.phaseSets.find(ps => ps.key === p.key)?.months.size > 0)
+  const activePhases = phases.filter(p =>
+    cropEntries.some(e => e.phaseSets.find(ps => ps.key === p.key)?.decadeIdxs.size > 0)
   );
 
   // 凡例
@@ -1140,47 +1213,47 @@ function _renderCalendarMulti(practicecrops, targetId = 'calendar-result') {
     </span>
   `).join('');
 
-  // ヘッダー行
-  const headerCells = MONTHS.map(m =>
-    `<div class="wc-head-cell wc-head-active">${m}</div>`
+  // 旬ヘッダー
+  const monthHeaders = MONTHS.map(m =>
+    `<div class="wc-month-group"><span class="wc-month-name">${m}</span><div class="wc-jun-labels"><span>上</span><span>中</span><span>下</span></div></div>`
   ).join('');
 
-  // フェーズ行：1セルに複数色を縦分割
-  const phaseRows = activePhaseKeys.map(phase => {
-    const cells = MONTHS.map((_, mi) => {
+  // フェーズ行
+  const phaseRows = activePhases.map(phase => {
+    const cells = Array.from({ length: 36 }, (_, i) => {
       const matching = cropEntries.filter(e =>
-        e.phaseSets.find(ps => ps.key === phase.key)?.months.has(mi)
+        e.phaseSets.find(ps => ps.key === phase.key)?.decadeIdxs.has(i)
       );
-      if (!matching.length) return `<div class="wc-cell"></div>`;
+      if (!matching.length) return `<div class="wc-cell wc-dec-cell"></div>`;
       if (matching.length === 1) {
-        return `<div class="wc-cell wc-cell-on" style="background:${matching[0].color};opacity:0.85;"></div>`;
+        return `<div class="wc-cell wc-dec-cell wc-cell-on" style="background:${matching[0].color};opacity:0.85;"></div>`;
       }
-      // 複数作物が重なる場合は縦分割グラデーション
-      const pct = 100 / matching.length;
+      const pct   = 100 / matching.length;
       const stops = matching.map((e, k) =>
-        `${e.color} ${k * pct}%, ${e.color} ${(k + 1) * pct}%`
+        `${e.color} ${k*pct}%, ${e.color} ${(k+1)*pct}%`
       ).join(', ');
-      return `<div class="wc-cell wc-cell-on" style="background:linear-gradient(to bottom,${stops});opacity:0.85;"></div>`;
+      return `<div class="wc-cell wc-dec-cell wc-cell-on" style="background:linear-gradient(to bottom,${stops});opacity:0.85;"></div>`;
     }).join('');
     return `
       <div class="wc-row">
         <div class="wc-phase-label">
           <span class="wc-phase-icon">${phase.icon}</span><span>${phase.label}</span>
         </div>
-        <div class="wc-cells">${cells}</div>
+        <div class="wc-cells wc-cells-36">${cells}</div>
       </div>
     `;
   }).join('');
 
   el.innerHTML = `
+    ${toggleBar}
     <div class="wc-wrap">
       <div class="wc-title-row">
         <div class="wc-title">生育カレンダー（重合表示）</div>
       </div>
       <div class="wc-legend" style="margin-bottom:8px;">${legendHtml}</div>
-      <div class="wc-header">
+      <div class="wc-dec-header">
         <div class="wc-phase-label"></div>
-        <div class="wc-cells">${headerCells}</div>
+        <div class="wc-month-headers">${monthHeaders}</div>
       </div>
       ${phaseRows}
     </div>

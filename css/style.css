@@ -8070,3 +8070,148 @@ html.draw-dialog-active .bottom-nav {
   margin-left: 4px;
   vertical-align: middle;
 }
+
+/* ═══════════════════════════════════════════════════════
+   WORK CALENDAR — 旬グリッド（36マス）拡張スタイル
+   ======================================================= */
+
+/* 旬ヘッダー行 */
+.wc-dec-header {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  margin-bottom: 2px;
+}
+.wc-month-headers {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+.wc-month-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border-right: 1px solid var(--border);
+  min-width: 0;
+}
+.wc-month-group:last-child { border-right: none; }
+
+.wc-month-name {
+  font-size: 9px;
+  color: var(--text2);
+  font-weight: 600;
+  text-align: center;
+  padding: 2px 0 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wc-jun-labels {
+  display: flex;
+}
+.wc-jun-labels span {
+  flex: 1;
+  font-size: 8px;
+  color: var(--text3);
+  text-align: center;
+  border-top: 1px solid var(--border);
+  padding: 1px 0;
+}
+
+/* 36マスセル列 */
+.wc-cells-36 {
+  display: flex;
+  flex: 1;
+  gap: 0;
+}
+.wc-dec-cell {
+  flex: 1;
+  height: 18px;
+  min-width: 0;
+  border-radius: 0;
+  background: var(--bg3);
+  border: 1px solid transparent;
+  border-right: 1px solid var(--border);
+  transition: opacity 0.15s;
+}
+/* 月の区切りを強調（3旬ごと） */
+.wc-dec-cell:nth-child(3n) {
+  border-right: 2px solid var(--border);
+}
+.wc-dec-cell:last-child { border-right: none; }
+
+/* フェーズブロック（行＋メモのセット） */
+.wc-phase-block {
+  margin-bottom: 2px;
+}
+
+/* フェーズ作業メモ */
+.wc-phase-memo {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--text2);
+  background: var(--bg3);
+  border-left: 2px solid var(--border);
+  padding: 3px 8px 3px 10px;
+  margin: 1px 0 5px 52px; /* wc-phase-labelの幅分インデント */
+  line-height: 1.55;
+  border-radius: 0 4px 4px 0;
+}
+.wc-memo-icon {
+  flex-shrink: 0;
+  font-size: 11px;
+  margin-top: 0px;
+}
+
+/* 作物個別カード */
+.wc-crop-card {
+  margin-bottom: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface, var(--bg2));
+}
+.wc-crop-card .wc-wrap {
+  padding: 10px 10px 8px;
+}
+.wc-crop-ratio {
+  font-size: 10px;
+  color: var(--text3);
+  background: var(--bg3);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+/* 個別カード / 重ね表示 切替ボタン */
+.wc-mode-toggle {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+.wc-mode-btn {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg2);
+  color: var(--text2);
+  cursor: pointer;
+  font-weight: 500;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.wc-mode-btn.active {
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green);
+  font-weight: 600;
+}
+.wc-mode-btn:hover:not(.active) {
+  background: var(--bg3);
+  border-color: var(--text3);
+}
