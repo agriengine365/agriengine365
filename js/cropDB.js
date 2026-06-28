@@ -8422,7 +8422,19 @@ const CROP_DB = [
         "harvest": "外葉から順次収穫。株を残すと長期間楽しめる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 12,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "追肥は生育中期に1〜2回分施。窒素過多でチップバーン発生注意。",
+      "perPlant": {
+        "N": 2.0,
+        "P": 1.6,
+        "K": 1.6
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -8498,7 +8510,19 @@ const CROP_DB = [
         "harvest": "草丈20〜25cmで収穫。軟らかく食べやすい若い段階での収穫が品質のポイント"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 10,
+      "K": 10,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "生育期間が短いため元肥中心。追肥は収穫2週前まで。",
+      "perPlant": {
+        "N": 0.2,
+        "P": 0.2,
+        "K": 0.2
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -8571,7 +8595,19 @@ const CROP_DB = [
         "harvest": "草丈20〜25cmで収穫。株ごと引き抜くか外葉からかき取る。花蕾が出る前に収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 10,
+      "K": 10,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "生育が速いため元肥中心。追肥は本葉3〜4枚時に1回。",
+      "perPlant": {
+        "N": 0.3,
+        "P": 0.2,
+        "K": 0.2
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -8642,7 +8678,19 @@ const CROP_DB = [
         "harvest": "草丈20cm程度で摘み取り収穫。花が咲く前に収穫を終える"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "摘み取り収穫のため追肥を継続。収穫ごとに追肥。",
+      "perPlant": {
+        "N": 0.2,
+        "P": 0.1,
+        "K": 0.2
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -8715,7 +8763,19 @@ const CROP_DB = [
         "harvest": "草丈15〜20cmのやわらかい段階で収穫。大きくなると辛みが増す"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 10,
+      "K": 10,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "生育が速く元肥中心。密植栽培では追肥量を抑える。",
+      "perPlant": {
+        "N": 0.1,
+        "P": 0.1,
+        "K": 0.1
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -8784,7 +8844,19 @@ const CROP_DB = [
         "harvest": "葉が十分に展開したら外葉から収穫。漬物用は春先の大株で"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "漬菜用。元肥をやや多めにし、追肥は生育中期に1〜2回。",
+      "perPlant": {
+        "N": 0.4,
+        "P": 0.3,
+        "K": 0.3
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -8854,7 +8926,19 @@ const CROP_DB = [
         "harvest": "若葉を摘み取り。葉が展開しすぎると辛みが増す"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "生育は比較的速い。追肥は生育中期に1回程度。",
+      "perPlant": {
+        "N": 0.3,
+        "P": 0.2,
+        "K": 0.2
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -8927,7 +9011,19 @@ const CROP_DB = [
         "harvest": "外葉から順次摘み取り。霜に当たると甘みが増す"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 20,
+      "P": 15,
+      "K": 15,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "長期収穫のため追肥を定期的に。葉色を見て追肥量を調整。",
+      "perPlant": {
+        "N": 4.0,
+        "P": 3.0,
+        "K": 3.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -8993,7 +9089,19 @@ const CROP_DB = [
         "harvest": "葉と茎の先端（15〜20cm）を摘み取り。粘りが特徴的"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "高温性で生育旺盛。摘み取り収穫のため追肥を継続的に施す。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 1.0,
+        "K": 1.2
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9062,7 +9170,19 @@ const CROP_DB = [
         "harvest": "草丈30〜40cmで葉を収穫。甘みが強く薬味に最適"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "分けつ旺盛。追肥は分けつ促進のため2〜3回に分施。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.3,
+        "K": 0.4
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9128,7 +9248,19 @@ const CROP_DB = [
         "harvest": "草丈20〜30cmで葉を収穫。細葉で香りが強い"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "小ネギ類。追肥は生育中期に1〜2回。",
+      "perPlant": {
+        "N": 0.3,
+        "P": 0.2,
+        "K": 0.2
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9203,7 +9335,19 @@ const CROP_DB = [
         "harvest": "外葉から順次収穫。株を残すと長期間収穫できる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "生育期間が長い。追肥は月1回程度、収穫後に施す。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.3,
+        "K": 0.4
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9277,7 +9421,19 @@ const CROP_DB = [
         "harvest": "完熟（真っ赤）になったら収穫。房どりも可能"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 15,
+      "baseDressing": 0.4,
+      "topDressing": 0.6,
+      "notes": "長期収穫型。追肥は果実肥大期から定期的に。窒素過多で空洞果注意。",
+      "perPlant": {
+        "N": 8.0,
+        "P": 5.3,
+        "K": 8.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9348,7 +9504,19 @@ const CROP_DB = [
         "harvest": "品種固有の色（赤・黄・橙）に完全着色してから収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 18,
+      "P": 12,
+      "K": 18,
+      "baseDressing": 0.4,
+      "topDressing": 0.6,
+      "notes": "長期栽培。追肥を着果ごとに継続。カルシウム欠乏に注意。",
+      "perPlant": {
+        "N": 9.0,
+        "P": 6.0,
+        "K": 9.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9419,7 +9587,19 @@ const CROP_DB = [
         "harvest": "果長5〜7cmで収穫。緑色のうちに収穫が基本"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 15,
+      "baseDressing": 0.4,
+      "topDressing": 0.6,
+      "notes": "長期収穫型。追肥は収穫開始後から2週間ごとに。",
+      "perPlant": {
+        "N": 7.0,
+        "P": 4.7,
+        "K": 7.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9484,7 +9664,19 @@ const CROP_DB = [
         "harvest": "開花後4〜5日、長さ7〜8cmで収穫。収穫遅れは株を弱らせる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 10,
+      "K": 12,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "高温性。着果後追肥を継続。窒素過多で草勢過繁茂注意。",
+      "perPlant": {
+        "N": 3.0,
+        "P": 2.5,
+        "K": 3.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9552,7 +9744,19 @@ const CROP_DB = [
         "harvest": "果皮の緑色が薄くなり始めたら収穫。過熟すると割れる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 12,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "つる性。追肥は着果開始後から定期的に。マグネシウム欠乏注意。",
+      "perPlant": {
+        "N": 5.0,
+        "P": 3.3,
+        "K": 4.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9616,7 +9820,19 @@ const CROP_DB = [
         "harvest": "開花後5〜7日、長さ20〜25cmで収穫。大きくなりすぎると食味が落ちる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 12,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "生育が旺盛。追肥は着果後から2週間ごとに施す。",
+      "perPlant": {
+        "N": 8.0,
+        "P": 5.3,
+        "K": 6.4
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9685,7 +9901,19 @@ const CROP_DB = [
         "harvest": "果梗のひびと甘い香りで完熟を確認。ネットメロンは網目が発達したら"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 18,
+      "P": 12,
+      "K": 18,
+      "baseDressing": 0.4,
+      "topDressing": 0.6,
+      "notes": "着果後の追肥が重要。果実肥大期にカリを増量。",
+      "perPlant": {
+        "N": 15.0,
+        "P": 10.0,
+        "K": 15.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9750,7 +9978,19 @@ const CROP_DB = [
         "harvest": "果皮が白い粉をふいてきたら収穫適期。貯蔵性が高い"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "大果。追肥は着果確認後から2〜3回施す。",
+      "perPlant": {
+        "N": 12.0,
+        "P": 8.0,
+        "K": 10.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9817,7 +10057,19 @@ const CROP_DB = [
         "harvest": "開花後10〜15日、莢がやや膨らんだら収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 5,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "根粒菌があるため窒素は少なめ。着莢後にカリ中心の追肥。",
+      "perPlant": {
+        "N": 0.3,
+        "P": 0.5,
+        "K": 0.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9886,7 +10138,19 @@ const CROP_DB = [
         "harvest": "莢が下向きに垂れ、表面に黒い線が出てきたら収穫適期"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 5,
+      "P": 10,
+      "K": 8,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "窒素固定能あり。リン酸・カリ中心の施肥。着莢後に追肥。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 1.0,
+        "K": 0.8
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -9954,7 +10218,19 @@ const CROP_DB = [
         "harvest": "莢が緑色で豆が膨らんだら収穫。鮮度落ちが早い"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 5,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "根粒菌で窒素固定。元肥のリン酸をやや多めに。",
+      "perPlant": {
+        "N": 0.3,
+        "P": 0.5,
+        "K": 0.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10019,7 +10295,19 @@ const CROP_DB = [
         "harvest": "葉が黄化してきたら試し掘り。莢の網目がはっきりしたら収穫適期"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 5,
+      "P": 10,
+      "K": 8,
+      "baseDressing": 0.8,
+      "topDressing": 0.2,
+      "notes": "地中結実。石灰施用が重要（カルシウム補給）。追肥は少量。",
+      "perPlant": {
+        "N": 0.4,
+        "P": 0.8,
+        "K": 0.6
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10090,7 +10378,19 @@ const CROP_DB = [
         "harvest": "根径7〜8cmで収穫。抽苔前に収穫。冬は土中置きで貯蔵可"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 15,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "根部肥大期にカリを確保。",
+      "perPlant": {
+        "N": 3.0,
+        "P": 2.0,
+        "K": 3.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10160,7 +10460,19 @@ const CROP_DB = [
         "harvest": "根径5〜6cmで収穫。大きくなると味が落ちる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 10,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "生育期間短い。元肥中心。根部肥大期のカリ確保が重要。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.4,
+        "K": 0.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10230,7 +10542,19 @@ const CROP_DB = [
         "harvest": "葉が枯れてきた秋から収穫。泥の中から丁寧に掘り取る"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 15,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "水田栽培。元肥は代かき前に施用。追肥は葉が展開後に。",
+      "perPlant": {
+        "N": 6.0,
+        "P": 4.0,
+        "K": 6.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10298,7 +10622,19 @@ const CROP_DB = [
         "harvest": "根径6〜7cmで収穫。大きくなると繊維が硬くなる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 10,
+      "K": 15,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "根部肥大期にカリを十分確保。窒素過多で葉ばかり茂る。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 1.2,
+        "K": 1.9
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10364,7 +10700,19 @@ const CROP_DB = [
         "harvest": "葉が黄化して枯れてきたら掘り取り。乾燥させてから利用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 18,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "根茎肥大期（7〜9月）の追肥が重要。カリを多めに施す。",
+      "perPlant": {
+        "N": 5.0,
+        "P": 3.3,
+        "K": 6.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10431,7 +10779,19 @@ const CROP_DB = [
         "harvest": "葉が枯れてきたら掘り取り。大きな芋はコンニャク加工へ"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 15,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "多年生。球茎肥大期の追肥が重要。カリを重視。",
+      "perPlant": {
+        "N": 8.0,
+        "P": 5.3,
+        "K": 10.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10493,7 +10853,19 @@ const CROP_DB = [
         "harvest": "果皮が品種固有の色になり少し柔らかくなったら収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 7,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "モモに準ずる施肥。果実着色期のカリ確保が重要。",
+      "perPlant": {
+        "N": 150.0,
+        "P": 105.0,
+        "K": 150.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10557,7 +10929,19 @@ const CROP_DB = [
         "harvest": "イガが割れて自然に落下したら収穫。拾い忘れると虫に食われる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "元肥中心。追肥は開花後（6月）と果実肥大期（8月）に。",
+      "perPlant": {
+        "N": 200.0,
+        "P": 120.0,
+        "K": 200.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10618,7 +11002,19 @@ const CROP_DB = [
         "harvest": "梅干し用は青梅（6月）、梅酒用は少し熟した実で収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "収穫後（7月）の追肥が翌年の花芽分化に影響。",
+      "perPlant": {
+        "N": 150.0,
+        "P": 90.0,
+        "K": 150.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10680,7 +11076,19 @@ const CROP_DB = [
         "harvest": "緑色のうちに収穫（8〜10月）。黄色くなると香りが落ちる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ユズに準ずる。隔年結実防止のため施肥管理を安定させる。",
+      "perPlant": {
+        "N": 200.0,
+        "P": 120.0,
+        "K": 200.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10742,7 +11150,19 @@ const CROP_DB = [
         "harvest": "緑色のうちに収穫（8〜10月）。スダチより大きい"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "カンキツ類準用。元肥と収穫後追肥が基本。",
+      "perPlant": {
+        "N": 200.0,
+        "P": 120.0,
+        "K": 200.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10807,7 +11227,19 @@ const CROP_DB = [
         "harvest": "果皮が緑から黄色に変わってきたら収穫。年間を通じて数回収穫できる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "年数回収穫。施肥は春・夏・秋の3回分施が基本。",
+      "perPlant": {
+        "N": 180.0,
+        "P": 120.0,
+        "K": 180.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10868,7 +11300,19 @@ const CROP_DB = [
         "harvest": "12月〜1月に果皮がオレンジ色になったら収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ミカン類準用。元肥は収穫後〜春前に施す。",
+      "perPlant": {
+        "N": 150.0,
+        "P": 80.0,
+        "K": 120.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10931,7 +11375,19 @@ const CROP_DB = [
         "harvest": "3月頃に収穫。収穫後に貯蔵して糖度を高めてから出荷"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ミカン類準用。糖度向上のため着色期のカリを重視。",
+      "perPlant": {
+        "N": 150.0,
+        "P": 80.0,
+        "K": 120.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -10993,7 +11449,19 @@ const CROP_DB = [
         "harvest": "4〜5月に収穫。酸味と甘みのバランスが良い"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ミカン類準用。大果のため施肥量はやや多め。",
+      "perPlant": {
+        "N": 150.0,
+        "P": 80.0,
+        "K": 120.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11055,7 +11523,19 @@ const CROP_DB = [
         "harvest": "5〜6月に果皮が黄色くなったら収穫。酸味が強い"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ミカン類準用。春肥・夏肥・秋肥の3回施肥が基本。",
+      "perPlant": {
+        "N": 150.0,
+        "P": 80.0,
+        "K": 120.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11119,7 +11599,19 @@ const CROP_DB = [
         "harvest": "果実が赤く色づいて簡単に取れるようになったら収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ブルーベリーに準ずる酸性土壌好み。追肥は新梢伸長期に。",
+      "perPlant": {
+        "N": 40.0,
+        "P": 24.0,
+        "K": 40.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11182,7 +11674,19 @@ const CROP_DB = [
         "harvest": "果実が完全に黒くなってから収穫。甘みが強くなる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "丈夫で施肥要求は中程度。元肥と収穫後追肥が基本。",
+      "perPlant": {
+        "N": 40.0,
+        "P": 24.0,
+        "K": 40.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11246,7 +11750,19 @@ const CROP_DB = [
         "harvest": "果実が垂れ下がり皮が割れ始めたら食べごろのサイン"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 12,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "生育期間長い。追肥は果実発育中に2〜3回に分施。",
+      "perPlant": {
+        "N": 200.0,
+        "P": 133.0,
+        "K": 200.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11310,7 +11826,19 @@ const CROP_DB = [
         "harvest": "果皮が赤く色づき表面がやや乾いた感じになったら収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "施肥要求は少なめ。元肥中心。追肥は結実確認後に少量。",
+      "perPlant": {
+        "N": 160.0,
+        "P": 120.0,
+        "K": 160.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11375,7 +11903,19 @@ const CROP_DB = [
         "harvest": "果実が紫色になり自然に割れたら収穫。種が多いが果肉は甘い"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "つる性木本。施肥は少量で十分。元肥中心。",
+      "perPlant": {
+        "N": 80.0,
+        "P": 60.0,
+        "K": 80.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11439,7 +11979,19 @@ const CROP_DB = [
         "harvest": "テーブルオリーブは緑色のうちに、オイル用は完熟の黒色になってから収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "乾燥に強い。窒素過多で花芽分化が悪くなる。元肥重視。",
+      "perPlant": {
+        "N": 200.0,
+        "P": 120.0,
+        "K": 200.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11508,7 +12060,19 @@ const CROP_DB = [
         "harvest": "外皮が黒くなり自然に落下した実を拾う。拾ったらすぐに水洗いして乾燥"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "大木になる。元肥中心。追肥は開花後と果実肥大期に。",
+      "perPlant": {
+        "N": 300.0,
+        "P": 180.0,
+        "K": 240.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11572,7 +12136,19 @@ const CROP_DB = [
         "harvest": "果実が総苞から外れるようになったら収穫。乾燥させてから利用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "低木性。施肥要求は中程度。元肥と春の追肥が基本。",
+      "perPlant": {
+        "N": 80.0,
+        "P": 60.0,
+        "K": 80.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11635,7 +12211,19 @@ const CROP_DB = [
         "harvest": "外皮が割れて乾燥したら収穫。乾燥させてから殻を割って利用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 7,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "乾燥地向き。開花前の施肥が重要。追肥は結実後に。",
+      "perPlant": {
+        "N": 150.0,
+        "P": 105.0,
+        "K": 150.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11703,7 +12291,19 @@ const CROP_DB = [
         "harvest": "落下した実を素早く拾い、外皮を洗い流す。乾燥後に殻を割って使用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "イチョウの実。大木のため1本あたりの施肥量は多い。元肥中心。",
+      "perPlant": {
+        "N": 400.0,
+        "P": 250.0,
+        "K": 400.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11773,7 +12373,19 @@ const CROP_DB = [
         "harvest": "果皮が黄緑〜黄色になったら収穫。追熟させて食べる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 20,
+      "P": 15,
+      "K": 20,
+      "baseDressing": 0.4,
+      "topDressing": 0.6,
+      "notes": "熱帯性。生育旺盛で施肥要求量が多い。追肥を月1回継続。",
+      "perPlant": {
+        "N": 200.0,
+        "P": 150.0,
+        "K": 200.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11836,7 +12448,19 @@ const CROP_DB = [
         "harvest": "果皮が品種固有の色になり甘い香りがしてきたら収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 15,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "花芽分化期（乾燥ストレス期）の施肥は避ける。収穫後に元肥。",
+      "perPlant": {
+        "N": 300.0,
+        "P": 200.0,
+        "K": 300.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11910,7 +12534,19 @@ const CROP_DB = [
         "harvest": "果実全体が黄色くなり甘い香りがしてきたら収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 20,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "カリ要求量が高い。追肥は吸芽発生後から定期的に。",
+      "perPlant": {
+        "N": 15.0,
+        "P": 10.0,
+        "K": 20.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -11964,7 +12600,19 @@ const CROP_DB = [
         "harvest": "花芽がまだ閉じている状態で収穫。開いてしまうと苦みが強くなる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "フキの花蕾。フキと同様の施肥で管理。元肥を収穫後に施す。",
+      "perPlant": {
+        "N": 2.0,
+        "P": 1.2,
+        "K": 2.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12019,7 +12667,19 @@ const CROP_DB = [
         "harvest": "春の若芽（30〜40cm）を収穫。遮光して軟白化すると食味が良い"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "多年生。軟白栽培では土寄せ前後に追肥。元肥を春・秋に施す。",
+      "perPlant": {
+        "N": 4.0,
+        "P": 2.4,
+        "K": 4.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12073,7 +12733,19 @@ const CROP_DB = [
         "harvest": "葉がクルクル巻いた状態（こごみ状態）で摘み取る。展開すると食感が悪い"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "シダ類。収穫後の追肥が翌年の萌芽に影響。",
+      "perPlant": {
+        "N": 1.0,
+        "P": 0.6,
+        "K": 1.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12127,7 +12799,19 @@ const CROP_DB = [
         "harvest": "新芽の柔らかい茎と葉を摘み取る。5〜6月が最も美味しい"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 6,
+      "P": 4,
+      "K": 6,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "沢沿い植物。施肥は少量で管理。収穫後に追肥。",
+      "perPlant": {
+        "N": 1.0,
+        "P": 0.6,
+        "K": 1.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12181,7 +12865,19 @@ const CROP_DB = [
         "harvest": "葉が完全に展開する前の若芽を収穫。強い香りがあり山菜の王とも呼ばれる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "モミジガサ類。山菜栽培標準施肥で管理。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 0.9,
+        "K": 1.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12235,7 +12931,19 @@ const CROP_DB = [
         "harvest": "葉が開く前の若芽を摘み取る。天ぷらやお浸しに向く"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "山菜類。元肥中心。収穫後に追肥して翌年の収量を確保。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 0.9,
+        "K": 1.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12289,7 +12997,19 @@ const CROP_DB = [
         "harvest": "若葉・若芽を春に収穫。棘をある程度除去してから調理"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "多年生。施肥は少量。元肥と収穫後追肥で管理。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 0.9,
+        "K": 1.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12343,7 +13063,19 @@ const CROP_DB = [
         "harvest": "柔らかい若芽を手で摘み取る。草餅・天ぷら・乾燥してお茶にも"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 6,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "繁殖力旺盛。施肥は少量で十分。元肥中心で管理。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.3,
+        "K": 0.4
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12397,7 +13129,19 @@ const CROP_DB = [
         "harvest": "球根と葉の両方が利用できる。小型スコップで丁寧に掘り取る"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "小型ネギ類。施肥は少量。元肥と追肥各1回で管理。",
+      "perPlant": {
+        "N": 0.3,
+        "P": 0.2,
+        "K": 0.3
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12451,7 +13195,19 @@ const CROP_DB = [
         "harvest": "4〜5月に葉が展開する前後で収穫。強いニンニク臭が特徴"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "生育遅い多年生。元肥を充実させ追肥は収穫後に少量。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.3,
+        "K": 0.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12505,7 +13261,19 @@ const CROP_DB = [
         "harvest": "葉が展開する前の若芽を摘み取る。特定外来生物に指定される前に採取が盛んだった"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 6,
+      "P": 4,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "山菜類。施肥は少量。元肥中心で管理。",
+      "perPlant": {
+        "N": 1.0,
+        "P": 0.6,
+        "K": 1.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12559,7 +13327,19 @@ const CROP_DB = [
         "harvest": "30cm以下の若い茎を折り取る。外皮を剥いてアク抜き後に調理"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "繁殖力強い。施肥は少量。元肥中心で管理。",
+      "perPlant": {
+        "N": 1.0,
+        "P": 0.6,
+        "K": 0.8
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12613,7 +13393,19 @@ const CROP_DB = [
         "harvest": "頭の胞子袋がまだ閉じている状態で採取。袴（節）を取り除いてから調理"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 5,
+      "P": 4,
+      "K": 5,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "スギナの胞子茎。地下茎で繁殖。施肥はごく少量。",
+      "perPlant": {
+        "N": 0.2,
+        "P": 0.1,
+        "K": 0.2
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12667,7 +13459,19 @@ const CROP_DB = [
         "harvest": "冬から早春の若芽を摘み取る。根ごと引き抜いて泥を洗う"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "水湿地性。追肥は生育中期に1〜2回施す。",
+      "perPlant": {
+        "N": 0.3,
+        "P": 0.2,
+        "K": 0.2
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12721,7 +13525,19 @@ const CROP_DB = [
         "harvest": "茎の先端の柔らかい部分を摘み取る。流水で十分に洗ってから食べる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "クレソン。水辺栽培。施肥は少量で十分。",
+      "perPlant": {
+        "N": 0.3,
+        "P": 0.2,
+        "K": 0.2
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12775,7 +13591,19 @@ const CROP_DB = [
         "harvest": "若葉と茎を春に収穫。天ぷらが最もポピュラーな食べ方"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "海浜植物。砂質土壌向き。施肥は少量で管理。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 0.9,
+        "K": 1.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12829,7 +13657,19 @@ const CROP_DB = [
         "harvest": "新芽は春（4〜5月）に、果実は秋（9〜10月）に収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "つる性木本。施肥は少量。元肥中心で管理。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 0.9,
+        "K": 1.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12883,7 +13723,19 @@ const CROP_DB = [
         "harvest": "春の若芽を摘み取る。夏のつぼみも食用になる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ユリ科山菜。根茎植物。収穫後の追肥が翌年の収量に影響。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 0.9,
+        "K": 1.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12937,7 +13789,19 @@ const CROP_DB = [
         "harvest": "花が咲く前の若葉と花を収穫。球根（片栗粉の原料）は採取しない"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 5,
+      "P": 4,
+      "K": 5,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "球根性山菜。生育期間が短く施肥は少量。元肥中心。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.4,
+        "K": 0.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -12991,7 +13855,19 @@ const CROP_DB = [
         "harvest": "30〜40cmの若い芽を折り取る。灰汁が強いので十分なアク抜きが必要"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "ウドの野生種。ウドに準じた施肥で管理。",
+      "perPlant": {
+        "N": 3.0,
+        "P": 1.8,
+        "K": 3.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13046,7 +13922,19 @@ const CROP_DB = [
         "harvest": "地面から頭が少し出た状態が最も柔らかい。専用のクワで根元から掘り取る"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 8,
+      "K": 12,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "竹林管理。元肥は秋〜冬に施す。親竹への施肥が翌年の筍に影響。",
+      "perPlant": {
+        "N": 30.0,
+        "P": 16.0,
+        "K": 24.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13100,7 +13988,19 @@ const CROP_DB = [
         "harvest": "タケノコ状の若芽を地際から折り取る。外皮を剥いてそのまま食べられる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "チシマザサの若竹。タケノコに準じた施肥で管理。",
+      "perPlant": {
+        "N": 20.0,
+        "P": 12.0,
+        "K": 16.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13154,7 +14054,19 @@ const CROP_DB = [
         "harvest": "若芽を根元から折り取る。皮を剥いて煮ると柔らかくなる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "山地性ササ。施肥は少量。元肥中心で管理。",
+      "perPlant": {
+        "N": 20.0,
+        "P": 12.0,
+        "K": 16.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13208,7 +14120,19 @@ const CROP_DB = [
         "harvest": "若葉と枝を春に採取。枝は爪楊枝の最高品に使われる。乾燥してお茶にも"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 6,
+      "P": 4,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "低木性。施肥は少量。元肥中心で管理。",
+      "perPlant": {
+        "N": 30.0,
+        "P": 20.0,
+        "K": 30.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13263,7 +14187,19 @@ const CROP_DB = [
         "harvest": "木の芽は展開直後に収穫。青い実は6〜7月に。赤くなると皮が乾燥して利用しやすい"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "低木性。元肥と収穫後追肥が基本。花山椒・実山椒とも同様。",
+      "perPlant": {
+        "N": 30.0,
+        "P": 18.8,
+        "K": 30.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13317,7 +14253,19 @@ const CROP_DB = [
         "harvest": "春〜初夏に樹皮を剥いで内皮を採取。乾燥させて漢方素材として利用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 6,
+      "P": 4,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "樹木性。大木になるため1本あたりの施肥量は多い。元肥中心。",
+      "perPlant": {
+        "N": 200.0,
+        "P": 133.0,
+        "K": 200.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13371,7 +14319,19 @@ const CROP_DB = [
         "harvest": "虫えい果（虫こぶ）は6〜7月に収穫。果実は秋に熟したら収穫。果実酒に向く"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "つる性木本。施肥は少量。元肥中心で管理。",
+      "perPlant": {
+        "N": 30.0,
+        "P": 18.8,
+        "K": 30.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13425,7 +14385,19 @@ const CROP_DB = [
         "harvest": "芽吹き直後の若い芽と葉を収穫。苦みがあるがお浸しや炒め物に合う"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "アケビの新芽。アケビに準じた施肥で管理。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 0.9,
+        "K": 1.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13479,7 +14451,19 @@ const CROP_DB = [
         "harvest": "葉が巻いた状態のうちに収穫。アク抜き不要で食べやすい山菜"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "シダ類。コゴミに準じた施肥で管理。",
+      "perPlant": {
+        "N": 1.0,
+        "P": 0.6,
+        "K": 1.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13533,7 +14517,19 @@ const CROP_DB = [
         "harvest": "展開前の若芽を摘み取る。少量採取にとどめ、植物を守る"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 6,
+      "P": 4,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "バラ科低木。施肥は少量。元肥中心で管理。",
+      "perPlant": {
+        "N": 1.0,
+        "P": 0.6,
+        "K": 1.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13587,7 +14583,19 @@ const CROP_DB = [
         "harvest": "若芽・若葉を採取。素手で触れないよう手袋を着用。ゆでるとトゲが無害化"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "草本性山菜。施肥は少量。元肥中心で管理。",
+      "perPlant": {
+        "N": 0.8,
+        "P": 0.5,
+        "K": 0.6
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13641,7 +14649,19 @@ const CROP_DB = [
         "harvest": "葉が展開する前の若芽を収穫。ウルイとも呼ばれ食べやすい山菜"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ユリ科山菜。根茎植物。収穫後の追肥が重要。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 0.9,
+        "K": 1.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13695,7 +14715,19 @@ const CROP_DB = [
         "harvest": "傘のように広がる前の若芽を摘み取る。天ぷらや和え物に向く"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "キク科山菜。施肥は少量。元肥中心で管理。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 0.9,
+        "K": 1.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13749,7 +14781,19 @@ const CROP_DB = [
         "harvest": "若い蔓の先端部を収穫。アスパラのように下から折って採る"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ユリ科つる性。施肥は少量。元肥と追肥1回で管理。",
+      "perPlant": {
+        "N": 1.0,
+        "P": 0.6,
+        "K": 1.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13803,7 +14847,19 @@ const CROP_DB = [
         "harvest": "若芽を春に収穫。香りが強く独特の風味がある山菜"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ミズに近縁の山菜。施肥は少量。元肥中心で管理。",
+      "perPlant": {
+        "N": 1.0,
+        "P": 0.6,
+        "K": 1.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13858,7 +14914,19 @@ const CROP_DB = [
         "harvest": "傘が十分に展開したら収穫。鮮やかなグレーが食欲をそそる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "baseDressing": 1.0,
+      "topDressing": 0.0,
+      "notes": "菌床・原木栽培。培地自体に養分を含み施肥は不要。",
+      "perPlant": {
+        "N": 0.0,
+        "P": 0.0,
+        "K": 0.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13913,7 +14981,19 @@ const CROP_DB = [
         "harvest": "傘が開きすぎる前に収穫。収穫後は菌床を保湿して2回目の発生を促す"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "baseDressing": 1.0,
+      "topDressing": 0.0,
+      "notes": "菌床栽培。培地自体に養分を含み施肥は不要。",
+      "perPlant": {
+        "N": 0.0,
+        "P": 0.0,
+        "K": 0.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -13968,7 +15048,19 @@ const CROP_DB = [
         "harvest": "傘が展開して耳形になったら収穫。乾燥保存が可能"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "baseDressing": 1.0,
+      "topDressing": 0.0,
+      "notes": "原木・菌床栽培。施肥は不要。",
+      "perPlant": {
+        "N": 0.0,
+        "P": 0.0,
+        "K": 0.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14023,7 +15115,19 @@ const CROP_DB = [
         "harvest": "傘が展開しきる前に収穫。鮮やかな黄色が美しいうちに食べる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "baseDressing": 1.0,
+      "topDressing": 0.0,
+      "notes": "菌床・原木栽培。施肥は不要。",
+      "perPlant": {
+        "N": 0.0,
+        "P": 0.0,
+        "K": 0.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14078,7 +15182,19 @@ const CROP_DB = [
         "harvest": "傘が開く前のつぼみ状態が最高品質。根元から丁寧に抜き取る"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "baseDressing": 1.0,
+      "topDressing": 0.0,
+      "notes": "天然菌根菌。アカマツ林と共生。施肥・栽培不可。",
+      "perPlant": {
+        "N": 0.0,
+        "P": 0.0,
+        "K": 0.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14133,7 +15249,19 @@ const CROP_DB = [
         "harvest": "冬季に地中で熟成。甘い香りがしてきたら地面を掘って収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "baseDressing": 1.0,
+      "topDressing": 0.0,
+      "notes": "菌根菌。宿主樹木（クヌギ等）と共生。施肥は宿主樹木への施肥のみ。",
+      "perPlant": {
+        "N": 0.0,
+        "P": 0.0,
+        "K": 0.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14188,7 +15316,19 @@ const CROP_DB = [
         "harvest": "7〜9月に樹皮に傷をつけて採取。プロの漆掻き職人の技術が必要"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "漆。樹木性。大木になるため1本あたりの施肥量は多い。元肥中心。",
+      "perPlant": {
+        "N": 200.0,
+        "P": 125.0,
+        "K": 200.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14243,7 +15383,19 @@ const CROP_DB = [
         "harvest": "花が満開になったら摘み取り。乾燥させてハーブティーに"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "施肥は少なめで風味が良くなる。窒素過多で香りが弱まる。",
+      "perPlant": {
+        "N": 0.3,
+        "P": 0.2,
+        "K": 0.3
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14298,7 +15450,19 @@ const CROP_DB = [
         "harvest": "開花前の葉が最も香りが強い。茎ごと切り取り使用量に合わせて随時収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "繁殖力旺盛。追肥は収穫後に施す。窒素過多で香りが弱まる。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.3,
+        "K": 0.4
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14353,7 +15517,19 @@ const CROP_DB = [
         "harvest": "若い葉と茎を随時収穫。生葉のままティーやサラダに使用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "ミントに準ずる。施肥は少量で香りが良くなる。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.4,
+        "K": 0.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14408,7 +15584,19 @@ const CROP_DB = [
         "harvest": "周年収穫可能。開花前の若い枝を摘み取る。木質化した古い茎は使わない"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "木本性多年生。施肥は少なめで管理。春と収穫後に少量追肥。",
+      "perPlant": {
+        "N": 2.0,
+        "P": 1.5,
+        "K": 2.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14463,7 +15651,19 @@ const CROP_DB = [
         "harvest": "茎の先端を随時収穫。開花前が香りのピーク"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 6,
+      "P": 5,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "小低木性。施肥は少量で香りを維持。窒素過多で香りが弱まる。",
+      "perPlant": {
+        "N": 0.8,
+        "P": 0.6,
+        "K": 0.8
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14518,7 +15718,19 @@ const CROP_DB = [
         "harvest": "茎の先端（10〜15cm）を随時収穫。乾燥させると香りが増す"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "地中海系ハーブ。施肥は少量で管理。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.4,
+        "K": 0.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14573,7 +15785,19 @@ const CROP_DB = [
         "harvest": "若い葉を随時収穫。乾燥させると保存性が上がり香りも安定"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "木本性多年生。施肥は少量。春に元肥、収穫後に少量追肥。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 1.1,
+        "K": 1.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14628,7 +15852,19 @@ const CROP_DB = [
         "harvest": "開花直前〜満開時に茎ごと刈り取り。ドライフラワーやポプリに"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 6,
+      "P": 5,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "木本性。施肥は少量で管理。窒素過多で徒長・病害リスク。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 1.2,
+        "K": 1.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14683,7 +15919,19 @@ const CROP_DB = [
         "harvest": "草丈20〜30cmになったら上部1/3を摘み取る。開花前が香りが最も強い"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 10,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "1年草。追肥は生育中期に1〜2回。摘芯後の追肥が収量増。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.4,
+        "K": 0.4
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14738,7 +15986,19 @@ const CROP_DB = [
         "harvest": "青じそは本葉10〜15枚以降から随時収穫。穂じそ・花じそは開花時に摘み取る"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "摘み取り収穫のため追肥を継続。収穫ごとに追肥。",
+      "perPlant": {
+        "N": 0.4,
+        "P": 0.3,
+        "K": 0.3
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14793,7 +16053,19 @@ const CROP_DB = [
         "harvest": "開花後に花・根・葉を収穫。乾燥させてハーブティーや免疫強化に利用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "多年生薬草。施肥は少量で管理。窒素過多で根の薬効成分が低下。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 1.1,
+        "K": 1.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14847,7 +16119,19 @@ const CROP_DB = [
         "harvest": "花が咲く5〜6月に葉と茎を収穫。乾燥させてドクダミ茶に"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 6,
+      "P": 4,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "強健で施肥要求は少ない。元肥のみで管理可能。",
+      "perPlant": {
+        "N": 0.3,
+        "P": 0.2,
+        "K": 0.3
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14901,7 +16185,19 @@ const CROP_DB = [
         "harvest": "花が咲く7〜9月に全草を収穫。乾燥させて下痢止め・胃腸薬として利用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 6,
+      "P": 4,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "多年生薬草。施肥は少量。元肥中心で管理。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.3,
+        "K": 0.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -14956,7 +16252,19 @@ const CROP_DB = [
         "harvest": "植え付けから5〜6年後に根が十分に肥大したら秋に収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "高麗人参。根部肥大期のカリを重視。過肥は禁物。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 1.1,
+        "K": 1.9
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -15010,7 +16318,19 @@ const CROP_DB = [
         "harvest": "春〜初夏に樹皮を剥いで内皮を採取。乾燥させて漢方素材として利用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 6,
+      "P": 4,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "キハダと同様。樹木性のため1本あたりの施肥量は多い。",
+      "perPlant": {
+        "N": 200.0,
+        "P": 133.0,
+        "K": 200.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -15065,7 +16385,19 @@ const CROP_DB = [
         "harvest": "葉が黄化して枯れてきたら掘り取り。乾燥させてウコン茶や料理に利用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 18,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "ウコンと同様。根茎肥大期のカリを重視。",
+      "perPlant": {
+        "N": 5.0,
+        "P": 3.3,
+        "K": 6.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -15119,7 +16451,19 @@ const CROP_DB = [
         "harvest": "外側の大きな葉から随時収穫。葉の断面から出るゲルが利用部位"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 5,
+      "P": 4,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "多肉植物。過肥は禁物。元肥は少量にとどめる。",
+      "perPlant": {
+        "N": 1.5,
+        "P": 1.2,
+        "K": 1.8
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -15174,7 +16518,19 @@ const CROP_DB = [
         "harvest": "柔らかい若芽を手で摘み取る。お茶・草餅・天ぷら等に利用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 5,
+      "K": 6,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ヨモギと同様。施肥は少量。元肥中心で管理。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.3,
+        "K": 0.4
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -15229,7 +16585,19 @@ const CROP_DB = [
         "harvest": "実が黒〜灰褐色になったら収穫。乾燥後に薄皮を除いてハトムギ茶に"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 6,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "イネ科穀物。穂肥として追肥を施す。",
+      "perPlant": {
+        "N": 0.5,
+        "P": 0.4,
+        "K": 0.4
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -15284,7 +16652,19 @@ const CROP_DB = [
         "harvest": "秋に根を掘り取り。乾燥させて甘草（かんぞう）として漢方に利用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "甘草。根部肥大型薬草。カリを重視。過肥は根の品質低下。",
+      "perPlant": {
+        "N": 2.0,
+        "P": 1.5,
+        "K": 2.5
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -15339,7 +16719,19 @@ const CROP_DB = [
         "harvest": "観賞用は開花期（5月）に楽しむ。薬用根皮は秋に掘り取り"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "牡丹。根皮を薬用利用。元肥中心で管理。開花後に追肥。",
+      "perPlant": {
+        "N": 20.0,
+        "P": 15.0,
+        "K": 20.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -15394,7 +16786,19 @@ const CROP_DB = [
         "harvest": "観賞用は開花期（5〜6月）に。薬用根は3〜4年後の秋に掘り取り"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "芍薬。根を薬用利用。元肥中心で管理。",
+      "perPlant": {
+        "N": 15.0,
+        "P": 11.3,
+        "K": 15.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -15448,7 +16852,19 @@ const CROP_DB = [
         "harvest": "花が咲く9〜10月に全草を収穫。千回振り出しても苦いが語源の生薬"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 6,
+      "P": 4,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "1〜2年草薬草。施肥は少量。過肥で薬効成分が低下。",
+      "perPlant": {
+        "N": 0.3,
+        "P": 0.2,
+        "K": 0.3
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -15503,7 +16919,19 @@ const CROP_DB = [
         "harvest": "赤い実が熟したら収穫。乾燥させてクコの実（枸杞）として利用"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "クコ。実と葉を薬用食用に。低木性。元肥と収穫後追肥が基本。",
+      "perPlant": {
+        "N": 15.0,
+        "P": 11.3,
+        "K": 15.0
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -15558,7 +16986,19 @@ const CROP_DB = [
         "harvest": "新葉を随時収穫。天ぷらや青汁に利用。独特の苦みと香りが特徴"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "多年生。摘み取り収穫のため追肥を継続。収穫後に追肥。",
+      "perPlant": {
+        "N": 2.0,
+        "P": 1.3,
+        "K": 1.7
+      }
+    },
     "yield": null,
     "price": null,
     "risks": [],
@@ -17186,7 +18626,19 @@ const CROP_DB = [
         "harvest": "白くふわふわした状態で収穫。βグルカン含有量が高い"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "baseDressing": 1.0,
+      "topDressing": 0.0,
+      "notes": "菌床栽培。施肥は不要。",
+      "perPlant": {
+        "N": 0.0,
+        "P": 0.0,
+        "K": 0.0
+      }
+    },
     "yield": {
       "min": 30,
       "max": 80,
@@ -17253,7 +18705,19 @@ const CROP_DB = [
         "harvest": "白いふさふさした突起が十分に発達したら収穫"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "baseDressing": 1.0,
+      "topDressing": 0.0,
+      "notes": "菌床・原木栽培。施肥は不要。",
+      "perPlant": {
+        "N": 0.0,
+        "P": 0.0,
+        "K": 0.0
+      }
+    },
     "yield": {
       "min": 40,
       "max": 100,
@@ -17320,7 +18784,19 @@ const CROP_DB = [
         "harvest": "傘が開く前の状態で収穫。独特の甘い香りが特徴"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "baseDressing": 1.0,
+      "topDressing": 0.0,
+      "notes": "堆肥培地栽培。培地に養分を含み追加施肥は不要。",
+      "perPlant": {
+        "N": 0.0,
+        "P": 0.0,
+        "K": 0.0
+      }
+    },
     "yield": {
       "min": 50,
       "max": 150,
@@ -17387,7 +18863,19 @@ const CROP_DB = [
         "harvest": "傘が開く前の若いものを収穫。香りが強く焼いて食べるのが最高"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "baseDressing": 1.0,
+      "topDressing": 0.0,
+      "notes": "天然菌根菌。栽培困難。施肥不可。",
+      "perPlant": {
+        "N": 0.0,
+        "P": 0.0,
+        "K": 0.0
+      }
+    },
     "yield": {
       "min": 5,
       "max": 20,
@@ -17454,7 +18942,19 @@ const CROP_DB = [
         "harvest": "傘が十分に展開したら株ごと収穫。色と香りが食欲をそそる"
       }
     },
-    "fertilizer": null,
+    "fertilizer": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "baseDressing": 1.0,
+      "topDressing": 0.0,
+      "notes": "菌床栽培。施肥は不要。",
+      "perPlant": {
+        "N": 0.0,
+        "P": 0.0,
+        "K": 0.0
+      }
+    },
     "yield": {
       "min": 50,
       "max": 120,
