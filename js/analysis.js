@@ -660,15 +660,31 @@ function _renderFertResultFromData(crop, fert, targetId = 'fert-result') {
     el.innerHTML = '<div style="color:var(--text3);font-size:11px;">施肥データなし（この作物は施肥情報未登録）</div>';
     return;
   }
-  el.innerHTML = `
-    <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">
-      対象：${escHtml(crop.name)} / ${fert.area10a} 10a
+
+  // 株数基準があれば優先表示、面積基準は補足
+  const perPlantHtml = fert.perPlant ? `
+    <div style="margin-bottom:8px;">
+      <div style="font-size:10px;font-weight:600;color:var(--green2);margin-bottom:4px;">
+        📌 株数基準（${fert.perPlant.purchaseCount.toLocaleString()}株）
+      </div>
+      <div class="area-stat"><span class="label">N</span><span class="value">${fert.perPlant.N}<span class="unit">kg</span></span></div>
+      <div class="area-stat"><span class="label">P</span><span class="value">${fert.perPlant.P}<span class="unit">kg</span></span></div>
+      <div class="area-stat"><span class="label">K</span><span class="value">${fert.perPlant.K}<span class="unit">kg</span></span></div>
     </div>
+    <details>
+      <summary style="font-size:10px;color:var(--text3);cursor:pointer;margin-bottom:4px;">面積基準も見る（${fert.area10a} 10a）</summary>
+      <div class="area-stat" style="opacity:0.7;"><span class="label">N</span><span class="value">${fert.N}<span class="unit">kg</span></span></div>
+      <div class="area-stat" style="opacity:0.7;"><span class="label">P</span><span class="value">${fert.P}<span class="unit">kg</span></span></div>
+      <div class="area-stat" style="opacity:0.7;"><span class="label">K</span><span class="value">${fert.K}<span class="unit">kg</span></span></div>
+    </details>
+  ` : `
+    <div style="font-size:11px;color:var(--text2);margin-bottom:8px;">対象：${escHtml(crop.name)} / ${fert.area10a} 10a</div>
     <div class="area-stat"><span class="label">N</span><span class="value">${fert.N}<span class="unit">kg</span></span></div>
     <div class="area-stat"><span class="label">P</span><span class="value">${fert.P}<span class="unit">kg</span></span></div>
     <div class="area-stat"><span class="label">K</span><span class="value">${fert.K}<span class="unit">kg</span></span></div>
-    <div class="notice notice-info" style="margin-top:8px;">${fert.notes}</div>
   `;
+
+  el.innerHTML = perPlantHtml + `<div class="notice notice-info" style="margin-top:8px;">${fert.notes}</div>`;
 }
 
 // ─── 分析実行メイン ───
@@ -992,39 +1008,99 @@ function _renderFertResultMulti(practicecrops, targetId = 'fert-result') {
 
   const totalSqm = currentAreaData.areaSqm || 0;
 
+  // 合計集計: 株数基準があればその値を優先、なければ面積基準を使う
   let sumN = 0, sumP = 0, sumK = 0;
-  const cardHtmls = practicecrops.map(({ cropId, ratio }, i) => {
+  let summaryMode = 'area'; // 'plant' | 'area' | 'mixed'
+  let plantCount = 0; // 株数基準で集計された作物数
+
+  const cardHtmls = practicecrops.map(({ cropId, ratio, plantingDesign }, i) => {
     const crop = (typeof _adpGetCropById === 'function') ? _adpGetCropById(cropId) : null;
     if (!crop) return '';
-    const sqm  = Math.round(totalSqm * ratio / 100);
-    const fert = (typeof calcFertilizer === 'function') ? calcFertilizer(crop, sqm) : null;
+    const sqm = Math.round(totalSqm * ratio / 100);
+
+    // plantingDesign.purchase（欠株率反映済み購入株数）を取得
+    const purchase = (plantingDesign?.purchase != null && plantingDesign.purchase > 0)
+      ? plantingDesign.purchase : null;
+
+    const fert = (typeof calcFertilizer === 'function')
+      ? calcFertilizer(crop, sqm, purchase)
+      : null;
+
+    // 合計集計: 株数基準があれば優先
     if (fert) {
-      sumN += parseFloat(fert.N) || 0;
-      sumP += parseFloat(fert.P) || 0;
-      sumK += parseFloat(fert.K) || 0;
+      const pp = fert.perPlant;
+      if (pp) {
+        sumN += parseFloat(pp.N) || 0;
+        sumP += parseFloat(pp.P) || 0;
+        sumK += parseFloat(pp.K) || 0;
+        plantCount++;
+      } else {
+        sumN += parseFloat(fert.N) || 0;
+        sumP += parseFloat(fert.P) || 0;
+        sumK += parseFloat(fert.K) || 0;
+      }
     }
+
     const haDisp = sqm >= 10000 ? `${(sqm / 10000).toFixed(2)} ha` : `${sqm} ㎡`;
     const color  = PRACTICE_CROP_COLORS[i % PRACTICE_CROP_COLORS.length];
+
+    // 株数基準表示HTML（優先表示）
+    const perPlantHtml = fert?.perPlant ? `
+      <div style="margin-bottom:4px;">
+        <div style="font-size:10px;font-weight:600;color:var(--green2);margin-bottom:3px;">
+          📌 株数基準（${fert.perPlant.purchaseCount.toLocaleString()}株）
+        </div>
+        <div class="adp-mfc-npk">
+          <span class="adp-mfc-item"><span class="label">N</span>${fert.perPlant.N}<span class="unit">kg</span></span>
+          <span class="adp-mfc-item"><span class="label">P</span>${fert.perPlant.P}<span class="unit">kg</span></span>
+          <span class="adp-mfc-item"><span class="label">K</span>${fert.perPlant.K}<span class="unit">kg</span></span>
+        </div>
+      </div>
+      <details style="margin-top:2px;">
+        <summary style="font-size:10px;color:var(--text3);cursor:pointer;">面積基準も見る（${haDisp}）</summary>
+        <div class="adp-mfc-npk" style="margin-top:3px;opacity:0.7;">
+          <span class="adp-mfc-item"><span class="label">N</span>${fert.N}<span class="unit">kg</span></span>
+          <span class="adp-mfc-item"><span class="label">P</span>${fert.P}<span class="unit">kg</span></span>
+          <span class="adp-mfc-item"><span class="label">K</span>${fert.K}<span class="unit">kg</span></span>
+        </div>
+      </details>
+    ` : fert ? `
+      <div style="font-size:10px;color:var(--text3);margin-bottom:3px;">面積基準（${haDisp}）</div>
+      <div class="adp-mfc-npk">
+        <span class="adp-mfc-item"><span class="label">N</span>${fert.N}<span class="unit">kg</span></span>
+        <span class="adp-mfc-item"><span class="label">P</span>${fert.P}<span class="unit">kg</span></span>
+        <span class="adp-mfc-item"><span class="label">K</span>${fert.K}<span class="unit">kg</span></span>
+      </div>
+    ` : '';
+
     return `
       <div class="adp-multi-fert-card">
         <div class="adp-mfc-title" style="border-left:3px solid ${color};padding-left:6px;">
-          ${escHtml(crop.name)} <span style="color:var(--text3);font-size:10px;">${ratio}% / ${haDisp}</span>
+          ${escHtml(crop.name)} <span style="color:var(--text3);font-size:10px;">${ratio}%</span>
         </div>
         ${fert ? `
-          <div class="adp-mfc-npk">
-            <span class="adp-mfc-item"><span class="label">N</span>${fert.N}<span class="unit">kg</span></span>
-            <span class="adp-mfc-item"><span class="label">P</span>${fert.P}<span class="unit">kg</span></span>
-            <span class="adp-mfc-item"><span class="label">K</span>${fert.K}<span class="unit">kg</span></span>
-          </div>
+          ${perPlantHtml}
           <div class="notice notice-info" style="margin-top:4px;font-size:10px;">${fert.notes || ''}</div>
         ` : '<div style="color:var(--text3);font-size:11px;">施肥データなし</div>'}
       </div>
     `;
   }).join('');
 
+  // 合計サマリーのモード表示
+  if (plantCount > 0 && plantCount < practicecrops.length) {
+    summaryMode = 'mixed';
+  } else if (plantCount === practicecrops.length && plantCount > 0) {
+    summaryMode = 'plant';
+  }
+  const summaryLabel = summaryMode === 'plant'
+    ? '合計施肥量（株数基準）'
+    : summaryMode === 'mixed'
+    ? '合計施肥量（株数基準＋面積基準の混合）'
+    : '合計施肥量（面積基準）';
+
   const summaryHtml = practicecrops.length >= 2 ? `
     <div class="adp-multi-fert-summary">
-      <div style="font-size:11px;font-weight:600;margin-bottom:6px;">合計施肥量（全作物）</div>
+      <div style="font-size:11px;font-weight:600;margin-bottom:6px;">${summaryLabel}</div>
       <div class="adp-mfc-npk">
         <span class="adp-mfc-item"><span class="label">N</span>${sumN.toFixed(1)}<span class="unit">kg</span></span>
         <span class="adp-mfc-item"><span class="label">P</span>${sumP.toFixed(1)}<span class="unit">kg</span></span>

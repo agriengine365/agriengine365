@@ -562,17 +562,52 @@ function calcConfidence(areaData) {
 // 描画を担っており、どこからも呼ばれていないデッドコードだったため削除した。
 
 // ─── FERTILIZER ───
-function calcFertilizer(crop, areaSqm) {
+/**
+ * calcFertilizer(crop, areaSqm, purchaseCount?)
+ *
+ * 施肥量を計算する。
+ *   - 面積基準: 既存の N/P/K kg/10a × areaSqm（常に計算）
+ *   - 株数基準: fertilizer.perPlant(g/株) × purchaseCount（データと株数が揃った場合のみ）
+ *
+ * @param {object} crop          - cropDB作物オブジェクト
+ * @param {number} areaSqm       - 対象面積(㎡)
+ * @param {number|null} purchaseCount - 欠株率反映済み購入予定株数。null=株数基準スキップ
+ * @returns {object|null}
+ *   {
+ *     N, P, K      : string  // 面積基準 kg
+ *     area10a      : string  // 対象面積 (10a)
+ *     notes        : string
+ *     perPlant     : {       // 株数基準。データ未整備またはpurchaseCount未指定時はnull
+ *       N, P, K    : string  // 株数基準 kg（g/株 × 株数 ÷ 1000）
+ *       purchaseCount: number
+ *     } | null
+ *   }
+ */
+function calcFertilizer(crop, areaSqm, purchaseCount = null) {
   // fertilizer が null の作物（CSV由来データ等）はスキップ
   if (!crop.fertilizer) return null;
   const per10a  = crop.fertilizer;
   const area10a = areaSqm / 1000; // 1000㎡ = 10a
+
+  // 株数基準: perPlant があり、有効な購入株数が渡された場合のみ計算
+  let perPlantResult = null;
+  const pp = per10a.perPlant;
+  if (pp && purchaseCount != null && purchaseCount > 0) {
+    perPlantResult = {
+      N: (pp.N * purchaseCount / 1000).toFixed(2),
+      P: (pp.P * purchaseCount / 1000).toFixed(2),
+      K: (pp.K * purchaseCount / 1000).toFixed(2),
+      purchaseCount,
+    };
+  }
+
   return {
     N:       (per10a.N * area10a).toFixed(1),
     P:       (per10a.P * area10a).toFixed(1),
     K:       (per10a.K * area10a).toFixed(1),
     area10a: area10a.toFixed(2),
     notes:   per10a.notes,
+    perPlant: perPlantResult,
   };
 }
 // Core land-profile and profitability model.
