@@ -8215,3 +8215,232 @@ html.draw-dialog-active .bottom-nav {
   background: var(--bg3);
   border-color: var(--text3);
 }
+
+/* ════════════════════════════════════════════════════════════════
+   実務カード（簡素化版）: 作物名 + 占有率% + 追加ボタン
+   ════════════════════════════════════════════════════════════════ */
+
+.adp-practice-crops-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 12px 4px;
+}
+.adp-practice-crops-label {
+  font-size: 11px;
+  color: var(--text3);
+  font-weight: 500;
+  letter-spacing: 0.03em;
+}
+.adp-pcc-add-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--green2);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+  white-space: nowrap;
+}
+.adp-pcc-add-btn:hover {
+  background: var(--bg3);
+  border-color: var(--green2);
+}
+
+/* 作物カード：名前行のみ（スライダー廃止） */
+.adp-practice-crop-card {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.adp-practice-crop-card:first-child {
+  border-top: 1px solid var(--border);
+}
+.adp-pcc-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.adp-pcc-ratio-badge {
+  font-size: 10px;
+  color: var(--text3);
+  background: var(--bg3);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   🌱 栽植設計ペイン
+   ════════════════════════════════════════════════════════════════ */
+
+/* 占有率合計バー（実務・複数作物時） */
+.plt-ratio-bar-wrap {
+  padding: 8px 12px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.plt-ratio-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--text3);
+  margin-bottom: 4px;
+}
+.plt-ratio-bar-track {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.plt-ratio-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width .2s, background .2s;
+}
+
+/* 作物カード */
+.plt-card {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px 12px;
+}
+.plt-card:last-child { border-bottom: none; }
+
+.plt-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.plt-crop-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* 占有率スライダー（実務側のみ） */
+.plt-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.plt-slider-row .adp-pcc-slider { flex: 1; }
+.plt-ratio-val {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 44px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* 入力グリッド */
+.plt-inputs { margin-bottom: 10px; }
+.plt-input-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+}
+.plt-input-item { display: flex; flex-direction: column; gap: 3px; }
+.plt-input-item-wide { grid-column: 1 / -1; }
+
+.plt-label {
+  font-size: 10px;
+  color: var(--text3);
+  font-weight: 500;
+}
+.plt-label-opt {
+  font-size: 9px;
+  color: var(--text3);
+  background: var(--bg3);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 3px;
+}
+.plt-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.plt-input {
+  flex: 1;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--mono);
+  padding: 5px 8px;
+  min-width: 0;
+  transition: border-color .15s;
+}
+.plt-input:focus {
+  outline: none;
+  border-color: var(--green2);
+}
+.plt-unit {
+  font-size: 10px;
+  color: var(--text3);
+  flex-shrink: 0;
+  width: 18px;
+}
+
+/* 警告 */
+.plt-warn {
+  font-size: 11px;
+  color: var(--amber);
+  background: rgba(251,191,36,0.08);
+  border: 1px solid rgba(251,191,36,0.25);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+/* 計算結果 */
+.plt-result { margin-top: 4px; }
+.plt-result-title {
+  font-size: 10px;
+  color: var(--text3);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+.plt-result-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.plt-result-item {
+  background: var(--bg2);
+  border-radius: 6px;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.plt-result-label {
+  font-size: 9px;
+  color: var(--text3);
+}
+.plt-result-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--green);
+  font-family: var(--mono);
+}
+.plt-result-empty {
+  font-size: 11px;
+  color: var(--text3);
+  line-height: 1.6;
+}

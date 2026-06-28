@@ -679,21 +679,13 @@ function _adpEnsureView() {
 
     <!-- 実務側：複数作物リスト＋追加ボタン -->
     <div class="adp-crop-bar adp-practice-crops-bar" id="adp-crop-bar-practice">
-      <div id="adp-practice-crops-list"></div>
-      <button class="adp-crop-bar-btn" onclick="_adpOpenCropSelectSheet('practice')" id="adp-crop-bar-btn-practice">
-        <span class="adp-crop-bar-icon">🌱</span>
-        <span class="adp-crop-bar-name" id="adp-crop-bar-name-practice">作物を追加</span>
-        <span class="adp-crop-bar-arrow">＋</span>
-      </button>
-      <!-- 合計占有率バー（2作物以上のとき表示） -->
-      <div id="adp-practice-ratio-bar" style="display:none;padding:4px 12px 6px;">
-        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:3px;">
-          <span>占有率合計</span><span id="adp-practice-ratio-total">0%</span>
-        </div>
-        <div style="height:6px;border-radius:3px;background:var(--border);overflow:hidden;">
-          <div id="adp-practice-ratio-fill" style="height:100%;border-radius:3px;background:var(--green2);transition:width .2s;width:0%;"></div>
-        </div>
+      <div class="adp-practice-crops-header">
+        <span class="adp-practice-crops-label">栽培作物</span>
+        <button class="adp-pcc-add-btn" onclick="_adpOpenCropSelectSheet('practice')" id="adp-crop-bar-btn-practice" title="作物を追加">
+          <span id="adp-crop-bar-name-practice">＋ 作物を追加</span>
+        </button>
       </div>
+      <div id="adp-practice-crops-list"></div>
     </div>
 
     <!-- 作物選択バー：分析用（適合度・信頼度バー付き） -->
@@ -735,6 +727,7 @@ function _adpEnsureView() {
       <button class="adp-subtab active" data-subtab="calendar"  onclick="_adpSwitchSubTab('calendar')">📅 カレンダー</button>
       <button class="adp-subtab"        data-subtab="fert"      onclick="_adpSwitchSubTab('fert')">🧪 施肥</button>
       <button class="adp-subtab"        data-subtab="risk"      onclick="_adpSwitchSubTab('risk')">⚠️ リスク</button>
+      <button class="adp-subtab"        data-subtab="planting"  onclick="_adpSwitchSubTab('planting')">🌱 栽植設計</button>
     </div>
 
     <!-- サブタブバー：分析グループ（初期非表示） -->
@@ -743,6 +736,7 @@ function _adpEnsureView() {
       <button class="adp-subtab" data-subtab="growth"    onclick="_adpSwitchSubTab('growth')">📈 生育期間</button>
       <button class="adp-subtab" data-subtab="tempchart" onclick="_adpSwitchSubTab('tempchart')">🌡️ 適温グラフ</button>
       <button class="adp-subtab" data-subtab="match"     onclick="_adpSwitchSubTab('match')">📊 適合度</button>
+      <button class="adp-subtab" data-subtab="planting"  onclick="_adpSwitchSubTab('planting')">🌱 栽植設計</button>
     </div>
 
     <!-- コンテンツ領域 -->
@@ -986,6 +980,11 @@ function _adpEnsureView() {
         <div id="calendar-result-analysis" class="empty-mini">作物を選択すると栽培ごよみが表示されます。</div>
       </div>
 
+      <!-- ⑧ 🌱 栽植設計（実務・分析共用ペイン） -->
+      <div class="adp-pane" id="adp-pane-planting" style="display:none;">
+        <div id="planting-result"></div>
+      </div>
+
     </div>
 
     <!-- 栽培方式切替ポップアップ（サマリーバッジタップ用） -->
@@ -1087,12 +1086,12 @@ function _adpJumpToCondTab() {
 }
 
 // ─── サブタブ切替（8タブ構成） ───
-const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match'];
+const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting'];
 
 // セグメント → 所属タブのマッピング
 const ADP_SEG_TABS = {
-  practice: ['calendar', 'fert', 'risk'],
-  analysis: ['ranking', 'growth', 'tempchart', 'match'],
+  practice: ['calendar', 'fert', 'risk', 'planting'],
+  analysis: ['ranking', 'growth', 'tempchart', 'match', 'planting'],
 };
 
 let _adpCurrentSeg = 'practice'; // 現在のセグメント（デフォルト実務）
@@ -1208,6 +1207,9 @@ function _adpSwitchSubTab(name) {
     if (name === 'risk') {
       if (typeof _renderRiskResultMulti === 'function') _renderRiskResultMulti(_adpPracticecrops);
     }
+  }
+  if (name === 'planting') {
+    _adpRenderPlantingPane();
   }
 }
 
@@ -4358,7 +4360,7 @@ function _adpOpenCropSelectSheet(seg) {
           ...c,
           ratio: baseRatio + (i === 0 ? rem : 0),
         }));
-        _adpPracticecrops.push({ cropId, ratio: baseRatio });
+        _adpPracticecrops.push({ cropId, ratio: baseRatio, plantingDesign: _adpInitPlantingDesign(cropId) });
         _adpSavePracticecrops(areaId);
         _adpRenderPracticecrops();
         _adpRefreshPracticeTabs();
@@ -4433,57 +4435,27 @@ function _adpRefreshPracticeTabs() {
   if (typeof _renderFertResultMulti === 'function')  _renderFertResultMulti(_adpPracticecrops);
   if (typeof _renderRiskResultMulti === 'function')  _renderRiskResultMulti(_adpPracticecrops);
   if (typeof _renderCalendarMulti   === 'function')  _renderCalendarMulti(_adpPracticecrops, 'calendar-result');
+  if (_adpCurrentSubTab === 'planting') _adpRenderPlantingPane();
 }
 
 function _adpRenderPracticecrops() {
-  const listEl    = document.getElementById('adp-practice-crops-list');
-  const barWrap   = document.getElementById('adp-practice-ratio-bar');
-  const totalEl   = document.getElementById('adp-practice-ratio-total');
-  const fillEl    = document.getElementById('adp-practice-ratio-fill');
-  const addBtnEl  = document.getElementById('adp-crop-bar-btn-practice');
-  const addNameEl = document.getElementById('adp-crop-bar-name-practice');
+  const listEl   = document.getElementById('adp-practice-crops-list');
+  const addBtnEl = document.getElementById('adp-crop-bar-btn-practice');
   if (!listEl) return;
 
-  const total = _adpPracticeTotalRatio();
-  const over  = total > 100;
-
-  if (barWrap) barWrap.style.display = _adpPracticecrops.length >= 2 ? '' : 'none';
-  if (totalEl) {
-    totalEl.textContent = `${total}%`;
-    totalEl.style.color = over ? 'var(--red)' : 'var(--text2)';
-  }
-  if (fillEl) {
-    fillEl.style.width      = `${Math.min(total, 100)}%`;
-    fillEl.style.background = over ? 'var(--red)' : total === 100 ? 'var(--green)' : 'var(--green2)';
-  }
-  if (addBtnEl)  addBtnEl.classList.toggle('selected', _adpPracticecrops.length > 0);
-  if (addNameEl) addNameEl.textContent = '作物を追加';
+  if (addBtnEl) addBtnEl.classList.toggle('has-crops', _adpPracticecrops.length > 0);
 
   if (!_adpPracticecrops.length) {
     listEl.innerHTML = '';
     return;
   }
 
-  const _lastCropIdx = _adpPracticecrops.length - 1;
-  listEl.innerHTML = _adpPracticecrops.map(({ cropId, ratio }, _ci) => {
-    const isLast = _ci === _lastCropIdx;
-    const name   = _adpCropIdToName(cropId);
-    const sqm    = _adpPracticeAreaSqm(ratio);
-    const haDisp = sqm >= 10000 ? `${(sqm / 10000).toFixed(2)} ha` : `${sqm} ㎡`;
+  listEl.innerHTML = _adpPracticecrops.map(({ cropId, ratio }) => {
+    const name = _adpCropIdToName(cropId);
     return `
       <div class="adp-practice-crop-card" data-crop-id="${cropId}">
-        <div class="adp-pcc-header">
-          <span class="adp-pcc-name">🌿 ${escHtml(name)}</span>
-          <button class="adp-pcc-remove" onclick="_adpRemovePracticeCrop('${cropId}')" title="削除">✕</button>
-        </div>
-        <div class="adp-pcc-slider-row">
-          <input type="range" min="0" max="100" value="${ratio}"
-            class="adp-pcc-slider${isLast ? ' adp-pcc-slider-auto' : ''}"
-            ${isLast ? 'disabled' : "oninput=\"this.nextElementSibling.textContent=this.value+'%'; _adpUpdatePracticeRatio('" + cropId + "', Number(this.value))\""}
-          >
-          <span class="adp-pcc-ratio-label">${ratio}%${isLast ? ' <span class=\'adp-pcc-auto-badge\'>自動</span>' : ''}</span>
-        </div>
-        <div class="adp-pcc-area-label">占有面積：約 ${haDisp}</div>
+        <span class="adp-pcc-name">🌿 ${escHtml(name)}</span>
+        <span class="adp-pcc-ratio-badge">${ratio}%</span>
       </div>
     `;
   }).join('');
@@ -6371,4 +6343,285 @@ function _adpRenderGrowthCompare(cropId) {
       + `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(251,191,36,0.8)"></span>本日</span>`
       + `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(167,139,250,0.8)"></span>収穫予測</span>`;
   }
+}
+// ═══════════════════════════════════════════
+//  🌱 栽植設計ペイン
+// ═══════════════════════════════════════════
+
+/**
+ * cropDB の plantingStandard から初期値を生成する。
+ * cropDB に値が無い場合は全フィールドを null（手動入力）。
+ */
+function _adpInitPlantingDesign(cropId) {
+  const crop = _adpGetCropById(cropId);
+  const std  = crop?.plantingStandard;
+  return {
+    rows:         null,
+    rowLength:    null,
+    rowWidth:     std?.rowWidth     ?? null,
+    linesPerRow:  std?.linesPerRow  ?? null,
+    plantSpacing: std?.plantSpacing ?? null,
+    rowSpacing:   std?.rowSpacing   ?? null,
+    missingRate:  null,
+  };
+}
+
+/**
+ * 栽植設計の計算ロジック。
+ * 返り値: { seedlings, purchase, rowAreaSqm, density, totalLine } or null（入力不足）
+ */
+function _adpCalcPlanting(d) {
+  const rows        = Number(d.rows);
+  const rowLength   = Number(d.rowLength);
+  const rowWidth    = Number(d.rowWidth);
+  const linesPerRow = Number(d.linesPerRow);
+  const plantSpacing= Number(d.plantSpacing);
+  const missingRate = (d.missingRate !== null && d.missingRate !== '') ? Number(d.missingRate) : null;
+
+  if (!rows || !rowLength || !rowWidth || !linesPerRow || !plantSpacing) return null;
+
+  const seedlings    = Math.floor((rowLength * 100 / plantSpacing) * rows * linesPerRow);
+  const purchase     = missingRate !== null
+    ? Math.ceil(seedlings * (1 + missingRate / 100))
+    : Math.ceil(seedlings);
+  const rowAreaSqm   = Math.round(rows * rowLength * rowWidth / 100 * 10) / 10;
+  const density      = rowAreaSqm > 0 ? Math.round(seedlings / rowAreaSqm * 10) / 10 : null;
+  const totalLine    = Math.round(rowLength * rows * linesPerRow * 10) / 10;
+
+  return { seedlings, purchase, rowAreaSqm, density, totalLine };
+}
+
+/**
+ * 占有面積と畝面積の不一致を判定する（5%超で警告）。
+ * ratio が null の場合（分析側）は警告しない。
+ */
+function _adpPlantingAreaWarn(ratio, rowAreaSqm) {
+  if (ratio === null || rowAreaSqm === null) return null;
+  const occupiedSqm = _adpPracticeAreaSqm(ratio);
+  if (!occupiedSqm) return null;
+  const diff = Math.abs(occupiedSqm - rowAreaSqm) / occupiedSqm;
+  return diff > 0.05 ? { occupiedSqm, rowAreaSqm, diffPct: Math.round(diff * 100) } : null;
+}
+
+/**
+ * 栽植設計ペインを描画する。
+ * 実務側 (_adpCurrentSeg === 'practice'): 複数作物 × 占有率スライダー＋削除＋設計入力
+ * 分析側 (_adpCurrentSeg === 'analysis'): _adpSelectedCropId の単一作物・保存なし
+ */
+function _adpRenderPlantingPane() {
+  const el = document.getElementById('planting-result');
+  if (!el) return;
+
+  const areaId = _adpArea?.id || _adpArea?.name || '';
+
+  // ── 分析側 ──
+  if (_adpCurrentSeg === 'analysis') {
+    const cropId = _adpSelectedCropId;
+    if (!cropId) {
+      el.innerHTML = '<div class="empty-mini">作物を選択すると栽植設計の試算ができます。</div>';
+      return;
+    }
+    const cropName = _adpCropIdToName(cropId);
+    // 分析側は一時ステートをクロージャ外に持つ（ペイン再描画でリセットされる）
+    // _adpAnalysisPlantingDesign をモジュール変数として管理
+    if (!_adpAnalysisPlantingDesign || _adpAnalysisPlantingDesign._cropId !== cropId) {
+      _adpAnalysisPlantingDesign = { ..._adpInitPlantingDesign(cropId), _cropId: cropId };
+    }
+    el.innerHTML = _adpBuildPlantingCard({
+      cropId,
+      cropName,
+      ratio: null,
+      design: _adpAnalysisPlantingDesign,
+      isAnalysis: true,
+    });
+    return;
+  }
+
+  // ── 実務側 ──
+  if (!_adpPracticecrops.length) {
+    el.innerHTML = '<div class="empty-mini">作物を追加すると栽植設計が入力できます。</div>';
+    return;
+  }
+
+  const total = _adpPracticeTotalRatio();
+  const over  = total > 100;
+
+  // 合計占有率バー
+  const ratioBarHTML = _adpPracticecrops.length >= 2 ? `
+    <div class="plt-ratio-bar-wrap">
+      <div class="plt-ratio-bar-labels">
+        <span>占有率合計</span>
+        <span style="color:${over ? 'var(--red)' : 'var(--text2)'}">${total}%</span>
+      </div>
+      <div class="plt-ratio-bar-track">
+        <div class="plt-ratio-bar-fill" style="width:${Math.min(total,100)}%;background:${over ? 'var(--red)' : total===100 ? 'var(--green)' : 'var(--green2)'}"></div>
+      </div>
+    </div>` : '';
+
+  el.innerHTML = ratioBarHTML + _adpPracticecrops.map(({ cropId, ratio, plantingDesign }, idx) => {
+    const design   = plantingDesign || _adpInitPlantingDesign(cropId);
+    const cropName = _adpCropIdToName(cropId);
+    const isLast   = idx === _adpPracticecrops.length - 1;
+    return _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast, isAnalysis: false });
+  }).join('');
+}
+
+/**
+ * 1作物分の栽植設計カードHTMLを生成。
+ */
+function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false, isAnalysis = false }) {
+  const calc = _adpCalcPlanting(design);
+  const warn = isAnalysis ? null : _adpPlantingAreaWarn(ratio, calc?.rowAreaSqm ?? null);
+  const areaId = _adpArea?.id || _adpArea?.name || '';
+
+  // 占有率スライダー（実務側のみ）
+  const sliderHTML = isAnalysis ? '' : `
+    <div class="plt-slider-row">
+      <label class="plt-label">占有率</label>
+      <input type="range" min="0" max="100" value="${ratio}"
+        class="adp-pcc-slider${isLast ? ' adp-pcc-slider-auto' : ''}"
+        ${isLast ? 'disabled' : `oninput="this.nextElementSibling.textContent=this.value+'%'; _adpUpdatePracticeRatio('${cropId}', Number(this.value))"`}>
+      <span class="plt-ratio-val">${ratio}%${isLast ? ' <span class="adp-pcc-auto-badge">自動</span>' : ''}</span>
+    </div>`;
+
+  // 削除ボタン（実務側のみ）
+  const removeBtn = isAnalysis ? '' : `
+    <button class="adp-pcc-remove" onclick="_adpRemovePracticeCrop('${cropId}')" title="削除">✕</button>`;
+
+  // 不一致警告
+  const warnHTML = warn ? `
+    <div class="plt-warn">
+      ⚠️ 畝面積（${warn.rowAreaSqm}㎡）と占有面積（${warn.occupiedSqm}㎡）が${warn.diffPct}%乖離しています
+    </div>` : '';
+
+  // 計算結果
+  const calcHTML = calc ? `
+    <div class="plt-result-grid">
+      <div class="plt-result-item"><span class="plt-result-label">苗数</span><span class="plt-result-val">${calc.seedlings.toLocaleString()} 本</span></div>
+      <div class="plt-result-item"><span class="plt-result-label">必要購入苗数</span><span class="plt-result-val">${calc.purchase.toLocaleString()} 本</span></div>
+      <div class="plt-result-item"><span class="plt-result-label">畝面積</span><span class="plt-result-val">${calc.rowAreaSqm} ㎡</span></div>
+      <div class="plt-result-item"><span class="plt-result-label">植栽密度</span><span class="plt-result-val">${calc.density ?? '—'} 株/㎡</span></div>
+      <div class="plt-result-item"><span class="plt-result-label">総植栽距離</span><span class="plt-result-val">${calc.totalLine} m</span></div>
+    </div>` : `<div class="plt-result-empty">必須項目（畝数・畝長・畝幅・条数・株間）を入力すると計算されます</div>`;
+
+  const seg = isAnalysis ? 'analysis' : 'practice';
+
+  return `
+    <div class="plt-card" data-crop-id="${cropId}">
+      <div class="plt-card-header">
+        <span class="plt-crop-name">🌿 ${escHtml(cropName)}</span>
+        ${removeBtn}
+      </div>
+      ${sliderHTML}
+      <div class="plt-inputs">
+        <div class="plt-input-grid">
+          <div class="plt-input-item">
+            <label class="plt-label">畝数</label>
+            <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rows ?? ''}" placeholder="例: 10"
+              oninput="_adpUpdatePlantingField('${cropId}','rows',this.value,'${seg}')"><span class="plt-unit">畝</span></div>
+          </div>
+          <div class="plt-input-item">
+            <label class="plt-label">畝長</label>
+            <div class="plt-input-wrap"><input type="number" class="plt-input" min="0.1" step="0.1" value="${design.rowLength ?? ''}" placeholder="例: 20"
+              oninput="_adpUpdatePlantingField('${cropId}','rowLength',this.value,'${seg}')"><span class="plt-unit">m</span></div>
+          </div>
+          <div class="plt-input-item">
+            <label class="plt-label">畝幅</label>
+            <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowWidth ?? ''}" placeholder="例: 90"
+              oninput="_adpUpdatePlantingField('${cropId}','rowWidth',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
+          </div>
+          <div class="plt-input-item">
+            <label class="plt-label">条数</label>
+            <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.linesPerRow ?? ''}" placeholder="例: 2"
+              oninput="_adpUpdatePlantingField('${cropId}','linesPerRow',this.value,'${seg}')"><span class="plt-unit">条</span></div>
+          </div>
+          <div class="plt-input-item">
+            <label class="plt-label">株間</label>
+            <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.plantSpacing ?? ''}" placeholder="例: 30"
+              oninput="_adpUpdatePlantingField('${cropId}','plantSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
+          </div>
+          <div class="plt-input-item">
+            <label class="plt-label">条間</label>
+            <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowSpacing ?? ''}" placeholder="例: 40"
+              oninput="_adpUpdatePlantingField('${cropId}','rowSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
+          </div>
+          <div class="plt-input-item plt-input-item-wide">
+            <label class="plt-label">欠株率 <span class="plt-label-opt">任意</span></label>
+            <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" max="100" value="${design.missingRate ?? ''}" placeholder="例: 5"
+              oninput="_adpUpdatePlantingField('${cropId}','missingRate',this.value,'${seg}')"><span class="plt-unit">%</span></div>
+          </div>
+        </div>
+      </div>
+      ${warnHTML}
+      <div class="plt-result">
+        <div class="plt-result-title">計算結果</div>
+        ${calcHTML}
+      </div>
+    </div>`;
+}
+
+/** 分析側の一時的な栽植設計ステート */
+let _adpAnalysisPlantingDesign = null;
+
+/**
+ * 入力フィールド変更時のハンドラ。
+ * seg = 'practice' | 'analysis'
+ */
+function _adpUpdatePlantingField(cropId, field, value, seg) {
+  const areaId = _adpArea?.id || _adpArea?.name || '';
+  const parsed = value === '' ? null : Number(value);
+
+  if (seg === 'analysis') {
+    if (!_adpAnalysisPlantingDesign) return;
+    _adpAnalysisPlantingDesign[field] = parsed;
+    // 結果部分のみ再描画（入力フォーカスを失わないよう result div のみ更新）
+    const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
+    if (!card) return;
+    const calc    = _adpCalcPlanting(_adpAnalysisPlantingDesign);
+    const resultEl = card.querySelector('.plt-result');
+    if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null);
+    return;
+  }
+
+  // 実務側
+  const idx = _adpPracticecrops.findIndex(c => c.cropId === cropId);
+  if (idx < 0) return;
+  if (!_adpPracticecrops[idx].plantingDesign) {
+    _adpPracticecrops[idx].plantingDesign = _adpInitPlantingDesign(cropId);
+  }
+  _adpPracticecrops[idx].plantingDesign[field] = parsed;
+  _adpSavePracticecrops(areaId);
+
+  // 結果部分のみ再描画
+  const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
+  if (!card) return;
+  const ratio   = _adpPracticecrops[idx].ratio;
+  const design  = _adpPracticecrops[idx].plantingDesign;
+  const calc    = _adpCalcPlanting(design);
+  const warn    = _adpPlantingAreaWarn(ratio, calc?.rowAreaSqm ?? null);
+  const resultEl = card.querySelector('.plt-result');
+  const warnEl   = card.querySelector('.plt-warn');
+  if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, warn);
+  // 警告要素の更新
+  const warnContainer = card.querySelector('.plt-warn-wrap');
+  if (warnContainer) {
+    warnContainer.innerHTML = warn
+      ? `<div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と占有面積（${warn.occupiedSqm}㎡）が${warn.diffPct}%乖離しています</div>`
+      : '';
+  }
+}
+
+/** 計算結果HTMLだけ生成するヘルパー（部分更新用） */
+function _adpBuildPlantingResultHTML(calc, warn) {
+  const warnHTML = warn ? `
+    <div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と占有面積（${warn.occupiedSqm}㎡）が${warn.diffPct}%乖離しています</div>` : '';
+  const calcHTML = calc ? `
+    <div class="plt-result-grid">
+      <div class="plt-result-item"><span class="plt-result-label">苗数</span><span class="plt-result-val">${calc.seedlings.toLocaleString()} 本</span></div>
+      <div class="plt-result-item"><span class="plt-result-label">必要購入苗数</span><span class="plt-result-val">${calc.purchase.toLocaleString()} 本</span></div>
+      <div class="plt-result-item"><span class="plt-result-label">畝面積</span><span class="plt-result-val">${calc.rowAreaSqm} ㎡</span></div>
+      <div class="plt-result-item"><span class="plt-result-label">植栽密度</span><span class="plt-result-val">${calc.density ?? '—'} 株/㎡</span></div>
+      <div class="plt-result-item"><span class="plt-result-label">総植栽距離</span><span class="plt-result-val">${calc.totalLine} m</span></div>
+    </div>` : `<div class="plt-result-empty">必須項目（畝数・畝長・畝幅・条数・株間）を入力すると計算されます</div>`;
+  return `<div class="plt-result-title">計算結果</div>${warnHTML}${calcHTML}`;
 }

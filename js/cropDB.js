@@ -3,8 +3,6 @@
 //  223件 重複統合済み・calendar(sow/harvest)全件更新
 //  最終更新: 月データ空き48件を全国平均基準で補完、栽培ごよみmemoを全223件に追記
 // ═══════════════════════════════════════════════════════════
-
-// eslint-disable-next-line no-unused-vars
 const CROP_DB = [
   {
     "id": "rice",
@@ -118,7 +116,13 @@ const CROP_DB = [
         "level": "low",
         "note": "水田は連作可能だが地力管理が必要。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 30,
+      "rowWidth": 60,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "soybean",
@@ -228,7 +232,13 @@ const CROP_DB = [
         "level": "high",
         "note": "3年以上の輪作を推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 30,
+      "rowWidth": 70,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "black_soybean",
@@ -332,7 +342,13 @@ const CROP_DB = [
         "level": "high",
         "note": "3年以上の輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 30,
+      "rowWidth": 70,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "adzuki",
@@ -437,7 +453,13 @@ const CROP_DB = [
         "level": "high",
         "note": "3年以上の輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 30,
+      "rowWidth": 70,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "wheat",
@@ -547,7 +569,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "2〜3年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 6,
+      "rowSpacing": 15,
+      "rowWidth": 100,
+      "linesPerRow": 6
+    }
   },
   {
     "id": "barley",
@@ -651,7 +679,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "麦類連作は避ける。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 6,
+      "rowSpacing": 15,
+      "rowWidth": 100,
+      "linesPerRow": 6
+    }
   },
   {
     "id": "rye",
@@ -754,7 +788,13 @@ const CROP_DB = [
         "level": "low",
         "note": "比較的連作耐性あり。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 6,
+      "rowSpacing": 15,
+      "rowWidth": 100,
+      "linesPerRow": 6
+    }
   },
   {
     "id": "oat",
@@ -858,7 +898,13 @@ const CROP_DB = [
         "level": "low",
         "note": "比較的連作耐性あり。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 6,
+      "rowSpacing": 15,
+      "rowWidth": 100,
+      "linesPerRow": 6
+    }
   },
   {
     "id": "buckwheat",
@@ -966,7 +1012,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "2〜3年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 30,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "foxtail_millet",
@@ -1072,7 +1124,13 @@ const CROP_DB = [
         "level": "low",
         "note": "比較的連作耐性あり。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 30,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "proso_millet",
@@ -1178,7 +1236,13 @@ const CROP_DB = [
         "level": "low",
         "note": "比較的耐性あり。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 30,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "barnyard_millet",
@@ -1279,7 +1343,13 @@ const CROP_DB = [
         "level": "low",
         "note": "連作耐性が高い。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 30,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "corn_grain",
@@ -1384,7 +1454,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "2〜3年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 35,
+      "rowSpacing": 70,
+      "rowWidth": 75,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "sugarcane",
@@ -1493,7 +1569,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "株出し管理で3年程度は連作可能。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 90,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "rapeseed",
@@ -1598,7 +1680,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "アブラナ科。根こぶ病に注意。2〜3年輪作。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 30,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "cabbage",
@@ -1719,7 +1807,13 @@ const CROP_DB = [
         "level": "high",
         "note": "根こぶ病。3年以上輪作。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 45,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "daikon",
@@ -1813,7 +1907,13 @@ const CROP_DB = [
         "level": "high",
         "note": "キスジノミハムシ・根こぶ病。2年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "carrot",
@@ -1923,7 +2023,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "セリ科。2〜3年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 15,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "onion",
@@ -2016,7 +2122,13 @@ const CROP_DB = [
         "level": "high",
         "note": "白色疫病・葉枯病。3年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 15,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "potato",
@@ -2122,7 +2234,13 @@ const CROP_DB = [
         "level": "high",
         "note": "3〜4年輪作必須。土壌病害蓄積。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 35,
+      "rowSpacing": 70,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "sweetpotato",
@@ -2230,7 +2348,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "2〜3年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "tomato",
@@ -2348,7 +2472,13 @@ const CROP_DB = [
         "level": "high",
         "note": "青枯病・萎凋病。4〜5年輪作必須。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 100,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "cucumber",
@@ -2462,7 +2592,13 @@ const CROP_DB = [
         "level": "high",
         "note": "蔓割病・ネコブ。3〜4年輪作。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 100,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "eggplant",
@@ -2576,7 +2712,13 @@ const CROP_DB = [
         "level": "high",
         "note": "半枯病・青枯病。5年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 100,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "pepper",
@@ -2689,7 +2831,13 @@ const CROP_DB = [
         "level": "high",
         "note": "ナス科。4〜5年輪作必須。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 45,
+      "rowSpacing": 90,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "spinach",
@@ -2798,7 +2946,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "2年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 5,
+      "rowSpacing": 10,
+      "rowWidth": 90,
+      "linesPerRow": 6
+    }
   },
   {
     "id": "lettuce",
@@ -2913,7 +3067,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "2〜3年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 35,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "welsh_onion",
@@ -3024,7 +3184,13 @@ const CROP_DB = [
         "level": "high",
         "note": "白色疫病・フザリウム。3年輪作。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "broccoli",
@@ -3120,7 +3286,13 @@ const CROP_DB = [
         "level": "high",
         "note": "アブラナ科。根こぶ病。3年輪作。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "burdock",
@@ -3225,7 +3397,13 @@ const CROP_DB = [
         "level": "high",
         "note": "連作で黒条病多発。3〜4年輪作。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 15,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "pumpkin",
@@ -3329,7 +3507,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "ウリ科。2〜3年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 100,
+      "rowSpacing": 200,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "watermelon",
@@ -3440,7 +3624,13 @@ const CROP_DB = [
         "level": "high",
         "note": "5〜6年輪作推奨。接ぎ木も有効。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 100,
+      "rowSpacing": 200,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "corn_veg",
@@ -3526,7 +3716,13 @@ const CROP_DB = [
         "level": "low",
         "note": "比較的連作可能。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 35,
+      "rowSpacing": 70,
+      "rowWidth": 75,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "garlic",
@@ -3625,7 +3821,13 @@ const CROP_DB = [
         "level": "high",
         "note": "白腐れ病。3〜4年輪作必須。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 20,
+      "rowWidth": 90,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "ginger",
@@ -3724,7 +3926,13 @@ const CROP_DB = [
         "level": "high",
         "note": "4〜5年輪作必須。土壌消毒も有効。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "chinese_cabbage",
@@ -3836,7 +4044,13 @@ const CROP_DB = [
         "level": "high",
         "note": "根こぶ病。3年以上輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 45,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "chili",
@@ -3947,7 +4161,13 @@ const CROP_DB = [
         "level": "high",
         "note": "ナス科。4〜5年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 45,
+      "rowSpacing": 90,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "edamame",
@@ -4056,7 +4276,13 @@ const CROP_DB = [
         "level": "high",
         "note": "大豆と同じ連作障害。3年以上輪作。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 40,
+      "rowWidth": 70,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "asparagus",
@@ -4150,7 +4376,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "10〜15年で株更新推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 150,
+      "rowWidth": 120,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "chinese_chive",
@@ -4261,7 +4493,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "5〜6年で株更新推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 20,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "celery",
@@ -4375,7 +4613,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "セリ科。2〜3年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "taro",
@@ -4480,7 +4724,13 @@ const CROP_DB = [
         "level": "high",
         "note": "3〜4年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 70,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "yam",
@@ -4585,7 +4835,13 @@ const CROP_DB = [
         "level": "high",
         "note": "ネコブセンチュウ。3〜4年輪作必須。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 90,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "mitsuba",
@@ -4694,7 +4950,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "セリ科。2〜3年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 15,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "garland_chrysanthemum",
@@ -4786,7 +5048,13 @@ const CROP_DB = [
         "level": "low",
         "note": "比較的連作耐性あり。1〜2年輪作推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 15,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "apple",
@@ -4889,7 +5157,13 @@ const CROP_DB = [
         "level": "high",
         "note": "開花期の晩霜に注意。防霜ファン設置。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 300,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "mandarin",
@@ -4993,7 +5267,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "低温・多雨で果皮と果肉が分離。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 400,
+      "rowWidth": 400,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "grape",
@@ -5096,7 +5376,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "収穫期の雨で発生。雨除けハウスで防止。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 200,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "peach",
@@ -5198,7 +5484,13 @@ const CROP_DB = [
         "level": "high",
         "note": "早咲き品種ほどリスク大。防霜対策要。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 500,
+      "rowSpacing": 600,
+      "rowWidth": 600,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "pear",
@@ -5300,7 +5592,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "開花期の低温で花粉管伸長障害。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 500,
+      "rowSpacing": 600,
+      "rowWidth": 600,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "persimmon",
@@ -5402,7 +5700,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "8月の高温乾燥で生理落果。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 600,
+      "rowSpacing": 600,
+      "rowWidth": 600,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "strawberry",
@@ -5499,7 +5803,13 @@ const CROP_DB = [
         "level": "high",
         "note": "萎黄病。太陽熱消毒など土壌消毒必須。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 25,
+      "rowSpacing": 50,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "blueberry",
@@ -5603,7 +5913,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "根が浅く乾燥に弱い。マルチ有効。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 100,
+      "rowSpacing": 200,
+      "rowWidth": 200,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "plum",
@@ -5690,7 +6006,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "6月落果期の管理が品質を左右。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "kiwi",
@@ -5787,7 +6109,13 @@ const CROP_DB = [
         "level": "high",
         "note": "枝折れ・落果。防風林・ネット設置推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 300,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "western_pear",
@@ -5874,7 +6202,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "果実・新梢に食入。フェロモン剤で管理。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 500,
+      "rowSpacing": 600,
+      "rowWidth": 600,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "japanese_plum",
@@ -5977,7 +6311,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "春先の新芽に多発。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "cherry",
@@ -6079,7 +6419,13 @@ const CROP_DB = [
         "level": "high",
         "note": "着色期から収穫期に産卵。防除困難。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 500,
+      "rowSpacing": 600,
+      "rowWidth": 600,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "loquat",
@@ -6184,7 +6530,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "樹勢低下の原因。冬季防除が有効。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 500,
+      "rowSpacing": 600,
+      "rowWidth": 600,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "yuzu",
@@ -6287,7 +6639,13 @@ const CROP_DB = [
         "level": "low",
         "note": "幼虫が葉を食害。量は少ない。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "passion_fruit",
@@ -6380,7 +6738,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "ウイルス媒介。早期防除。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 200,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "aralia",
@@ -6478,7 +6842,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "萌芽期の遅霜で芽が黒変。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 100,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "bracken",
@@ -6575,7 +6945,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "乾燥で収穫量が著しく低下。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 90,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "butterbur",
@@ -6672,7 +7048,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "水分不足で葉柄が細くなる。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 90,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "myoga",
@@ -6754,7 +7136,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "5〜6年で株更新推奨。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "wasabi",
@@ -6860,7 +7248,13 @@ const CROP_DB = [
         "level": "high",
         "note": "22℃超で成長停止。冷涼環境必須。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 50,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "shiitake",
@@ -6963,7 +7357,13 @@ const CROP_DB = [
         "level": "high",
         "note": "夏場の高温でほだ木が劣化。遮光必須。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 20,
+      "rowWidth": 20,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "enoki",
@@ -7054,7 +7454,13 @@ const CROP_DB = [
         "level": "high",
         "note": "15℃超で生育障害。冷房設備必須。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 10,
+      "rowWidth": 10,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "maitake",
@@ -7156,7 +7562,13 @@ const CROP_DB = [
         "level": "high",
         "note": "夏場の管理が翌秋の発生量を左右。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 20,
+      "rowWidth": 20,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "koshiabura",
@@ -7252,7 +7664,13 @@ const CROP_DB = [
         "level": "low",
         "note": "新芽に散発。収穫前日数に注意。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 90,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "zenmai",
@@ -7348,7 +7766,13 @@ const CROP_DB = [
         "level": "medium",
         "note": "乾燥で収量が著しく低下。水分確保が重要。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "nameko",
@@ -7450,7 +7874,13 @@ const CROP_DB = [
         "level": "high",
         "note": "20℃超でほだ木が劣化。夏場の遮光必須。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 10,
+      "rowWidth": 10,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "buna_shimeji",
@@ -7559,7 +7989,13 @@ const CROP_DB = [
         "level": "high",
         "note": "22℃超で生育障害。空調設備必須。"
       }
-    ]
+    ],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 10,
+      "rowWidth": 10,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "sunny_lettuce",
@@ -7624,7 +8060,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 25,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "komatsuna",
@@ -7694,7 +8136,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 5,
+      "rowSpacing": 10,
+      "rowWidth": 90,
+      "linesPerRow": 6
+    }
   },
   {
     "id": "chingensai",
@@ -7761,7 +8209,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 25,
+      "rowWidth": 90,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "shungiku",
@@ -7826,7 +8280,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 15,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "mizuna",
@@ -7893,7 +8353,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 5,
+      "rowSpacing": 10,
+      "rowWidth": 90,
+      "linesPerRow": 6
+    }
   },
   {
     "id": "takana",
@@ -7956,7 +8422,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "karashina",
@@ -8020,7 +8492,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "kale",
@@ -8087,7 +8565,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "moroheiya",
@@ -8147,7 +8631,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "wakegi",
@@ -8210,7 +8700,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 20,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "asatsuki",
@@ -8270,7 +8766,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 20,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "parsley",
@@ -8339,7 +8841,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 20,
+      "rowWidth": 90,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "mini_tomato",
@@ -8407,7 +8915,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 100,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "paprika",
@@ -8472,7 +8986,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 45,
+      "rowSpacing": 90,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "shishito",
@@ -8537,7 +9057,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 45,
+      "rowSpacing": 90,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "okra",
@@ -8596,7 +9122,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 70,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "goya",
@@ -8658,7 +9190,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 150,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "zucchini",
@@ -8716,7 +9254,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 80,
+      "rowSpacing": 100,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "melon",
@@ -8779,7 +9323,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 100,
+      "rowSpacing": 200,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "togan",
@@ -8838,7 +9388,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 100,
+      "rowSpacing": 200,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "ingen",
@@ -8899,7 +9455,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 50,
+      "rowWidth": 70,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "soramame",
@@ -8962,7 +9524,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 25,
+      "rowSpacing": 60,
+      "rowWidth": 70,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "endo",
@@ -9024,7 +9592,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 40,
+      "rowWidth": 70,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "rakkasei",
@@ -9083,7 +9657,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 60,
+      "rowWidth": 70,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "daikon_root",
@@ -9148,7 +9728,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "kabu",
@@ -9212,7 +9798,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 20,
+      "rowWidth": 90,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "renkon",
@@ -9276,7 +9868,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 80,
+      "rowSpacing": 120,
+      "rowWidth": 120,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "beets",
@@ -9338,7 +9936,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "ukon",
@@ -9398,7 +10002,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "konjac",
@@ -9459,7 +10069,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "nectarine",
@@ -9515,7 +10131,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 500,
+      "rowSpacing": 600,
+      "rowWidth": 600,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "kuri",
@@ -9573,7 +10195,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 500,
+      "rowSpacing": 700,
+      "rowWidth": 700,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "ume_fruit",
@@ -9628,7 +10256,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "sudachi",
@@ -9684,7 +10318,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 300,
+      "rowSpacing": 400,
+      "rowWidth": 400,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "kabosu",
@@ -9740,7 +10380,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 300,
+      "rowSpacing": 400,
+      "rowWidth": 400,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "lemon",
@@ -9799,7 +10445,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 300,
+      "rowSpacing": 400,
+      "rowWidth": 400,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "ponkan",
@@ -9854,7 +10506,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 400,
+      "rowWidth": 400,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "dekopon",
@@ -9911,7 +10569,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "amanatsu",
@@ -9967,7 +10631,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "natsumikan",
@@ -10023,7 +10693,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "raspberry",
@@ -10081,7 +10757,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 200,
+      "rowWidth": 200,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "blackberry",
@@ -10138,7 +10820,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 100,
+      "rowSpacing": 200,
+      "rowWidth": 200,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "ichijiku",
@@ -10196,7 +10884,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 300,
+      "rowSpacing": 400,
+      "rowWidth": 400,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "zakuro",
@@ -10254,7 +10948,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 300,
+      "rowSpacing": 400,
+      "rowWidth": 400,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "akebi",
@@ -10313,7 +11013,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 200,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "olive",
@@ -10371,7 +11077,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "kurumi",
@@ -10434,7 +11146,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 600,
+      "rowSpacing": 800,
+      "rowWidth": 800,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "hazelnut",
@@ -10492,7 +11210,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 300,
+      "rowSpacing": 400,
+      "rowWidth": 400,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "almond",
@@ -10549,7 +11273,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "ginnan",
@@ -10611,7 +11341,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 700,
+      "rowSpacing": 800,
+      "rowWidth": 800,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "papaya",
@@ -10675,7 +11411,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 200,
+      "rowSpacing": 200,
+      "rowWidth": 200,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "mango",
@@ -10732,7 +11474,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 500,
+      "rowSpacing": 600,
+      "rowWidth": 600,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "pineapple",
@@ -10800,7 +11548,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "fukinoto",
@@ -10848,7 +11602,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "udo",
@@ -10897,7 +11657,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 100,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "kogomi",
@@ -10945,7 +11711,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "mizu_sansai",
@@ -10993,7 +11765,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "shidoke",
@@ -11041,7 +11819,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "momijigasa",
@@ -11089,7 +11873,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "azami",
@@ -11137,7 +11927,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "yomogi",
@@ -11185,7 +11981,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "nobiru",
@@ -11233,7 +12035,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 20,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "gyoja_ninniku",
@@ -11281,7 +12089,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "hangonso",
@@ -11329,7 +12143,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "itadori",
@@ -11377,7 +12197,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 80,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "tsukushi",
@@ -11425,7 +12251,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 20,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "seri",
@@ -11473,7 +12305,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 20,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "cress",
@@ -11521,7 +12359,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 20,
+      "rowWidth": 60,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "hamabofu",
@@ -11569,7 +12413,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "mitsuba_akebi",
@@ -11617,7 +12467,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 200,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "yabukanzo",
@@ -11665,7 +12521,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "katakuri",
@@ -11713,7 +12575,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 15,
+      "rowWidth": 60,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "yamaudo",
@@ -11761,7 +12629,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 100,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "takenoko",
@@ -11810,7 +12684,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 200,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "nemagari",
@@ -11858,7 +12738,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 100,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "chishimazasa",
@@ -11906,7 +12792,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 100,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "kuromoji",
@@ -11954,7 +12846,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 100,
+      "rowSpacing": 150,
+      "rowWidth": 150,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "sansho",
@@ -12003,7 +12901,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 150,
+      "rowSpacing": 200,
+      "rowWidth": 200,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "kihada",
@@ -12051,7 +12955,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 300,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "matatabi",
@@ -12099,7 +13009,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 200,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "akebi_bud",
@@ -12147,7 +13063,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 200,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "kusasotetsu",
@@ -12195,7 +13117,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "yamabuki_bud",
@@ -12243,7 +13171,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 100,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "miyama_irakusa",
@@ -12291,7 +13225,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "obagiboshi",
@@ -12339,7 +13279,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "yaburegasa",
@@ -12387,7 +13333,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "shiode",
@@ -12435,7 +13387,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "honna",
@@ -12483,7 +13441,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "hiratake",
@@ -12532,7 +13496,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 20,
+      "rowWidth": 20,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "eringi",
@@ -12581,7 +13551,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 15,
+      "rowWidth": 15,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "kikurage",
@@ -12630,7 +13606,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 15,
+      "rowWidth": 15,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "tamogitake",
@@ -12679,7 +13661,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 15,
+      "rowWidth": 15,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "matsutake",
@@ -12728,7 +13716,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 200,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "truffle",
@@ -12777,7 +13771,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "urushi",
@@ -12826,7 +13826,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 200,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "chamomile",
@@ -12875,7 +13881,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "mint",
@@ -12924,7 +13936,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "lemon_balm",
@@ -12973,7 +13991,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "rosemary",
@@ -13022,7 +14046,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "thyme",
@@ -13071,7 +14101,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "oregano",
@@ -13120,7 +14156,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 25,
+      "rowSpacing": 35,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "sage",
@@ -13169,7 +14211,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "lavender",
@@ -13218,7 +14266,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "basil",
@@ -13267,7 +14321,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "shiso",
@@ -13316,7 +14376,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "echinacea",
@@ -13365,7 +14431,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "dokudami",
@@ -13413,7 +14485,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "gennoshoko",
@@ -13461,7 +14539,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "otane_ninjin",
@@ -13510,7 +14594,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 20,
+      "rowWidth": 90,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "kihada_herb",
@@ -13558,7 +14648,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 300,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "ukon_herb",
@@ -13607,7 +14703,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "aloe",
@@ -13655,7 +14757,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "yomogi_herb",
@@ -13704,7 +14812,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "hatomugi",
@@ -13753,7 +14867,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 40,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "kanzo",
@@ -13802,7 +14922,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "botan",
@@ -13851,7 +14977,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 100,
+      "rowSpacing": 150,
+      "rowWidth": 150,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "shakuyaku",
@@ -13900,7 +15032,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 80,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "senburi",
@@ -13948,7 +15086,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 20,
+      "rowWidth": 90,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "kuko",
@@ -13997,7 +15141,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 100,
+      "rowSpacing": 150,
+      "rowWidth": 150,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "ashitaba",
@@ -14046,7 +15196,13 @@ const CROP_DB = [
     "fertilizer": null,
     "yield": null,
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "sesame",
@@ -14113,7 +15269,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 50,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "sunflower",
@@ -14181,7 +15343,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 45,
+      "rowSpacing": 70,
+      "rowWidth": 75,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "egoma",
@@ -14248,7 +15416,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "safflower",
@@ -14315,7 +15489,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "oil_palm",
@@ -14382,7 +15562,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 900,
+      "rowSpacing": 900,
+      "rowWidth": 900,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "cotton",
@@ -14449,7 +15635,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 70,
+      "rowWidth": 75,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "flax",
@@ -14516,7 +15708,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 15,
+      "rowWidth": 90,
+      "linesPerRow": 6
+    }
   },
   {
     "id": "ramie",
@@ -14583,7 +15781,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "kenaf",
@@ -14651,7 +15855,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 40,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "hemp",
@@ -14718,7 +15928,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 15,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "chicory",
@@ -14785,7 +16001,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "endive",
@@ -14852,7 +16074,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "arugula",
@@ -14919,7 +16147,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 15,
+      "rowWidth": 90,
+      "linesPerRow": 4
+    }
   },
   {
     "id": "fennel",
@@ -14986,7 +16220,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "celeriac",
@@ -15054,7 +16294,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "kohlrabi",
@@ -15121,7 +16367,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 25,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "chard",
@@ -15188,7 +16440,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "leek",
@@ -15257,7 +16515,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "kailan",
@@ -15324,7 +16588,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 25,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "pakchoi",
@@ -15391,7 +16661,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "hanabiratake",
@@ -15452,7 +16728,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 20,
+      "rowWidth": 20,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "yamabushitake",
@@ -15513,7 +16795,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 20,
+      "rowWidth": 20,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "agaricus",
@@ -15574,7 +16862,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 15,
+      "rowWidth": 15,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "kotake",
@@ -15635,7 +16929,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 200,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "tokiiro_hiratake",
@@ -15696,7 +16996,13 @@ const CROP_DB = [
       "unit": "kg/10a"
     },
     "price": null,
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 20,
+      "rowWidth": 20,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "chickpea",
@@ -15767,7 +17073,13 @@ const CROP_DB = [
       "max": 1200,
       "unit": "円/kg（国内栽培ほぼなし・輸入品小売参考値）"
     },
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 25,
+      "rowSpacing": 50,
+      "rowWidth": 70,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "lentil",
@@ -15838,7 +17150,13 @@ const CROP_DB = [
       "max": 1300,
       "unit": "円/kg（国内栽培ほぼなし・輸入品小売参考値）"
     },
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 10,
+      "rowSpacing": 30,
+      "rowWidth": 70,
+      "linesPerRow": 3
+    }
   },
   {
     "id": "mung_bean",
@@ -15909,7 +17227,13 @@ const CROP_DB = [
       "max": 1200,
       "unit": "円/kg（国内栽培ほぼなし・輸入品小売参考値）"
     },
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 40,
+      "rowWidth": 70,
+      "linesPerRow": 2
+    }
   },
   {
     "id": "lima_bean",
@@ -15980,7 +17304,13 @@ const CROP_DB = [
       "max": 1500,
       "unit": "円/kg（直接相場データなし・類似大粒乾燥豆からの推定値）"
     },
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 70,
+      "linesPerRow": 1
+    }
   },
   {
     "id": "runner_bean",
@@ -16051,6 +17381,12 @@ const CROP_DB = [
       "max": 5000,
       "unit": "円/kg（国産「白花豆」として高級菜豆市場で流通・豆問屋実勢価格）"
     },
-    "risks": []
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 70,
+      "linesPerRow": 1
+    }
   }
 ];
