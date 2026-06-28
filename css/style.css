@@ -8645,3 +8645,151 @@ html.draw-dialog-active .bottom-nav {
     display: none; /* 単価列は小画面で非表示 */
   }
 }
+/* ═══════════════════════════════════════════
+   📊 ダッシュボードペイン (dashboard.js)
+   ═══════════════════════════════════════════ */
+
+.db-wrap {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* サブタブ */
+.db-subtabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.db-subtabs::-webkit-scrollbar { display: none; }
+
+.db-subtab {
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 20px;
+  background: var(--surface2, #f9fafb);
+  color: var(--text2, #6b7280);
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.db-subtab.active {
+  background: var(--text, #111);
+  color: var(--bg, #fff);
+  border-color: var(--text, #111);
+  font-weight: 600;
+}
+
+/* KPIサマリー */
+.db-summary-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.db-kpi {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  background: var(--surface2, #f9fafb);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.db-kpi-val {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text, #111);
+}
+.db-kpi-unit {
+  font-size: 0.72rem;
+  color: var(--text3, #9ca3af);
+}
+
+/* チャートラッパー */
+.db-chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 260px;
+}
+.db-chart-wrap-pie {
+  height: 200px;
+  max-width: 260px;
+  margin: 8px auto 0;
+}
+
+/* 円グラフ切替ボタン */
+.db-pie-toggle {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+.db-pie-btn {
+  padding: 5px 14px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 20px;
+  background: var(--surface2, #f9fafb);
+  color: var(--text2, #6b7280);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.db-pie-btn.active {
+  background: var(--text, #111);
+  color: var(--bg, #fff);
+  border-color: var(--text, #111);
+}
+
+/* 凡例 */
+.db-pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+.db-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+.db-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.db-legend-name {
+  flex: 1;
+  color: var(--text, #111);
+}
+.db-legend-val {
+  color: var(--text2, #6b7280);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.78rem;
+}
+
+/* 空状態 */
+.db-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: var(--text3, #9ca3af);
+  font-size: 0.875rem;
+  text-align: center;
+  line-height: 1.6;
+}
+.db-empty-icon { font-size: 2rem; }
+
+/* モバイル */
+@media (max-width: 480px) {
+  .db-chart-wrap     { height: 220px; }
+  .db-chart-wrap-pie { height: 170px; }
+}

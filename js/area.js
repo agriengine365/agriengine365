@@ -729,6 +729,7 @@ function _adpEnsureView() {
       <button class="adp-subtab"        data-subtab="risk"      onclick="_adpSwitchSubTab('risk')">⚠️ リスク</button>
       <button class="adp-subtab"        data-subtab="planting"  onclick="_adpSwitchSubTab('planting')">🌱 栽植設計</button>
       <button class="adp-subtab"        data-subtab="harvest"   onclick="_adpSwitchSubTab('harvest')">🧺 収穫</button>
+      <button class="adp-subtab"        data-subtab="dashboard" onclick="_adpSwitchSubTab('dashboard')">📊 ダッシュボード</button>
     </div>
 
     <!-- サブタブバー：分析グループ（初期非表示） -->
@@ -991,6 +992,11 @@ function _adpEnsureView() {
         <div id="harvest-result"></div>
       </div>
 
+      <!-- ⑩ 📊 ダッシュボード（実務側ペイン） -->
+      <div class="adp-pane" id="adp-pane-dashboard" style="display:none;">
+        <div id="dashboard-result"></div>
+      </div>
+
     </div>
 
     <!-- 栽培方式切替ポップアップ（サマリーバッジタップ用） -->
@@ -1092,11 +1098,11 @@ function _adpJumpToCondTab() {
 }
 
 // ─── サブタブ切替（8タブ構成） ───
-const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'harvest'];
+const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'harvest', 'dashboard'];
 
 // セグメント → 所属タブのマッピング
 const ADP_SEG_TABS = {
-  practice: ['calendar', 'fert', 'risk', 'planting', 'harvest'],
+  practice: ['calendar', 'fert', 'risk', 'planting', 'harvest', 'dashboard'],
   analysis: ['ranking', 'growth', 'tempchart', 'match', 'planting'],
 };
 
@@ -1219,6 +1225,9 @@ function _adpSwitchSubTab(name) {
   }
   if (name === 'harvest') {
     _adpRenderHarvestPane();
+  }
+  if (name === 'dashboard') {
+    if (typeof DashboardPane !== 'undefined') DashboardPane.render(_adpPracticecrops, _adpArea);
   }
 }
 
