@@ -312,16 +312,99 @@ const DashboardPane = (() => {
     });
   }
 
+  // ─── 灌水記録を月別集計 ───
+  // 返却: { groupKey: { monthly: { 'YYYY-MM': totalWaterL }, total: totalWaterL } }
+  // groupKey: '__area__'（cropId=null）または cropId
+  function _aggregateIrrigation(records) {
+    const result = {};
+    for (const r of records) {
+      if (!r.date) continue;
+      const groupKey = r.cropId || '__area__';
+      if (!result[groupKey]) result[groupKey] = { monthly: {}, total: 0 };
+      const monthKey = r.date.slice(0, 7);
+      if (!result[groupKey].monthly[monthKey]) result[groupKey].monthly[monthKey] = 0;
+      const vol = r.totalWaterL || 0;
+      result[groupKey].monthly[monthKey] += vol;
+      result[groupKey].total += vol;
+    }
+    return result;
+  }
+
+  function _irrigationGroupName(key) {
+    return key === '__area__' ? '🌍 エリア全体' : _cropName(key);
+  }
+
+  // ─── 月別灌水量棒グラフ ───
+  function _renderIrrigationBar(months, targetId) {
+    const el = document.getElementById(targetId);
+    if (!el) return;
+
+    const records = (typeof _adpIrrigationRecords !== 'undefined') ? _adpIrrigationRecords : [];
+    const agg = _aggregateIrrigation(records);
+    const groupKeys = Object.keys(agg);
+
+    if (!groupKeys.length) {
+      el.innerHTML = _emptyHTML('灌水記録がありません。<br>灌水タブから記録を追加してください。');
+      return;
+    }
+
+    const datasets = groupKeys.map((key, idx) => {
+      const data = months.map(m => {
+        const v = agg[key].monthly[m.key];
+        return v ? Math.round(v * 10) / 10 : 0;
+      });
+      return {
+        label:           _irrigationGroupName(key),
+        data,
+        backgroundColor: key === '__area__' ? '#3b82f6' : _cropColor(idx),
+        borderRadius:    3,
+        borderSkipped:   false,
+      };
+    });
+
+    el.innerHTML = `<div class="db-chart-wrap"><canvas id="${targetId}-canvas"></canvas></div>`;
+    const ctx = document.getElementById(`${targetId}-canvas`).getContext('2d');
+    _destroyChart(targetId);
+    _chartInstances[targetId] = new Chart(ctx, {
+      type: 'bar',
+      data: { labels: months.map(m => m.label), datasets },
+      options: {
+        responsive:          true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toLocaleString()} L`,
+            },
+          },
+        },
+        scales: {
+          x: { stacked: true, ticks: { font: { size: 10 } } },
+          y: {
+            stacked:     true,
+            beginAtZero: true,
+            ticks: {
+              font:     { size: 10 },
+              callback: v => `${v}L`,
+            },
+          },
+        },
+      },
+    });
+  }
+
   // ══════════════════════════════════════
   //  サブタブUI描画
   // ══════════════════════════════════════
 
   function _renderSubTabs(activeKey) {
     const tabs = [
-      { key: 'harvest', label: '📦 収穫量' },
-      { key: 'revenue', label: '💴 収益'   },
-      { key: 'ratio',   label: '🥧 構成比' },
-      { key: 'yield',   label: '📉 反収'   },
+      { key: 'harvest',    label: '📦 収穫量' },
+      { key: 'revenue',    label: '💴 収益'   },
+      { key: 'ratio',      label: '🥧 構成比' },
+      { key: 'yield',      label: '📉 反収'   },
+      { key: 'irrigation', label: '💧 灌水量' },
     ];
     return tabs.map(t => `
       <button class="db-subtab${t.key === activeKey ? ' active' : ''}"
@@ -409,10 +492,11 @@ const DashboardPane = (() => {
     const id = 'db-chart-area';
     _destroyChart(id);
     switch (_activeSubTab) {
-      case 'harvest': _renderBar(agg, months, 'weight',  id); break;
-      case 'revenue': _renderBar(agg, months, 'revenue', id); break;
-      case 'ratio':   _renderPie(agg, id);                    break;
-      case 'yield':   _renderYield(agg, months, practicecrops, area, id); break;
+      case 'harvest':    _renderBar(agg, months, 'weight',  id); break;
+      case 'revenue':    _renderBar(agg, months, 'revenue', id); break;
+      case 'ratio':      _renderPie(agg, id);                    break;
+      case 'yield':      _renderYield(agg, months, practicecrops, area, id); break;
+      case 'irrigation': _renderIrrigationBar(months, id); break;
     }
   }
 

@@ -448,6 +448,7 @@ let _adpSelDate       = null;   // 選択中の日付文字列 'YYYY-MM-DD'
 let _adpEditId        = null;   // 編集中レコードID
 let _adpClimateCache  = null;   // AMeDAS取得済み climate（再オープン用キャッシュ）
 let _adpSelectedCropId   = null; // 分析側で選択中の作物ID
+let _adpIrrigationRecords = [];  // 灌水記録（エリア全体 or 作物ごと）cropId=nullはエリア全体
 // 実務側：複数作物 [{ cropId, ratio }] 形式。ratioは占有率(%)
 let _adpPracticecrops    = [];   // 実務側で選択中の作物リスト
 let _adpAnalysisCultMode = null; // 分析側で一時的に切り替え中の栽培方式（マスターはarea.cultivationMode・実務側のインライン編集で変更）
@@ -524,8 +525,9 @@ async function openAreaDetailPanel(area) {
   _adpCalSegment = 'visit';
 
   // 作物選択状態をリセット（エリア再オープン時に前回選択が残らないよう）
-  _adpSelectedCropId = null;
-  _adpPracticecrops  = [];
+  _adpSelectedCropId      = null;
+  _adpIrrigationRecords   = [];
+  _adpPracticecrops       = [];
   _simSelectedCropId = null;
   _simDirty          = false;
   _simMemory         = {};
@@ -548,6 +550,15 @@ async function openAreaDetailPanel(area) {
     }
   }
 
+  // 灌水記録を復元
+  const savedIrrigation = localStorage.getItem(`adpIrrigation_${areaId}`);
+  if (savedIrrigation) {
+    try {
+      _adpIrrigationRecords = JSON.parse(savedIrrigation) || [];
+    } catch {
+      _adpIrrigationRecords = [];
+    }
+  }
   // 分析側の栽培方式一時値を復元（保存があれば優先、無ければマスター値にフォールバック）
   const savedAnalysisCult = localStorage.getItem(`adpCultAnalysis_${areaId}`);
   _adpAnalysisCultMode = savedAnalysisCult || _adpMasterCultMode;
@@ -731,6 +742,7 @@ function _adpEnsureView() {
       <button class="adp-subtab"        data-subtab="cropinfo"  onclick="_adpSwitchSubTab('cropinfo')">🌿 作物情報</button>
       <button class="adp-subtab"        data-subtab="harvest"    onclick="_adpSwitchSubTab('harvest')">🧺 収穫</button>
       <button class="adp-subtab"        data-subtab="pesticide"  onclick="_adpSwitchSubTab('pesticide')">💊 農薬</button>
+      <button class="adp-subtab"        data-subtab="irrigation" onclick="_adpSwitchSubTab('irrigation')">🚰 灌水</button>
       <button class="adp-subtab"        data-subtab="dashboard"  onclick="_adpSwitchSubTab('dashboard')">📊 ダッシュボード</button>
     </div>
 
@@ -1004,6 +1016,11 @@ function _adpEnsureView() {
         <div id="pesticide-result"></div>
       </div>
 
+      <!-- ⑬ 🚰 灌水（実務側ペイン） -->
+      <div class="adp-pane" id="adp-pane-irrigation" style="display:none;">
+        <div id="irrigation-result"></div>
+      </div>
+
       <!-- ⑫ 📊 ダッシュボード（実務側ペイン） -->
       <div class="adp-pane" id="adp-pane-dashboard" style="display:none;">
         <div id="dashboard-result"></div>
@@ -1110,11 +1127,11 @@ function _adpJumpToCondTab() {
 }
 
 // ─── サブタブ切替（8タブ構成） ───
-const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'cropinfo', 'harvest', 'pesticide', 'dashboard'];
+const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'cropinfo', 'harvest', 'pesticide', 'irrigation', 'dashboard'];
 
 // セグメント → 所属タブのマッピング
 const ADP_SEG_TABS = {
-  practice: ['calendar', 'fert', 'risk', 'planting', 'cropinfo', 'harvest', 'pesticide', 'dashboard'],
+  practice: ['calendar', 'fert', 'risk', 'planting', 'cropinfo', 'harvest', 'pesticide', 'irrigation', 'dashboard'],
   analysis: ['ranking', 'growth', 'tempchart', 'match', 'planting'],
 };
 
@@ -1244,6 +1261,9 @@ function _adpSwitchSubTab(name) {
   }
   if (name === 'pesticide') {
     _adpRenderPesticidePane();
+  }
+  if (name === 'irrigation') {
+    _adpRenderIrrigationPane();
   }
   if (name === 'dashboard') {
     if (typeof DashboardPane !== 'undefined') DashboardPane.render(_adpPracticecrops, _adpArea);
@@ -4397,7 +4417,7 @@ function _adpOpenCropSelectSheet(seg) {
           ...c,
           ratio: baseRatio + (i === 0 ? rem : 0),
         }));
-        _adpPracticecrops.push({ cropId, ratio: baseRatio, plantingDesign: _adpInitPlantingDesign(cropId), variety: '', sowDate: '', transplantDate: '', harvestStart: '', harvestEnd: '', fertRecords: [], pesticideRecords: [] });
+        _adpPracticecrops.push({ cropId, ratio: baseRatio, plantingDesign: _adpInitPlantingDesign(cropId), variety: '', sowDate: '', transplantDate: '', harvestStart: '', harvestEnd: '', fertRecords: [], pesticideRecords: [], harvestRecords: [] });
         _adpSavePracticecrops(areaId);
         _adpRenderPracticecrops();
         _adpRefreshPracticeTabs();
@@ -4431,6 +4451,11 @@ function _adpGetCropById(cropId) {
 function _adpSavePracticecrops(areaId) {
   if (!areaId) return;
   localStorage.setItem(`adpCropWork_${areaId}`, JSON.stringify(_adpPracticecrops));
+}
+
+function _adpSaveIrrigationRecords(areaId) {
+  if (!areaId) return;
+  localStorage.setItem(`adpIrrigation_${areaId}`, JSON.stringify(_adpIrrigationRecords));
 }
 
 function _adpUpdatePracticeRatio(cropId, newRatio) {
@@ -4490,6 +4515,7 @@ function _adpRefreshPracticeTabs() {
   if (_adpCurrentSubTab === 'cropinfo')   _adpRenderCropInfoPane();
   if (_adpCurrentSubTab === 'fert')       _adpRenderFertRecordSection();
   if (_adpCurrentSubTab === 'pesticide')  _adpRenderPesticidePane();
+  if (_adpCurrentSubTab === 'irrigation') _adpRenderIrrigationPane();
   if (_adpCurrentSubTab === 'dashboard' && typeof DashboardPane !== 'undefined') DashboardPane.render(_adpPracticecrops, _adpArea);
 }
 
@@ -7523,5 +7549,249 @@ function _adpDeletePesticideRecord(cropId, recordId, areaId) {
   pc.pesticideRecords = pc.pesticideRecords.filter(r => r.id !== recordId);
   _adpSavePracticecrops(areaId);
   _adpRenderPesticidePane();
+  if (typeof showToast === 'function') showToast('記録を削除しました');
+}
+
+// ═══════════════════════════════════════════
+//  🚰 灌水管理（セクション6）
+//  実務側サブタブ「🚰 灌水」の描画・保存ロジック
+//  データ: _adpIrrigationRecords[]
+//    cropId=null → エリア全体への灌水
+//    cropId=xxx  → 特定作物への灌水
+//  保存先: localStorage adpIrrigation_${areaId}
+// ═══════════════════════════════════════════
+
+const IRRIGATION_METHOD_PRESETS = [
+  { key: 'drip',       label: '点滴',           defaultFlow: 2,    unitLabel: '点滴本数',           hasUnitCount: true  },
+  { key: 'sprinkler',  label: 'スプリンクラー', defaultFlow: 500,  unitLabel: 'スプリンクラー個数', hasUnitCount: true  },
+  { key: 'manual',     label: '散水（手動）',   defaultFlow: null, unitLabel: '個数',               hasUnitCount: false },
+  { key: 'other',      label: 'その他',         defaultFlow: null, unitLabel: '個数',               hasUnitCount: true  },
+];
+
+function _adpRenderIrrigationPane() {
+  const el = document.getElementById('irrigation-result');
+  if (!el) return;
+  const areaId = _adpArea?.id || _adpArea?.name || '';
+
+  const areaWideRecords = _adpIrrigationRecords.filter(r => !r.cropId);
+  const areaCardHTML = _adpBuildIrrigationCard(
+    { key: 'area', name: 'エリア全体', icon: '🌍', records: areaWideRecords },
+    areaId
+  );
+
+  const cropCardsHTML = _adpPracticecrops.map(pc => {
+    const records = _adpIrrigationRecords.filter(r => r.cropId === pc.cropId);
+    return _adpBuildIrrigationCard(
+      { key: pc.cropId, name: _adpCropIdToName(pc.cropId), icon: '🌱', records },
+      areaId
+    );
+  }).join('');
+
+  const hintHTML = _adpPracticecrops.length
+    ? ''
+    : `<div class="ir-hint">作物ごとの灌水記録を行うには、作物を追加してください。</div>`;
+
+  el.innerHTML = `<div class="ir-section">${areaCardHTML}${hintHTML}${cropCardsHTML}</div>`;
+}
+
+function _adpIrrigationWeeklyRows(records) {
+  const days = [];
+  const now = new Date();
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i);
+    const key   = d.toISOString().slice(0, 10);
+    const label = `${d.getMonth() + 1}/${d.getDate()}`;
+    const total = records
+      .filter(r => r.date === key)
+      .reduce((s, r) => s + (r.totalWaterL || 0), 0);
+    days.push({ key, label, total: Math.round(total * 10) / 10 });
+  }
+  return days;
+}
+
+function _adpBuildIrrigationWeekTable(records) {
+  const rows      = _adpIrrigationWeeklyRows(records);
+  const weekTotal = Math.round(rows.reduce((s, r) => s + r.total, 0) * 10) / 10;
+  return `
+    <div class="ir-week-wrap">
+      <div class="ir-week-title">📆 直近7日間の使用水量（合計 ${weekTotal}L）</div>
+      <table class="ir-week-table">
+        <tbody>
+          <tr>${rows.map(r => `<td class="ir-week-day">${r.label}</td>`).join('')}</tr>
+          <tr>${rows.map(r => `<td class="ir-week-val">${r.total || 0}L</td>`).join('')}</tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function _adpBuildIrrigationCard(opts, areaId) {
+  const { key, name, icon, records } = opts;
+  const presetOptions = IRRIGATION_METHOD_PRESETS.map(p =>
+    `<option value="${p.key}">${p.label}</option>`
+  ).join('');
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const rowsHTML = records.length
+    ? records.map(r => {
+        const methodLabel = IRRIGATION_METHOD_PRESETS.find(p => p.key === r.method)?.label || r.method || '—';
+        return `
+        <tr class="ir-row">
+          <td class="ir-td">${r.date || '—'}</td>
+          <td class="ir-td ir-td-method">${methodLabel}</td>
+          <td class="ir-td ir-td-time">${r.startTime || '—'}–${r.endTime || '—'}</td>
+          <td class="ir-td ir-td-amount">${r.totalWaterL != null ? r.totalWaterL : '—'}L</td>
+          <td class="ir-td ir-td-memo">${r.memo || ''}</td>
+          <td class="ir-td ir-td-del">
+            <button class="ir-del-btn" onclick="_adpDeleteIrrigationRecord('${r.id}','${areaId}')">×</button>
+          </td>
+        </tr>`;
+      }).join('')
+    : `<tr><td colspan="6" class="ir-td-empty">記録がありません</td></tr>`;
+
+  return `
+    <div class="ir-card" id="ir-card-${key}">
+      <div class="ir-card-header" onclick="_adpToggleIrrigationCard('${key}')">
+        <span class="ir-crop-name">${icon} ${name}</span>
+        <span class="ir-record-count">${records.length}件</span>
+        <span class="ir-card-arrow">▶</span>
+      </div>
+      <div class="ir-card-body" id="ir-body-${key}" style="display:none;">
+        ${_adpBuildIrrigationWeekTable(records)}
+        <div class="ir-form-wrap" id="ir-form-${key}" style="display:none;">
+          <div class="ir-form-grid">
+            <div class="ir-field">
+              <label class="ir-label">日付</label>
+              <input class="ir-input" type="date" id="ir-date-${key}" value="${today}">
+            </div>
+            <div class="ir-field">
+              <label class="ir-label">灌水方法</label>
+              <select class="ir-input ir-select" id="ir-method-${key}"
+                      onchange="_adpIrrigationMethodChange('${key}')">
+                ${presetOptions}
+              </select>
+            </div>
+            <div class="ir-field ir-field-inline">
+              <div>
+                <label class="ir-label">開始時刻</label>
+                <input class="ir-input" type="time" id="ir-start-${key}">
+              </div>
+              <div>
+                <label class="ir-label">終了時刻</label>
+                <input class="ir-input" type="time" id="ir-end-${key}">
+              </div>
+            </div>
+            <div class="ir-field ir-field-inline">
+              <div>
+                <label class="ir-label">流量（L/時・1個あたり）</label>
+                <input class="ir-input" type="number" id="ir-flow-${key}"
+                       placeholder="0" min="0" step="0.1">
+              </div>
+              <div id="ir-unitcount-wrap-${key}">
+                <label class="ir-label" id="ir-unitcount-label-${key}">点滴本数</label>
+                <input class="ir-input" type="number" id="ir-unitcount-${key}"
+                       placeholder="0" min="0" step="1">
+              </div>
+            </div>
+            <div class="ir-field">
+              <label class="ir-label">メモ（任意）</label>
+              <input class="ir-input" type="text" id="ir-memo-${key}"
+                     placeholder="栽培棟Aなど" maxlength="100">
+            </div>
+          </div>
+          <div class="ir-form-footer">
+            <button class="ir-cancel-btn" onclick="_adpToggleIrrigationForm('${key}')">キャンセル</button>
+            <button class="ir-add-btn" onclick="_adpAddIrrigationRecord('${key}','${areaId}')">＋ 追加</button>
+          </div>
+        </div>
+        <button class="ir-open-form-btn" id="ir-open-btn-${key}"
+                onclick="_adpToggleIrrigationForm('${key}')">＋ 灌水を記録</button>
+        <table class="ir-table">
+          <thead>
+            <tr>
+              <th class="ir-th">日付</th>
+              <th class="ir-th ir-th-method">方法</th>
+              <th class="ir-th ir-th-time">時間</th>
+              <th class="ir-th">使用水量</th>
+              <th class="ir-th ir-th-memo">メモ</th>
+              <th class="ir-th"></th>
+            </tr>
+          </thead>
+          <tbody id="ir-tbody-${key}">
+            ${rowsHTML}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+function _adpToggleIrrigationCard(key) {
+  const body  = document.getElementById(`ir-body-${key}`);
+  const arrow = document.querySelector(`#ir-card-${key} .ir-card-arrow`);
+  if (!body) return;
+  const isOpen = body.style.display === 'none';
+  body.style.display = isOpen ? 'block' : 'none';
+  if (arrow) arrow.textContent = isOpen ? '▼' : '▶';
+}
+
+function _adpToggleIrrigationForm(key) {
+  const form    = document.getElementById(`ir-form-${key}`);
+  const openBtn = document.getElementById(`ir-open-btn-${key}`);
+  if (!form) return;
+  const isHidden = form.style.display === 'none';
+  form.style.display    = isHidden ? 'block' : 'none';
+  if (openBtn) openBtn.style.display = isHidden ? 'none' : 'inline-flex';
+  if (isHidden) _adpIrrigationMethodChange(key);
+}
+
+function _adpIrrigationMethodChange(key) {
+  const sel       = document.getElementById(`ir-method-${key}`);
+  const flowInput = document.getElementById(`ir-flow-${key}`);
+  const unitWrap  = document.getElementById(`ir-unitcount-wrap-${key}`);
+  const unitLabel = document.getElementById(`ir-unitcount-label-${key}`);
+  if (!sel) return;
+  const preset = IRRIGATION_METHOD_PRESETS.find(p => p.key === sel.value) || IRRIGATION_METHOD_PRESETS[0];
+  if (flowInput && preset.defaultFlow != null) flowInput.value = preset.defaultFlow;
+  if (unitWrap)  unitWrap.style.display  = preset.hasUnitCount ? '' : 'none';
+  if (unitLabel) unitLabel.textContent   = preset.unitLabel;
+}
+
+function _adpAddIrrigationRecord(key, areaId) {
+  const cropId    = (key === 'area') ? null : key;
+  const date      = document.getElementById(`ir-date-${key}`)?.value || '';
+  const method    = document.getElementById(`ir-method-${key}`)?.value || 'drip';
+  const startTime = document.getElementById(`ir-start-${key}`)?.value || '';
+  const endTime   = document.getElementById(`ir-end-${key}`)?.value || '';
+  const flowRate  = parseFloat(document.getElementById(`ir-flow-${key}`)?.value) || null;
+  const memo      = (document.getElementById(`ir-memo-${key}`)?.value || '').trim();
+
+  const preset    = IRRIGATION_METHOD_PRESETS.find(p => p.key === method);
+  const unitCount = preset?.hasUnitCount
+    ? (parseFloat(document.getElementById(`ir-unitcount-${key}`)?.value) || null)
+    : 1;
+
+  if (!date) { if (typeof showToast === 'function') showToast('日付を入力してください', 'amber'); return; }
+  if (!startTime || !endTime) { if (typeof showToast === 'function') showToast('開始・終了時刻を入力してください', 'amber'); return; }
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+  const durationMin = (eh * 60 + em) - (sh * 60 + sm);
+  if (!(durationMin > 0)) { if (typeof showToast === 'function') showToast('終了時刻は開始時刻より後にしてください', 'amber'); return; }
+  if (!flowRate) { if (typeof showToast === 'function') showToast('流量を入力してください', 'amber'); return; }
+  if (preset?.hasUnitCount && !unitCount) { if (typeof showToast === 'function') showToast('個数を入力してください', 'amber'); return; }
+
+  const totalWaterL = Math.round(flowRate * unitCount * (durationMin / 60) * 10) / 10;
+  _adpIrrigationRecords.unshift({
+    id: Date.now().toString(),
+    date, cropId, method, startTime, endTime, durationMin, flowRate, unitCount, totalWaterL, memo,
+  });
+  _adpSaveIrrigationRecords(areaId);
+  _adpRenderIrrigationPane();
+  if (typeof showToast === 'function') showToast('灌水記録を追加しました');
+}
+
+function _adpDeleteIrrigationRecord(recordId, areaId) {
+  _adpIrrigationRecords = _adpIrrigationRecords.filter(r => r.id !== recordId);
+  _adpSaveIrrigationRecords(areaId);
+  _adpRenderIrrigationPane();
   if (typeof showToast === 'function') showToast('記録を削除しました');
 }

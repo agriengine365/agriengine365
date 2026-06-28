@@ -9310,3 +9310,269 @@ html.draw-dialog-active .bottom-nav {
   .ps-td-target   { display: none; }
   .ps-th-target   { display: none; }
 }
+
+/* ═══════════════════════════════════════════
+   🚰 灌水管理 (.ir-*)
+   農薬管理 (.ps-*) と同構造・水テーマ配色
+   ═══════════════════════════════════════════ */
+
+.ir-section {
+  padding: 10px 12px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ir-hint {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  padding: 8px 4px;
+}
+
+/* ── カード ── */
+.ir-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ir-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--card-header-bg, #f9fafb);
+  border-bottom: 1px solid transparent;
+  transition: background 0.15s;
+}
+.ir-card-header:hover {
+  background: var(--card-header-hover, #f3f4f6);
+}
+
+.ir-crop-name {
+  font-size: 13px;
+  font-weight: 600;
+  flex: 1;
+  color: var(--text-primary, #111);
+}
+
+.ir-record-count {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+}
+
+.ir-card-arrow {
+  font-size: 10px;
+  color: var(--text-muted, #888);
+  transition: transform 0.2s;
+}
+
+.ir-card-body {
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--border, #e5e7eb);
+}
+
+/* ── 週間使用水量表 ── */
+.ir-week-wrap {
+  margin-bottom: 14px;
+}
+
+.ir-week-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #3b82f6;
+  margin-bottom: 6px;
+}
+
+.ir-week-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ir-week-day {
+  font-size: 10px;
+  color: var(--text-muted, #888);
+  text-align: center;
+  padding: 2px 2px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.ir-week-val {
+  font-size: 11px;
+  font-weight: 500;
+  color: #3b82f6;
+  text-align: center;
+  padding: 2px 2px;
+}
+
+/* ── 記録ボタン ── */
+.ir-open-form-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  background: var(--accent, #4ade80);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: opacity 0.15s;
+}
+.ir-open-form-btn:hover { opacity: 0.85; }
+
+/* ── 入力フォーム ── */
+.ir-form-wrap {
+  background: var(--input-bg, #f9fafb);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.ir-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ir-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ir-field-inline {
+  flex-direction: row !important;
+  gap: 10px !important;
+}
+.ir-field-inline > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ir-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary, #555);
+}
+
+.ir-input {
+  padding: 7px 10px;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--surface, #fff);
+  color: var(--text-primary, #111);
+  width: 100%;
+  box-sizing: border-box;
+}
+.ir-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px #3b82f620;
+}
+
+.ir-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+.ir-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ir-cancel-btn {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text-secondary, #555);
+}
+
+.ir-add-btn {
+  padding: 6px 16px;
+  background: var(--accent, #4ade80);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.ir-add-btn:hover { opacity: 0.85; }
+
+/* ── 一覧テーブル ── */
+.ir-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.ir-th {
+  text-align: left;
+  padding: 5px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #888);
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  white-space: nowrap;
+}
+
+.ir-td {
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--border-light, #f3f4f6);
+  color: var(--text-primary, #111);
+  vertical-align: middle;
+}
+
+.ir-td-method  { color: var(--text-secondary, #555); font-size: 11px; }
+.ir-td-time    { color: var(--text-muted, #888);      font-size: 11px; }
+.ir-td-amount  { font-weight: 600; color: #3b82f6; }
+.ir-td-memo    { color: var(--text-muted, #888); font-size: 11px; }
+
+.ir-td-empty {
+  text-align: center;
+  padding: 14px;
+  color: var(--text-muted, #888);
+  font-size: 12px;
+}
+
+.ir-del-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted, #aaa);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+.ir-del-btn:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.ir-row:last-child .ir-td { border-bottom: none; }
+
+@media (max-width: 480px) {
+  .ir-td-memo    { display: none; }
+  .ir-th.ir-th-memo  { display: none; }
+}
