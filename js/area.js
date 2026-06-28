@@ -587,6 +587,7 @@ async function openAreaDetailPanel(area) {
   // ── 最初のセグメント・サブタブ（実務＞カレンダー）を表示 ──
   _adpSwitchSeg('practice');
   _adpSwitchSubTab('calendar');
+  _adpInitSwipe();
 
   // 実務側：複数作物リストを描画（復元後に呼ぶ）
   _adpRenderPracticecrops();
@@ -1268,6 +1269,43 @@ function _adpSwitchSubTab(name) {
   if (name === 'dashboard') {
     if (typeof DashboardPane !== 'undefined') DashboardPane.render(_adpPracticecrops, _adpArea);
   }
+
+  // アクティブタブをタブバー内で見えるようにスクロール
+  const activeBtn = document.querySelector(`.adp-subtab[data-subtab="${name}"]`);
+  if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+}
+
+// ─── コンテンツ領域スワイプでタブ切替 ───
+function _adpInitSwipe() {
+  const body = document.querySelector('.adp-view-body');
+  if (!body || body._swipeInit) return;
+  body._swipeInit = true;
+
+  let startX = 0, startY = 0, startT = 0;
+
+  body.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    startT = Date.now();
+  }, { passive: true });
+
+  body.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    const dy = e.changedTouches[0].clientY - startY;
+    const dt = Date.now() - startT;
+
+    // 横方向が縦より大きく、50px以上、300ms以内
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) || dt > 300) return;
+
+    const seg  = _adpCurrentSeg;
+    const tabs = ADP_SEG_TABS[seg] || [];
+    const idx  = tabs.indexOf(_adpCurrentSubTab);
+    if (idx === -1) return;
+
+    // 左スワイプ→次タブ、右スワイプ→前タブ
+    const next = dx < 0 ? tabs[idx + 1] : tabs[idx - 1];
+    if (next) _adpSwitchSubTab(next);
+  }, { passive: true });
 }
 
 // ─── 🏆ランキングタブ内サブタブ切替（4分割：条件設定/適合度ランキング/収益ランキング/シミュレーター） ───

@@ -2447,7 +2447,7 @@ html.draw-dialog-active #draw-scope {
   font-size: 10px;
   font-family: var(--mono);
   letter-spacing: 0.02em;
-  color: var(--text3);
+  color: var(--text2);
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
