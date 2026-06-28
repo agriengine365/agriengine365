@@ -745,6 +745,7 @@ function _adpEnsureView() {
       <button class="adp-subtab"        data-subtab="pesticide"  onclick="_adpSwitchSubTab('pesticide')">💊 農薬</button>
       <button class="adp-subtab"        data-subtab="irrigation" onclick="_adpSwitchSubTab('irrigation')">🚰 灌水</button>
       <button class="adp-subtab"        data-subtab="dashboard"  onclick="_adpSwitchSubTab('dashboard')">📊 ダッシュボード</button>
+      <button class="adp-subtab"        data-subtab="shipping"   onclick="_adpSwitchSubTab('shipping')">📦 出荷記録</button>
     </div>
 
     <!-- サブタブバー：分析グループ（初期非表示） -->
@@ -1027,6 +1028,11 @@ function _adpEnsureView() {
         <div id="dashboard-result"></div>
       </div>
 
+      <!-- ⑬ 📦 出荷記録（実務側ペイン） -->
+      <div class="adp-pane" id="adp-pane-shipping" style="display:none;">
+        <div id="shipping-result"></div>
+      </div>
+
     </div>
 
     <!-- 栽培方式切替ポップアップ（サマリーバッジタップ用） -->
@@ -1128,11 +1134,11 @@ function _adpJumpToCondTab() {
 }
 
 // ─── サブタブ切替（8タブ構成） ───
-const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'cropinfo', 'harvest', 'pesticide', 'irrigation', 'dashboard'];
+const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'cropinfo', 'harvest', 'pesticide', 'irrigation', 'dashboard', 'shipping'];
 
 // セグメント → 所属タブのマッピング
 const ADP_SEG_TABS = {
-  practice: ['calendar', 'fert', 'risk', 'planting', 'cropinfo', 'harvest', 'pesticide', 'irrigation', 'dashboard'],
+  practice: ['calendar', 'fert', 'risk', 'planting', 'cropinfo', 'harvest', 'pesticide', 'irrigation', 'dashboard', 'shipping'],
   analysis: ['ranking', 'growth', 'tempchart', 'match', 'planting'],
 };
 
@@ -1268,6 +1274,9 @@ function _adpSwitchSubTab(name) {
   }
   if (name === 'dashboard') {
     if (typeof DashboardPane !== 'undefined') DashboardPane.render(_adpPracticecrops, _adpArea);
+  }
+  if (name === 'shipping') {
+    _adpRenderShippingPane();
   }
 
   // アクティブタブをタブバー内で見えるようにスクロール
@@ -4555,6 +4564,7 @@ function _adpRefreshPracticeTabs() {
   if (_adpCurrentSubTab === 'pesticide')  _adpRenderPesticidePane();
   if (_adpCurrentSubTab === 'irrigation') _adpRenderIrrigationPane();
   if (_adpCurrentSubTab === 'dashboard' && typeof DashboardPane !== 'undefined') DashboardPane.render(_adpPracticecrops, _adpArea);
+  if (_adpCurrentSubTab === 'shipping')  _adpRenderShippingPane();
 }
 
 function _adpRenderPracticecrops() {
@@ -7832,4 +7842,27 @@ function _adpDeleteIrrigationRecord(recordId, areaId) {
   _adpSaveIrrigationRecords(areaId);
   _adpRenderIrrigationPane();
   if (typeof showToast === 'function') showToast('記録を削除しました');
+}
+
+// ═══════════════════════════════════════════════════════
+//  実務側サブタブ「📦 出荷記録」の描画・連携ロジック
+// ═══════════════════════════════════════════════════════
+
+/**
+ * _adpRenderShippingPane()
+ * shipping-result div を全描画。
+ * records.js の renderShippingForm() に現在エリア・作物情報を渡す。
+ */
+function _adpRenderShippingPane() {
+  const el = document.getElementById('shipping-result');
+  if (!el) return;
+
+  if (typeof renderShippingForm === 'function') {
+    el.innerHTML = renderShippingForm({
+      area:         _adpArea,
+      practicecrops: _adpPracticecrops,
+    });
+  } else {
+    el.innerHTML = '<div class="sh-empty">records.js が読み込まれていません</div>';
+  }
 }
