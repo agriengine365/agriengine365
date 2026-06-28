@@ -8793,3 +8793,116 @@ html.draw-dialog-active .bottom-nav {
   .db-chart-wrap     { height: 220px; }
   .db-chart-wrap-pie { height: 170px; }
 }
+
+/* ═══════════════════════════════════════════
+   🌿 作物情報ペイン (section2 / cropinfo)
+   ═══════════════════════════════════════════ */
+
+/* 空状態 */
+.ci-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: var(--text3, #9ca3af);
+  font-size: 0.875rem;
+  text-align: center;
+  line-height: 1.6;
+}
+.ci-empty-icon { font-size: 2rem; }
+
+/* カード */
+.ci-card {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  margin: 10px 14px;
+  overflow: hidden;
+}
+
+/* ヘッダー（タップで開閉） */
+.ci-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  cursor: pointer;
+  background: var(--surface2, #f9fafb);
+  user-select: none;
+}
+.ci-card-header:active { background: var(--surface3, #f3f4f6); }
+
+.ci-crop-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--text, #111);
+}
+.ci-card-arrow {
+  font-size: 0.75rem;
+  color: var(--text3, #9ca3af);
+}
+
+/* ボディ（折りたたみ） */
+.ci-card-body {
+  display: none;
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--border, #e5e7eb);
+  background: var(--bg, #fff);
+}
+.ci-card.open .ci-card-body { display: block; }
+
+/* フィールドグリッド */
+.ci-field-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ci-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ci-label {
+  font-size: 0.75rem;
+  color: var(--text2, #6b7280);
+  font-weight: 500;
+}
+
+.ci-input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--text, #111);
+  background: var(--surface2, #f9fafb);
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.ci-input:focus {
+  outline: none;
+  border-color: var(--accent, #22c55e);
+  background: var(--bg, #fff);
+}
+
+/* フッター */
+.ci-card-footer {
+  margin-top: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.ci-save-btn {
+  padding: 7px 20px;
+  background: var(--accent, #22c55e);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.ci-save-btn:active { opacity: 0.8; }

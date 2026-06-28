@@ -728,6 +728,7 @@ function _adpEnsureView() {
       <button class="adp-subtab"        data-subtab="fert"      onclick="_adpSwitchSubTab('fert')">🧪 施肥</button>
       <button class="adp-subtab"        data-subtab="risk"      onclick="_adpSwitchSubTab('risk')">⚠️ リスク</button>
       <button class="adp-subtab"        data-subtab="planting"  onclick="_adpSwitchSubTab('planting')">🌱 栽植設計</button>
+      <button class="adp-subtab"        data-subtab="cropinfo"  onclick="_adpSwitchSubTab('cropinfo')">🌿 作物情報</button>
       <button class="adp-subtab"        data-subtab="harvest"   onclick="_adpSwitchSubTab('harvest')">🧺 収穫</button>
       <button class="adp-subtab"        data-subtab="dashboard" onclick="_adpSwitchSubTab('dashboard')">📊 ダッシュボード</button>
     </div>
@@ -987,12 +988,17 @@ function _adpEnsureView() {
         <div id="planting-result"></div>
       </div>
 
-      <!-- ⑨ 🧺 収穫管理（実務側ペイン） -->
+      <!-- ⑨ 🌿 作物情報（実務側ペイン） -->
+      <div class="adp-pane" id="adp-pane-cropinfo" style="display:none;">
+        <div id="cropinfo-result"></div>
+      </div>
+
+      <!-- ⑩ 🧺 収穫管理（実務側ペイン） -->
       <div class="adp-pane" id="adp-pane-harvest" style="display:none;">
         <div id="harvest-result"></div>
       </div>
 
-      <!-- ⑩ 📊 ダッシュボード（実務側ペイン） -->
+      <!-- ⑪ 📊 ダッシュボード（実務側ペイン） -->
       <div class="adp-pane" id="adp-pane-dashboard" style="display:none;">
         <div id="dashboard-result"></div>
       </div>
@@ -1098,11 +1104,11 @@ function _adpJumpToCondTab() {
 }
 
 // ─── サブタブ切替（8タブ構成） ───
-const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'harvest', 'dashboard'];
+const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'cropinfo', 'harvest', 'dashboard'];
 
 // セグメント → 所属タブのマッピング
 const ADP_SEG_TABS = {
-  practice: ['calendar', 'fert', 'risk', 'planting', 'harvest', 'dashboard'],
+  practice: ['calendar', 'fert', 'risk', 'planting', 'cropinfo', 'harvest', 'dashboard'],
   analysis: ['ranking', 'growth', 'tempchart', 'match', 'planting'],
 };
 
@@ -1222,6 +1228,9 @@ function _adpSwitchSubTab(name) {
   }
   if (name === 'planting') {
     _adpRenderPlantingPane();
+  }
+  if (name === 'cropinfo') {
+    _adpRenderCropInfoPane();
   }
   if (name === 'harvest') {
     _adpRenderHarvestPane();
@@ -4378,7 +4387,7 @@ function _adpOpenCropSelectSheet(seg) {
           ...c,
           ratio: baseRatio + (i === 0 ? rem : 0),
         }));
-        _adpPracticecrops.push({ cropId, ratio: baseRatio, plantingDesign: _adpInitPlantingDesign(cropId) });
+        _adpPracticecrops.push({ cropId, ratio: baseRatio, plantingDesign: _adpInitPlantingDesign(cropId), variety: '', sowDate: '', transplantDate: '', harvestStart: '', harvestEnd: '' });
         _adpSavePracticecrops(areaId);
         _adpRenderPracticecrops();
         _adpRefreshPracticeTabs();
@@ -6949,3 +6958,116 @@ function _adpDeleteHarvestRecord(cropId, recordId, areaId) {
   if (typeof showToast === 'function') showToast('記録を削除しました');
 }
 
+// ═══════════════════════════════════════════
+//  🌿 作物情報ペイン（セクション2）
+//  実務側サブタブ「🌿 作物情報」の描画・保存ロジック
+// ═══════════════════════════════════════════
+
+/**
+ * cropinfo-result div を全描画。
+ * 作物ごとにアコーディオンカードを生成する。
+ */
+function _adpRenderCropInfoPane() {
+  const el = document.getElementById('cropinfo-result');
+  if (!el) return;
+
+  const areaId = _adpArea?.id;
+  if (!_adpPracticecrops.length) {
+    el.innerHTML = `
+      <div class="ci-empty">
+        <div class="ci-empty-icon">🌱</div>
+        作物が登録されていません。<br>作物を追加してから利用してください。
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = _adpPracticecrops
+    .map((pc, idx) => _adpBuildCropInfoCard(pc, areaId, idx))
+    .join('');
+}
+
+/**
+ * 1作物分の作物情報カードHTMLを生成。
+ * @param {Object} pc      _adpPracticecropsの1要素
+ * @param {string} areaId
+ * @param {number} idx     インデックス（最初のカードを展開状態にする）
+ */
+function _adpBuildCropInfoCard(pc, areaId, idx) {
+  const cropId  = pc.cropId;
+  const name    = _adpCropIdToName(cropId);
+  const isOpen  = idx === 0;
+
+  const v  = (key) => pc[key] ? String(pc[key]) : '';
+
+  return `
+    <div class="ci-card${isOpen ? ' open' : ''}" id="ci-card-${cropId}">
+      <div class="ci-card-header" onclick="_adpToggleCropInfoCard('${cropId}')">
+        <span class="ci-crop-name">🌿 ${name}</span>
+        <span class="ci-card-arrow">${isOpen ? '▼' : '▶'}</span>
+      </div>
+      <div class="ci-card-body">
+        <div class="ci-field-grid">
+          <div class="ci-field">
+            <label class="ci-label">品種</label>
+            <input class="ci-input" type="text" id="ci-variety-${cropId}"
+              placeholder="例：麗夏、千両2号" maxlength="50"
+              value="${v('variety')}">
+          </div>
+          <div class="ci-field">
+            <label class="ci-label">播種日</label>
+            <input class="ci-input" type="date" id="ci-sowDate-${cropId}"
+              value="${v('sowDate')}">
+          </div>
+          <div class="ci-field">
+            <label class="ci-label">定植日</label>
+            <input class="ci-input" type="date" id="ci-transplantDate-${cropId}"
+              value="${v('transplantDate')}">
+          </div>
+          <div class="ci-field">
+            <label class="ci-label">収穫開始</label>
+            <input class="ci-input" type="date" id="ci-harvestStart-${cropId}"
+              value="${v('harvestStart')}">
+          </div>
+          <div class="ci-field">
+            <label class="ci-label">収穫終了</label>
+            <input class="ci-input" type="date" id="ci-harvestEnd-${cropId}"
+              value="${v('harvestEnd')}">
+          </div>
+        </div>
+        <div class="ci-card-footer">
+          <button class="ci-save-btn" onclick="_adpSaveCropInfo('${cropId}', '${areaId}')">✓ 保存</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+/**
+ * アコーディオン開閉トグル。
+ * @param {string} cropId
+ */
+function _adpToggleCropInfoCard(cropId) {
+  const card  = document.getElementById(`ci-card-${cropId}`);
+  if (!card) return;
+  const isOpen = card.classList.toggle('open');
+  const arrow  = card.querySelector('.ci-card-arrow');
+  if (arrow) arrow.textContent = isOpen ? '▼' : '▶';
+}
+
+/**
+ * 入力値を _adpPracticecrops に反映して保存する。
+ * @param {string} cropId
+ * @param {string} areaId
+ */
+function _adpSaveCropInfo(cropId, areaId) {
+  const pc = _adpPracticecrops.find(c => c.cropId === cropId);
+  if (!pc) return;
+
+  pc.variety        = document.getElementById(`ci-variety-${cropId}`)?.value.trim()        || '';
+  pc.sowDate        = document.getElementById(`ci-sowDate-${cropId}`)?.value                || '';
+  pc.transplantDate = document.getElementById(`ci-transplantDate-${cropId}`)?.value         || '';
+  pc.harvestStart   = document.getElementById(`ci-harvestStart-${cropId}`)?.value           || '';
+  pc.harvestEnd     = document.getElementById(`ci-harvestEnd-${cropId}`)?.value             || '';
+
+  _adpSavePracticecrops(areaId);
+  if (typeof showToast === 'function') showToast(`${_adpCropIdToName(cropId)} の作物情報を保存しました`);
+}
