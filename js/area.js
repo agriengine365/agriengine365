@@ -677,15 +677,15 @@ function _adpEnsureView() {
       <button class="adp-seg-btn"        data-seg="analysis"  onclick="_adpSwitchSeg('analysis')">分析</button>
     </div>
 
-    <!-- 実務側：複数作物リスト＋追加ボタン -->
+    <!-- 実務側：複数作物リスト＋追加ボタン（1行レイアウト：縦スペース節約） -->
     <div class="adp-crop-bar adp-practice-crops-bar" id="adp-crop-bar-practice">
-      <div class="adp-practice-crops-header">
+      <div class="adp-practice-row">
         <span class="adp-practice-crops-label">栽培作物</span>
+        <div id="adp-practice-crops-list" class="adp-practice-crops-list"></div>
         <button class="adp-pcc-add-btn" onclick="_adpOpenCropSelectSheet('practice')" id="adp-crop-bar-btn-practice" title="作物を追加">
-          <span id="adp-crop-bar-name-practice">＋ 作物を追加</span>
+          <span id="adp-crop-bar-name-practice">＋ 追加</span>
         </button>
       </div>
-      <div id="adp-practice-crops-list"></div>
     </div>
 
     <!-- 作物選択バー：分析用（適合度・信頼度バー付き） -->
@@ -4417,6 +4417,19 @@ function _adpUpdatePracticeRatio(cropId, newRatio) {
 function _adpRemovePracticeCrop(cropId) {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   _adpPracticecrops = _adpPracticecrops.filter(c => c.cropId !== cropId);
+
+  // 削除後、必ず合計が100%になるよう「最後（自動枠）」の占有率を再計算する。
+  // ・中間の作物を削除 → 既存の最後の作物が差分を吸収
+  // ・自動枠（最後）自体を削除 → 新たに最後になった作物が自動枠に切り替わり再計算
+  // ・1作物だけ残る → その作物が100%になる
+  if (_adpPracticecrops.length > 0) {
+    const lastIdx = _adpPracticecrops.length - 1;
+    const sumOthers = _adpPracticecrops
+      .slice(0, lastIdx)
+      .reduce((s, c) => s + (c.ratio || 0), 0);
+    _adpPracticecrops[lastIdx].ratio = Math.max(0, 100 - sumOthers);
+  }
+
   _adpSavePracticecrops(areaId);
   _adpRenderPracticecrops();
   _adpRefreshPracticeTabs();
@@ -4456,6 +4469,7 @@ function _adpRenderPracticecrops() {
       <div class="adp-practice-crop-card" data-crop-id="${cropId}">
         <span class="adp-pcc-name">🌿 ${escHtml(name)}</span>
         <span class="adp-pcc-ratio-badge">${ratio}%</span>
+        <button class="adp-pcc-mini-remove" onclick="event.stopPropagation();_adpRemovePracticeCrop('${cropId}')" title="削除">✕</button>
       </div>
     `;
   }).join('');

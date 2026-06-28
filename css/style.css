@@ -7910,7 +7910,7 @@ html.draw-dialog-active .bottom-nav {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   実務側：複数作物リスト UI（_adpRenderPracticecrops）
+   栽植設計カード（plt-card）の操作部品：削除ボタン・占有率スライダー
    ════════════════════════════════════════════════════════════════ */
 
 /* 実務側作物バー全体ラッパー */
@@ -7921,28 +7921,7 @@ html.draw-dialog-active .bottom-nav {
   padding: 0;
 }
 
-/* 作物カード */
-.adp-practice-crop-card {
-  padding: 8px 12px 6px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
-}
-.adp-practice-crop-card:first-child {
-  border-top: 1px solid var(--border);
-}
-
-/* カードヘッダー（名前 ＋ 削除ボタン） */
-.adp-pcc-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 4px;
-}
-.adp-pcc-name {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text1);
-}
+/* 削除ボタン（栽植設計カード用） */
 .adp-pcc-remove {
   background: none;
   border: none;
@@ -7955,30 +7934,11 @@ html.draw-dialog-active .bottom-nav {
 }
 .adp-pcc-remove:hover { color: var(--red); }
 
-/* スライダー行 */
-.adp-pcc-slider-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+/* 占有率スライダー（栽植設計カード用） */
 .adp-pcc-slider {
   flex: 1;
   accent-color: var(--green2);
   cursor: pointer;
-}
-.adp-pcc-ratio-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text1);
-  min-width: 34px;
-  text-align: right;
-}
-
-/* 占有面積ラベル */
-.adp-pcc-area-label {
-  font-size: 10px;
-  color: var(--text3);
-  margin-top: 3px;
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -8217,22 +8177,35 @@ html.draw-dialog-active .bottom-nav {
 }
 
 /* ════════════════════════════════════════════════════════════════
-   実務カード（簡素化版）: 作物名 + 占有率% + 追加ボタン
+   実務カード（1行レイアウト）: 見出し + 作物チップ（横スクロール）+ 追加ボタン
    ════════════════════════════════════════════════════════════════ */
 
-.adp-practice-crops-header {
+.adp-practice-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px 4px;
+  gap: 8px;
+  padding: 6px 12px;
 }
 .adp-practice-crops-label {
+  flex-shrink: 0;
   font-size: 11px;
   color: var(--text3);
   font-weight: 500;
   letter-spacing: 0.03em;
+  white-space: nowrap;
 }
+.adp-practice-crops-list {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.adp-practice-crops-list::-webkit-scrollbar { display: none; }
 .adp-pcc-add-btn {
+  flex-shrink: 0;
   background: none;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -8249,25 +8222,26 @@ html.draw-dialog-active .bottom-nav {
   border-color: var(--green2);
 }
 
-/* 作物カード：名前行のみ（スライダー廃止） */
+/* 作物チップ（横並びピル） */
 .adp-practice-crop-card {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-bottom: 1px solid var(--border);
-}
-.adp-practice-crop-card:first-child {
-  border-top: 1px solid var(--border);
+  gap: 5px;
+  flex-shrink: 0;
+  padding: 4px 8px;
+  background: var(--surface2, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  white-space: nowrap;
 }
 .adp-pcc-name {
-  flex: 1;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text);
-  white-space: nowrap;
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .adp-pcc-ratio-badge {
   font-size: 10px;
@@ -8278,6 +8252,18 @@ html.draw-dialog-active .bottom-nav {
   font-weight: 600;
   flex-shrink: 0;
 }
+.adp-pcc-mini-remove {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text3);
+  font-size: 11px;
+  line-height: 1;
+  padding: 0 1px;
+  cursor: pointer;
+  transition: color .15s;
+}
+.adp-pcc-mini-remove:hover { color: var(--red); }
 
 /* ════════════════════════════════════════════════════════════════
    🌱 栽植設計ペイン
