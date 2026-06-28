@@ -729,8 +729,9 @@ function _adpEnsureView() {
       <button class="adp-subtab"        data-subtab="risk"      onclick="_adpSwitchSubTab('risk')">⚠️ リスク</button>
       <button class="adp-subtab"        data-subtab="planting"  onclick="_adpSwitchSubTab('planting')">🌱 栽植設計</button>
       <button class="adp-subtab"        data-subtab="cropinfo"  onclick="_adpSwitchSubTab('cropinfo')">🌿 作物情報</button>
-      <button class="adp-subtab"        data-subtab="harvest"   onclick="_adpSwitchSubTab('harvest')">🧺 収穫</button>
-      <button class="adp-subtab"        data-subtab="dashboard" onclick="_adpSwitchSubTab('dashboard')">📊 ダッシュボード</button>
+      <button class="adp-subtab"        data-subtab="harvest"    onclick="_adpSwitchSubTab('harvest')">🧺 収穫</button>
+      <button class="adp-subtab"        data-subtab="pesticide"  onclick="_adpSwitchSubTab('pesticide')">💊 農薬</button>
+      <button class="adp-subtab"        data-subtab="dashboard"  onclick="_adpSwitchSubTab('dashboard')">📊 ダッシュボード</button>
     </div>
 
     <!-- サブタブバー：分析グループ（初期非表示） -->
@@ -998,7 +999,12 @@ function _adpEnsureView() {
         <div id="harvest-result"></div>
       </div>
 
-      <!-- ⑪ 📊 ダッシュボード（実務側ペイン） -->
+      <!-- ⑪ 💊 農薬管理（実務側ペイン） -->
+      <div class="adp-pane" id="adp-pane-pesticide" style="display:none;">
+        <div id="pesticide-result"></div>
+      </div>
+
+      <!-- ⑫ 📊 ダッシュボード（実務側ペイン） -->
       <div class="adp-pane" id="adp-pane-dashboard" style="display:none;">
         <div id="dashboard-result"></div>
       </div>
@@ -1104,11 +1110,11 @@ function _adpJumpToCondTab() {
 }
 
 // ─── サブタブ切替（8タブ構成） ───
-const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'cropinfo', 'harvest', 'dashboard'];
+const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'cropinfo', 'harvest', 'pesticide', 'dashboard'];
 
 // セグメント → 所属タブのマッピング
 const ADP_SEG_TABS = {
-  practice: ['calendar', 'fert', 'risk', 'planting', 'cropinfo', 'harvest', 'dashboard'],
+  practice: ['calendar', 'fert', 'risk', 'planting', 'cropinfo', 'harvest', 'pesticide', 'dashboard'],
   analysis: ['ranking', 'growth', 'tempchart', 'match', 'planting'],
 };
 
@@ -1235,6 +1241,9 @@ function _adpSwitchSubTab(name) {
   }
   if (name === 'harvest') {
     _adpRenderHarvestPane();
+  }
+  if (name === 'pesticide') {
+    _adpRenderPesticidePane();
   }
   if (name === 'dashboard') {
     if (typeof DashboardPane !== 'undefined') DashboardPane.render(_adpPracticecrops, _adpArea);
@@ -4388,7 +4397,7 @@ function _adpOpenCropSelectSheet(seg) {
           ...c,
           ratio: baseRatio + (i === 0 ? rem : 0),
         }));
-        _adpPracticecrops.push({ cropId, ratio: baseRatio, plantingDesign: _adpInitPlantingDesign(cropId), variety: '', sowDate: '', transplantDate: '', harvestStart: '', harvestEnd: '', fertRecords: [] });
+        _adpPracticecrops.push({ cropId, ratio: baseRatio, plantingDesign: _adpInitPlantingDesign(cropId), variety: '', sowDate: '', transplantDate: '', harvestStart: '', harvestEnd: '', fertRecords: [], pesticideRecords: [] });
         _adpSavePracticecrops(areaId);
         _adpRenderPracticecrops();
         _adpRefreshPracticeTabs();
@@ -4480,6 +4489,7 @@ function _adpRefreshPracticeTabs() {
   if (_adpCurrentSubTab === 'harvest')    _adpRenderHarvestPane();
   if (_adpCurrentSubTab === 'cropinfo')   _adpRenderCropInfoPane();
   if (_adpCurrentSubTab === 'fert')       _adpRenderFertRecordSection();
+  if (_adpCurrentSubTab === 'pesticide')  _adpRenderPesticidePane();
   if (_adpCurrentSubTab === 'dashboard' && typeof DashboardPane !== 'undefined') DashboardPane.render(_adpPracticecrops, _adpArea);
 }
 
@@ -7281,5 +7291,237 @@ function _adpDeleteFertRecord(cropId, recordId, areaId) {
   pc.fertRecords = pc.fertRecords.filter(r => r.id !== recordId);
   _adpSavePracticecrops(areaId);
   _adpRenderFertRecordSection();
+  if (typeof showToast === 'function') showToast('記録を削除しました');
+}
+
+// ═══════════════════════════════════════════
+//  💊 農薬管理（セクション5）
+//  実務側サブタブ「💊 農薬」の描画・保存ロジック
+// ═══════════════════════════════════════════
+
+// プリセット農薬リスト { name, dilution }
+const PESTICIDE_PRESET_LIST = [
+  { name: 'アグロスリン乳剤',     dilution: 1000 },
+  { name: 'スミチオン乳剤',       dilution: 1000 },
+  { name: 'マラソン乳剤',         dilution: 1000 },
+  { name: 'モスピラン水溶剤',     dilution: 2000 },
+  { name: 'アドマイヤー水和剤',   dilution: 2000 },
+  { name: 'ダコニール1000',       dilution: 1000 },
+  { name: 'ベンレート水和剤',     dilution: 2000 },
+  { name: 'トップジンM水和剤',    dilution: 1500 },
+  { name: 'オーソサイド水和剤',   dilution:  800 },
+  { name: 'Zボルドー',           dilution:  500 },
+  { name: '石灰硫黄合剤',         dilution:   20 },
+  { name: 'その他（直接入力）',   dilution: null },
+];
+
+/**
+ * pesticide-result div を全描画。
+ */
+function _adpRenderPesticidePane() {
+  const el = document.getElementById('pesticide-result');
+  if (!el) return;
+
+  const areaId = _adpArea?.id;
+
+  if (!_adpPracticecrops.length) {
+    el.innerHTML = `
+      <div class="ps-empty">
+        <div class="ps-empty-icon">💊</div>
+        作物が登録されていません。<br>作物を追加してから利用してください。
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = _adpPracticecrops
+    .map(pc => _adpBuildPesticideCard(pc, areaId))
+    .join('');
+}
+
+/**
+ * 1作物分の農薬記録カードHTMLを生成。
+ */
+function _adpBuildPesticideCard(pc, areaId) {
+  const cropId  = pc.cropId;
+  const name    = _adpCropIdToName(cropId);
+  const records = pc.pesticideRecords || [];
+
+  const presetOptions = PESTICIDE_PRESET_LIST.map(p =>
+    `<option value="${p.name}" data-dilution="${p.dilution ?? ''}">${p.name}${p.dilution ? '（' + p.dilution + '倍）' : ''}</option>`
+  ).join('');
+
+  const rowsHTML = records.length
+    ? records.map(r => `
+        <tr class="ps-row">
+          <td class="ps-td">${r.date || '—'}</td>
+          <td class="ps-td">${r.name || '—'}</td>
+          <td class="ps-td ps-td-target">${r.target || '—'}</td>
+          <td class="ps-td ps-td-amount">${r.amount != null ? r.amount : '—'} ${r.unit || ''}</td>
+          <td class="ps-td ps-td-del">
+            <button class="ps-del-btn" onclick="_adpDeletePesticideRecord('${cropId}','${r.id}','${areaId}')">×</button>
+          </td>
+        </tr>`).join('')
+    : `<tr><td colspan="5" class="ps-td-empty">記録がありません</td></tr>`;
+
+  return `
+    <div class="ps-card" id="ps-card-${cropId}">
+      <div class="ps-card-header" onclick="_adpTogglePesticideCard('${cropId}')">
+        <span class="ps-crop-name">🌿 ${name}</span>
+        <span class="ps-record-count">${records.length}件</span>
+        <span class="ps-card-arrow">▶</span>
+      </div>
+      <div class="ps-card-body" id="ps-body-${cropId}" style="display:none;">
+
+        <!-- 入力フォーム（折りたたみ） -->
+        <div class="ps-form-wrap" id="ps-form-${cropId}" style="display:none;">
+          <div class="ps-form-grid">
+            <div class="ps-field">
+              <label class="ps-label">日付</label>
+              <input class="ps-input" type="date" id="ps-date-${cropId}"
+                     value="${new Date().toISOString().slice(0,10)}">
+            </div>
+            <div class="ps-field">
+              <label class="ps-label">農薬名</label>
+              <select class="ps-input ps-select" id="ps-name-sel-${cropId}"
+                      onchange="_adpPesticidePresetChange('${cropId}')">
+                ${presetOptions}
+              </select>
+            </div>
+            <div class="ps-field" id="ps-name-free-wrap-${cropId}" style="display:none;">
+              <label class="ps-label">農薬名（直接入力）</label>
+              <input class="ps-input" type="text" id="ps-name-free-${cropId}"
+                     placeholder="農薬名を入力" maxlength="50">
+            </div>
+            <div class="ps-field">
+              <label class="ps-label">参考希釈倍数</label>
+              <div class="ps-dilution-hint" id="ps-dilution-${cropId}">—</div>
+            </div>
+            <div class="ps-field">
+              <label class="ps-label">対象病害虫（任意）</label>
+              <input class="ps-input" type="text" id="ps-target-${cropId}"
+                     placeholder="例：灰色かび病、アブラムシ" maxlength="50">
+            </div>
+            <div class="ps-field ps-field-inline">
+              <div>
+                <label class="ps-label">使用量</label>
+                <input class="ps-input ps-input-amount" type="number" id="ps-amount-${cropId}"
+                       placeholder="0" min="0" step="0.1">
+              </div>
+              <div>
+                <label class="ps-label">単位</label>
+                <select class="ps-input ps-select-unit" id="ps-unit-${cropId}">
+                  <option value="ml">ml</option>
+                  <option value="L">L</option>
+                  <option value="g">g</option>
+                  <option value="kg">kg</option>
+                </select>
+              </div>
+            </div>
+            <div class="ps-field">
+              <label class="ps-label">メモ（任意）</label>
+              <input class="ps-input" type="text" id="ps-memo-${cropId}"
+                     placeholder="散布方法など" maxlength="100">
+            </div>
+          </div>
+          <div class="ps-form-footer">
+            <button class="ps-cancel-btn" onclick="_adpTogglePesticideForm('${cropId}')">キャンセル</button>
+            <button class="ps-add-btn" onclick="_adpAddPesticideRecord('${cropId}','${areaId}')">＋ 追加</button>
+          </div>
+        </div>
+
+        <!-- 追加ボタン -->
+        <button class="ps-open-form-btn" id="ps-open-btn-${cropId}"
+                onclick="_adpTogglePesticideForm('${cropId}')">＋ 農薬散布を記録</button>
+
+        <!-- 一覧テーブル -->
+        <table class="ps-table">
+          <thead>
+            <tr>
+              <th class="ps-th">日付</th>
+              <th class="ps-th">農薬名</th>
+              <th class="ps-th ps-th-target">対象</th>
+              <th class="ps-th">使用量</th>
+              <th class="ps-th"></th>
+            </tr>
+          </thead>
+          <tbody id="ps-tbody-${cropId}">
+            ${rowsHTML}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+/** アコーディオン開閉 */
+function _adpTogglePesticideCard(cropId) {
+  const body  = document.getElementById(`ps-body-${cropId}`);
+  const arrow = document.querySelector(`#ps-card-${cropId} .ps-card-arrow`);
+  if (!body) return;
+  const isOpen = body.style.display === 'none';
+  body.style.display = isOpen ? 'block' : 'none';
+  if (arrow) arrow.textContent = isOpen ? '▼' : '▶';
+}
+
+/** 入力フォームの表示/非表示トグル */
+function _adpTogglePesticideForm(cropId) {
+  const form    = document.getElementById(`ps-form-${cropId}`);
+  const openBtn = document.getElementById(`ps-open-btn-${cropId}`);
+  if (!form) return;
+  const isHidden = form.style.display === 'none';
+  form.style.display    = isHidden ? 'block' : 'none';
+  if (openBtn) openBtn.style.display = isHidden ? 'none' : 'inline-flex';
+  // フォームを開いたときに希釈倍数を初期表示
+  if (isHidden) _adpPesticidePresetChange(cropId);
+}
+
+/** プリセット選択 → 希釈倍数表示・フリーテキスト欄切替 */
+function _adpPesticidePresetChange(cropId) {
+  const sel      = document.getElementById(`ps-name-sel-${cropId}`);
+  const freeWrap = document.getElementById(`ps-name-free-wrap-${cropId}`);
+  const hint     = document.getElementById(`ps-dilution-${cropId}`);
+  if (!sel) return;
+
+  const isFree   = sel.value === 'その他（直接入力）';
+  if (freeWrap) freeWrap.style.display = isFree ? 'block' : 'none';
+
+  const opt      = sel.options[sel.selectedIndex];
+  const dilution = opt?.dataset.dilution;
+  if (hint) hint.textContent = dilution ? `参考: ${dilution}倍` : '—';
+}
+
+/** フォーム値を取得してレコードを追加・保存・再描画 */
+function _adpAddPesticideRecord(cropId, areaId) {
+  const pc = _adpPracticecrops.find(c => c.cropId === cropId);
+  if (!pc) return;
+
+  const date   = document.getElementById(`ps-date-${cropId}`)?.value || '';
+  const selVal = document.getElementById(`ps-name-sel-${cropId}`)?.value || '';
+  const name   = selVal === 'その他（直接入力）'
+    ? (document.getElementById(`ps-name-free-${cropId}`)?.value.trim() || '')
+    : selVal;
+  const target = document.getElementById(`ps-target-${cropId}`)?.value.trim() || '';
+  const amount = parseFloat(document.getElementById(`ps-amount-${cropId}`)?.value) || null;
+  const unit   = document.getElementById(`ps-unit-${cropId}`)?.value || 'ml';
+  const memo   = document.getElementById(`ps-memo-${cropId}`)?.value.trim() || '';
+
+  if (!date)   { if (typeof showToast === 'function') showToast('日付を入力してください', 'amber'); return; }
+  if (!name)   { if (typeof showToast === 'function') showToast('農薬名を入力してください', 'amber'); return; }
+  if (!amount) { if (typeof showToast === 'function') showToast('使用量を入力してください', 'amber'); return; }
+
+  if (!pc.pesticideRecords) pc.pesticideRecords = [];
+  pc.pesticideRecords.unshift({ id: Date.now().toString(), date, name, target, amount, unit, memo });
+
+  _adpSavePracticecrops(areaId);
+  _adpRenderPesticidePane();
+  if (typeof showToast === 'function') showToast('農薬散布記録を追加しました');
+}
+
+/** 指定IDのレコードを削除・保存・再描画 */
+function _adpDeletePesticideRecord(cropId, recordId, areaId) {
+  const pc = _adpPracticecrops.find(c => c.cropId === cropId);
+  if (!pc || !pc.pesticideRecords) return;
+  pc.pesticideRecords = pc.pesticideRecords.filter(r => r.id !== recordId);
+  _adpSavePracticecrops(areaId);
+  _adpRenderPesticidePane();
   if (typeof showToast === 'function') showToast('記録を削除しました');
 }

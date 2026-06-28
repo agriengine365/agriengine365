@@ -9115,3 +9115,198 @@ html.draw-dialog-active .bottom-nav {
   .fr-td-memo { display: none; }
   .fr-th:nth-child(4) { display: none; }
 }
+
+/* ═══════════════════════════════════════════
+   💊 農薬管理 (section5 / pesticideRecords)
+   ═══════════════════════════════════════════ */
+
+.ps-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 20px;
+  color: var(--text3, #9ca3af);
+  font-size: 0.875rem;
+  text-align: center;
+  line-height: 1.6;
+}
+.ps-empty-icon { font-size: 2rem; }
+
+.ps-card {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  margin: 10px 14px;
+  overflow: hidden;
+}
+
+.ps-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  cursor: pointer;
+  background: var(--surface2, #f9fafb);
+  user-select: none;
+}
+.ps-card-header:active { background: var(--surface3, #f3f4f6); }
+
+.ps-crop-name    { flex: 1; font-size: 0.9rem; font-weight: 600; color: var(--text, #111); }
+.ps-record-count { font-size: 0.75rem; color: var(--text3, #9ca3af); }
+.ps-card-arrow   { font-size: 0.72rem; color: var(--text3, #9ca3af); }
+
+.ps-card-body {
+  border-top: 1px solid var(--border, #e5e7eb);
+  background: var(--bg, #fff);
+}
+
+.ps-form-wrap {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  background: var(--surface2, #f9fafb);
+}
+
+.ps-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ps-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ps-field-inline {
+  flex-direction: row;
+  gap: 10px;
+}
+.ps-field-inline > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ps-label {
+  font-size: 0.73rem;
+  color: var(--text2, #6b7280);
+  font-weight: 500;
+}
+
+.ps-input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--text, #111);
+  background: var(--bg, #fff);
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.ps-input:focus {
+  outline: none;
+  border-color: var(--accent, #22c55e);
+}
+
+/* 希釈倍数ヒント */
+.ps-dilution-hint {
+  font-size: 0.82rem;
+  color: var(--accent, #22c55e);
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.ps-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ps-cancel-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 20px;
+  background: var(--surface2, #f9fafb);
+  color: var(--text2, #6b7280);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.ps-add-btn {
+  padding: 6px 18px;
+  border: none;
+  border-radius: 20px;
+  background: var(--accent, #22c55e);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.ps-add-btn:active { opacity: 0.8; }
+
+.ps-open-form-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 10px 14px 6px;
+  padding: 6px 14px;
+  border: 1px dashed var(--accent, #22c55e);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--accent, #22c55e);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.ps-open-form-btn:active { background: var(--accent-light, #dcfce7); }
+
+.ps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.ps-th {
+  padding: 6px 10px;
+  text-align: left;
+  color: var(--text3, #9ca3af);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  white-space: nowrap;
+}
+
+.ps-td {
+  padding: 7px 10px;
+  color: var(--text, #111);
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  vertical-align: middle;
+}
+.ps-td-target { color: var(--text2, #6b7280); font-size: 0.78rem; }
+.ps-td-amount { white-space: nowrap; }
+.ps-td-del    { text-align: right; padding-right: 8px; }
+.ps-td-empty  {
+  padding: 16px 10px;
+  color: var(--text3, #9ca3af);
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.ps-del-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 4px;
+  background: var(--surface2, #f9fafb);
+  color: var(--text3, #9ca3af);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.ps-del-btn:active { background: #fee2e2; color: #ef4444; }
+
+@media (max-width: 480px) {
+  .ps-td-target   { display: none; }
+  .ps-th-target   { display: none; }
+}
