@@ -8430,3 +8430,218 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text3);
   line-height: 1.6;
 }
+/* ═══════════════════════════════════════════
+   🧺 収穫管理ペイン
+   css/app.css に追記してください
+   ═══════════════════════════════════════════ */
+
+/* カード */
+.hrv-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.hrv-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--surface2, #f9fafb);
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+
+.hrv-crop-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text, #111);
+}
+
+/* 入力フォーム */
+.hrv-form {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hrv-form-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.hrv-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 100px;
+}
+
+.hrv-form-field-btn {
+  flex: 0 0 auto;
+  min-width: unset;
+}
+
+.hrv-label {
+  font-size: 0.75rem;
+  color: var(--text-muted, #6b7280);
+  font-weight: 500;
+}
+
+.hrv-input {
+  padding: 6px 8px;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: var(--input-bg, #fff);
+  color: var(--text, #111);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.hrv-input-num {
+  width: 80px;
+  flex: 1;
+}
+
+.hrv-select {
+  padding: 6px 4px;
+  border: 1px solid var(--border, #d1d5db);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  background: var(--input-bg, #fff);
+  color: var(--text, #111);
+}
+
+.hrv-input-unit-wrap {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.hrv-unit-sel {
+  flex: 0 0 auto;
+}
+
+.hrv-add-btn {
+  white-space: nowrap;
+  padding: 7px 14px;
+  font-size: 0.85rem;
+}
+
+/* 記録一覧 */
+.hrv-records {
+  padding: 10px 14px;
+}
+
+.hrv-empty {
+  font-size: 0.82rem;
+  color: var(--text-muted, #9ca3af);
+  padding: 6px 0;
+}
+
+.hrv-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.hrv-table th {
+  text-align: left;
+  padding: 4px 6px;
+  color: var(--text-muted, #6b7280);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  white-space: nowrap;
+}
+
+.hrv-table td {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--border-light, #f3f4f6);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.hrv-row:last-child td {
+  border-bottom: none;
+}
+
+.hrv-del-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted, #9ca3af);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.hrv-del-btn:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+/* 集計 */
+.hrv-summary {
+  margin: 0 14px 14px;
+  padding: 10px 12px;
+  background: var(--surface2, #f9fafb);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+}
+
+.hrv-sum-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hrv-sum-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border-light, #f3f4f6);
+}
+
+.hrv-sum-item:last-of-type {
+  border-bottom: none;
+}
+
+.hrv-sum-label {
+  font-size: 0.82rem;
+  color: var(--text-muted, #6b7280);
+}
+
+.hrv-sum-val {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text, #111);
+}
+
+.hrv-sum-note {
+  font-size: 0.75rem;
+  color: var(--text-muted, #9ca3af);
+  margin-top: 6px;
+}
+
+/* モバイル対応 */
+@media (max-width: 480px) {
+  .hrv-form-row {
+    gap: 6px;
+  }
+  .hrv-table th:nth-child(4),
+  .hrv-table td:nth-child(4) {
+    display: none; /* 単価列は小画面で非表示 */
+  }
+}

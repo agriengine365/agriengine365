@@ -728,6 +728,7 @@ function _adpEnsureView() {
       <button class="adp-subtab"        data-subtab="fert"      onclick="_adpSwitchSubTab('fert')">🧪 施肥</button>
       <button class="adp-subtab"        data-subtab="risk"      onclick="_adpSwitchSubTab('risk')">⚠️ リスク</button>
       <button class="adp-subtab"        data-subtab="planting"  onclick="_adpSwitchSubTab('planting')">🌱 栽植設計</button>
+      <button class="adp-subtab"        data-subtab="harvest"   onclick="_adpSwitchSubTab('harvest')">🧺 収穫</button>
     </div>
 
     <!-- サブタブバー：分析グループ（初期非表示） -->
@@ -985,6 +986,11 @@ function _adpEnsureView() {
         <div id="planting-result"></div>
       </div>
 
+      <!-- ⑨ 🧺 収穫管理（実務側ペイン） -->
+      <div class="adp-pane" id="adp-pane-harvest" style="display:none;">
+        <div id="harvest-result"></div>
+      </div>
+
     </div>
 
     <!-- 栽培方式切替ポップアップ（サマリーバッジタップ用） -->
@@ -1086,11 +1092,11 @@ function _adpJumpToCondTab() {
 }
 
 // ─── サブタブ切替（8タブ構成） ───
-const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting'];
+const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'harvest'];
 
 // セグメント → 所属タブのマッピング
 const ADP_SEG_TABS = {
-  practice: ['calendar', 'fert', 'risk', 'planting'],
+  practice: ['calendar', 'fert', 'risk', 'planting', 'harvest'],
   analysis: ['ranking', 'growth', 'tempchart', 'match', 'planting'],
 };
 
@@ -1210,6 +1216,9 @@ function _adpSwitchSubTab(name) {
   }
   if (name === 'planting') {
     _adpRenderPlantingPane();
+  }
+  if (name === 'harvest') {
+    _adpRenderHarvestPane();
   }
 }
 
@@ -4449,6 +4458,7 @@ function _adpRefreshPracticeTabs() {
   if (typeof _renderRiskResultMulti === 'function')  _renderRiskResultMulti(_adpPracticecrops);
   if (typeof _renderCalendarMulti   === 'function')  _renderCalendarMulti(_adpPracticecrops, 'calendar-result');
   if (_adpCurrentSubTab === 'planting') _adpRenderPlantingPane();
+  if (_adpCurrentSubTab === 'harvest')  _adpRenderHarvestPane();
 }
 
 function _adpRenderPracticecrops() {
@@ -6639,3 +6649,294 @@ function _adpBuildPlantingResultHTML(calc, warn) {
     </div>` : `<div class="plt-result-empty">必須項目（畝数・畝長・畝幅・条数・株間）を入力すると計算されます</div>`;
   return `<div class="plt-result-title">計算結果</div>${warnHTML}${calcHTML}`;
 }
+
+// ═══════════════════════════════════════════
+//  🧺 収穫管理ペイン
+// ═══════════════════════════════════════════
+
+const HRV_GRADES    = ['A品', 'B品', 'C品', '規格外'];
+const HRV_UNITS     = ['kg', '個', '箱', '束', '袋'];
+const HRV_PRICE_UNITS = ['円/kg', '円/個', '円/箱', '円/束', '円/袋'];
+
+/**
+ * 収穫記録の初期値を生成する。
+ * _adpPracticecrops の各要素に harvestRecords が存在しない場合に使う。
+ */
+function _adpInitHarvestRecords() {
+  return [];
+}
+
+/**
+ * 収穫ペインを描画する。
+ * 実務側専用。作物ごとにカードを生成し #harvest-result に挿入。
+ */
+function _adpRenderHarvestPane() {
+  const el = document.getElementById('harvest-result');
+  if (!el) return;
+
+  if (!_adpPracticecrops.length) {
+    el.innerHTML = '<div class="empty-mini">作物を選択すると収穫記録を入力できます。</div>';
+    return;
+  }
+
+  el.innerHTML = _adpPracticecrops.map(pc => _adpBuildHarvestCard(pc)).join('');
+}
+
+/**
+ * 1作物分の収穫カード HTML を生成する。
+ */
+function _adpBuildHarvestCard(pc) {
+  const crop    = _adpGetCropById(pc.cropId);
+  const label   = crop?.name || pc.cropId;
+  const records = pc.harvestRecords || [];
+  const areaId  = _adpArea?.id || _adpArea?.name || '';
+
+  // 集計
+  const summary = _adpCalcHarvestSummary(records, pc);
+
+  // 記録行 HTML
+  const rowsHTML = records.length
+    ? `<table class="hrv-table">
+        <thead><tr>
+          <th>日付</th><th>収穫量</th><th>等級</th><th>単価</th><th>収益</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${records.map(r => _adpBuildHarvestRow(r, pc.cropId, areaId)).join('')}
+        </tbody>
+      </table>`
+    : '<div class="hrv-empty">まだ収穫記録がありません。</div>';
+
+  // 単価単位オプション
+  const puOpts = HRV_PRICE_UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
+  const grOpts = HRV_GRADES.map(g => `<option value="${g}">${g}</option>`).join('');
+  const unOpts = HRV_UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
+
+  return `
+    <div class="hrv-card" data-crop-id="${pc.cropId}">
+      <div class="hrv-card-header">
+        <span class="hrv-crop-label">🌿 ${label}</span>
+      </div>
+
+      <!-- 入力フォーム -->
+      <div class="hrv-form">
+        <div class="hrv-form-row">
+          <div class="hrv-form-field">
+            <label class="hrv-label">日付</label>
+            <input class="hrv-input" type="date" id="hrv-date-${pc.cropId}" value="${new Date().toISOString().slice(0,10)}">
+          </div>
+          <div class="hrv-form-field">
+            <label class="hrv-label">収穫量</label>
+            <div class="hrv-input-unit-wrap">
+              <input class="hrv-input hrv-input-num" type="number" min="0" step="0.1" id="hrv-weight-${pc.cropId}" placeholder="0">
+              <select class="hrv-select hrv-unit-sel" id="hrv-unit-${pc.cropId}">${unOpts}</select>
+            </div>
+          </div>
+          <div class="hrv-form-field">
+            <label class="hrv-label">等級</label>
+            <select class="hrv-select" id="hrv-grade-${pc.cropId}">${grOpts}</select>
+          </div>
+        </div>
+        <div class="hrv-form-row">
+          <div class="hrv-form-field">
+            <label class="hrv-label">単価</label>
+            <div class="hrv-input-unit-wrap">
+              <input class="hrv-input hrv-input-num" type="number" min="0" step="1" id="hrv-price-${pc.cropId}" placeholder="0">
+              <select class="hrv-select hrv-unit-sel" id="hrv-priceunit-${pc.cropId}">${puOpts}</select>
+            </div>
+          </div>
+          <div class="hrv-form-field hrv-form-field-btn">
+            <button class="btn btn-primary hrv-add-btn" onclick="_adpAddHarvestRecord('${pc.cropId}','${areaId}')">＋ 記録</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 記録一覧 -->
+      <div class="hrv-records" id="hrv-records-${pc.cropId}">
+        ${rowsHTML}
+      </div>
+
+      <!-- 集計 -->
+      ${_adpBuildHarvestSummaryHTML(summary)}
+    </div>
+  `;
+}
+
+/**
+ * 収穫記録1行のHTMLを生成する。
+ */
+function _adpBuildHarvestRow(r, cropId, areaId) {
+  const revenue = (r.weight != null && r.price != null)
+    ? Math.round(r.weight * r.price).toLocaleString()
+    : '—';
+  return `
+    <tr class="hrv-row">
+      <td>${r.date || '—'}</td>
+      <td>${r.weight != null ? r.weight : '—'} ${r.unit || ''}</td>
+      <td>${r.grade || '—'}</td>
+      <td>${r.price != null ? r.price.toLocaleString() : '—'} ${r.priceUnit || ''}</td>
+      <td>¥${revenue}</td>
+      <td><button class="hrv-del-btn" onclick="_adpDeleteHarvestRecord('${cropId}','${r.id}','${areaId}')">✕</button></td>
+    </tr>
+  `;
+}
+
+/**
+ * 収穫集計を計算する。
+ * @param {Array} records
+ * @param {Object} pc - _adpPracticecrops の要素（ratio・plantingDesign含む）
+ * @returns {Object} summary
+ */
+function _adpCalcHarvestSummary(records, pc) {
+  if (!records.length) return null;
+
+  // 収益集計（全記録）
+  let totalRevenue = 0;
+  let revenueCount = 0;
+
+  // 単位別収量集計
+  const unitTotals = {};
+  records.forEach(r => {
+    if (r.weight != null) {
+      unitTotals[r.unit || 'kg'] = (unitTotals[r.unit || 'kg'] || 0) + r.weight;
+    }
+    if (r.weight != null && r.price != null) {
+      totalRevenue += r.weight * r.price;
+      revenueCount++;
+    }
+  });
+
+  // kg記録のみで反収・坪収量を計算
+  const totalKg = unitTotals['kg'] || 0;
+
+  // 占有面積（㎡）
+  const areaSqm  = _adpArea?.area ? Number(_adpArea.area) * (pc.ratio / 100) : null;
+  const tsubo    = areaSqm ? areaSqm / 3.306 : null;
+
+  // 平均単価（kg記録のみ）
+  const kgRecords = records.filter(r => r.unit === 'kg' && r.weight && r.price);
+  const avgPrice  = kgRecords.length
+    ? Math.round(kgRecords.reduce((s, r) => s + r.price, 0) / kgRecords.length)
+    : null;
+
+  // 反収: kg/10a = totalKg / areaSqm * 1000
+  const per10a  = (totalKg && areaSqm) ? (totalKg / areaSqm * 1000).toFixed(1) : null;
+  // 坪収量: kg/坪
+  const perTsubo = (totalKg && tsubo) ? (totalKg / tsubo).toFixed(2) : null;
+
+  return {
+    unitTotals,
+    totalRevenue: Math.round(totalRevenue),
+    avgPrice,
+    per10a,
+    perTsubo,
+    areaSqm: areaSqm ? areaSqm.toFixed(1) : null,
+  };
+}
+
+/**
+ * 集計表示のHTMLを生成する。
+ */
+function _adpBuildHarvestSummaryHTML(summary) {
+  if (!summary) return '';
+
+  // 単位別収量リスト
+  const unitRows = Object.entries(summary.unitTotals)
+    .map(([unit, total]) => `
+      <div class="hrv-sum-item">
+        <span class="hrv-sum-label">累計収量（${unit}）</span>
+        <span class="hrv-sum-val">${total.toLocaleString()} ${unit}</span>
+      </div>`)
+    .join('');
+
+  const revenueRow = `
+    <div class="hrv-sum-item">
+      <span class="hrv-sum-label">累計収益</span>
+      <span class="hrv-sum-val">¥${summary.totalRevenue.toLocaleString()}</span>
+    </div>`;
+
+  const avgRow = summary.avgPrice != null ? `
+    <div class="hrv-sum-item">
+      <span class="hrv-sum-label">平均単価（kg）</span>
+      <span class="hrv-sum-val">¥${summary.avgPrice.toLocaleString()}/kg</span>
+    </div>` : '';
+
+  const per10aRow = summary.per10a != null ? `
+    <div class="hrv-sum-item">
+      <span class="hrv-sum-label">反収</span>
+      <span class="hrv-sum-val">${summary.per10a} kg/10a</span>
+    </div>` : '';
+
+  const perTsuboRow = summary.perTsubo != null ? `
+    <div class="hrv-sum-item">
+      <span class="hrv-sum-label">坪収量</span>
+      <span class="hrv-sum-val">${summary.perTsubo} kg/坪</span>
+    </div>` : '';
+
+  const areaNote = summary.areaSqm ? `<div class="hrv-sum-note">占有面積 ${summary.areaSqm} ㎡ をもとに計算</div>` : '';
+
+  return `
+    <div class="hrv-summary">
+      <div class="hrv-sum-title">集計</div>
+      ${unitRows}
+      ${revenueRow}
+      ${avgRow}
+      ${per10aRow}
+      ${perTsuboRow}
+      ${areaNote}
+    </div>
+  `;
+}
+
+/**
+ * 収穫記録を追加する。
+ */
+function _adpAddHarvestRecord(cropId, areaId) {
+  const dateEl      = document.getElementById(`hrv-date-${cropId}`);
+  const weightEl    = document.getElementById(`hrv-weight-${cropId}`);
+  const unitEl      = document.getElementById(`hrv-unit-${cropId}`);
+  const gradeEl     = document.getElementById(`hrv-grade-${cropId}`);
+  const priceEl     = document.getElementById(`hrv-price-${cropId}`);
+  const priceUnitEl = document.getElementById(`hrv-priceunit-${cropId}`);
+
+  const weight = parseFloat(weightEl?.value);
+  if (!dateEl?.value || isNaN(weight) || weight <= 0) {
+    if (typeof showToast === 'function') showToast('日付と収穫量は必須です', 'warn');
+    return;
+  }
+
+  const record = {
+    id:        Date.now().toString(),
+    date:      dateEl.value,
+    weight,
+    unit:      unitEl?.value  || 'kg',
+    grade:     gradeEl?.value || 'A品',
+    price:     priceEl?.value ? parseFloat(priceEl.value) : null,
+    priceUnit: priceUnitEl?.value || '円/kg',
+  };
+
+  const pc = _adpPracticecrops.find(c => c.cropId === cropId);
+  if (!pc) return;
+  if (!pc.harvestRecords) pc.harvestRecords = [];
+  pc.harvestRecords.unshift(record);
+  _adpSavePracticecrops(areaId);
+
+  // 入力欄リセット（日付と単位は維持）
+  if (weightEl) weightEl.value = '';
+  if (priceEl)  priceEl.value  = '';
+
+  _adpRenderHarvestPane();
+  if (typeof showToast === 'function') showToast('収穫記録を追加しました');
+}
+
+/**
+ * 収穫記録を削除する。
+ */
+function _adpDeleteHarvestRecord(cropId, recordId, areaId) {
+  const pc = _adpPracticecrops.find(c => c.cropId === cropId);
+  if (!pc?.harvestRecords) return;
+  pc.harvestRecords = pc.harvestRecords.filter(r => r.id !== recordId);
+  _adpSavePracticecrops(areaId);
+  _adpRenderHarvestPane();
+  if (typeof showToast === 'function') showToast('記録を削除しました');
+}
+
