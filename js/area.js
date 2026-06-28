@@ -1221,6 +1221,7 @@ function _adpSwitchSubTab(name) {
   if (_adpPracticecrops.length > 0) {
     if (name === 'fert') {
       if (typeof _renderFertResultMulti === 'function') _renderFertResultMulti(_adpPracticecrops);
+      _adpRenderFertRecordSection();
     }
     if (name === 'risk') {
       if (typeof _renderRiskResultMulti === 'function') _renderRiskResultMulti(_adpPracticecrops);
@@ -4387,7 +4388,7 @@ function _adpOpenCropSelectSheet(seg) {
           ...c,
           ratio: baseRatio + (i === 0 ? rem : 0),
         }));
-        _adpPracticecrops.push({ cropId, ratio: baseRatio, plantingDesign: _adpInitPlantingDesign(cropId), variety: '', sowDate: '', transplantDate: '', harvestStart: '', harvestEnd: '' });
+        _adpPracticecrops.push({ cropId, ratio: baseRatio, plantingDesign: _adpInitPlantingDesign(cropId), variety: '', sowDate: '', transplantDate: '', harvestStart: '', harvestEnd: '', fertRecords: [] });
         _adpSavePracticecrops(areaId);
         _adpRenderPracticecrops();
         _adpRefreshPracticeTabs();
@@ -4476,7 +4477,10 @@ function _adpRefreshPracticeTabs() {
   if (typeof _renderRiskResultMulti === 'function')  _renderRiskResultMulti(_adpPracticecrops);
   if (typeof _renderCalendarMulti   === 'function')  _renderCalendarMulti(_adpPracticecrops, 'calendar-result');
   if (_adpCurrentSubTab === 'planting') _adpRenderPlantingPane();
-  if (_adpCurrentSubTab === 'harvest')  _adpRenderHarvestPane();
+  if (_adpCurrentSubTab === 'harvest')    _adpRenderHarvestPane();
+  if (_adpCurrentSubTab === 'cropinfo')   _adpRenderCropInfoPane();
+  if (_adpCurrentSubTab === 'fert')       _adpRenderFertRecordSection();
+  if (_adpCurrentSubTab === 'dashboard' && typeof DashboardPane !== 'undefined') DashboardPane.render(_adpPracticecrops, _adpArea);
 }
 
 function _adpRenderPracticecrops() {
@@ -7070,4 +7074,212 @@ function _adpSaveCropInfo(cropId, areaId) {
 
   _adpSavePracticecrops(areaId);
   if (typeof showToast === 'function') showToast(`${_adpCropIdToName(cropId)} の作物情報を保存しました`);
+}
+
+// ═══════════════════════════════════════════
+//  🧪 施肥記録台帳（セクション4）
+//  施肥タブ内・施肥概算の下に描画する記録UI
+// ═══════════════════════════════════════════
+
+// プリセット肥料リスト
+const FERT_PRESET_LIST = [
+  '苦土石灰', '過リン酸石灰', '有機石灰',
+  '化成肥料(8-8-8)', '化成肥料(14-14-14)', '尿素', '硫安', '塩化カリ',
+  '鶏糞', '堆肥', 'ボカシ肥', '米ぬか', '魚粉', '草木灰',
+  'その他（直接入力）',
+];
+
+/**
+ * fert-result div の下に施肥記録台帳セクションを描画。
+ * _renderFertResultMulti 実行後に呼ぶ。
+ */
+function _adpRenderFertRecordSection() {
+  const fertEl = document.getElementById('fert-result');
+  if (!fertEl) return;
+
+  const areaId = _adpArea?.id;
+
+  if (!_adpPracticecrops.length) return;
+
+  // 既存の台帳セクションを除去（重複防止）
+  const existing = document.getElementById('fert-record-section');
+  if (existing) existing.remove();
+
+  const section = document.createElement('div');
+  section.id = 'fert-record-section';
+  section.className = 'fr-section';
+  section.innerHTML = `
+    <div class="fr-section-title">📋 施肥記録</div>
+    ${_adpPracticecrops.map(pc => _adpBuildFertRecordCard(pc, areaId)).join('')}
+  `;
+
+  fertEl.parentElement.insertBefore(section, fertEl.nextSibling);
+}
+
+/**
+ * 1作物分の施肥記録カードHTMLを生成。
+ */
+function _adpBuildFertRecordCard(pc, areaId) {
+  const cropId   = pc.cropId;
+  const name     = _adpCropIdToName(cropId);
+  const records  = pc.fertRecords || [];
+
+  const presetOptions = FERT_PRESET_LIST.map(p =>
+    `<option value="${p}">${p}</option>`
+  ).join('');
+
+  const rowsHTML = records.length
+    ? records.map(r => `
+        <tr class="fr-row">
+          <td class="fr-td">${r.date || '—'}</td>
+          <td class="fr-td">${r.name || '—'}</td>
+          <td class="fr-td fr-td-amount">${r.amount != null ? r.amount : '—'} ${r.unit || ''}</td>
+          <td class="fr-td fr-td-memo">${r.memo || ''}</td>
+          <td class="fr-td fr-td-del">
+            <button class="fr-del-btn" onclick="_adpDeleteFertRecord('${cropId}','${r.id}','${areaId}')">×</button>
+          </td>
+        </tr>`).join('')
+    : `<tr><td colspan="5" class="fr-td-empty">記録がありません</td></tr>`;
+
+  return `
+    <div class="fr-card" id="fr-card-${cropId}">
+      <div class="fr-card-header" onclick="_adpToggleFertCard('${cropId}')">
+        <span class="fr-crop-name">🌿 ${name}</span>
+        <span class="fr-record-count">${records.length}件</span>
+        <span class="fr-card-arrow">▶</span>
+      </div>
+      <div class="fr-card-body" id="fr-body-${cropId}" style="display:none;">
+
+        <!-- 入力フォーム（折りたたみ） -->
+        <div class="fr-form-wrap" id="fr-form-${cropId}" style="display:none;">
+          <div class="fr-form-grid">
+            <div class="fr-field">
+              <label class="fr-label">日付</label>
+              <input class="fr-input" type="date" id="fr-date-${cropId}" value="${new Date().toISOString().slice(0,10)}">
+            </div>
+            <div class="fr-field">
+              <label class="fr-label">肥料名</label>
+              <select class="fr-input fr-select" id="fr-name-sel-${cropId}"
+                      onchange="_adpFertPresetChange('${cropId}')">
+                ${presetOptions}
+              </select>
+            </div>
+            <div class="fr-field" id="fr-name-free-wrap-${cropId}" style="display:none;">
+              <label class="fr-label">肥料名（直接入力）</label>
+              <input class="fr-input" type="text" id="fr-name-free-${cropId}"
+                     placeholder="肥料名を入力" maxlength="50">
+            </div>
+            <div class="fr-field fr-field-inline">
+              <div>
+                <label class="fr-label">施用量</label>
+                <input class="fr-input fr-input-amount" type="number" id="fr-amount-${cropId}"
+                       placeholder="0.0" min="0" step="0.1">
+              </div>
+              <div>
+                <label class="fr-label">単位</label>
+                <select class="fr-input fr-select-unit" id="fr-unit-${cropId}">
+                  <option value="kg">kg</option>
+                  <option value="g">g</option>
+                  <option value="L">L</option>
+                  <option value="袋">袋</option>
+                </select>
+              </div>
+            </div>
+            <div class="fr-field">
+              <label class="fr-label">メモ（任意）</label>
+              <input class="fr-input" type="text" id="fr-memo-${cropId}"
+                     placeholder="元肥・追肥など" maxlength="100">
+            </div>
+          </div>
+          <div class="fr-form-footer">
+            <button class="fr-cancel-btn" onclick="_adpToggleFertForm('${cropId}')">キャンセル</button>
+            <button class="fr-add-btn" onclick="_adpAddFertRecord('${cropId}','${areaId}')">＋ 追加</button>
+          </div>
+        </div>
+
+        <!-- 追加ボタン -->
+        <button class="fr-open-form-btn" id="fr-open-btn-${cropId}"
+                onclick="_adpToggleFertForm('${cropId}')">＋ 施肥を記録</button>
+
+        <!-- 一覧テーブル -->
+        <table class="fr-table">
+          <thead>
+            <tr>
+              <th class="fr-th">日付</th>
+              <th class="fr-th">肥料名</th>
+              <th class="fr-th">施用量</th>
+              <th class="fr-th">メモ</th>
+              <th class="fr-th"></th>
+            </tr>
+          </thead>
+          <tbody id="fr-tbody-${cropId}">
+            ${rowsHTML}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+/** アコーディオン開閉 */
+function _adpToggleFertCard(cropId) {
+  const body  = document.getElementById(`fr-body-${cropId}`);
+  const arrow = document.querySelector(`#fr-card-${cropId} .fr-card-arrow`);
+  if (!body) return;
+  const isOpen = body.style.display === 'none';
+  body.style.display = isOpen ? 'block' : 'none';
+  if (arrow) arrow.textContent = isOpen ? '▼' : '▶';
+}
+
+/** 入力フォームの表示/非表示トグル */
+function _adpToggleFertForm(cropId) {
+  const form    = document.getElementById(`fr-form-${cropId}`);
+  const openBtn = document.getElementById(`fr-open-btn-${cropId}`);
+  if (!form) return;
+  const isHidden = form.style.display === 'none';
+  form.style.display    = isHidden ? 'block' : 'none';
+  if (openBtn) openBtn.style.display = isHidden ? 'none' : 'inline-flex';
+}
+
+/** プリセット選択 → 「その他」の時フリーテキスト欄を表示 */
+function _adpFertPresetChange(cropId) {
+  const sel      = document.getElementById(`fr-name-sel-${cropId}`);
+  const freeWrap = document.getElementById(`fr-name-free-wrap-${cropId}`);
+  if (!sel || !freeWrap) return;
+  freeWrap.style.display = sel.value === 'その他（直接入力）' ? 'block' : 'none';
+}
+
+/** フォーム値を取得してレコードを追加・保存・再描画 */
+function _adpAddFertRecord(cropId, areaId) {
+  const pc = _adpPracticecrops.find(c => c.cropId === cropId);
+  if (!pc) return;
+
+  const date   = document.getElementById(`fr-date-${cropId}`)?.value || '';
+  const selVal = document.getElementById(`fr-name-sel-${cropId}`)?.value || '';
+  const name   = selVal === 'その他（直接入力）'
+    ? (document.getElementById(`fr-name-free-${cropId}`)?.value.trim() || '')
+    : selVal;
+  const amount = parseFloat(document.getElementById(`fr-amount-${cropId}`)?.value) || null;
+  const unit   = document.getElementById(`fr-unit-${cropId}`)?.value || 'kg';
+  const memo   = document.getElementById(`fr-memo-${cropId}`)?.value.trim() || '';
+
+  if (!date)   { if (typeof showToast === 'function') showToast('日付を入力してください', 'amber'); return; }
+  if (!name)   { if (typeof showToast === 'function') showToast('肥料名を入力してください', 'amber'); return; }
+  if (!amount) { if (typeof showToast === 'function') showToast('施用量を入力してください', 'amber'); return; }
+
+  if (!pc.fertRecords) pc.fertRecords = [];
+  pc.fertRecords.unshift({ id: Date.now().toString(), date, name, amount, unit, memo });
+
+  _adpSavePracticecrops(areaId);
+  _adpRenderFertRecordSection();
+  if (typeof showToast === 'function') showToast('施肥記録を追加しました');
+}
+
+/** 指定IDのレコードを削除・保存・再描画 */
+function _adpDeleteFertRecord(cropId, recordId, areaId) {
+  const pc = _adpPracticecrops.find(c => c.cropId === cropId);
+  if (!pc || !pc.fertRecords) return;
+  pc.fertRecords = pc.fertRecords.filter(r => r.id !== recordId);
+  _adpSavePracticecrops(areaId);
+  _adpRenderFertRecordSection();
+  if (typeof showToast === 'function') showToast('記録を削除しました');
 }

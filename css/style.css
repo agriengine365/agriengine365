@@ -8906,3 +8906,212 @@ html.draw-dialog-active .bottom-nav {
   transition: opacity 0.15s;
 }
 .ci-save-btn:active { opacity: 0.8; }
+
+/* ═══════════════════════════════════════════
+   🧪 施肥記録台帳 (section4 / fertRecords)
+   ═══════════════════════════════════════════ */
+
+.fr-section {
+  margin-top: 16px;
+  padding-bottom: 12px;
+}
+
+.fr-section-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text2, #6b7280);
+  padding: 0 14px 8px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* カード */
+.fr-card {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 10px;
+  margin: 0 14px 10px;
+  overflow: hidden;
+}
+
+.fr-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 14px;
+  cursor: pointer;
+  background: var(--surface2, #f9fafb);
+  user-select: none;
+}
+.fr-card-header:active { background: var(--surface3, #f3f4f6); }
+
+.fr-crop-name {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text, #111);
+}
+.fr-record-count {
+  font-size: 0.75rem;
+  color: var(--text3, #9ca3af);
+}
+.fr-card-arrow {
+  font-size: 0.72rem;
+  color: var(--text3, #9ca3af);
+}
+
+/* カードボディ */
+.fr-card-body {
+  border-top: 1px solid var(--border, #e5e7eb);
+  background: var(--bg, #fff);
+}
+
+/* フォームラッパー */
+.fr-form-wrap {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  background: var(--surface2, #f9fafb);
+}
+
+.fr-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fr-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fr-field-inline {
+  flex-direction: row;
+  gap: 10px;
+}
+.fr-field-inline > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fr-label {
+  font-size: 0.73rem;
+  color: var(--text2, #6b7280);
+  font-weight: 500;
+}
+
+.fr-input {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--text, #111);
+  background: var(--bg, #fff);
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+.fr-input:focus {
+  outline: none;
+  border-color: var(--accent, #22c55e);
+}
+
+.fr-input-amount { width: 100%; }
+.fr-select-unit  { width: 100%; }
+
+.fr-form-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.fr-cancel-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 20px;
+  background: var(--surface2, #f9fafb);
+  color: var(--text2, #6b7280);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.fr-add-btn {
+  padding: 6px 18px;
+  border: none;
+  border-radius: 20px;
+  background: var(--accent, #22c55e);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.fr-add-btn:active { opacity: 0.8; }
+
+/* 追加ボタン（フォームが閉じている時） */
+.fr-open-form-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 10px 14px 6px;
+  padding: 6px 14px;
+  border: 1px dashed var(--accent, #22c55e);
+  border-radius: 20px;
+  background: transparent;
+  color: var(--accent, #22c55e);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.fr-open-form-btn:active { background: var(--accent-light, #dcfce7); }
+
+/* テーブル */
+.fr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+}
+
+.fr-th {
+  padding: 6px 10px;
+  text-align: left;
+  color: var(--text3, #9ca3af);
+  font-weight: 500;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  white-space: nowrap;
+}
+
+.fr-td {
+  padding: 7px 10px;
+  color: var(--text, #111);
+  border-bottom: 1px solid var(--border, #e5e7eb);
+  vertical-align: middle;
+}
+.fr-td-amount { white-space: nowrap; }
+.fr-td-memo   { color: var(--text2, #6b7280); font-size: 0.75rem; }
+.fr-td-del    { text-align: right; padding-right: 8px; }
+.fr-td-empty  {
+  padding: 16px 10px;
+  color: var(--text3, #9ca3af);
+  text-align: center;
+  font-size: 0.8rem;
+}
+
+.fr-del-btn {
+  padding: 2px 8px;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 4px;
+  background: var(--surface2, #f9fafb);
+  color: var(--text3, #9ca3af);
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.fr-del-btn:active { background: #fee2e2; color: #ef4444; }
+
+/* モバイル */
+@media (max-width: 480px) {
+  .fr-td-memo { display: none; }
+  .fr-th:nth-child(4) { display: none; }
+}
