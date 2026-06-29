@@ -10241,3 +10241,36 @@ html.draw-dialog-active .bottom-nav {
   background: #e74c3c22;
   color: #e74c3c;
 }
+
+/* ═══════════════════════════════════════════
+   スワイプタブ切替アニメーション用
+   ─ ネストペイン親コンテナにoverflow:hiddenを付与して
+     スライド中のはみ出しを防ぐ
+   ═══════════════════════════════════════════ */
+
+/* ランキング内ペインコンテナ */
+#adp-pane-ranking {
+  overflow: hidden;
+}
+/* ランキング内ペイン：アニメーション時に絶対位置で並ぶよう relative コンテキストを持つラッパーが必要なため
+   adp-rk-paneをrelativeに（既存flexレイアウトを壊さないようpositionのみ追加） */
+.adp-rk-pane {
+  position: relative;
+  will-change: transform;
+}
+
+/* 生育期間タブ内ペインコンテナ：overflow隠し */
+#adp-pane-growth {
+  overflow: hidden;
+}
+.adp-growth-pane {
+  position: relative;
+  will-change: transform;
+}
+
+/* 親サブタブ（.adp-pane）スワイプ用：
+   adp-view-bodyはすでにposition:relative + overflow:hiddenのため追加不要。
+   adp-paneにwill-changeだけ付与しておく。 */
+.adp-pane {
+  will-change: transform;
+}

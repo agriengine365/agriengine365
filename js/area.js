@@ -810,7 +810,6 @@ function _adpEnsureView() {
       <button class="adp-subtab" data-subtab="growth"    onclick="_adpSwitchSubTab('growth')">📈 生育期間</button>
       <button class="adp-subtab" data-subtab="tempchart" onclick="_adpSwitchSubTab('tempchart')">🌡️ 適温グラフ</button>
       <button class="adp-subtab" data-subtab="match"     onclick="_adpSwitchSubTab('match')">📊 適合度</button>
-      <button class="adp-subtab" data-subtab="planting"  onclick="_adpSwitchSubTab('planting')">🌱 栽植設計</button>
     </div>
 
     <!-- コンテンツ領域 -->
@@ -1200,7 +1199,7 @@ const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'cale
 // セグメント → 所属タブのマッピング
 const ADP_SEG_TABS = {
   practice: ['calendar', 'fert', 'risk', 'planting', 'cropinfo', 'harvest', 'pesticide', 'irrigation', 'weather', 'dashboard', 'shipping'],
-  analysis: ['ranking', 'growth', 'tempchart', 'match', 'planting'],
+  analysis: ['ranking', 'growth', 'tempchart', 'match'],
 };
 
 let _adpCurrentSeg = 'practice'; // 現在のセグメント（デフォルト実務）
@@ -1237,6 +1236,9 @@ function _adpSwitchSeg(seg) {
 
 let _adpCurrentSubTab = 'ranking'; // 現在のサブタブ
 
+// スワイプアニメーション経由で呼ばれた場合にdisplay操作をスキップするフラグ
+let _adpSwipeAnimating = false;
+
 function _adpSwitchSubTab(name) {
   _adpCurrentSubTab = name;
 
@@ -1262,17 +1264,19 @@ function _adpSwitchSubTab(name) {
   document.querySelectorAll('.adp-subtab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.subtab === name);
   });
-  // ペイン
-  ADP_SUBTAB_KEYS.forEach(p => {
-    const el = document.getElementById('adp-pane-' + p);
-    if (!el) return;
-    const visible = (p === name);
-    if (el.classList.contains('adp-pane-combined')) {
-      el.style.display = visible ? 'flex' : 'none';
-    } else {
-      el.style.display = visible ? '' : 'none';
-    }
-  });
+  // ペイン（スワイプアニメーション中はdisplay操作をスキップ）
+  if (!_adpSwipeAnimating) {
+    ADP_SUBTAB_KEYS.forEach(p => {
+      const el = document.getElementById('adp-pane-' + p);
+      if (!el) return;
+      const visible = (p === name);
+      if (el.classList.contains('adp-pane-combined')) {
+        el.style.display = visible ? 'flex' : 'none';
+      } else {
+        el.style.display = visible ? '' : 'none';
+      }
+    });
+  }
   // グラフペインを表示したときに再描画（offsetWidth が 0→正常になるため）
   if (name === 'growth') {
     // 栽培方式トグルは条件設定タブが単一管理元のため、active状態のみ同期
@@ -1348,7 +1352,70 @@ function _adpSwitchSubTab(name) {
   if (activeBtn) activeBtn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
 }
 
-// ─── コンテンツ領域スワイプでタブ切替 ───
+// ─── ネストタブ定義テーブル（汎用）───
+// subtabKey → { keys: string[], getIdx: ()=>number, switchFn: (key)=>void, panePrefix: string }
+// 新しいネストタブを追加する場合はここにエントリを足すだけでスワイプが自動対応する。
+function _adpGetNestedTabDef() {
+  return {
+    ranking: {
+      keys:      ADP_RK_PANE_KEYS,
+      getIdx:    () => ADP_RK_PANE_KEYS.indexOf(_adpRkCurrentPane),
+      switchFn:  (k) => _adpRkSwitchPane(k),
+      panePrefix: 'adp-rk-pane-',
+    },
+    growth: {
+      keys:      ADP_GROWTH_PANE_KEYS,
+      getIdx:    () => ADP_GROWTH_PANE_KEYS.indexOf(_adpGrowthCurrentSubTab),
+      switchFn:  (k) => _adpGrowthSwitchSubTab(k),
+      panePrefix: 'adp-growth-pane-',
+    },
+  };
+}
+
+// ─── スライドアニメーション付き表示切替ヘルパー ───
+// direction: 'left'（次へ）| 'right'（前へ）
+function _adpSlideSwitch(panePrefix, keys, fromKey, toKey, direction) {
+  const fromEl = document.getElementById(panePrefix + fromKey);
+  const toEl   = document.getElementById(panePrefix + toKey);
+  if (!fromEl || !toEl) return;
+
+  const outX = direction === 'left' ? '-100%' : '100%';
+  const inX  = direction === 'left' ? '100%'  : '-100%';
+  const dur  = '280ms';
+  const ease = 'cubic-bezier(0.4, 0, 0.2, 1)';
+
+  // アニメーション中フラグON（switchFn内のdisplay操作を抑制）
+  _adpSwipeAnimating = true;
+
+  // toEl を画面外に配置して即表示
+  toEl.style.transition = 'none';
+  toEl.style.transform  = `translateX(${inX})`;
+  toEl.style.display    = '';
+
+  // 1フレーム待ってからアニメーション開始
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      fromEl.style.transition = `transform ${dur} ${ease}`;
+      fromEl.style.transform  = `translateX(${outX})`;
+      toEl.style.transition   = `transform ${dur} ${ease}`;
+      toEl.style.transform    = 'translateX(0)';
+
+      // アニメーション完了後に fromEl を非表示・スタイルリセット
+      const cleanup = () => {
+        fromEl.style.display    = 'none';
+        fromEl.style.transition = '';
+        fromEl.style.transform  = '';
+        toEl.style.transition   = '';
+        toEl.style.transform    = '';
+        _adpSwipeAnimating = false;
+        fromEl.removeEventListener('transitionend', cleanup);
+      };
+      fromEl.addEventListener('transitionend', cleanup, { once: true });
+    });
+  });
+}
+
+// ─── コンテンツ領域スワイプでタブ切替（最下層優先・アニメーション付き） ───
 function _adpInitSwipe() {
   const body = document.querySelector('.adp-view-body');
   if (!body || body._swipeInit) return;
@@ -1370,14 +1437,35 @@ function _adpInitSwipe() {
     // 横方向が縦より大きく、50px以上、300ms以内
     if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) || dt > 300) return;
 
-    const seg  = _adpCurrentSeg;
-    const tabs = ADP_SEG_TABS[seg] || [];
+    const direction = dx < 0 ? 'left' : 'right';
+    const nestedDefs = _adpGetNestedTabDef();
+
+    // ── 最下層優先：現在のサブタブにネストタブ定義があればそちらを操作 ──
+    const nested = nestedDefs[_adpCurrentSubTab];
+    if (nested) {
+      const idx  = nested.getIdx();
+      const next = direction === 'left' ? nested.keys[idx + 1] : nested.keys[idx - 1];
+      if (next) {
+        const fromKey = nested.keys[idx];
+        _adpSlideSwitch(nested.panePrefix, nested.keys, fromKey, next, direction);
+        // switchFnはアニメーション後も状態変数・ボタンactiveを更新するため呼ぶが、
+        // display切替はslideSwitch側で行うためswitchFn内のdisplay操作と競合しないよう
+        // ラップして呼ぶ
+        nested.switchFn(next);
+      }
+      return;
+    }
+
+    // ── 通常：親サブタブをスワイプ移動（アニメーション付き） ──
+    const tabs = ADP_SEG_TABS[_adpCurrentSeg] || [];
     const idx  = tabs.indexOf(_adpCurrentSubTab);
     if (idx === -1) return;
+    const next = direction === 'left' ? tabs[idx + 1] : tabs[idx - 1];
+    if (!next) return;
 
-    // 左スワイプ→次タブ、右スワイプ→前タブ
-    const next = dx < 0 ? tabs[idx + 1] : tabs[idx - 1];
-    if (next) _adpSwitchSubTab(next);
+    const fromKey = tabs[idx];
+    _adpSlideSwitch('adp-pane-', tabs, fromKey, next, direction);
+    _adpSwitchSubTab(next);
   }, { passive: true });
 }
 
@@ -1409,12 +1497,14 @@ function _adpRkSwitchPane(paneKey) {
   document.querySelectorAll('.adp-rk-subtab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.rkPane === paneKey);
   });
-  // ペイン
-  ADP_RK_PANE_KEYS.forEach(p => {
-    const el = document.getElementById('adp-rk-pane-' + p);
-    if (!el) return;
-    el.style.display = (p === paneKey) ? '' : 'none';
-  });
+  // ペイン（スワイプアニメーション中はdisplay操作をスキップ）
+  if (!_adpSwipeAnimating) {
+    ADP_RK_PANE_KEYS.forEach(p => {
+      const el = document.getElementById('adp-rk-pane-' + p);
+      if (!el) return;
+      el.style.display = (p === paneKey) ? '' : 'none';
+    });
+  }
 
   // 適合度ランキングペイン表示時にリスト再描画
   if (paneKey === 'match') {
@@ -4489,12 +4579,14 @@ function _adpGrowthSwitchSubTab(paneKey) {
   document.querySelectorAll('.adp-growth-subtab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.growthPane === paneKey);
   });
-  // ペインの表示切替
-  ADP_GROWTH_PANE_KEYS.forEach(p => {
-    const el = document.getElementById('adp-growth-pane-' + p);
-    if (!el) return;
-    el.style.display = (p === paneKey) ? '' : 'none';
-  });
+  // ペインの表示切替（スワイプアニメーション中はdisplay操作をスキップ）
+  if (!_adpSwipeAnimating) {
+    ADP_GROWTH_PANE_KEYS.forEach(p => {
+      const el = document.getElementById('adp-growth-pane-' + p);
+      if (!el) return;
+      el.style.display = (p === paneKey) ? '' : 'none';
+    });
+  }
 
   // 表示時に再描画（offsetWidthが0→正常値になるタイミングを待つ）
   setTimeout(() => _adpRenderGrowthChart(_adpSelectedCropId), 30);
