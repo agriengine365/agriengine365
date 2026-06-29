@@ -64,6 +64,16 @@
     </div>
   </div>
 
+  <!-- フェーズ A2: 畝方向指定 -->
+  <div class="draw-phase" id="draw-phase-ridgedir" hidden>
+    <p class="map-draw-dialog-hint" id="rdraw-hint">畝の方向を2点で指定してください</p>
+    <div class="map-draw-dialog-actions">
+      <button type="button" class="map-draw-btn map-draw-btn-cancel"  onclick="ridgeDirSkip()">スキップ</button>
+      <button type="button" class="map-draw-btn map-draw-btn-sub"     id="btn-rdraw-back"    onclick="ridgeDirBack()"    disabled>戻る</button>
+      <button type="button" class="map-draw-btn map-draw-btn-confirm" id="btn-rdraw-confirm" onclick="ridgeDirConfirm()">確定</button>
+    </div>
+  </div>
+
   <!-- フェーズ B: 保存ウィザード -->
   <div class="draw-phase" id="draw-phase-wizard" hidden>
 
@@ -253,6 +263,7 @@
 <script src="js/ui.js"></script>
 <script src="js/firebase.js"></script>
 <script src="js/map.js"></script>
+<script src="js/ridgeGeometry.js"></script>
 <script src="js/polygonDraw.js"></script>
 <script src="js/areaEnv.js"></script>
 <script src="js/area.js"></script>

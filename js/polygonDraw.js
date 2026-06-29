@@ -277,3 +277,164 @@ function polygonDrawConfirm()  { PolygonDraw.confirmVertex(); }
 function polygonDrawBack()     { PolygonDraw.goBack(); }
 function polygonDrawComplete() { PolygonDraw.complete(); }
 function polygonDrawReset()    { PolygonDraw.reset(); }
+
+// ═══════════════════════════════════════════
+//  RIDGE DIR DRAW — 畝方向2点指定モード
+//  スコープ確定方式で2点を指定 → コールバックで結果を返す
+// ═══════════════════════════════════════════
+
+const RidgeDirDraw = (() => {
+  let active   = false;
+  let point1   = null;  // 1点目 LatLng
+  let liveLayer = null;
+  /** @type {Function|null} コールバック: (result:{p1,p2}|null) => void */
+  let _onComplete = null;
+
+  // ─── スコープ中心の LatLng を取得（PolygonDraw と共通ロジック）───
+  function getCenter() {
+    const scope = document.getElementById('draw-scope');
+    if (!scope) return map.getCenter();
+    const sr = scope.getBoundingClientRect();
+    const mr = map.getContainer().getBoundingClientRect();
+    const cx = sr.left + sr.width  / 2 - mr.left;
+    const cy = sr.top  + sr.height / 2 - mr.top;
+    return map.containerPointToLatLng(L.point(cx, cy));
+  }
+
+  // ─── ライブライン（1点目→スコープ中心）───
+  function updateLiveLine() {
+    if (liveLayer) { map.removeLayer(liveLayer); liveLayer = null; }
+    if (!active || !point1) return;
+    const center = getCenter();
+    liveLayer = L.polyline([point1, center], {
+      color:     '#f59e0b', // 畝方向は黄色で区別
+      weight:    2.5,
+      dashArray: '6 5',
+      opacity:   0.85,
+      interactive: false,
+    }).addTo(map);
+  }
+
+  function onMapMove() {
+    if (!active) return;
+    updateLiveLine();
+  }
+
+  // ─── ボタン状態更新 ───
+  function updateControls() {
+    const btnConfirm = document.getElementById('btn-rdraw-confirm');
+    const btnBack    = document.getElementById('btn-rdraw-back');
+    if (btnConfirm) btnConfirm.disabled = !active;
+    if (btnBack)    btnBack.disabled    = !active || !point1;
+  }
+
+  // ─── ヒント文更新 ───
+  function updateHint(text) {
+    const el = document.getElementById('rdraw-hint');
+    if (el) el.textContent = text;
+  }
+
+  // ─── フェーズ切替 ───
+  function _showPhase(show) {
+    const phDrawing  = document.getElementById('draw-phase-drawing');
+    const phRidgeDir = document.getElementById('draw-phase-ridgedir');
+    const dlg = document.getElementById('map-draw-dialog');
+    if (dlg) {
+      dlg.hidden = false;
+      dlg.removeAttribute('aria-hidden');
+    }
+    if (phDrawing)  phDrawing.hidden  = show;
+    if (phRidgeDir) phRidgeDir.hidden = !show;
+    document.documentElement.classList.toggle('draw-dialog-active', show);
+    // sheet を非表示にする
+    const sheet = document.getElementById('sheet');
+    if (sheet) sheet.style.display = show ? 'none' : '';
+  }
+
+  // ─── 開始 ───
+  function start(onComplete) {
+    if (active) return;
+    active      = true;
+    point1      = null;
+    _onComplete = onComplete || ((result) => {
+      if (typeof onRidgeDirComplete === 'function') onRidgeDirComplete(result);
+    });
+
+    map.on('move',    onMapMove);
+    map.on('moveend', onMapMove);
+    map.getContainer().classList.add('polygon-draw-active');
+
+    // スコープ表示
+    const scope = document.getElementById('draw-scope');
+    if (scope) scope.classList.add('active');
+
+    _showPhase(true);
+    updateControls();
+    updateHint('1点目：畝の基準方向の始点を中央に合わせて「確定」');
+    showDrawToast('畝の方向を2点で指定してください（スキップで後から設定可）');
+  }
+
+  // ─── 停止（内部） ───
+  function stop() {
+    if (!active) return;
+    active = false;
+    map.off('move',    onMapMove);
+    map.off('moveend', onMapMove);
+    map.getContainer().classList.remove('polygon-draw-active');
+
+    if (liveLayer) { map.removeLayer(liveLayer); liveLayer = null; }
+
+    const scope = document.getElementById('draw-scope');
+    if (scope) scope.classList.remove('active');
+
+    _showPhase(false);
+    // ダイアログ自体を閉じる（showWizard が開き直す）
+    const dlg = document.getElementById('map-draw-dialog');
+    if (dlg) { dlg.hidden = true; dlg.setAttribute('aria-hidden', 'true'); }
+    document.documentElement.classList.remove('draw-dialog-active');
+  }
+
+  // ─── 確定（スコープ中心を点として追加）───
+  function confirmPoint() {
+    if (!active) return;
+    const ll = getCenter();
+
+    if (!point1) {
+      // 1点目確定
+      point1 = L.latLng(ll.lat, ll.lng);
+      updateControls();
+      updateLiveLine();
+      updateHint('2点目：畝の延びる方向の終点を中央に合わせて「確定」');
+      showDrawToast('1点目を確定。地図を動かして2点目（畝の方向）を指定してください');
+    } else {
+      // 2点目確定 → 完了
+      const p2 = { lat: ll.lat, lng: ll.lng };
+      const p1 = { lat: point1.lat, lng: point1.lng };
+      stop();
+      if (_onComplete) _onComplete({ p1, p2 });
+    }
+  }
+
+  // ─── 1点目を取り消す ───
+  function goBack() {
+    if (!active || !point1) return;
+    point1 = null;
+    if (liveLayer) { map.removeLayer(liveLayer); liveLayer = null; }
+    updateControls();
+    updateHint('1点目：畝の基準方向の始点を中央に合わせて「確定」');
+    showDrawToast('1点目をリセットしました');
+  }
+
+  // ─── スキップ ───
+  function skip() {
+    stop();
+    if (_onComplete) _onComplete(null);
+  }
+
+  return { isActive: () => active, start, confirmPoint, goBack, skip };
+})();
+
+// ─── RidgeDirDraw グローバル関数 ───
+function ridgeDirConfirm() { RidgeDirDraw.confirmPoint(); }
+function ridgeDirBack()    { RidgeDirDraw.goBack(); }
+function ridgeDirSkip()    { RidgeDirDraw.skip(); }

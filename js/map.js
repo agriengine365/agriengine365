@@ -106,8 +106,23 @@ function renderSavedAreasOnMap(areas) {
 }
 
 // ─── カスタム描画完了（polygonDraw.js から呼ばれる）───
+// ポリゴン確定後 → 畝方向指定フェーズ → ウィザード の順に進む
+let _pendingPolyLayer = null; // 畝方向指定中に一時保持するポリゴン
+
 async function onDrawPolygonComplete(layer) {
   await updateAreaStats(layer);
+  _pendingPolyLayer = layer;
+  // 畝方向指定フェーズを起動（RidgeDirDraw が map-draw-dialog を使う）
+  RidgeDirDraw.start();
+}
+
+// ─── 畝方向指定完了コールバック（polygonDraw.js から呼ばれる）───
+// result: { p1:{lat,lng}, p2:{lat,lng} } | null（スキップ時）
+function onRidgeDirComplete(result) {
+  // エリアデータに畝方向を保持（commitSaveArea で Firestore に保存）
+  if (result && currentAreaData) {
+    currentAreaData.ridgeBaseDirection = { p1: result.p1, p2: result.p2 };
+  }
   showWizard();
 }
 

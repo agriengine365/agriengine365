@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════════
 //  CROP_DB — 作物データベース
 //  223件 重複統合済み・calendar(sow/harvest)全件更新
-//  最終更新: 月データ空き48件を全国平均基準で補完、栽培ごよみmemoを全223件に追記
+//  最終更新: waterNeedLperSqmPerDay（1日あたり標準灌水量 L/m²/日）全223件追加
 // ═══════════════════════════════════════════════════════════
 const CROP_DB = [
   {
@@ -127,7 +127,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 60,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.043,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "soybean",
@@ -248,7 +250,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 70,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.009,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "black_soybean",
@@ -363,7 +367,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 70,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.006,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "adzuki",
@@ -479,7 +485,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 70,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.009,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "wheat",
@@ -600,7 +608,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 100,
       "linesPerRow": 6
-    }
+    },
+    "yieldPerPlant": null
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "barley",
@@ -715,7 +725,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 100,
       "linesPerRow": 6
-    }
+    },
+    "yieldPerPlant": null
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "rye",
@@ -829,7 +841,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 100,
       "linesPerRow": 6
-    }
+    },
+    "yieldPerPlant": null
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "oat",
@@ -944,7 +958,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 100,
       "linesPerRow": 6
-    }
+    },
+    "yieldPerPlant": null
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "buckwheat",
@@ -1063,7 +1079,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.005,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "foxtail_millet",
@@ -1180,7 +1198,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.003,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "proso_millet",
@@ -1297,7 +1317,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.003,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "barnyard_millet",
@@ -1409,7 +1431,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.003,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "corn_grain",
@@ -1525,7 +1549,9 @@ const CROP_DB = [
       "rowSpacing": 70,
       "rowWidth": 75,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.184,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "sugarcane",
@@ -1645,7 +1671,9 @@ const CROP_DB = [
       "rowSpacing": 90,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 3.51,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "rapeseed",
@@ -1761,7 +1789,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.004,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "cabbage",
@@ -1893,7 +1923,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 1.215,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "daikon",
@@ -1998,7 +2030,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.427,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "carrot",
@@ -2119,7 +2153,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.013,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "onion",
@@ -2223,7 +2259,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.031,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "potato",
@@ -2340,7 +2378,9 @@ const CROP_DB = [
       "rowSpacing": 70,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.735,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "sweetpotato",
@@ -2459,7 +2499,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.495,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "tomato",
@@ -2588,7 +2630,9 @@ const CROP_DB = [
       "rowSpacing": 100,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 3.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "cucumber",
@@ -2713,7 +2757,9 @@ const CROP_DB = [
       "rowSpacing": 100,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 3.0,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "eggplant",
@@ -2838,7 +2884,9 @@ const CROP_DB = [
       "rowSpacing": 100,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 2.625,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "pepper",
@@ -2962,7 +3010,9 @@ const CROP_DB = [
       "rowSpacing": 90,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 1.215,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "spinach",
@@ -3082,7 +3132,9 @@ const CROP_DB = [
       "rowSpacing": 10,
       "rowWidth": 90,
       "linesPerRow": 6
-    }
+    },
+    "yieldPerPlant": 0.001,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "lettuce",
@@ -3208,7 +3260,9 @@ const CROP_DB = [
       "rowSpacing": 35,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.157,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "welsh_onion",
@@ -3330,7 +3384,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "broccoli",
@@ -3437,7 +3493,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.345,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "burdock",
@@ -3553,7 +3611,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.006,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "pumpkin",
@@ -3668,7 +3728,9 @@ const CROP_DB = [
       "rowSpacing": 200,
       "rowWidth": 100,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 4.5,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "watermelon",
@@ -3790,7 +3852,9 @@ const CROP_DB = [
       "rowSpacing": 200,
       "rowWidth": 100,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 8.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "corn_veg",
@@ -3887,7 +3951,9 @@ const CROP_DB = [
       "rowSpacing": 70,
       "rowWidth": 75,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.282,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "garlic",
@@ -3997,7 +4063,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 90,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.009,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "ginger",
@@ -4107,7 +4175,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.12,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "chinese_cabbage",
@@ -4230,7 +4300,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 1.62,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "chili",
@@ -4352,7 +4424,9 @@ const CROP_DB = [
       "rowSpacing": 90,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.223,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "edamame",
@@ -4472,7 +4546,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 70,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.036,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "asparagus",
@@ -4577,7 +4653,9 @@ const CROP_DB = [
       "rowSpacing": 150,
       "rowWidth": 120,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.36,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "chinese_chive",
@@ -4699,7 +4777,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.011,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "celery",
@@ -4824,7 +4904,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.72,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "taro",
@@ -4940,7 +5022,9 @@ const CROP_DB = [
       "rowSpacing": 70,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.63,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "yam",
@@ -5056,7 +5140,9 @@ const CROP_DB = [
       "rowSpacing": 90,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.81,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "mitsuba",
@@ -5176,7 +5262,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.004,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "garland_chrysanthemum",
@@ -5279,7 +5367,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.004,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "apple",
@@ -5393,7 +5483,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 45.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "mandarin",
@@ -5508,7 +5600,9 @@ const CROP_DB = [
       "rowSpacing": 400,
       "rowWidth": 400,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 48.0,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "grape",
@@ -5622,7 +5716,9 @@ const CROP_DB = [
       "rowSpacing": 300,
       "rowWidth": 300,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 11.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "peach",
@@ -5735,7 +5831,9 @@ const CROP_DB = [
       "rowSpacing": 600,
       "rowWidth": 600,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 60.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "pear",
@@ -5848,7 +5946,9 @@ const CROP_DB = [
       "rowSpacing": 600,
       "rowWidth": 600,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 82.5,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "persimmon",
@@ -5961,7 +6061,9 @@ const CROP_DB = [
       "rowSpacing": 600,
       "rowWidth": 600,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 81.0,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "strawberry",
@@ -6069,7 +6171,9 @@ const CROP_DB = [
       "rowSpacing": 50,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.188,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "blueberry",
@@ -6184,7 +6288,9 @@ const CROP_DB = [
       "rowSpacing": 200,
       "rowWidth": 200,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 2.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "plum",
@@ -6282,7 +6388,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 45.0,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "kiwi",
@@ -6390,7 +6498,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 33.75,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "western_pear",
@@ -6488,7 +6598,9 @@ const CROP_DB = [
       "rowSpacing": 600,
       "rowWidth": 600,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 67.5,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "japanese_plum",
@@ -6602,7 +6714,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 35.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "cherry",
@@ -6715,7 +6829,9 @@ const CROP_DB = [
       "rowSpacing": 600,
       "rowWidth": 600,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 25.5,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "loquat",
@@ -6831,7 +6947,9 @@ const CROP_DB = [
       "rowSpacing": 600,
       "rowWidth": 600,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 42.0,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "yuzu",
@@ -6945,7 +7063,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 35.0,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "passion_fruit",
@@ -7049,7 +7169,9 @@ const CROP_DB = [
       "rowSpacing": 300,
       "rowWidth": 300,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 8.4,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "aralia",
@@ -7158,7 +7280,9 @@ const CROP_DB = [
       "rowSpacing": 100,
       "rowWidth": 100,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.24,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "bracken",
@@ -7266,7 +7390,9 @@ const CROP_DB = [
       "rowSpacing": 90,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.175,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "butterbur",
@@ -7374,7 +7500,9 @@ const CROP_DB = [
       "rowSpacing": 90,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.945,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "myoga",
@@ -7467,7 +7595,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.18,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "wasabi",
@@ -7584,7 +7714,9 @@ const CROP_DB = [
       "rowSpacing": 50,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.041,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "shiitake",
@@ -7698,7 +7830,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 20,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.016,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "enoki",
@@ -7800,7 +7934,9 @@ const CROP_DB = [
       "rowSpacing": 10,
       "rowWidth": 10,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.006,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "maitake",
@@ -7913,7 +8049,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 20,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.011,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "koshiabura",
@@ -8020,7 +8158,9 @@ const CROP_DB = [
       "rowSpacing": 90,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.175,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "zenmai",
@@ -8127,7 +8267,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.045,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "nameko",
@@ -8240,7 +8382,9 @@ const CROP_DB = [
       "rowSpacing": 10,
       "rowWidth": 10,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.002,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "buna_shimeji",
@@ -8360,7 +8504,9 @@ const CROP_DB = [
       "rowSpacing": 10,
       "rowWidth": 10,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.009,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "sunny_lettuce",
@@ -8443,7 +8589,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.15,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "komatsuna",
@@ -8531,7 +8679,9 @@ const CROP_DB = [
       "rowSpacing": 10,
       "rowWidth": 90,
       "linesPerRow": 6
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "chingensai",
@@ -8616,7 +8766,9 @@ const CROP_DB = [
       "rowSpacing": 25,
       "rowWidth": 90,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.15,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "shungiku",
@@ -8699,7 +8851,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.04,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "mizuna",
@@ -8784,7 +8938,9 @@ const CROP_DB = [
       "rowSpacing": 10,
       "rowWidth": 90,
       "linesPerRow": 6
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "takana",
@@ -8865,7 +9021,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.3,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "karashina",
@@ -8947,7 +9105,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kale",
@@ -9032,7 +9192,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.3,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "moroheiya",
@@ -9110,7 +9272,9 @@ const CROP_DB = [
       "rowSpacing": 50,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.08,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "wakegi",
@@ -9191,7 +9355,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.02,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "asatsuki",
@@ -9269,7 +9435,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.015,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "parsley",
@@ -9356,7 +9524,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 90,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "mini_tomato",
@@ -9442,7 +9612,9 @@ const CROP_DB = [
       "rowSpacing": 100,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 1.5,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "paprika",
@@ -9525,7 +9697,9 @@ const CROP_DB = [
       "rowSpacing": 90,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 1.2,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "shishito",
@@ -9608,7 +9782,9 @@ const CROP_DB = [
       "rowSpacing": 90,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.6,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "okra",
@@ -9685,7 +9861,9 @@ const CROP_DB = [
       "rowSpacing": 70,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.5,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "goya",
@@ -9765,7 +9943,9 @@ const CROP_DB = [
       "rowSpacing": 150,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 3.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "zucchini",
@@ -9841,7 +10021,9 @@ const CROP_DB = [
       "rowSpacing": 100,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 3.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "melon",
@@ -9922,7 +10104,9 @@ const CROP_DB = [
       "rowSpacing": 200,
       "rowWidth": 100,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 2.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "togan",
@@ -9999,7 +10183,9 @@ const CROP_DB = [
       "rowSpacing": 200,
       "rowWidth": 100,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 5.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "ingen",
@@ -10078,7 +10264,9 @@ const CROP_DB = [
       "rowSpacing": 50,
       "rowWidth": 70,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.2,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "soramame",
@@ -10159,7 +10347,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 70,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.4,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "endo",
@@ -10239,7 +10429,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 70,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.15,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "rakkasei",
@@ -10316,7 +10508,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 70,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.25,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "daikon_root",
@@ -10399,7 +10593,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.8,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kabu",
@@ -10481,7 +10677,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 90,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.15,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "renkon",
@@ -10563,7 +10761,9 @@ const CROP_DB = [
       "rowSpacing": 120,
       "rowWidth": 120,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.8,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "beets",
@@ -10643,7 +10843,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.3,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "ukon",
@@ -10721,7 +10923,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.3,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "konjac",
@@ -10800,7 +11004,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 1.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "nectarine",
@@ -10874,7 +11080,9 @@ const CROP_DB = [
       "rowSpacing": 600,
       "rowWidth": 600,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 50.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kuri",
@@ -10950,7 +11158,9 @@ const CROP_DB = [
       "rowSpacing": 700,
       "rowWidth": 700,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 20.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "ume_fruit",
@@ -11023,7 +11233,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 30.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "sudachi",
@@ -11097,7 +11309,9 @@ const CROP_DB = [
       "rowSpacing": 400,
       "rowWidth": 400,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 15.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kabosu",
@@ -11171,7 +11385,9 @@ const CROP_DB = [
       "rowSpacing": 400,
       "rowWidth": 400,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 20.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "lemon",
@@ -11248,7 +11464,9 @@ const CROP_DB = [
       "rowSpacing": 400,
       "rowWidth": 400,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 25.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "ponkan",
@@ -11321,7 +11539,9 @@ const CROP_DB = [
       "rowSpacing": 400,
       "rowWidth": 400,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 40.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "dekopon",
@@ -11396,7 +11616,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 45.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "amanatsu",
@@ -11470,7 +11692,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 35.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "natsumikan",
@@ -11544,7 +11768,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 35.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "raspberry",
@@ -11620,7 +11846,9 @@ const CROP_DB = [
       "rowSpacing": 200,
       "rowWidth": 200,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 1.5,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "blackberry",
@@ -11695,7 +11923,9 @@ const CROP_DB = [
       "rowSpacing": 200,
       "rowWidth": 200,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 2.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "ichijiku",
@@ -11771,7 +12001,9 @@ const CROP_DB = [
       "rowSpacing": 400,
       "rowWidth": 400,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 10.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "zakuro",
@@ -11847,7 +12079,9 @@ const CROP_DB = [
       "rowSpacing": 400,
       "rowWidth": 400,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 8.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "akebi",
@@ -11924,7 +12158,9 @@ const CROP_DB = [
       "rowSpacing": 300,
       "rowWidth": 300,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 2.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "olive",
@@ -12000,7 +12236,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 15.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kurumi",
@@ -12081,7 +12319,9 @@ const CROP_DB = [
       "rowSpacing": 800,
       "rowWidth": 800,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 10.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "hazelnut",
@@ -12157,7 +12397,9 @@ const CROP_DB = [
       "rowSpacing": 400,
       "rowWidth": 400,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 3.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "almond",
@@ -12232,7 +12474,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 5.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "ginnan",
@@ -12312,7 +12556,9 @@ const CROP_DB = [
       "rowSpacing": 800,
       "rowWidth": 800,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 8.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "papaya",
@@ -12394,7 +12640,9 @@ const CROP_DB = [
       "rowSpacing": 200,
       "rowWidth": 200,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 15.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "mango",
@@ -12469,7 +12717,9 @@ const CROP_DB = [
       "rowSpacing": 600,
       "rowWidth": 600,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 20.0,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "pineapple",
@@ -12555,7 +12805,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 1.5,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "fukinoto",
@@ -12621,7 +12873,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "udo",
@@ -12688,7 +12942,9 @@ const CROP_DB = [
       "rowSpacing": 100,
       "rowWidth": 100,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.5,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kogomi",
@@ -12754,7 +13010,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "mizu_sansai",
@@ -12820,7 +13078,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.02,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "shidoke",
@@ -12886,7 +13146,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "momijigasa",
@@ -12952,7 +13214,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.02,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "azami",
@@ -13018,7 +13282,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "yomogi",
@@ -13084,7 +13350,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "nobiru",
@@ -13150,7 +13418,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.01,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "gyoja_ninniku",
@@ -13216,7 +13486,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.02,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "hangonso",
@@ -13282,7 +13554,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "itadori",
@@ -13348,7 +13622,9 @@ const CROP_DB = [
       "rowSpacing": 80,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "tsukushi",
@@ -13414,7 +13690,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.005,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "seri",
@@ -13480,7 +13758,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.02,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "cress",
@@ -13546,7 +13826,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 60,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.02,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "hamabofu",
@@ -13612,7 +13894,9 @@ const CROP_DB = [
       "rowSpacing": 50,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "mitsuba_akebi",
@@ -13678,7 +13962,9 @@ const CROP_DB = [
       "rowSpacing": 300,
       "rowWidth": 300,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "yabukanzo",
@@ -13744,7 +14030,9 @@ const CROP_DB = [
       "rowSpacing": 50,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "katakuri",
@@ -13810,7 +14098,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 60,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.02,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "yamaudo",
@@ -13876,7 +14166,9 @@ const CROP_DB = [
       "rowSpacing": 100,
       "rowWidth": 100,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.5,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "takenoko",
@@ -13943,7 +14235,9 @@ const CROP_DB = [
       "rowSpacing": 300,
       "rowWidth": 300,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.5,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "nemagari",
@@ -14009,7 +14303,9 @@ const CROP_DB = [
       "rowSpacing": 100,
       "rowWidth": 100,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "chishimazasa",
@@ -14075,7 +14371,9 @@ const CROP_DB = [
       "rowSpacing": 100,
       "rowWidth": 100,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.02,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kuromoji",
@@ -14141,7 +14439,9 @@ const CROP_DB = [
       "rowSpacing": 150,
       "rowWidth": 150,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "sansho",
@@ -14208,7 +14508,9 @@ const CROP_DB = [
       "rowSpacing": 200,
       "rowWidth": 200,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kihada",
@@ -14274,7 +14576,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "matatabi",
@@ -14340,7 +14644,9 @@ const CROP_DB = [
       "rowSpacing": 300,
       "rowWidth": 300,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "akebi_bud",
@@ -14406,7 +14712,9 @@ const CROP_DB = [
       "rowSpacing": 300,
       "rowWidth": 300,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.02,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kusasotetsu",
@@ -14472,7 +14780,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "yamabuki_bud",
@@ -14538,7 +14848,9 @@ const CROP_DB = [
       "rowSpacing": 100,
       "rowWidth": 100,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.02,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "miyama_irakusa",
@@ -14604,7 +14916,9 @@ const CROP_DB = [
       "rowSpacing": 50,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "obagiboshi",
@@ -14670,7 +14984,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.04,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "yaburegasa",
@@ -14736,7 +15052,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "shiode",
@@ -14802,7 +15120,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "honna",
@@ -14868,7 +15188,9 @@ const CROP_DB = [
       "rowSpacing": 50,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.04,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "hiratake",
@@ -14935,7 +15257,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 20,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "eringi",
@@ -15002,7 +15326,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 15,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kikurage",
@@ -15069,7 +15395,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 15,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "tamogitake",
@@ -15136,7 +15464,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 15,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "matsutake",
@@ -15203,7 +15533,9 @@ const CROP_DB = [
       "rowSpacing": 300,
       "rowWidth": 300,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": null
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "truffle",
@@ -15270,7 +15602,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": null
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "urushi",
@@ -15337,7 +15671,9 @@ const CROP_DB = [
       "rowSpacing": 300,
       "rowWidth": 300,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": null
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "chamomile",
@@ -15404,7 +15740,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "mint",
@@ -15471,7 +15809,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "lemon_balm",
@@ -15538,7 +15878,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "rosemary",
@@ -15605,7 +15947,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.2,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "thyme",
@@ -15672,7 +16016,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "oregano",
@@ -15739,7 +16085,9 @@ const CROP_DB = [
       "rowSpacing": 35,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.08,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "sage",
@@ -15806,7 +16154,9 @@ const CROP_DB = [
       "rowSpacing": 50,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "lavender",
@@ -15873,7 +16223,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "basil",
@@ -15940,7 +16292,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "shiso",
@@ -16007,7 +16361,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "echinacea",
@@ -16074,7 +16430,9 @@ const CROP_DB = [
       "rowSpacing": 50,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "dokudami",
@@ -16140,7 +16498,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "gennoshoko",
@@ -16206,7 +16566,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "otane_ninjin",
@@ -16273,7 +16635,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 90,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kihada_herb",
@@ -16339,7 +16703,9 @@ const CROP_DB = [
       "rowSpacing": 500,
       "rowWidth": 500,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "ukon_herb",
@@ -16406,7 +16772,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.3,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "aloe",
@@ -16472,7 +16840,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.5,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "yomogi_herb",
@@ -16539,7 +16909,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "hatomugi",
@@ -16606,7 +16978,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.01,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kanzo",
@@ -16673,7 +17047,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "botan",
@@ -16740,7 +17116,9 @@ const CROP_DB = [
       "rowSpacing": 150,
       "rowWidth": 150,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "shakuyaku",
@@ -16807,7 +17185,9 @@ const CROP_DB = [
       "rowSpacing": 80,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "senburi",
@@ -16873,7 +17253,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 90,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.01,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kuko",
@@ -16940,7 +17322,9 @@ const CROP_DB = [
       "rowSpacing": 150,
       "rowWidth": 150,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.15,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "ashitaba",
@@ -17007,7 +17391,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.2,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "sesame",
@@ -17085,7 +17471,9 @@ const CROP_DB = [
       "rowSpacing": 50,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.006,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "sunflower",
@@ -17164,7 +17552,9 @@ const CROP_DB = [
       "rowSpacing": 70,
       "rowWidth": 75,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.094,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "egoma",
@@ -17242,7 +17632,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.01,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "safflower",
@@ -17320,7 +17712,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.013,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "oil_palm",
@@ -17398,7 +17792,9 @@ const CROP_DB = [
       "rowSpacing": 900,
       "rowWidth": 900,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 182.25,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "cotton",
@@ -17476,7 +17872,9 @@ const CROP_DB = [
       "rowSpacing": 70,
       "rowWidth": 75,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.037,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "flax",
@@ -17554,7 +17952,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 90,
       "linesPerRow": 6
-    }
+    },
+    "yieldPerPlant": null
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "ramie",
@@ -17632,7 +18032,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.036,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kenaf",
@@ -17711,7 +18113,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 60,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.025,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "hemp",
@@ -17789,7 +18193,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.001,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "chicory",
@@ -17867,7 +18273,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.069,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "endive",
@@ -17945,7 +18353,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.054,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "arugula",
@@ -18023,7 +18433,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 90,
       "linesPerRow": 4
-    }
+    },
+    "yieldPerPlant": 0.002,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "fennel",
@@ -18101,7 +18513,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.216,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "celeriac",
@@ -18180,7 +18594,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 90,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.276,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kohlrabi",
@@ -18258,7 +18674,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.058,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "chard",
@@ -18336,7 +18754,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.09,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "leek",
@@ -18416,7 +18836,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.022,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "kailan",
@@ -18494,7 +18916,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 90,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.045,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "pakchoi",
@@ -18572,7 +18996,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 90,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.023,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "hanabiratake",
@@ -18651,7 +19077,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 20,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.002,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "yamabushitake",
@@ -18730,7 +19158,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 20,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.003,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "agaricus",
@@ -18809,7 +19239,9 @@ const CROP_DB = [
       "rowSpacing": 15,
       "rowWidth": 15,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.001,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "kotake",
@@ -18888,7 +19320,9 @@ const CROP_DB = [
       "rowSpacing": 300,
       "rowWidth": 300,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.075,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "tokiiro_hiratake",
@@ -18967,7 +19401,9 @@ const CROP_DB = [
       "rowSpacing": 20,
       "rowWidth": 20,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.003,
+    "waterNeedLperSqmPerDay": 6.0
   },
   {
     "id": "chickpea",
@@ -19049,7 +19485,9 @@ const CROP_DB = [
       "rowSpacing": 50,
       "rowWidth": 70,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.011,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "lentil",
@@ -19131,7 +19569,9 @@ const CROP_DB = [
       "rowSpacing": 30,
       "rowWidth": 70,
       "linesPerRow": 3
-    }
+    },
+    "yieldPerPlant": 0.001,
+    "waterNeedLperSqmPerDay": 1.5
   },
   {
     "id": "mung_bean",
@@ -19213,7 +19653,9 @@ const CROP_DB = [
       "rowSpacing": 40,
       "rowWidth": 70,
       "linesPerRow": 2
-    }
+    },
+    "yieldPerPlant": 0.004,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "lima_bean",
@@ -19295,7 +19737,9 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 70,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.032,
+    "waterNeedLperSqmPerDay": 3.5
   },
   {
     "id": "runner_bean",
@@ -19377,6 +19821,8 @@ const CROP_DB = [
       "rowSpacing": 60,
       "rowWidth": 70,
       "linesPerRow": 1
-    }
+    },
+    "yieldPerPlant": 0.032,
+    "waterNeedLperSqmPerDay": 3.5
   }
 ];

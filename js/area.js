@@ -62,6 +62,7 @@ async function commitSaveArea({ name, memo, soilType }) {
       amRainDays50:    currentAreaData.climate?.rainDays50  ?? null,
       amSnowDays:      currentAreaData.climate?.snowDays    ?? null,
       soilType:        soilType || null,
+      ridgeBaseDirection: currentAreaData.ridgeBaseDirection || null,
     },
     createdAt: new Date().toISOString(),
     profitOverrides: {},
@@ -7146,27 +7147,52 @@ function _adpInitPlantingDesign(cropId) {
   const crop = _adpGetCropById(cropId);
   const std  = crop?.plantingStandard;
   return {
-    rows:         null,
-    rowLength:    null,
-    rowWidth:     std?.rowWidth     ?? null,
-    linesPerRow:  std?.linesPerRow  ?? null,
-    plantSpacing: std?.plantSpacing ?? null,
-    rowSpacing:   std?.rowSpacing   ?? null,
-    missingRate:  null,
+    rows:           null,
+    rowLength:      null,
+    rowWidth:       std?.rowWidth     ?? null,
+    linesPerRow:    std?.linesPerRow  ?? null,
+    plantSpacing:   std?.plantSpacing ?? null,
+    rowSpacing:     std?.rowSpacing   ?? null,
+    missingRate:    null,
+    ridgeDirection: null,   // { p1:{lat,lng}, p2:{lat,lng} } | null
+    ridgeSegments:  null,   // [{ length }] | null（地図自動計算結果キャッシュ）
   };
 }
 
 /**
  * 栽植設計の計算ロジック。
- * 返り値: { seedlings, purchase, rowAreaSqm, density, totalLine } or null（入力不足）
+ * ridgeSegments が存在する場合は積算方式（地図自動計算）、
+ * 無い場合は手動入力（rows×rowLength）にフォールバック。
+ * 返り値: { seedlings, purchase, rowAreaSqm, density, totalLine, autoCalc } or null
  */
 function _adpCalcPlanting(d) {
-  const rows        = Number(d.rows);
-  const rowLength   = Number(d.rowLength);
   const rowWidth    = Number(d.rowWidth);
   const linesPerRow = Number(d.linesPerRow);
   const plantSpacing= Number(d.plantSpacing);
   const missingRate = (d.missingRate !== null && d.missingRate !== '') ? Number(d.missingRate) : null;
+
+  // ── 積算方式（ridgeSegments あり）──
+  if (Array.isArray(d.ridgeSegments) && d.ridgeSegments.length > 0) {
+    if (!rowWidth || !linesPerRow || !plantSpacing) return null;
+    if (typeof RidgeGeometry === 'undefined') return null;
+
+    const seedlings  = RidgeGeometry.totalPlants(d.ridgeSegments, linesPerRow, plantSpacing);
+    const purchase   = missingRate !== null
+      ? Math.ceil(seedlings * (1 + missingRate / 100))
+      : Math.ceil(seedlings);
+    const totalLen   = d.ridgeSegments.reduce((s, seg) => s + seg.length, 0);
+    const rowAreaSqm = Math.round(totalLen * (rowWidth / 100) * 10) / 10;
+    const density    = rowAreaSqm > 0 ? Math.round(seedlings / rowAreaSqm * 10) / 10 : null;
+    const totalLine  = Math.round(totalLen * linesPerRow * 10) / 10;
+    const rows       = d.ridgeSegments.length;
+    const rowLength  = rows > 0 ? Math.round((totalLen / rows) * 10) / 10 : 0;
+
+    return { seedlings, purchase, rowAreaSqm, density, totalLine, rows, rowLength, autoCalc: true };
+  }
+
+  // ── 手動入力方式（後方互換）──
+  const rows      = Number(d.rows);
+  const rowLength = Number(d.rowLength);
 
   if (!rows || !rowLength || !rowWidth || !linesPerRow || !plantSpacing) return null;
 
@@ -7178,7 +7204,7 @@ function _adpCalcPlanting(d) {
   const density      = rowAreaSqm > 0 ? Math.round(seedlings / rowAreaSqm * 10) / 10 : null;
   const totalLine    = Math.round(rowLength * rows * linesPerRow * 10) / 10;
 
-  return { seedlings, purchase, rowAreaSqm, density, totalLine };
+  return { seedlings, purchase, rowAreaSqm, density, totalLine, rows, rowLength, autoCalc: false };
 }
 
 /**
@@ -7264,6 +7290,12 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
   const warn = isAnalysis ? null : _adpPlantingAreaWarn(ratio, calc?.rowAreaSqm ?? null);
   const areaId = _adpArea?.id || _adpArea?.name || '';
 
+  // 地図自動計算済みかどうか
+  const hasAutoCalc = Array.isArray(design.ridgeSegments) && design.ridgeSegments.length > 0;
+
+  // 畝方向の有無（エリア基準方向またはカード個別）
+  const hasRidgeDir = !!(design.ridgeDirection || _adpArea?.meta?.ridgeBaseDirection);
+
   // 占有率スライダー（実務側のみ）
   const sliderHTML = isAnalysis ? '' : `
     <div class="plt-slider-row">
@@ -7296,6 +7328,39 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
 
   const seg = isAnalysis ? 'analysis' : 'practice';
 
+  // 畝数・畝長の表示分岐
+  // 自動計算済み → 読み取り専用表示（🗺️ アイコン付き）
+  // 未設定 → 手動入力欄
+  const rowsRowLengthHTML = hasAutoCalc ? `
+    <div class="plt-input-item plt-input-auto">
+      <label class="plt-label">畝数 <span class="plt-auto-badge">🗺️ 自動</span></label>
+      <div class="plt-auto-val">${calc?.rows ?? '—'} 畝</div>
+    </div>
+    <div class="plt-input-item plt-input-auto">
+      <label class="plt-label">平均畝長 <span class="plt-auto-badge">🗺️ 自動</span></label>
+      <div class="plt-auto-val">${calc?.rowLength ?? '—'} m</div>
+    </div>` : `
+    <div class="plt-input-item">
+      <label class="plt-label">畝数</label>
+      <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rows ?? ''}" placeholder="例: 10"
+        oninput="_adpUpdatePlantingField('${cropId}','rows',this.value,'${seg}')"><span class="plt-unit">畝</span></div>
+    </div>
+    <div class="plt-input-item">
+      <label class="plt-label">畝長</label>
+      <div class="plt-input-wrap"><input type="number" class="plt-input" min="0.1" step="0.1" value="${design.rowLength ?? ''}" placeholder="例: 20"
+        oninput="_adpUpdatePlantingField('${cropId}','rowLength',this.value,'${seg}')"><span class="plt-unit">m</span></div>
+    </div>`;
+
+  // 地図で指定ボタン（実務側・分析側ともに表示）
+  const ridgeDirBtnLabel = hasRidgeDir ? '📐 畝方向を再指定' : '📐 畝方向を地図で指定';
+  const ridgeDirBtnHTML = `
+    <div class="plt-ridgedir-row">
+      <button class="plt-ridgedir-btn" onclick="_adpStartRidgeDirForCrop('${cropId}','${seg}')">
+        ${ridgeDirBtnLabel}
+      </button>
+      ${hasAutoCalc ? `<span class="plt-ridgedir-status plt-ridgedir-status-ok">✓ 計算済み（${(design.ridgeSegments?.length ?? 0)}畝）</span>` : (hasRidgeDir ? '<span class="plt-ridgedir-status">方向設定済み（幅・条数・株間を入力すると自動計算されます）</span>' : '')}
+    </div>`;
+
   return `
     <div class="plt-card" data-crop-id="${cropId}">
       <div class="plt-card-header">
@@ -7303,18 +7368,10 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
         ${removeBtn}
       </div>
       ${sliderHTML}
+      ${ridgeDirBtnHTML}
       <div class="plt-inputs">
         <div class="plt-input-grid">
-          <div class="plt-input-item">
-            <label class="plt-label">畝数</label>
-            <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rows ?? ''}" placeholder="例: 10"
-              oninput="_adpUpdatePlantingField('${cropId}','rows',this.value,'${seg}')"><span class="plt-unit">畝</span></div>
-          </div>
-          <div class="plt-input-item">
-            <label class="plt-label">畝長</label>
-            <div class="plt-input-wrap"><input type="number" class="plt-input" min="0.1" step="0.1" value="${design.rowLength ?? ''}" placeholder="例: 20"
-              oninput="_adpUpdatePlantingField('${cropId}','rowLength',this.value,'${seg}')"><span class="plt-unit">m</span></div>
-          </div>
+          ${rowsRowLengthHTML}
           <div class="plt-input-item">
             <label class="plt-label">畝幅</label>
             <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowWidth ?? ''}" placeholder="例: 90"
@@ -7354,6 +7411,99 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
 let _adpAnalysisPlantingDesign = null;
 
 /**
+ * 栽植設計カードの「📐 畝方向を地図で指定」から起動。
+ * RidgeDirDraw で2点指定 → ridgeDirection & ridgeSegments を更新し再描画。
+ * seg: 'practice' | 'analysis'
+ */
+function _adpStartRidgeDirForCrop(cropId, seg) {
+  if (!_adpArea) return;
+  if (typeof RidgeDirDraw === 'undefined') {
+    showToast('RidgeDirDraw が読み込まれていません', 'amber');
+    return;
+  }
+
+  // エリアパネルを閉じて地図を表示
+  const panel = document.getElementById('adp-view');
+  if (panel) panel.style.display = 'none';
+
+  RidgeDirDraw.start((result) => {
+    // パネルを戻す
+    if (panel) panel.style.display = '';
+
+    if (!result) {
+      showToast('畝方向指定をスキップしました');
+      return;
+    }
+
+    // ポリゴン頂点を geojson から取り出す
+    let latLngs = [];
+    try {
+      const gj = typeof _adpArea.geojson === 'string'
+        ? JSON.parse(_adpArea.geojson)
+        : _adpArea.geojson;
+      const coords = gj?.geometry?.coordinates?.[0] || gj?.coordinates?.[0] || [];
+      latLngs = coords.map(([lng, lat]) => ({ lat, lng }));
+    } catch(e) {
+      showToast('圃場データの読み込みに失敗しました', 'amber');
+      return;
+    }
+
+    if (latLngs.length < 3) {
+      showToast('圃場のポリゴンデータが不正です', 'amber');
+      return;
+    }
+
+    // ridgeWidth を取得（対象デザインから）
+    let design;
+    if (seg === 'analysis') {
+      design = _adpAnalysisPlantingDesign;
+    } else {
+      const entry = _adpPracticecrops.find(c => c.cropId === cropId);
+      design = entry?.plantingDesign || _adpInitPlantingDesign(cropId);
+    }
+
+    const rowWidthM = design?.rowWidth ? design.rowWidth / 100 : 0.9; // デフォルト90cm
+
+    // 積算計算
+    let ridgeSegments = null;
+    if (typeof RidgeGeometry !== 'undefined') {
+      const gResult = RidgeGeometry.calcRidges(latLngs, result.p1, result.p2, rowWidthM);
+      ridgeSegments = gResult.rows > 0 ? gResult.ridgeSegments : null;
+    }
+
+    const areaId = _adpArea?.id || _adpArea?.name || '';
+
+    if (seg === 'analysis') {
+      if (_adpAnalysisPlantingDesign) {
+        _adpAnalysisPlantingDesign.ridgeDirection = result;
+        _adpAnalysisPlantingDesign.ridgeSegments  = ridgeSegments;
+      }
+    } else {
+      const idx = _adpPracticecrops.findIndex(c => c.cropId === cropId);
+      if (idx >= 0) {
+        if (!_adpPracticecrops[idx].plantingDesign) {
+          _adpPracticecrops[idx].plantingDesign = _adpInitPlantingDesign(cropId);
+        }
+        _adpPracticecrops[idx].plantingDesign.ridgeDirection = result;
+        _adpPracticecrops[idx].plantingDesign.ridgeSegments  = ridgeSegments;
+        // purchase を更新
+        const calcForSave = _adpCalcPlanting(_adpPracticecrops[idx].plantingDesign);
+        _adpPracticecrops[idx].plantingDesign.purchase = calcForSave?.purchase ?? null;
+        _adpSavePracticecrops(areaId);
+      }
+    }
+
+    if (ridgeSegments) {
+      showToast(`畝方向を設定しました（${ridgeSegments.length}畝）`, 'green');
+    } else {
+      showToast('畝方向を設定しました（畝幅を入力すると自動計算されます）');
+    }
+
+    _adpRenderPlantingPane();
+  });
+}
+
+/**
  * 入力フィールド変更時のハンドラ。
  * seg = 'practice' | 'analysis'
  */
@@ -7369,7 +7519,7 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
     if (!card) return;
     const calc    = _adpCalcPlanting(_adpAnalysisPlantingDesign);
     const resultEl = card.querySelector('.plt-result');
-    if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null);
+    if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
     return;
   }
 
@@ -7380,6 +7530,27 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
     _adpPracticecrops[idx].plantingDesign = _adpInitPlantingDesign(cropId);
   }
   _adpPracticecrops[idx].plantingDesign[field] = parsed;
+
+  // rowWidth が変わった場合、ridgeDirection が設定済みなら ridgeSegments を再計算
+  if (field === 'rowWidth') {
+    const d = _adpPracticecrops[idx].plantingDesign;
+    if (d.ridgeDirection && typeof RidgeGeometry !== 'undefined') {
+      let latLngs = [];
+      try {
+        const gj = typeof _adpArea?.geojson === 'string' ? JSON.parse(_adpArea.geojson) : _adpArea?.geojson;
+        const coords = gj?.geometry?.coordinates?.[0] || gj?.coordinates?.[0] || [];
+        latLngs = coords.map(([lng, lat]) => ({ lat, lng }));
+      } catch(e) {}
+      if (latLngs.length >= 3 && parsed > 0) {
+        const gResult = RidgeGeometry.calcRidges(latLngs, d.ridgeDirection.p1, d.ridgeDirection.p2, parsed / 100);
+        _adpPracticecrops[idx].plantingDesign.ridgeSegments = gResult.rows > 0 ? gResult.ridgeSegments : null;
+      }
+    }
+  }
+
+  // purchase を先に計算して書き戻してから保存（施肥タブの株数基準に必要）
+  const calcForSave = _adpCalcPlanting(_adpPracticecrops[idx].plantingDesign);
+  _adpPracticecrops[idx].plantingDesign.purchase = calcForSave ? calcForSave.purchase : null;
   _adpSavePracticecrops(areaId);
 
   // 結果部分のみ再描画
@@ -7387,11 +7558,11 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
   if (!card) return;
   const ratio   = _adpPracticecrops[idx].ratio;
   const design  = _adpPracticecrops[idx].plantingDesign;
-  const calc    = _adpCalcPlanting(design);
+  const calc    = calcForSave; // 再計算不要・上で取得済み
   const warn    = _adpPlantingAreaWarn(ratio, calc?.rowAreaSqm ?? null);
   const resultEl = card.querySelector('.plt-result');
   const warnEl   = card.querySelector('.plt-warn');
-  if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, warn);
+  if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, warn, cropId);
   // 警告要素の更新
   const warnContainer = card.querySelector('.plt-warn-wrap');
   if (warnContainer) {
@@ -7402,9 +7573,25 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
 }
 
 /** 計算結果HTMLだけ生成するヘルパー（部分更新用） */
-function _adpBuildPlantingResultHTML(calc, warn) {
+function _adpBuildPlantingResultHTML(calc, warn, cropId) {
   const warnHTML = warn ? `
     <div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と占有面積（${warn.occupiedSqm}㎡）が${warn.diffPct}%乖離しています</div>` : '';
+
+  // 収量見込み（cropDB.yieldPerPlant × purchase）
+  let yieldHTML = '';
+  if (calc && calc.purchase > 0 && cropId) {
+    const crop = _adpGetCropById(cropId);
+    const ypp  = crop?.yieldPerPlant;
+    if (ypp != null) {
+      const expected = Math.round(calc.purchase * ypp * 10) / 10;
+      yieldHTML = `
+      <div class="plt-result-item plt-result-item--yield">
+        <span class="plt-result-label">収量見込み</span>
+        <span class="plt-result-val">約 ${expected.toLocaleString()} kg</span>
+      </div>`;
+    }
+  }
+
   const calcHTML = calc ? `
     <div class="plt-result-grid">
       <div class="plt-result-item"><span class="plt-result-label">苗数</span><span class="plt-result-val">${calc.seedlings.toLocaleString()} 本</span></div>
@@ -7412,6 +7599,7 @@ function _adpBuildPlantingResultHTML(calc, warn) {
       <div class="plt-result-item"><span class="plt-result-label">畝面積</span><span class="plt-result-val">${calc.rowAreaSqm} ㎡</span></div>
       <div class="plt-result-item"><span class="plt-result-label">植栽密度</span><span class="plt-result-val">${calc.density ?? '—'} 株/㎡</span></div>
       <div class="plt-result-item"><span class="plt-result-label">総植栽距離</span><span class="plt-result-val">${calc.totalLine} m</span></div>
+      ${yieldHTML}
     </div>` : `<div class="plt-result-empty">必須項目（畝数・畝長・畝幅・条数・株間）を入力すると計算されます</div>`;
   return `<div class="plt-result-title">計算結果</div>${warnHTML}${calcHTML}`;
 }
@@ -7477,10 +7665,18 @@ function _adpBuildHarvestCard(pc) {
   const grOpts = HRV_GRADES.map(g => `<option value="${g}">${g}</option>`).join('');
   const unOpts = HRV_UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
 
+  // 収量見込み（cropDB.yieldPerPlant × purchase）
+  const ypp      = crop?.yieldPerPlant;
+  const purchase = pc.plantingDesign?.purchase ?? null;
+  const expectedYieldHTML = (ypp != null && purchase > 0)
+    ? `<span class="hrv-expected-yield">見込み：約 ${(Math.round(purchase * ypp * 10) / 10).toLocaleString()} kg</span>`
+    : '';
+
   return `
     <div class="hrv-card" data-crop-id="${pc.cropId}">
       <div class="hrv-card-header">
         <span class="hrv-crop-label">🌿 ${label}</span>
+        ${expectedYieldHTML}
       </div>
 
       <!-- 入力フォーム -->
@@ -8290,7 +8486,7 @@ function _adpRenderIrrigationPane() {
   const cropCardsHTML = _adpPracticecrops.map(pc => {
     const records = _adpIrrigationRecords.filter(r => r.cropId === pc.cropId);
     return _adpBuildIrrigationCard(
-      { key: pc.cropId, name: _adpCropIdToName(pc.cropId), icon: '🌱', records },
+      { key: pc.cropId, name: _adpCropIdToName(pc.cropId), icon: '🌱', records, plantingDesign: pc.plantingDesign || null },
       areaId
     );
   }).join('');
@@ -8333,10 +8529,48 @@ function _adpBuildIrrigationWeekTable(records) {
 }
 
 function _adpBuildIrrigationCard(opts, areaId) {
-  const { key, name, icon, records } = opts;
+  const { key, name, icon, records, plantingDesign } = opts;
   const presetOptions = IRRIGATION_METHOD_PRESETS.map(p =>
     `<option value="${p.key}">${p.label}</option>`
   ).join('');
+
+  // ── 自動計算セクション（ridgeSegments がある作物のみ）──
+  let autoCalcHTML = '';
+  if (plantingDesign?.ridgeSegments?.length) {
+    const segs     = plantingDesign.ridgeSegments;
+    const rowWidth = parseFloat(plantingDesign.rowWidth) || 0;
+    const totalLen = Math.round(segs.reduce((s, sg) => s + sg.length, 0) * 10) / 10;
+    const sqm      = rowWidth > 0 ? Math.round(totalLen * rowWidth * 10) / 10 : null;
+
+    // cropDB から waterNeedLperSqmPerDay を取得
+    const crop       = (typeof CROP_DB !== 'undefined') ? CROP_DB.find(c => c.id === key) : null;
+    const waterRate  = crop?.waterNeedLperSqmPerDay ?? null;
+    const dailyWater = (sqm != null && waterRate != null)
+      ? Math.round(sqm * waterRate * 10) / 10
+      : null;
+
+    autoCalcHTML = `
+      <div class="ir-auto-calc">
+        <div class="ir-auto-calc-title">📐 畝設計から自動計算</div>
+        <div class="ir-auto-calc-grid">
+          <div class="ir-auto-item">
+            <span class="ir-auto-label">配管チューブ必要長</span>
+            <span class="ir-auto-val">${totalLen} m</span>
+          </div>
+          ${sqm != null ? `
+          <div class="ir-auto-item">
+            <span class="ir-auto-label">管理面積</span>
+            <span class="ir-auto-val">${sqm} m²</span>
+          </div>` : ''}
+          ${dailyWater != null ? `
+          <div class="ir-auto-item">
+            <span class="ir-auto-label">推奨灌水量（1日）</span>
+            <span class="ir-auto-val ir-auto-val-highlight">${dailyWater} L/日</span>
+          </div>` : ''}
+        </div>
+        ${waterRate != null ? `<div class="ir-auto-note">※ 作物標準値 ${waterRate} L/m²/日 をもとに算出</div>` : ''}
+      </div>`;
+  }
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -8365,6 +8599,7 @@ function _adpBuildIrrigationCard(opts, areaId) {
         <span class="ir-card-arrow">▶</span>
       </div>
       <div class="ir-card-body" id="ir-body-${key}" style="display:none;">
+        ${autoCalcHTML}
         ${_adpBuildIrrigationWeekTable(records)}
         <div class="ir-form-wrap" id="ir-form-${key}" style="display:none;">
           <div class="ir-form-grid">

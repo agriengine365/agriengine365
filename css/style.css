@@ -10274,3 +10274,160 @@ html.draw-dialog-active .bottom-nav {
 .adp-pane {
   will-change: transform;
 }
+
+/* ═══════════════════════════════════════════
+   畝設計 Phase 1 — 地図指定・自動計算UI
+   ═══════════════════════════════════════════ */
+
+/* 畝方向指定ボタン行 */
+.plt-ridgedir-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 8px;
+  flex-wrap: wrap;
+}
+
+.plt-ridgedir-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1.5px solid var(--green2);
+  background: transparent;
+  color: var(--green2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.plt-ridgedir-btn:active {
+  background: var(--green2);
+  color: #fff;
+}
+
+/* ステータス表示 */
+.plt-ridgedir-status {
+  font-size: 11px;
+  color: var(--text2);
+}
+.plt-ridgedir-status-ok {
+  color: var(--green);
+  font-weight: 600;
+}
+
+/* 自動計算済み：読み取り専用の畝数・畝長表示 */
+.plt-input-auto {
+  background: color-mix(in srgb, var(--green) 6%, transparent);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.plt-auto-val {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text1);
+  margin-top: 2px;
+}
+
+.plt-auto-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 12%, transparent);
+  border-radius: 3px;
+  padding: 1px 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+/* 畝方向フェーズ：スコープの色を黄色に変更 */
+.draw-dialog-active #draw-phase-ridgedir ~ * .scope-dot,
+#draw-scope.active:has(~ #map-draw-dialog #draw-phase-ridgedir:not([hidden])) .scope-dot {
+  background: #f59e0b;
+}
+
+/* ═══════════════════════════════════════════
+   収量見込み — 収穫カードヘッダー・栽植設計カード
+   ═══════════════════════════════════════════ */
+
+/* 収穫カード：ヘッダー右側の見込みバッジ */
+.hrv-card-header {
+  justify-content: space-between;
+}
+.hrv-expected-yield {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--green, #16a34a);
+  background: color-mix(in srgb, var(--green, #16a34a) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--green, #16a34a) 25%, transparent);
+  border-radius: 12px;
+  padding: 2px 10px;
+  white-space: nowrap;
+  font-family: var(--mono);
+}
+
+/* 栽植設計カード：収量見込みセルをグリーン強調 */
+.plt-result-item--yield {
+  background: color-mix(in srgb, var(--green, #16a34a) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--green, #16a34a) 20%, transparent);
+  grid-column: 1 / -1; /* グリッド全幅に広げる */
+}
+.plt-result-item--yield .plt-result-label {
+  color: color-mix(in srgb, var(--green, #16a34a) 80%, black);
+}
+.plt-result-item--yield .plt-result-val {
+  font-size: 15px;
+}
+
+/* ── 灌水タブ：自動計算セクション ── */
+.ir-auto-calc {
+  margin: 8px 0 12px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--blue, #2563eb) 6%, transparent);
+  border: 1px solid color-mix(in srgb, var(--blue, #2563eb) 20%, transparent);
+  border-radius: 10px;
+}
+.ir-auto-calc-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--blue, #2563eb) 80%, black);
+  margin-bottom: 8px;
+  letter-spacing: 0.02em;
+}
+.ir-auto-calc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 6px;
+}
+.ir-auto-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--surface, #fff);
+  border-radius: 7px;
+  padding: 6px 10px;
+}
+.ir-auto-label {
+  font-size: 10px;
+  color: var(--text-muted, #6b7280);
+}
+.ir-auto-val {
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--mono, monospace);
+  color: var(--text, #111);
+}
+.ir-auto-val-highlight {
+  color: color-mix(in srgb, var(--blue, #2563eb) 90%, black);
+}
+.ir-auto-note {
+  font-size: 10px;
+  color: var(--text-muted, #6b7280);
+  margin-top: 6px;
+}
