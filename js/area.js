@@ -236,6 +236,9 @@ function renderAreaItem(area, container) {
         ${envRow('周辺土地利用',   { farmland:'農地', forest:'山林', residential:'住宅地', mixed:'混在' }[env.surroundingLandUse] || null)}
       </div>
 
+      <!-- 輪作履歴表示 -->
+      ${_buildRotationDetailHtml(area)}
+
       <!-- 環境情報編集・再取得ボタン -->
       <div class="env-detail-actions">
         <button class="env-action-btn" onclick="event.stopPropagation();openEnvEditDialog(${JSON.stringify(JSON.stringify(area))})">
@@ -273,9 +276,35 @@ function renderAreaItem(area, container) {
         <label>メモ</label>
         <textarea class="ie-memo" placeholder="水はけが悪い、日当たり良好など">${escHtml(area.memo || '')}</textarea>
       </div>
+      <div class="ie-row-2col">
+        <div class="field">
+          <label>土壌pH <span class="ie-hint">0〜14</span></label>
+          <input type="number" class="ie-ph" value="${env.ph != null ? env.ph : ''}" step="0.1" min="0" max="14" placeholder="例: 6.5">
+        </div>
+        <div class="field">
+          <label>排水性</label>
+          <select class="ie-drainage">
+            <option value="" ${!env.drainageFacility ? 'selected' : ''}>未設定</option>
+            <option value="good"     ${ env.drainageFacility === 'good'     ? 'selected' : ''}>良好</option>
+            <option value="moderate" ${ env.drainageFacility === 'moderate' ? 'selected' : ''}>普通</option>
+            <option value="poor"     ${ env.drainageFacility === 'poor'     ? 'selected' : ''}>不良</option>
+          </select>
+        </div>
+      </div>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-primary" style="flex:1;" onclick="saveInlineEdit('${area.id}')">保存</button>
         <button class="btn btn-ghost"   style="flex:1;" onclick="toggleInlineEdit('${area.id}')">キャンセル</button>
+      </div>
+
+      <!-- 輪作履歴 -->
+      <div class="ie-rotation-section">
+        <div class="ie-rotation-header">
+          <span class="ie-rotation-title">🔄 輪作履歴</span>
+          <button class="ie-rotation-add-btn" onclick="event.stopPropagation();_rotAddRow('${area.id}')">＋ 追加</button>
+        </div>
+        <div class="ie-rotation-list" id="rot-list-${area.id}">
+          ${_buildRotationRows(area)}
+        </div>
       </div>
     </div>
   `;
@@ -349,11 +378,33 @@ async function saveInlineEdit(id) {
 
   if (!name) { showToast('エリア名を入力してください', 'amber'); return; }
 
+  // pH・排水性
+  const phRaw  = el.querySelector('.ie-ph')?.value;
+  const phVal  = phRaw !== '' && phRaw != null ? parseFloat(phRaw) : null;
+  const drainageVal = el.querySelector('.ie-drainage')?.value || null;
+
+  // 輪作履歴（rot-list から収集）
+  const rotList = document.getElementById('rot-list-' + id);
+  const rotationHistory = [];
+  if (rotList) {
+    rotList.querySelectorAll('.rot-row').forEach(row => {
+      const year   = parseInt(row.querySelector('.rot-year')?.value, 10);
+      const cropId = row.querySelector('.rot-crop')?.value || '';
+      if (year && cropId) rotationHistory.push({ year, cropId });
+    });
+    rotationHistory.sort((a, b) => b.year - a.year);
+  }
+
   const update = { name, memo, cultivationMode, 'meta.soilType': soilType, 'landProfile.soilType': soilType };
 
   try {
     if (db && !id.startsWith('local_')) {
-      await db.collection('areas').doc(id).update(update);
+      await db.collection('areas').doc(id).update({
+        ...update,
+        'env.ph':               phVal,
+        'env.drainageFacility': drainageVal || null,
+        'env.rotationHistory':  rotationHistory,
+      });
     } else {
       const stored = JSON.parse(localStorage.getItem(CONFIG.AREAS_KEY) || '[]');
       const idx = stored.findIndex(a => a.id === id);
@@ -365,6 +416,10 @@ async function saveInlineEdit(id) {
         stored[idx].meta.soilType = soilType;
         stored[idx].landProfile = stored[idx].landProfile || buildLandProfile(stored[idx].meta || {});
         stored[idx].landProfile.soilType = soilType;
+        stored[idx].env = stored[idx].env || {};
+        stored[idx].env.ph               = phVal;
+        stored[idx].env.drainageFacility = drainageVal || null;
+        stored[idx].env.rotationHistory  = rotationHistory;
         localStorage.setItem(CONFIG.AREAS_KEY, JSON.stringify(stored));
       }
     }
@@ -8378,4 +8433,88 @@ function _adpRenderShippingPane() {
   } else {
     el.innerHTML = '<div class="sh-empty">records.js が読み込まれていません</div>';
   }
+}
+
+// ═════════════════════════════════════════════════════════════════
+//  輪作履歴 — ヘルパー関数習
+// ═════════════════════════════════════════════════════════════════
+
+// ─── cropDB から使える作物リストを取得 ───
+function _rotGetCrops() {
+  if (typeof cropDB !== 'undefined' && Array.isArray(cropDB)) return cropDB;
+  if (typeof window.cropDB !== 'undefined' && Array.isArray(window.cropDB)) return window.cropDB;
+  return [];
+}
+
+// ─── 輪作履歴 <select> オプションHTML ───
+function _rotCropOptions(selectedId) {
+  const crops = _rotGetCrops();
+  const opts = crops.map(c =>
+    `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${c.name}</option>`
+  ).join('');
+  return `<option value="">作物を選択</option>${opts}`;
+}
+
+// ─── 輪作履歴行 HTML（インライン編集内リスト） ───
+function _buildRotationRows(area) {
+  const history = area.env?.rotationHistory || [];
+  if (history.length === 0) {
+    return '<div class="rot-empty">記録なし（＋追加 で入力）</div>';
+  }
+  const currentYear = new Date().getFullYear();
+  return history
+    .slice()
+    .sort((a, b) => b.year - a.year)
+    .map(r => _rotRowHtml(r.year, r.cropId, currentYear))
+    .join('');
+}
+
+// ─── 1行分の HTML ───
+function _rotRowHtml(year, cropId, currentYear) {
+  const yearOpts = Array.from({ length: 20 }, (_, i) => currentYear - i)
+    .map(y => `<option value="${y}" ${y === year ? 'selected' : ''}>${y}年</option>`)
+    .join('');
+  return `
+    <div class="rot-row">
+      <select class="rot-year">${yearOpts}</select>
+      <select class="rot-crop">${_rotCropOptions(cropId)}</select>
+      <button class="rot-del-btn" onclick="event.stopPropagation();this.closest('.rot-row').remove()">×</button>
+    </div>`;
+}
+
+// ─── ＋追加ボタン ───
+function _rotAddRow(areaId) {
+  const list = document.getElementById('rot-list-' + areaId);
+  if (!list) return;
+  const empty = list.querySelector('.rot-empty');
+  if (empty) empty.remove();
+  const currentYear = new Date().getFullYear();
+  const div = document.createElement('div');
+  div.innerHTML = _rotRowHtml(currentYear, '', currentYear);
+  list.appendChild(div.firstElementChild);
+}
+
+// ─── 詳細パネル用：輪作履歴の閲覧 HTML ───
+function _buildRotationDetailHtml(area) {
+  const history = area.env?.rotationHistory || [];
+  if (history.length === 0) return '';
+
+  const crops = _rotGetCrops();
+  const cropName = id => crops.find(c => c.id === id)?.name || id;
+
+  const rows = history
+    .slice()
+    .sort((a, b) => b.year - a.year)
+    .map(r => `
+      <div class="env-detail-row">
+        <span class="env-detail-label">${r.year}年</span>
+        <span class="env-detail-value">${escHtml(cropName(r.cropId))}</span>
+      </div>`)
+    .join('');
+
+  return `
+    <div class="env-detail-section">
+      <div class="env-detail-section-title">🔄 輪作履歴</div>
+      ${rows}
+    </div>`;
 }
