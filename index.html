@@ -151,7 +151,10 @@
       <div class="wizard-done-icon">✓</div>
       <div class="wizard-done-title">保存しました</div>
       <div class="wizard-done-sub" id="wizard-done-sub">エリア一覧から確認・編集できます</div>
-      <button class="btn btn-ghost" style="margin-top:4px;" onclick="goToAreas()">エリア一覧を見る →</button>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button class="btn btn-ghost" onclick="addAnotherArea()">＋ 続けて追加</button>
+        <button class="btn btn-ghost" onclick="goToAreas()">エリア一覧を見る →</button>
+      </div>
     </div>
 
   </div><!-- /draw-phase-wizard -->

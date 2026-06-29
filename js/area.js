@@ -423,8 +423,8 @@ async function saveInlineEdit(id) {
         localStorage.setItem(CONFIG.AREAS_KEY, JSON.stringify(stored));
       }
     }
+    await loadAreas();
     showToast('更新しました ✓', 'green');
-    loadAreas();
   } catch(e) {
     showToast('更新に失敗しました', 'amber');
     console.error(e);

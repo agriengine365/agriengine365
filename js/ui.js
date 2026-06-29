@@ -317,6 +317,12 @@ function showWizardDone(areaName) {
   if (sub) sub.textContent = `「${areaName}」をエリア一覧に追加しました`;
 }
 
+// ─── 続けてエリアを追加（完了画面から連続追加） ───
+function addAnotherArea() {
+  hideWizard();
+  PolygonDraw.start();
+}
+
 // ─── エリア一覧へ移動 ───
 function goToAreas() {
   hideWizard();
