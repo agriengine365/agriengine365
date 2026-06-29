@@ -744,6 +744,7 @@ function _adpEnsureView() {
       <button class="adp-subtab"        data-subtab="harvest"    onclick="_adpSwitchSubTab('harvest')">🧺 収穫</button>
       <button class="adp-subtab"        data-subtab="pesticide"  onclick="_adpSwitchSubTab('pesticide')">💊 農薬</button>
       <button class="adp-subtab"        data-subtab="irrigation" onclick="_adpSwitchSubTab('irrigation')">🚰 灌水</button>
+      <button class="adp-subtab"        data-subtab="weather"    onclick="_adpSwitchSubTab('weather')">🌤️ 天候</button>
       <button class="adp-subtab"        data-subtab="dashboard"  onclick="_adpSwitchSubTab('dashboard')">📊 ダッシュボード</button>
       <button class="adp-subtab"        data-subtab="shipping"   onclick="_adpSwitchSubTab('shipping')">📦 出荷記録</button>
     </div>
@@ -1023,6 +1024,11 @@ function _adpEnsureView() {
         <div id="irrigation-result"></div>
       </div>
 
+      <!-- 🌤️ 天候（実務側ペイン） -->
+      <div class="adp-pane" id="adp-pane-weather" style="display:none;">
+        <div id="weather-result"></div>
+      </div>
+
       <!-- ⑫ 📊 ダッシュボード（実務側ペイン） -->
       <div class="adp-pane" id="adp-pane-dashboard" style="display:none;">
         <div id="dashboard-result"></div>
@@ -1134,11 +1140,11 @@ function _adpJumpToCondTab() {
 }
 
 // ─── サブタブ切替（8タブ構成） ───
-const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'cropinfo', 'harvest', 'pesticide', 'irrigation', 'dashboard', 'shipping'];
+const ADP_SUBTAB_KEYS = ['ranking', 'growth', 'tempchart', 'fert', 'risk', 'calendar', 'match', 'planting', 'cropinfo', 'harvest', 'pesticide', 'irrigation', 'weather', 'dashboard', 'shipping'];
 
 // セグメント → 所属タブのマッピング
 const ADP_SEG_TABS = {
-  practice: ['calendar', 'fert', 'risk', 'planting', 'cropinfo', 'harvest', 'pesticide', 'irrigation', 'dashboard', 'shipping'],
+  practice: ['calendar', 'fert', 'risk', 'planting', 'cropinfo', 'harvest', 'pesticide', 'irrigation', 'weather', 'dashboard', 'shipping'],
   analysis: ['ranking', 'growth', 'tempchart', 'match', 'planting'],
 };
 
@@ -1271,6 +1277,9 @@ function _adpSwitchSubTab(name) {
   }
   if (name === 'irrigation') {
     _adpRenderIrrigationPane();
+  }
+  if (name === 'weather') {
+    _adpRenderWeatherPane();
   }
   if (name === 'dashboard') {
     if (typeof DashboardPane !== 'undefined') DashboardPane.render(_adpPracticecrops, _adpArea);
@@ -1632,6 +1641,33 @@ function _adpRenderCalendar() {
       byDate[d].push({ _type: 'voiceMemo', ...m });
     });
   }
+  // 施肥・農薬・収穫記録を統合（_adpPracticecrops から）
+  (_adpPracticecrops || []).forEach(pc => {
+    const cropId   = pc.cropId;
+    const cropName = _adpCropIdToName(cropId);
+    (pc.fertRecords || []).forEach(r => {
+      if (!r.date) return;
+      if (!byDate[r.date]) byDate[r.date] = [];
+      byDate[r.date].push({ _type: 'fert', cropId, cropName, ...r });
+    });
+    (pc.pesticideRecords || []).forEach(r => {
+      if (!r.date) return;
+      if (!byDate[r.date]) byDate[r.date] = [];
+      byDate[r.date].push({ _type: 'pesticide', cropId, cropName, ...r });
+    });
+    (pc.harvestRecords || []).forEach(r => {
+      if (!r.date) return;
+      if (!byDate[r.date]) byDate[r.date] = [];
+      byDate[r.date].push({ _type: 'harvest', cropId, cropName, ...r });
+    });
+  });
+  // 灌水記録を統合（_adpIrrigationRecords から）
+  (_adpIrrigationRecords || []).forEach(r => {
+    if (!r.date) return;
+    if (!byDate[r.date]) byDate[r.date] = [];
+    const cropName = r.cropId ? _adpCropIdToName(r.cropId) : 'エリア全体';
+    byDate[r.date].push({ _type: 'irrigation', cropName, ...r });
+  });
 
   const y = _adpYear, mo = _adpMonth;
   const today = new Date();
@@ -1667,11 +1703,15 @@ function _adpRenderCalendar() {
     if (isSel)   cls += ' selected';
     if (recs.length) cls += ' has-record';
 
-    // ドット（種別で形・色を変える。最大3個 + 残数）
-    const shown = recs.slice(0, 3);
-    const extra = recs.length > 3 ? recs.length - 3 : 0;
+    // ドット（種別で形・色を変える。最大4個 + 残数）
+    const shown = recs.slice(0, 4);
+    const extra = recs.length > 4 ? recs.length - 4 : 0;
     const dots = shown.map(r => {
       if (r._type === 'record')    return `<div class="adp-cal-dot dot-record"></div>`;
+      if (r._type === 'fert')      return `<div class="adp-cal-dot dot-fert"></div>`;
+      if (r._type === 'pesticide') return `<div class="adp-cal-dot dot-pest"></div>`;
+      if (r._type === 'irrigation') return `<div class="adp-cal-dot dot-irrig"></div>`;
+      if (r._type === 'harvest')   return `<div class="adp-cal-dot dot-harvest"></div>`;
       if (r.isSchedule)            return `<div class="adp-cal-dot dot-schedule"></div>`;
       return                              `<div class="adp-cal-dot dot-memo"></div>`;
     }).join('');
@@ -1753,40 +1793,80 @@ function _adpRenderUpcomingBanner(byDate, todayStr) {
     </div>`;
 }
 
-// ─── リスト表示 ───
+// ─── リスト表示（前半1〜15日 / 後半16〜末日） ───
 function _adpRenderCalendarList(byDate, y, mo, todayStr) {
   const wrap = document.getElementById('adp-calendar-wrap');
   if (!wrap) return;
   const monthStr = `${y}-${String(mo+1).padStart(2,'0')}`;
   const today = new Date();
   const isCurrentMonth = (y === today.getFullYear() && mo === today.getMonth());
-  const entries = Object.entries(byDate)
-    .filter(([d]) => d.startsWith(monthStr))
-    .sort(([a], [b]) => a.localeCompare(b));
-
+  const daysInMonth = new Date(y, mo + 1, 0).getDate();
   const monthLabel = `${y}年 ${mo + 1}月`;
-  let listHTML = '';
-  if (!entries.length) {
-    listHTML = `<div class="empty-mini">この月の記録はありません。</div>`;
-  } else {
-    listHTML = entries.map(([date, recs]) => {
-      const d = new Date(date);
-      const dateLabel = `${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`;
-      const isToday = date === todayStr;
-      const items = recs.map(r => {
-        const icon = r._type === 'record' ? '📦' : r.isSchedule ? '📌' : '🎤';
-        const txt  = r._type === 'record' ? (r.cropName || '出荷記録') : (r.text || r.note || 'メモ');
-        return `<div class="adp-cal-list-item">${icon} ${txt}</div>`;
-      }).join('');
-      return `
-        <div class="adp-cal-list-row${isToday ? ' today' : ''}" onclick="_adpSelectDate('${date}')">
-          <div class="adp-cal-list-date">${dateLabel}${isToday ? ' <span class="cal-today-badge">今日</span>' : ''}</div>
-          ${items}
-        </div>`;
+
+  // 前半/後半に分ける
+  const firstHalf  = [];  // 1〜15日
+  const secondHalf = [];  // 16〜末日
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${monthStr}-${String(d).padStart(2,'0')}`;
+    const recs = byDate[dateStr];
+    if (!recs || !recs.length) continue;
+    (d <= 15 ? firstHalf : secondHalf).push([dateStr, recs]);
+  }
+
+  // 1日分の行HTML生成ヘルパー
+  function buildHalfRow(dateStr, recs) {
+    const d   = new Date(dateStr + 'T00:00:00');
+    const day = d.getDate();
+    const dow = '日月火水木金土'[d.getDay()];
+    const isToday = dateStr === todayStr;
+    const isSel   = dateStr === _adpSelDate;
+
+    // アイコンチップ（種別ごと）
+    const chips = recs.map(r => {
+      let icon, label;
+      switch (r._type) {
+        case 'fert':       icon = '🌱'; label = r.cropName || ''; break;
+        case 'pesticide':  icon = '💊'; label = r.cropName || ''; break;
+        case 'irrigation': icon = '💧'; label = r.cropName || 'エリア全体'; break;
+        case 'harvest':    icon = '🧺'; label = r.cropName || ''; break;
+        case 'record':     icon = '📦'; label = r.cropName || r.item || ''; break;
+        case 'voiceMemo':  icon = '🎤'; label = r.tag || ''; break;
+        default:           icon = r.isSchedule ? '📌' : '🎤'; label = r.text || r.note || ''; break;
+      }
+      const labelHTML = label ? `<span class="cal-chip-label">${escHtml(label)}</span>` : '';
+      return `<span class="cal-chip cal-chip-${r._type || 'other'}">${icon}${labelHTML}</span>`;
     }).join('');
+
+    let rowCls = 'adp-cal-list-row';
+    if (isToday) rowCls += ' today';
+    if (isSel)   rowCls += ' selected';
+    return `
+      <div class="${rowCls}" onclick="_adpSelectDate('${dateStr}')">
+        <div class="adp-cal-list-date">
+          <span class="cal-list-day">${day}日</span>
+          <span class="cal-list-dow ${isToday ? 'cal-list-dow-today' : ''}">${dow}</span>
+          ${isToday ? `<span class="cal-today-badge">今日</span>` : ''}
+        </div>
+        <div class="cal-chips-wrap">${chips}</div>
+      </div>`;
+  }
+
+  // 前半/後半セクションHTML
+  function buildSection(entries, label, empty) {
+    if (!entries.length) return `
+      <div class="cal-half-section">
+        <div class="cal-half-header">${label}</div>
+        <div class="cal-half-empty">${empty}</div>
+      </div>`;
+    return `
+      <div class="cal-half-section">
+        <div class="cal-half-header">${label}</div>
+        ${entries.map(([d, r]) => buildHalfRow(d, r)).join('')}
+      </div>`;
   }
 
   const weatherBarHTMLList = isCurrentMonth ? _adpBuildWeatherBarHTML() : '';
+  const m1 = mo + 1;
   wrap.innerHTML = `
     <div class="adp-cal-nav">
       <button class="adp-cal-nav-btn" onclick="_adpChangeMonth(-1)">‹ 前の月</button>
@@ -1795,7 +1875,8 @@ function _adpRenderCalendarList(byDate, y, mo, todayStr) {
     </div>
     ${weatherBarHTMLList}
     ${!isCurrentMonth ? `<button class="adp-cal-today-btn" onclick="_adpGoToday()">今日に戻る</button>` : ''}
-    <div class="adp-cal-list">${listHTML}</div>
+    ${buildSection(firstHalf,  `${m1}月1日〜15日`, '記録なし')}
+    ${buildSection(secondHalf, `${m1}月16日〜${daysInMonth}日`, '記録なし')}
   `;
 }
 
@@ -1831,15 +1912,19 @@ async function _adpFetchWeather(lat, lng, areaId) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast`
       + `?latitude=${lat}&longitude=${lng}`
-      + `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max`
-      + `&timezone=Asia%2FTokyo&forecast_days=16`;
+      + `&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max,`
+      + `precipitation_sum,et0_fao_evapotranspiration,relative_humidity_2m_max,relative_humidity_2m_min,`
+      + `wind_speed_10m_max,sunshine_duration,uv_index_max,dew_point_2m_max`
+      + `&timezone=Asia%2FTokyo&forecast_days=16&wind_speed_unit=ms`;
     const res  = await fetch(url);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
     _adpWeatherCache = {
       areaId,
       fetchedAt: Date.now(),
-      daily: json.daily,  // { time[], weathercode[], temperature_2m_max[], temperature_2m_min[], precipitation_probability_max[] }
+      daily: json.daily,  // { time[], weathercode[], temperature_2m_max/min[], precipitation_probability_max[],
+                            //   precipitation_sum[], et0_fao_evapotranspiration[], relative_humidity_2m_max/min[],
+                            //   wind_speed_10m_max[](m/s), sunshine_duration[](秒), uv_index_max[], dew_point_2m_max[] }
     };
   } catch(e) {
     console.warn('[ADP] 天気予報取得失敗:', e);
@@ -1886,6 +1971,356 @@ function _adpBuildWeatherBarHTML() {
 function _adpRenderWeatherBar() {
   // グリッド・リスト両方で再描画するため _adpRenderCalendar を呼ぶ
   _adpRenderCalendar();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  Section 8: 天候タブ  🌤️
+//  - _adpRenderWeatherPane()         : メインレンダリング
+//  - _adpCalcIrrigationAdvice(d)     : 灌水アドバイス判定（ハイブリッド）
+//  - _adpCalcPestRisk(d)             : 病害虫リスク5種判定
+//  - _adpCalcBonusAdvisories(d)      : ボーナス表示（散布適否・日照不足）
+//  - _adpSeasonalRiskMessages()      : 季節リスク（AMeDAS過去気候ベース）
+// ═══════════════════════════════════════════════════════════════
+
+// ── 季節リスクテーブル（月→メッセージ） ─────────────────────────
+const WX_SEASONAL_RISK = {
+  1:  ['❄️ 凍霜害リスク期間。マルチング・防霜対策を確認してください。'],
+  2:  ['❄️ 晩霜に注意。播種・定植は地温確認後に行ってください。'],
+  3:  ['🌬️ 春一番・乾燥風による病害虫飛来期。定期観察を強化してください。'],
+  4:  ['🌧️ 低温多雨になりやすい時期。灰色かび病・べと病に注意してください。'],
+  5:  ['☀️ 高温乾燥日が続くと害虫（アブラムシ・ハダニ）が多発しやすい時期です。'],
+  6:  ['💧 梅雨期。過湿によるカビ・軟腐病リスクが高まります。排水管理を徹底してください。'],
+  7:  ['🌡️ 高温障害・熱中症リスク期。作業時間帯と灌水量を調整してください。'],
+  8:  ['🌡️ 猛暑が続く時期。土壌水分の過不足チェックを毎日行ってください。'],
+  9:  ['🍃 台風シーズン。倒伏・冠水対策を事前に確認してください。'],
+  10: ['🍂 秋雨・低温により疫病リスクが上昇します。'],
+  11: ['❄️ 早霜の可能性があります。防霜資材を準備してください。'],
+  12: ['❄️ 凍霜害リスク期間。施設・マルチ管理を確認してください。'],
+};
+
+// ── ヘルパー：今日以降の予報インデックスを取得 ──────────────────
+function _adpWxStartIdx(d) {
+  const today = new Date().toISOString().slice(0, 10);
+  const idx = (d.time || []).findIndex(t => t >= today);
+  return idx < 0 ? 0 : idx;
+}
+
+// ── ヘルパー：N日間のウィンドウで条件を満たす日数を返す ──────────
+// pairs: [[array, threshold, op], ...]  op: '>=' | '<=' | '>' | '<'
+function _adpWxCountDays(d, startIdx, windowLen, pairs) {
+  let count = 0;
+  for (let i = startIdx; i < startIdx + windowLen; i++) {
+    const allMatch = pairs.every(([arr, thr, op]) => {
+      const v = arr?.[i];
+      if (v == null) return false;
+      if (op === '>=') return v >= thr;
+      if (op === '<=') return v <= thr;
+      if (op === '>')  return v > thr;
+      if (op === '<')  return v < thr;
+      return false;
+    });
+    if (allMatch) count++;
+  }
+  return count;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  灌水アドバイス判定（ハイブリッド方式）
+//  返値: { level: 'rain'|'recommend'|'ok', score: 0-100,
+//           wbText, reasonText }
+// ══════════════════════════════════════════════════════════════
+function _adpCalcIrrigationAdvice(d) {
+  const s = _adpWxStartIdx(d);
+  const pop  = d.precipitation_probability_max;
+  const tMax = d.temperature_2m_max;
+  const prec = d.precipitation_sum;
+  const et0  = d.et0_fao_evapotranspiration;
+
+  // 水分収支（3日合計）: ET0 - 降水量  [mm]
+  let wb = 0;
+  for (let i = s; i < s + 3; i++) {
+    wb += (et0?.[i] ?? 0) - (prec?.[i] ?? 0);
+  }
+  wb = Math.round(wb * 10) / 10;
+  const wbText = `水分収支 ${wb >= 0 ? '+' : ''}${wb}mm`;
+
+  // 今日・明日の降水確率
+  const pop0 = pop?.[s]   ?? 0;
+  const pop1 = pop?.[s+1] ?? 0;
+
+  // 低降水確率（3日平均）
+  const popAvg3 = (pop?.[s] ?? 0 + (pop?.[s+1] ?? 0) + (pop?.[s+2] ?? 0)) / 3;
+
+  // リスクスコア計算
+  const popScore  = (100 - popAvg3) / 100 * 100;       // 低降水確率ほど高い
+  const tempOver  = Math.max(0, (tMax?.[s] ?? 25) - 28);
+  const wbScore   = Math.min(Math.max(wb, 0) / 20, 1) * 100;
+  const score     = Math.round(popScore * 0.35 + tempOver * 2.5 * 0.25 + wbScore * 0.40);
+
+  // 判定
+  let level, reasonText;
+  if (pop0 >= 60 || pop1 >= 60) {
+    level = 'rain';
+    reasonText = `今後2日内に降水確率 ${Math.max(pop0,pop1)}%の雨が見込まれます`;
+  } else if (wb >= 15) {
+    level = 'recommend';
+    reasonText = `${wbText}（蒸発散が降水量を大きく上回っています）`;
+  } else if (
+    _adpWxCountDays(d, s, 3, [[pop, 30, '<']]) >= 3 && (tMax?.[s] ?? 0) >= 28
+  ) {
+    level = 'recommend';
+    reasonText = `高温かつ3日間の降水確率が低い状態が続いています（${wbText}）`;
+  } else {
+    level = 'ok';
+    reasonText = `${wbText}（水分バランスは概ね適正です）`;
+  }
+
+  return { level, score: Math.min(score, 100), wbText, reasonText };
+}
+
+// ══════════════════════════════════════════════════════════════
+//  病害虫リスク5種判定
+//  返値: [ { key, icon, label, level:'warn'|'caution'|'ok', notes:[] } ]
+// ══════════════════════════════════════════════════════════════
+function _adpCalcPestRisk(d) {
+  const s = _adpWxStartIdx(d);
+  const tMax  = d.temperature_2m_max;
+  const tMin  = d.temperature_2m_min;
+  const pop   = d.precipitation_probability_max;
+  const rhMax = d.relative_humidity_2m_max;
+  const rhMin = d.relative_humidity_2m_min;
+  const wind  = d.wind_speed_10m_max;
+  const uv    = d.uv_index_max;
+  const dew   = d.dew_point_2m_max;
+  const W = 7;  // 判定ウィンドウ（7日）
+
+  const results = [];
+
+  // ①高温障害
+  {
+    const hotDays = _adpWxCountDays(d, s, W, [[tMax, 35, '>=']]);
+    const uvHot   = _adpWxCountDays(d, s, W, [[uv, 8, '>='], [tMax, 32, '>=']]);
+    const notes = [];
+    let level = 'ok';
+    if (hotDays >= 1) { notes.push(`最高気温35°C以上が${hotDays}日見込まれます`); level = 'warn'; }
+    if (uvHot >= 1)   { notes.push(`UV指数≥8かつ最高気温≥32°Cの日が${uvHot}日（蒸散ストレス注意）`); if (level === 'ok') level = 'caution'; }
+    results.push({ key:'heat', icon:'🌡️', label:'高温障害', level, notes });
+  }
+
+  // ②低温障害
+  {
+    const coldDays  = _adpWxCountDays(d, s, W, [[tMin, 5, '<=']]);
+    const frostDays = (tMin && dew)
+      ? [0,1,2,3,4,5,6].filter(i => {
+          const tm = tMin[s+i], dw = dew[s+i];
+          return tm != null && dw != null && (tm - dw) <= 2 && tm >= 0 && tm <= 5;
+        }).length
+      : 0;
+    const notes = [];
+    let level = 'ok';
+    if (coldDays >= 1) { notes.push(`最低気温5°C以下の日が${coldDays}日見込まれます`); level = 'warn'; }
+    if (frostDays >= 1){ notes.push(`❄️ 霜害注意：露点と最低気温の差≤2°Cの日が${frostDays}日（結霜リスク）`); level = 'warn'; }
+    results.push({ key:'cold', icon:'🥶', label:'低温障害', level, notes });
+  }
+
+  // ③過湿/カビ
+  {
+    const wetDays = _adpWxCountDays(d, s, W, [[pop, 60, '>=']]);
+    // 相対湿度が高い無降水日（高湿無降水型）
+    let dryHighRh = 0;
+    for (let i = s; i < s + W; i++) {
+      if ((rhMax?.[i] ?? 0) >= 85 && (pop?.[i] ?? 100) < 30) dryHighRh++;
+    }
+    const notes = [];
+    let level = 'ok';
+    if (wetDays >= 2) { notes.push(`降水確率60%以上の日が${wetDays}日連続見込まれます`); level = 'warn'; }
+    if (dryHighRh >= 2){ notes.push(`高湿度（無降水型）が${dryHighRh}日：灰色かび病・べと病に注意`); if (level === 'ok') level = 'caution'; }
+    results.push({ key:'mold', icon:'💧', label:'過湿/カビ', level, notes });
+  }
+
+  // ④乾燥
+  {
+    const dryDays  = _adpWxCountDays(d, s, W, [[pop, 20, '<'], [tMax, 28, '>=']]);
+    const earlyDry = _adpWxCountDays(d, s, 3, [[rhMin, 30, '<=']]);
+    const notes = [];
+    let level = 'ok';
+    if (dryDays >= 5) { notes.push(`高温乾燥（降水確率<20%かつ最高気温≥28°C）が${dryDays}日続く見込みです`); level = 'warn'; }
+    if (earlyDry >= 3){ notes.push(`相対湿度最小値30%以下が3日以上（早期乾燥警戒）`); if (level === 'ok') level = 'caution'; }
+    results.push({ key:'dry', icon:'🏜️', label:'乾燥', level, notes });
+  }
+
+  // ⑤害虫リスク
+  {
+    const bugBase  = _adpWxCountDays(d, s, W, [[tMax, 28, '>='], [pop, 30, '<']]);
+    // 無風＋低湿でエスカレーション
+    const bugEsc   = (wind && rhMin)
+      ? [0,1,2,3,4,5,6].filter(i => {
+          return (tMax?.[s+i] ?? 0) >= 28
+            && (pop?.[s+i] ?? 100) < 30
+            && (rhMin?.[s+i] ?? 100) <= 40
+            && (wind?.[s+i] ?? 10) < 2;
+        }).length
+      : 0;
+    const notes = [];
+    let level = 'ok';
+    if (bugBase >= 3) { notes.push(`高温乾燥が${bugBase}日続き害虫発生リスクが高まります`); level = 'caution'; }
+    if (bugEsc >= 1)  { notes.push(`⚠️ 無風・低湿条件が重なる日${bugEsc}日（飛来・定着リスク：警戒）`); level = 'warn'; }
+    results.push({ key:'bug', icon:'🦟', label:'害虫リスク', level, notes });
+  }
+
+  return results;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ボーナスアドバイス（農薬散布適否・日照不足リスク）
+// ══════════════════════════════════════════════════════════════
+function _adpCalcBonusAdvisories(d) {
+  const s = _adpWxStartIdx(d);
+  const wind    = d.wind_speed_10m_max;
+  const sun     = d.sunshine_duration;  // 秒単位
+  const time    = d.time || [];
+  const W = 7;
+  const result = [];
+
+  // 農薬散布不適日
+  const badSprayDays = [];
+  for (let i = s; i < s + 3 && i < time.length; i++) {
+    if ((wind?.[i] ?? 0) >= 5) {
+      badSprayDays.push(time[i]?.slice(5) ?? '');
+    }
+  }
+  if (badSprayDays.length > 0) {
+    result.push({
+      icon: '🚿',
+      label: '農薬散布',
+      level: 'caution',
+      text: `⚠️ ${badSprayDays.join('・')}は最大風速5m/s以上のため散布不適`
+    });
+  }
+
+  // 日照不足リスク（秒→時間換算：2h=7200秒）
+  const lowSunDays = _adpWxCountDays(d, s, W, [[sun, 7200, '<']]);
+  if (lowSunDays >= 3) {
+    result.push({
+      icon: '☁️',
+      label: '日照不足',
+      level: 'caution',
+      text: `☁️ 日照2時間未満が${lowSunDays}日続く見込み：徒長・収量低下に注意`
+    });
+  }
+
+  return result;
+}
+
+// ══════════════════════════════════════════════════════════════
+//  季節リスクメッセージ（AMeDAS過去気候ベース）
+// ══════════════════════════════════════════════════════════════
+function _adpSeasonalRiskMessages() {
+  const month = new Date().getMonth() + 1;
+  return WX_SEASONAL_RISK[month] || [];
+}
+
+// ══════════════════════════════════════════════════════════════
+//  天候ペインレンダリング（メイン）
+// ══════════════════════════════════════════════════════════════
+function _adpRenderWeatherPane() {
+  const el = document.getElementById('weather-result');
+  if (!el) return;
+
+  const cache = _adpWeatherCache;
+  if (!cache || !cache.daily) {
+    el.innerHTML = `
+      <div class="wx-loading">
+        <p>🌐 天気予報データを取得中です...</p>
+        <p class="wx-hint">エリアを再選択すると取得が開始されます</p>
+      </div>`;
+    return;
+  }
+
+  const d = cache.daily;
+  const adv    = _adpCalcIrrigationAdvice(d);
+  const risks  = _adpCalcPestRisk(d);
+  const bonus  = _adpCalcBonusAdvisories(d);
+  const season = _adpSeasonalRiskMessages();
+
+  el.innerHTML = `
+    <div class="wx-pane">
+      ${_adpBuildIrrigationAdviceHTML(adv)}
+      ${_adpBuildPestRiskHTML(risks)}
+      ${bonus.length ? _adpBuildBonusHTML(bonus) : ''}
+      ${season.length ? _adpBuildSeasonalRiskHTML(season) : ''}
+      <p class="wx-updated">更新: ${new Date(cache.fetchedAt).toLocaleString('ja-JP')}</p>
+    </div>`;
+}
+
+// ── 灌水アドバイス HTML ──────────────────────────────────────
+function _adpBuildIrrigationAdviceHTML(a) {
+  const map = {
+    rain:      { icon:'🌧️', label:'雨待ち',    cls:'wx-advice-rain' },
+    recommend: { icon:'💧', label:'灌水推奨',  cls:'wx-advice-recommend' },
+    ok:        { icon:'✅', label:'灌水不要',  cls:'wx-advice-ok' },
+  };
+  const m = map[a.level] || map.ok;
+  const barW = Math.round(a.score);
+  return `
+    <div class="wx-section">
+      <div class="wx-section-title">💧 灌水アドバイス</div>
+      <div class="wx-advice-card ${m.cls}">
+        <span class="wx-advice-icon">${m.icon}</span>
+        <span class="wx-advice-label">${m.label}</span>
+      </div>
+      <div class="wx-score-bar-wrap">
+        <div class="wx-score-bar" style="width:${barW}%"></div>
+      </div>
+      <p class="wx-reason">${a.reasonText}</p>
+    </div>`;
+}
+
+// ── 病害虫リスク HTML ────────────────────────────────────────
+function _adpBuildPestRiskHTML(risks) {
+  const rows = risks.map(r => {
+    const cls   = r.level === 'warn' ? 'wx-risk-warn' : r.level === 'caution' ? 'wx-risk-caution' : 'wx-risk-ok';
+    const badge = r.level === 'warn' ? '⚠️警戒' : r.level === 'caution' ? '⚡注意' : '✅良好';
+    const notes = r.notes.map(n => `<li class="wx-risk-note">${n}</li>`).join('');
+    return `
+      <div class="wx-risk-row ${cls}">
+        <div class="wx-risk-head">
+          <span class="wx-risk-icon">${r.icon}</span>
+          <span class="wx-risk-lbl">${r.label}</span>
+          <span class="wx-risk-badge">${badge}</span>
+        </div>
+        ${r.notes.length ? `<ul class="wx-risk-notes">${notes}</ul>` : ''}
+      </div>`;
+  }).join('');
+  return `
+    <div class="wx-section">
+      <div class="wx-section-title">⚠️ 病害虫・気象リスク</div>
+      <div class="wx-risk-list">${rows}</div>
+    </div>`;
+}
+
+// ── ボーナスアドバイス HTML ──────────────────────────────────
+function _adpBuildBonusHTML(bonus) {
+  const items = bonus.map(b => `
+    <div class="wx-bonus-item wx-bonus-${b.level}">
+      <span class="wx-bonus-icon">${b.icon}</span>
+      <span class="wx-bonus-text">${b.text}</span>
+    </div>`).join('');
+  return `
+    <div class="wx-section">
+      <div class="wx-section-title">📋 追加アドバイス</div>
+      ${items}
+    </div>`;
+}
+
+// ── 季節リスク HTML ──────────────────────────────────────────
+function _adpBuildSeasonalRiskHTML(messages) {
+  const items = messages.map(m => `<li class="wx-season-item">${m}</li>`).join('');
+  return `
+    <div class="wx-section">
+      <div class="wx-section-title">📅 今月の季節リスク</div>
+      <ul class="wx-season-list">${items}</ul>
+    </div>`;
 }
 
 function _adpGoToday() {
@@ -1942,9 +2377,27 @@ function _adpRenderDayRecords() {
   const voiceMemos = (typeof vmLoadByDate === 'function')
     ? vmLoadByDate(areaId, _adpSelDate) : [];
 
+  // 施肥・農薬・収穫記録をその日分だけ抽出
+  const fertOnDay = [], pestOnDay = [], harvestOnDay = [], irrigOnDay = [];
+  (_adpPracticecrops || []).forEach(pc => {
+    const cropName = _adpCropIdToName(pc.cropId);
+    (pc.fertRecords || []).filter(r => r.date === _adpSelDate)
+      .forEach(r => fertOnDay.push({ ...r, cropName }));
+    (pc.pesticideRecords || []).filter(r => r.date === _adpSelDate)
+      .forEach(r => pestOnDay.push({ ...r, cropName }));
+    (pc.harvestRecords || []).filter(r => r.date === _adpSelDate)
+      .forEach(r => harvestOnDay.push({ ...r, cropName }));
+  });
+  (_adpIrrigationRecords || []).filter(r => r.date === _adpSelDate)
+    .forEach(r => irrigOnDay.push({
+      ...r,
+      cropName: r.cropId ? _adpCropIdToName(r.cropId) : 'エリア全体'
+    }));
+
   const label = `${parseInt(_adpSelDate.slice(5,7))}月${parseInt(_adpSelDate.slice(8,10))}日の記録`;
 
-  if (!dayRecs.length && !voiceMemos.length) {
+  if (!dayRecs.length && !voiceMemos.length &&
+      !fertOnDay.length && !pestOnDay.length && !harvestOnDay.length && !irrigOnDay.length) {
     wrap.innerHTML = `
       <div class="adp-day-records">
         <div class="adp-day-records-title">${label}</div>
@@ -1953,7 +2406,7 @@ function _adpRenderDayRecords() {
     return;
   }
 
-  // 通常記録カード
+  // 通常記録カード（出荷記録）
   const recCardsHTML = dayRecs.map(r => {
     const item = r.productName || r.item || '—';
     const dest = r.shippingTypeLabel || r.shippingType || '—';
@@ -2001,11 +2454,71 @@ function _adpRenderDayRecords() {
     `;
   }).join('');
 
+  // 施肥セクション
+  const fertSectionHTML = fertOnDay.length ? `
+    <div class="day-rec-section">
+      <div class="day-rec-section-head">🌱 施肥</div>
+      ${fertOnDay.map(r => `
+        <div class="day-rec-row">
+          <span class="day-rec-crop">${escHtml(r.cropName)}</span>
+          <span class="day-rec-detail">${escHtml(r.name || '')}${r.amount ? `　${r.amount}${r.unit || ''}` : ''}</span>
+          ${r.memo ? `<span class="day-rec-memo">${escHtml(r.memo)}</span>` : ''}
+        </div>`).join('')}
+    </div>` : '';
+
+  // 農薬セクション
+  const pestSectionHTML = pestOnDay.length ? `
+    <div class="day-rec-section">
+      <div class="day-rec-section-head">💊 農薬</div>
+      ${pestOnDay.map(r => `
+        <div class="day-rec-row">
+          <span class="day-rec-crop">${escHtml(r.cropName)}</span>
+          <span class="day-rec-detail">${escHtml(r.name || '')}${r.amount ? `　${r.amount}${r.unit || ''}` : ''}${r.target ? `　対象：${escHtml(r.target)}` : ''}</span>
+          ${r.memo ? `<span class="day-rec-memo">${escHtml(r.memo)}</span>` : ''}
+        </div>`).join('')}
+    </div>` : '';
+
+  // 灌水セクション
+  const irrigSectionHTML = irrigOnDay.length ? `
+    <div class="day-rec-section">
+      <div class="day-rec-section-head">💧 灌水</div>
+      ${irrigOnDay.map(r => {
+        const methodLabel = { drip:'点滴', sprinkler:'スプリンクラー', manual:'手動', other:'その他' }[r.method] || r.method || '';
+        const timeRange = r.startTime && r.endTime ? `${r.startTime}〜${r.endTime}` : '';
+        const water = r.totalWaterL != null ? `${r.totalWaterL}L` : '';
+        return `
+          <div class="day-rec-row">
+            <span class="day-rec-crop">${escHtml(r.cropName)}</span>
+            <span class="day-rec-detail">${methodLabel}${timeRange ? `　${timeRange}` : ''}${water ? `　${water}` : ''}</span>
+            ${r.memo ? `<span class="day-rec-memo">${escHtml(r.memo)}</span>` : ''}
+          </div>`;
+      }).join('')}
+    </div>` : '';
+
+  // 収穫セクション
+  const harvestSectionHTML = harvestOnDay.length ? `
+    <div class="day-rec-section">
+      <div class="day-rec-section-head">🧺 収穫</div>
+      ${harvestOnDay.map(r => {
+        const revenue = (r.weight != null && r.price != null)
+          ? `　¥${Math.round(r.weight * r.price).toLocaleString()}` : '';
+        return `
+          <div class="day-rec-row">
+            <span class="day-rec-crop">${escHtml(r.cropName)}</span>
+            <span class="day-rec-detail">${r.grade || ''}　${r.weight != null ? r.weight : ''}${r.unit || ''}${r.price ? `　¥${r.price}/${r.unit || 'kg'}` : ''}${revenue}</span>
+          </div>`;
+      }).join('')}
+    </div>` : '';
+
   wrap.innerHTML = `
     <div class="adp-day-records">
       <div class="adp-day-records-title">${label}</div>
       ${recCardsHTML}
       ${vmCardsHTML}
+      ${fertSectionHTML}
+      ${pestSectionHTML}
+      ${irrigSectionHTML}
+      ${harvestSectionHTML}
     </div>`;
 }
 

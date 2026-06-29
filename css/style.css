@@ -9819,3 +9819,299 @@ html.draw-dialog-active .bottom-nav {
   cursor: pointer;
 }
 .sh-del-btn:active { color: #ef4444; border-color: #ef4444; }
+
+/* ═══════════════════════════════════════════
+   カレンダー — 4種ドット追加
+   ═══════════════════════════════════════════ */
+.adp-cal-dot.dot-fert    { background: #4ade80; border-radius: 2px; }    /* 緑■ 施肥 */
+.adp-cal-dot.dot-pest    { background: #f87171; border-radius: 2px; }    /* 赤■ 農薬 */
+.adp-cal-dot.dot-irrig   { background: #60a5fa; border-radius: 50%; }    /* 青● 灌水 */
+.adp-cal-dot.dot-harvest { background: #fbbf24; border-radius: 2px; }    /* 黄■ 収穫 */
+
+/* ═══════════════════════════════════════════
+   カレンダー — リスト前半/後半形式
+   ═══════════════════════════════════════════ */
+.cal-half-section {
+  margin: 0 12px 12px;
+}
+.cal-half-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text3);
+  letter-spacing: 0.05em;
+  padding: 10px 0 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.cal-half-empty {
+  font-size: 12px;
+  color: var(--text3);
+  padding: 10px 0;
+  text-align: center;
+}
+
+/* リスト行 */
+.adp-cal-list-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 10px;
+  border-radius: 8px;
+  margin-bottom: 3px;
+  background: var(--bg3);
+  cursor: pointer;
+  transition: background .12s;
+}
+.adp-cal-list-row:active { background: var(--bg2); }
+.adp-cal-list-row.today {
+  background: rgba(74, 222, 128, 0.08);
+  border-left: 3px solid var(--green);
+}
+.adp-cal-list-row.selected {
+  background: rgba(74, 222, 128, 0.12);
+}
+
+/* 日付部分 */
+.adp-cal-list-date {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  min-width: 62px;
+}
+.cal-list-day {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.cal-list-dow {
+  font-size: 11px;
+  color: var(--text3);
+}
+.cal-list-dow-today {
+  color: var(--green);
+  font-weight: 600;
+}
+
+/* アイコンチップ群 */
+.cal-chips-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+  flex: 1;
+}
+.cal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  padding: 2px 7px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+.cal-chip-label {
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 種別ごとのチップ色 */
+.cal-chip-fert      { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+.cal-chip-pesticide { background: rgba(248, 113, 113, 0.15); color: #f87171; }
+.cal-chip-irrigation{ background: rgba(96, 165, 250, 0.15); color: #60a5fa; }
+.cal-chip-harvest   { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+.cal-chip-record    { background: rgba(67, 160, 71, 0.15); color: #43a047; }
+.cal-chip-voiceMemo { background: rgba(25, 118, 210, 0.15); color: #60a5fa; }
+.cal-chip-other     { background: var(--bg2); color: var(--text2); }
+
+/* ═══════════════════════════════════════════
+   日付タップ詳細カード — 種別セクション
+   ═══════════════════════════════════════════ */
+.day-rec-section {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+.day-rec-section-head {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+.day-rec-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--bg3);
+  margin-bottom: 4px;
+}
+.day-rec-crop {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green);
+}
+.day-rec-detail {
+  font-size: 13px;
+  color: var(--text);
+}
+.day-rec-memo {
+  font-size: 11px;
+  color: var(--text3);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Section 8: 天候タブ  🌤️  (.wx-*)
+   ═══════════════════════════════════════════════════════════ */
+.wx-pane {
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.wx-loading {
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--text2);
+}
+.wx-hint {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 6px;
+}
+.wx-updated {
+  font-size: 10px;
+  color: var(--text3);
+  text-align: right;
+  margin: 0;
+}
+
+/* ── セクション共通 ── */
+.wx-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.wx-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text2);
+  letter-spacing: 0.03em;
+  margin-bottom: 2px;
+}
+
+/* ── 灌水アドバイス ── */
+.wx-advice-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.wx-advice-icon { font-size: 22px; }
+.wx-advice-label { font-size: 15px; font-weight: 700; }
+
+.wx-advice-rain      { background: #0d2535; border-color: #3b82f6; }
+.wx-advice-rain      .wx-advice-label { color: #60a5fa; }
+.wx-advice-recommend { background: #1a2e1a; border-color: var(--green3); }
+.wx-advice-recommend .wx-advice-label { color: var(--green); }
+.wx-advice-ok        { background: var(--bg2); border-color: var(--border); }
+.wx-advice-ok        .wx-advice-label { color: var(--text2); }
+
+.wx-score-bar-wrap {
+  height: 6px;
+  background: var(--bg3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.wx-score-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green3), var(--amber, #f59e0b));
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.wx-reason {
+  font-size: 11px;
+  color: var(--text2);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* ── 病害虫リスク ── */
+.wx-risk-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wx-risk-row {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+}
+.wx-risk-warn    { background: #2a1515; border-color: var(--red); }
+.wx-risk-caution { background: #251e0a; border-color: var(--amber, #f59e0b); }
+.wx-risk-ok      { background: var(--bg2); }
+
+.wx-risk-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.wx-risk-icon { font-size: 16px; }
+.wx-risk-lbl  { font-size: 13px; font-weight: 600; color: var(--text); flex: 1; }
+.wx-risk-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: var(--bg3);
+  color: var(--text2);
+}
+.wx-risk-warn    .wx-risk-badge { background: var(--red);           color: #fff; }
+.wx-risk-caution .wx-risk-badge { background: var(--amber, #f59e0b); color: #111; }
+
+.wx-risk-notes {
+  margin: 6px 0 0 24px;
+  padding: 0;
+  list-style: disc;
+}
+.wx-risk-note {
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.6;
+}
+.wx-risk-warn    .wx-risk-note { color: #fca5a5; }
+.wx-risk-caution .wx-risk-note { color: #fde68a; }
+
+/* ── ボーナスアドバイス ── */
+.wx-bonus-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #251e0a;
+  border-color: var(--amber, #f59e0b);
+}
+.wx-bonus-icon { font-size: 16px; flex-shrink: 0; }
+.wx-bonus-text { font-size: 12px; color: #fde68a; line-height: 1.5; }
+
+/* ── 季節リスク ── */
+.wx-season-list {
+  margin: 0;
+  padding: 0 0 0 18px;
+  list-style: disc;
+}
+.wx-season-item {
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.7;
+}
