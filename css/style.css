@@ -7142,6 +7142,149 @@ html.draw-dialog-active .bottom-nav {
 }
 
 /* ═══════════════════════════════════════════
+   👁️ 畝プレビュー モーダル
+   ═══════════════════════════════════════════ */
+.plt-preview-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.plt-preview-btn:active {
+  background: var(--bg3);
+  color: var(--text);
+  border-color: var(--text3);
+}
+
+.preview-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 9999;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.preview-modal-overlay.open {
+  display: flex;
+}
+.preview-modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: min(94vw, 560px);
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow);
+}
+.preview-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.preview-modal-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.preview-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  font-size: 16px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.preview-modal-close:active {
+  background: var(--bg3);
+  color: var(--text);
+}
+.preview-modal-body {
+  padding: 16px;
+  overflow-y: auto;
+}
+
+/* SVG図解 */
+.preview-svg-wrap {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 8px;
+  margin-bottom: 12px;
+}
+.preview-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.ridge-prev-bar {
+  fill: var(--green2);
+  fill-opacity: 0.55;
+  stroke: var(--green2);
+  stroke-width: 1;
+}
+.ridge-prev-tick {
+  stroke: var(--bg);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+.ridge-prev-idx {
+  font-family: var(--mono);
+  font-size: 9px;
+  fill: var(--text3);
+}
+.ridge-prev-len {
+  font-family: var(--mono);
+  font-size: 10px;
+  fill: var(--text);
+  dominant-baseline: middle;
+}
+.ridge-prev-dim {
+  stroke: var(--amber);
+  stroke-width: 1;
+}
+.ridge-prev-dimlabel {
+  font-family: var(--mono);
+  font-size: 9px;
+  fill: var(--amber);
+}
+.ridge-prev-header {
+  font-size: 10px;
+  fill: var(--text2);
+}
+.ridge-prev-hidden {
+  font-size: 10px;
+  fill: var(--text3);
+}
+
+/* サマリーカード（既存 .plt-result-grid を流用、モーダル内用に上余白追加） */
+.preview-summary {
+  margin-top: 4px;
+}
+.preview-summary .plt-result-title {
+  margin-top: 0;
+}
+
+/* ═══════════════════════════════════════════
    カレンダー — セグメント切替バー
    ═══════════════════════════════════════════ */
 .adp-cal-unified-bar {
