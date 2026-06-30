@@ -996,29 +996,21 @@ function _adpEnsureView() {
 
       <!-- ⑥ カレンダー（記録カレンダー ↔ 栽培ごよみ セグメント切替） -->
       <div class="adp-pane" id="adp-pane-calendar" style="display:none;">
-        <!-- セグメント切替 -->
-        <div class="adp-cal-segment-bar">
-          <button class="adp-cal-seg-btn active" id="adp-cal-seg-visit"
-                  onclick="_adpSwitchCalSegment('visit')">📅 記録カレンダー</button>
-          <button class="adp-cal-seg-btn" id="adp-cal-seg-growth"
-                  onclick="_adpSwitchCalSegment('growth')">🌱 栽培ごよみ</button>
+        <!-- 統合ボタンバー：音声入力／記録カレンダー／リスト／栽培ごよみ -->
+        <div class="adp-cal-unified-bar">
+          <div class="vm-cal-header" id="vm-cal-header-wrap"></div>
+          <button class="adp-cal-uni-btn active" id="adp-cal-seg-visit"
+                  onclick="_adpSwitchCalSegment('visit')">📅 記録</button>
+          <button class="adp-cal-uni-btn" id="adp-cal-view-list"
+                  onclick="_adpSetCalView('list')">📋 リスト</button>
+          <button class="adp-cal-uni-btn" id="adp-cal-seg-growth"
+                  onclick="_adpSwitchCalSegment('growth')">🌱 ごよみ</button>
         </div>
 
         <!-- 記録カレンダーセクション -->
         <div class="adp-cal-visit-wrap" id="adp-cal-visit-wrap">
           <!-- まもなくの予定バナー -->
           <div id="adp-cal-upcoming-banner"></div>
-          <!-- 上部操作バー：音声入力 ＋ グリッド／リスト切替 -->
-          <div class="adp-cal-top-bar">
-            <div class="vm-cal-header" id="vm-cal-header-wrap"></div>
-            <div class="adp-cal-view-toggle">
-              <button class="adp-cal-view-btn active" id="adp-cal-view-grid"
-                      onclick="_adpSetCalView('grid')">📅 カレンダー</button>
-              <button class="adp-cal-view-btn" id="adp-cal-view-list"
-                      onclick="_adpSetCalView('list')">📋 リスト</button>
-            </div>
-          </div>
-          <!-- まとめカード（リスト表示時のみJS側で描画） -->
           <div id="adp-cal-summary-card"></div>
           <div id="adp-calendar-wrap"></div>
           <div id="adp-day-records-wrap"></div>
@@ -1303,8 +1295,6 @@ function _adpSwitchSubTab(name) {
     // セグメント・ビューモードをリセット（記録カレンダーをデフォルト表示）
     _adpSwitchCalSegment('visit');
     _adpCalView = 'grid';
-    document.getElementById('adp-cal-view-grid')?.classList.add('active');
-    document.getElementById('adp-cal-view-list')?.classList.remove('active');
     _adpRenderCalendar();
     _adpRenderDayRecords();
     _adpRenderSavedCalendarsList();
@@ -1741,24 +1731,47 @@ let _adpCalView = 'grid'; // 'grid' | 'list'
 // ─── カレンダーセグメント ───
 let _adpCalSegment = 'visit'; // 'visit' | 'growth'
 
+// ─── 統合バー：全ボタンのactive状態をリセット ───
+function _adpCalBarClearActive() {
+  ['adp-cal-seg-visit', 'adp-cal-view-list', 'adp-cal-seg-growth'].forEach(id => {
+    document.getElementById(id)?.classList.remove('active');
+  });
+}
+
 function _adpSwitchCalSegment(seg) {
   _adpCalSegment = seg;
-  document.getElementById('adp-cal-seg-visit')?.classList.toggle('active', seg === 'visit');
-  document.getElementById('adp-cal-seg-growth')?.classList.toggle('active', seg === 'growth');
+  _adpCalBarClearActive();
+  if (seg === 'visit') {
+    document.getElementById('adp-cal-seg-visit')?.classList.add('active');
+    // グリッドビューに戻す
+    _adpCalView = 'grid';
+  } else {
+    document.getElementById('adp-cal-seg-growth')?.classList.add('active');
+  }
   const visitWrap  = document.getElementById('adp-cal-visit-wrap');
   const growthWrap = document.getElementById('adp-cal-growth-wrap');
   if (visitWrap)  visitWrap.style.display  = seg === 'visit'  ? '' : 'none';
   if (growthWrap) growthWrap.style.display = seg === 'growth' ? '' : 'none';
-  // 栽培ごよみ切替時：実務作物リストで描画トリガー
   if (seg === 'growth' && typeof _renderCalendarMulti === 'function') {
     _renderCalendarMulti(_adpPracticecrops, 'calendar-result');
   }
+  if (seg === 'visit') _adpRenderCalendar();
 }
 
 function _adpSetCalView(mode) {
   _adpCalView = mode;
-  document.getElementById('adp-cal-view-grid')?.classList.toggle('active', mode === 'grid');
-  document.getElementById('adp-cal-view-list')?.classList.toggle('active', mode === 'list');
+  // リストボタン押下時は記録カレンダーセグメントを表示
+  _adpCalSegment = 'visit';
+  const visitWrap  = document.getElementById('adp-cal-visit-wrap');
+  const growthWrap = document.getElementById('adp-cal-growth-wrap');
+  if (visitWrap)  visitWrap.style.display  = '';
+  if (growthWrap) growthWrap.style.display = 'none';
+  _adpCalBarClearActive();
+  if (mode === 'list') {
+    document.getElementById('adp-cal-view-list')?.classList.add('active');
+  } else {
+    document.getElementById('adp-cal-seg-visit')?.classList.add('active');
+  }
   _adpRenderCalendar();
 }
 
@@ -1887,34 +1900,10 @@ function _adpRenderCalendar() {
   `;
 }
 
-// ─── まとめカード（リスト表示時のみ描画） ───
+// ─── まとめカード（件数表示削除済み） ───
 function _adpRenderSummaryCard(byDate, y, mo, todayStr) {
   const el = document.getElementById('adp-cal-summary-card');
-  if (!el) return;
-  // グリッド表示時は非表示
-  if (_adpCalView !== 'list') {
-    el.innerHTML = '';
-    return;
-  }
-  const monthStr = `${y}-${String(mo+1).padStart(2,'0')}`;
-  let totalRec = 0, totalSchedule = 0;
-  Object.entries(byDate).forEach(([date, recs]) => {
-    if (!date.startsWith(monthStr)) return;
-    recs.forEach(r => {
-      if (r._type === 'record') totalRec++;
-      else if (r.isSchedule)   totalSchedule++;
-    });
-  });
-  const today = new Date();
-  const isCurrentMonth = (y === today.getFullYear() && mo === today.getMonth());
-  const isFutureMonth  = y > today.getFullYear() || (y === today.getFullYear() && mo > today.getMonth());
-  const scheduleLabel  = isFutureMonth ? '予定' : isCurrentMonth ? '今後の予定' : '予定（記録済）';
-  const label = `${y}年${mo+1}月`;
-  el.innerHTML = `
-    <div class="adp-cal-summary-card">
-      <span class="adp-cal-summary-item">📋 ${label}の記録：<strong>${totalRec}</strong>件</span>
-      <span class="adp-cal-summary-item">📌 ${scheduleLabel}：<strong>${totalSchedule}</strong>件</span>
-    </div>`;
+  if (el) el.innerHTML = '';
 }
 
 // ─── 予定バナー ───
