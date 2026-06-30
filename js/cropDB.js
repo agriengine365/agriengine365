@@ -609,7 +609,7 @@ const CROP_DB = [
       "rowWidth": 100,
       "linesPerRow": 6
     },
-    "yieldPerPlant": null
+    "yieldPerPlant": null,
     "waterNeedLperSqmPerDay": 1.5
   },
   {
@@ -726,7 +726,7 @@ const CROP_DB = [
       "rowWidth": 100,
       "linesPerRow": 6
     },
-    "yieldPerPlant": null
+    "yieldPerPlant": null,
     "waterNeedLperSqmPerDay": 1.5
   },
   {
@@ -842,7 +842,7 @@ const CROP_DB = [
       "rowWidth": 100,
       "linesPerRow": 6
     },
-    "yieldPerPlant": null
+    "yieldPerPlant": null,
     "waterNeedLperSqmPerDay": 1.5
   },
   {
@@ -959,7 +959,7 @@ const CROP_DB = [
       "rowWidth": 100,
       "linesPerRow": 6
     },
-    "yieldPerPlant": null
+    "yieldPerPlant": null,
     "waterNeedLperSqmPerDay": 1.5
   },
   {
@@ -15534,7 +15534,7 @@ const CROP_DB = [
       "rowWidth": 300,
       "linesPerRow": 1
     },
-    "yieldPerPlant": null
+    "yieldPerPlant": null,
     "waterNeedLperSqmPerDay": 3.5
   },
   {
@@ -15603,7 +15603,7 @@ const CROP_DB = [
       "rowWidth": 500,
       "linesPerRow": 1
     },
-    "yieldPerPlant": null
+    "yieldPerPlant": null,
     "waterNeedLperSqmPerDay": 3.5
   },
   {
@@ -15672,7 +15672,7 @@ const CROP_DB = [
       "rowWidth": 300,
       "linesPerRow": 1
     },
-    "yieldPerPlant": null
+    "yieldPerPlant": null,
     "waterNeedLperSqmPerDay": 3.5
   },
   {
@@ -17953,7 +17953,7 @@ const CROP_DB = [
       "rowWidth": 90,
       "linesPerRow": 6
     },
-    "yieldPerPlant": null
+    "yieldPerPlant": null,
     "waterNeedLperSqmPerDay": 1.5
   },
   {
