@@ -8387,6 +8387,9 @@ html.draw-dialog-active .bottom-nav {
   width: 18px;
 }
 
+/* 警告（外側ラッパー：中身が無い時は余白を残さない） */
+.plt-warn-wrap:empty { display: none; }
+
 /* 警告 */
 .plt-warn {
   font-size: 11px;
