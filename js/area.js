@@ -7356,11 +7356,17 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
 
   // 地図で指定ボタン（実務側・分析側ともに表示）
   const ridgeDirBtnLabel = hasRidgeDir ? '📐 畝方向を再指定' : '📐 畝方向を地図で指定';
+  // プレビューボタン（自動計算済み＝ridgeSegmentsがある場合のみ表示）
+  const previewBtnHTML = hasAutoCalc ? `
+      <button class="plt-preview-btn" onclick="_adpShowPlantingPreview('${cropId}','${seg}')">
+        👁️ プレビュー
+      </button>` : '';
   const ridgeDirBtnHTML = `
     <div class="plt-ridgedir-row">
       <button class="plt-ridgedir-btn" onclick="_adpStartRidgeDirForCrop('${cropId}','${seg}')">
         ${ridgeDirBtnLabel}
       </button>
+      ${previewBtnHTML}
       ${hasAutoCalc ? `<span class="plt-ridgedir-status plt-ridgedir-status-ok">✓ 計算済み（${(design.ridgeSegments?.length ?? 0)}畝）</span>` : (hasRidgeDir ? '<span class="plt-ridgedir-status">方向設定済み（幅・条数・株間を入力すると自動計算されます）</span>' : '')}
     </div>`;
 
@@ -7596,6 +7602,136 @@ function _adpBuildPlantingResultHTML(calc, _warn, cropId) {
       ${yieldHTML}
     </div>` : `<div class="plt-result-empty">必須項目（畝数・畝長・畝幅・条数・株間）を入力すると計算されます</div>`;
   return `<div class="plt-result-title">計算結果</div>${calcHTML}`;
+}
+
+// ═══════════════════════════════════════════
+//  👁️ 畝プレビュー（モーダル）
+//  「👁️ プレビュー」ボタンから起動。地図上には描画せず、
+//  畝ごとの長さ比例SVG簡易図解 + 集計サマリーをモーダル表示する。
+// ═══════════════════════════════════════════
+
+/**
+ * プレビューモーダルを開く。
+ * seg: 'practice' | 'analysis'
+ */
+function _adpShowPlantingPreview(cropId, seg) {
+  let design, ratio = null;
+  if (seg === 'analysis') {
+    design = _adpAnalysisPlantingDesign;
+  } else {
+    const entry = _adpPracticecrops.find(c => c.cropId === cropId);
+    design = entry?.plantingDesign || null;
+    ratio  = entry?.ratio ?? null;
+  }
+
+  if (!design || !Array.isArray(design.ridgeSegments) || design.ridgeSegments.length === 0) {
+    showToast('畝が自動計算されていません', 'amber');
+    return;
+  }
+
+  const calc     = _adpCalcPlanting(design);
+  const cropName = _adpCropIdToName(cropId);
+  const warn     = (seg === 'analysis') ? null : _adpPlantingAreaWarn(ratio, calc?.rowAreaSqm ?? null);
+
+  const svgHTML     = _adpBuildRidgePreviewSVG(design);
+  const summaryHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
+  const warnHTML    = warn
+    ? `<div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と占有面積（${warn.occupiedSqm}㎡）が${warn.diffPct}%乖離しています</div>`
+    : '';
+
+  const titleEl = document.getElementById('preview-modal-title');
+  const bodyEl  = document.getElementById('preview-modal-body');
+  if (titleEl) titleEl.textContent = `🌿 ${cropName} — 畝プレビュー`;
+  if (bodyEl)  bodyEl.innerHTML = svgHTML + warnHTML + `<div class="preview-summary">${summaryHTML}</div>`;
+
+  const overlay = document.getElementById('preview-modal-overlay');
+  if (overlay) overlay.classList.add('open');
+}
+
+/** プレビューモーダルを閉じる */
+function _adpClosePreviewModal() {
+  const overlay = document.getElementById('preview-modal-overlay');
+  if (overlay) overlay.classList.remove('open');
+}
+
+/**
+ * 畝の長さ比例SVG簡易図解を生成する。
+ * - 各畝を横バーとして並べ、実長(m)をラベル表示
+ * - 畝幅(rowWidth)を寸法線として表示（全畝共通のため代表1箇所のみ）
+ * - 条数(linesPerRow)は各バー内の目盛り線として表示
+ * - 株間は表示しない（畝ごとに描くと過密になるため）
+ */
+function _adpBuildRidgePreviewSVG(design) {
+  const segments     = design.ridgeSegments || [];
+  const rowWidthCm   = Number(design.rowWidth)    || 0;
+  const linesPerRow  = Number(design.linesPerRow) || 0;
+
+  const maxLen = Math.max(...segments.map(s => s.length), 0.1);
+
+  const CHART_W   = 520;
+  const PAD_L     = 64;   // 「畝N」ラベル分
+  const PAD_R     = 84;   // 「◯◯m」ラベル分
+  const PAD_TOP   = 30;   // 条数注記分
+  const BAR_H     = 16;
+  const GAP       = 7;
+  const barAreaW  = CHART_W - PAD_L - PAD_R;
+
+  const MAX_SHOW    = 40; // 表示しすぎを防ぐ上限
+  const shown       = segments.slice(0, MAX_SHOW);
+  const hiddenCount = segments.length - shown.length;
+
+  const listH  = shown.length * (BAR_H + GAP);
+  const totalH = PAD_TOP + listH + (hiddenCount > 0 ? 22 : 0) + 16;
+
+  let bars = '';
+  shown.forEach((seg, i) => {
+    const y = PAD_TOP + i * (BAR_H + GAP);
+    const w = Math.max((seg.length / maxLen) * barAreaW, 2);
+
+    // 条数の目盛り線（linesPerRow本ぶん、バー内に均等配置）
+    let ticks = '';
+    if (linesPerRow > 0 && w > 4) {
+      for (let t = 0; t < linesPerRow; t++) {
+        const tx = PAD_L + (w * (t + 0.5) / linesPerRow);
+        ticks += `<line x1="${tx.toFixed(1)}" y1="${y + 2}" x2="${tx.toFixed(1)}" y2="${y + BAR_H - 2}" class="ridge-prev-tick"/>`;
+      }
+    }
+
+    bars += `
+      <text x="${PAD_L - 8}" y="${y + BAR_H / 2 + 4}" text-anchor="end" class="ridge-prev-idx">畝${i + 1}</text>
+      <rect x="${PAD_L}" y="${y}" width="${w.toFixed(1)}" height="${BAR_H}" rx="2" class="ridge-prev-bar"/>
+      ${ticks}
+      <text x="${(PAD_L + w + 8).toFixed(1)}" y="${y + BAR_H / 2 + 4}" class="ridge-prev-len">${seg.length}m</text>`;
+
+    // 畝幅の寸法線（1本目と2本目の間にのみ表示。畝幅は全畝共通の値）
+    if (i === 0 && shown.length > 1 && rowWidthCm > 0) {
+      const dy1   = y + BAR_H;
+      const dy2   = y + BAR_H + GAP + BAR_H;
+      const dimX  = PAD_L - 30;
+      bars += `
+        <line x1="${dimX}" y1="${dy1}" x2="${dimX}" y2="${dy2}" class="ridge-prev-dim"/>
+        <line x1="${dimX - 4}" y1="${dy1}" x2="${dimX + 4}" y2="${dy1}" class="ridge-prev-dim"/>
+        <line x1="${dimX - 4}" y1="${dy2}" x2="${dimX + 4}" y2="${dy2}" class="ridge-prev-dim"/>
+        <text x="${dimX - 7}" y="${(dy1 + dy2) / 2 + 3}" text-anchor="end" class="ridge-prev-dimlabel">畝幅${rowWidthCm}cm</text>`;
+    }
+  });
+
+  const headerNote = linesPerRow > 0
+    ? `<text x="${PAD_L}" y="16" class="ridge-prev-header">条数 ${linesPerRow}条（バー内の縦線は条の目安位置）</text>`
+    : '';
+
+  const hiddenNote = hiddenCount > 0
+    ? `<text x="${PAD_L}" y="${PAD_TOP + listH + 16}" class="ridge-prev-hidden">…ほか${hiddenCount}畝（合計${segments.length}畝）</text>`
+    : '';
+
+  return `
+    <div class="preview-svg-wrap">
+      <svg viewBox="0 0 ${CHART_W} ${totalH}" class="preview-svg" xmlns="http://www.w3.org/2000/svg">
+        ${headerNote}
+        ${bars}
+        ${hiddenNote}
+      </svg>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════
