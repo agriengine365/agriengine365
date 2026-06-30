@@ -10431,3 +10431,83 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text-muted, #6b7280);
   margin-top: 6px;
 }
+
+/* ── No.3 出荷記録：履歴プルダウン ── */
+.sh-hist-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sh-hist-wrap-unit .sh-input-with-unit-inner {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sh-hist-select {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px dashed var(--border, #d1d5db);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-muted, #6b7280);
+  background: color-mix(in srgb, var(--accent, #2563eb) 4%, var(--surface, #fff));
+  cursor: pointer;
+}
+.sh-input-hist {
+  width: 100%;
+}
+
+/* ── No.4 農薬：希釈のみフォーム ── */
+.ps-btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.ps-open-dil-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 14px;
+  border: 1px solid color-mix(in srgb, var(--blue, #2563eb) 40%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--blue, #2563eb) 8%, transparent);
+  color: color-mix(in srgb, var(--blue, #2563eb) 90%, black);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ps-open-dil-btn:hover { opacity: 0.85; }
+.ps-dil-form-wrap {
+  background: color-mix(in srgb, var(--blue, #2563eb) 5%, var(--surface, #fff));
+  border: 1px solid color-mix(in srgb, var(--blue, #2563eb) 20%, transparent);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.ps-dil-form-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--blue, #2563eb) 80%, black);
+  margin-bottom: 10px;
+}
+.ps-dil-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ps-dil-input {
+  width: 100px;
+}
+.ps-dil-unit {
+  font-size: 12px;
+  color: var(--text-muted, #6b7280);
+}
+.ps-th-dilution {
+  min-width: 48px;
+}
+.ps-td-dilution {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--blue, #2563eb) 80%, black);
+  font-family: var(--mono, monospace);
+}

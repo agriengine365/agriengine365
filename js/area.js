@@ -8280,18 +8280,25 @@ function _adpBuildPesticideCard(pc, areaId) {
     `<option value="${p.name}" data-dilution="${p.dilution ?? ''}">${p.name}${p.dilution ? '（' + p.dilution + '倍）' : ''}</option>`
   ).join('');
 
+  // 希釈のみモード用プリセット（「その他」除く）
+  const dilutionPresetOptions = PESTICIDE_PRESET_LIST
+    .filter(p => p.dilution != null)
+    .map(p => `<option value="${p.name}" data-dilution="${p.dilution}">${p.name}（標準 ${p.dilution}倍）</option>`)
+    .join('');
+
   const rowsHTML = records.length
     ? records.map(r => `
         <tr class="ps-row">
           <td class="ps-td">${r.date || '—'}</td>
           <td class="ps-td">${r.name || '—'}</td>
           <td class="ps-td ps-td-target">${r.target || '—'}</td>
+          <td class="ps-td ps-td-dilution">${r.dilution != null ? r.dilution + '倍' : '—'}</td>
           <td class="ps-td ps-td-amount">${r.amount != null ? r.amount : '—'} ${r.unit || ''}</td>
           <td class="ps-td ps-td-del">
             <button class="ps-del-btn" onclick="_adpDeletePesticideRecord('${cropId}','${r.id}','${areaId}')">×</button>
           </td>
         </tr>`).join('')
-    : `<tr><td colspan="5" class="ps-td-empty">記録がありません</td></tr>`;
+    : `<tr><td colspan="6" class="ps-td-empty">記録がありません</td></tr>`;
 
   return `
     <div class="ps-card" id="ps-card-${cropId}">
@@ -8302,7 +8309,7 @@ function _adpBuildPesticideCard(pc, areaId) {
       </div>
       <div class="ps-card-body" id="ps-body-${cropId}" style="display:none;">
 
-        <!-- 入力フォーム（折りたたみ） -->
+        <!-- 通常入力フォーム（折りたたみ） -->
         <div class="ps-form-wrap" id="ps-form-${cropId}" style="display:none;">
           <div class="ps-form-grid">
             <div class="ps-field">
@@ -8359,9 +8366,50 @@ function _adpBuildPesticideCard(pc, areaId) {
           </div>
         </div>
 
-        <!-- 追加ボタン -->
-        <button class="ps-open-form-btn" id="ps-open-btn-${cropId}"
-                onclick="_adpTogglePesticideForm('${cropId}')">＋ 農薬散布を記録</button>
+        <!-- 希釈のみフォーム（折りたたみ） -->
+        <div class="ps-dil-form-wrap" id="ps-dil-form-${cropId}" style="display:none;">
+          <div class="ps-dil-form-title">💧 希釈倍率だけ記録</div>
+          <div class="ps-form-grid">
+            <div class="ps-field">
+              <label class="ps-label">日付</label>
+              <input class="ps-input" type="date" id="ps-dil-date-${cropId}"
+                     value="${new Date().toISOString().slice(0,10)}">
+            </div>
+            <div class="ps-field">
+              <label class="ps-label">農薬名（プリセットから選択）</label>
+              <select class="ps-input ps-select" id="ps-dil-name-${cropId}"
+                      onchange="_adpPesticideDilPresetChange('${cropId}')">
+                <option value="">選択してください</option>
+                ${dilutionPresetOptions}
+              </select>
+            </div>
+            <div class="ps-field">
+              <label class="ps-label">今回の希釈倍率</label>
+              <div class="ps-dil-input-row">
+                <input class="ps-input ps-dil-input" type="number" id="ps-dil-val-${cropId}"
+                       placeholder="倍率を入力" min="1" step="1">
+                <span class="ps-dil-unit">倍</span>
+              </div>
+            </div>
+            <div class="ps-field">
+              <label class="ps-label">対象病害虫（任意）</label>
+              <input class="ps-input" type="text" id="ps-dil-target-${cropId}"
+                     placeholder="例：うどんこ病" maxlength="50">
+            </div>
+          </div>
+          <div class="ps-form-footer">
+            <button class="ps-cancel-btn" onclick="_adpTogglePesticideDilForm('${cropId}')">キャンセル</button>
+            <button class="ps-add-btn" onclick="_adpAddPesticideDilRecord('${cropId}','${areaId}')">＋ 追加</button>
+          </div>
+        </div>
+
+        <!-- ボタン群 -->
+        <div class="ps-btn-row">
+          <button class="ps-open-form-btn" id="ps-open-btn-${cropId}"
+                  onclick="_adpTogglePesticideForm('${cropId}')">＋ 農薬散布を記録</button>
+          <button class="ps-open-dil-btn" id="ps-open-dil-btn-${cropId}"
+                  onclick="_adpTogglePesticideDilForm('${cropId}')">💧 希釈倍率だけ記録</button>
+        </div>
 
         <!-- 一覧テーブル -->
         <table class="ps-table">
@@ -8370,6 +8418,7 @@ function _adpBuildPesticideCard(pc, areaId) {
               <th class="ps-th">日付</th>
               <th class="ps-th">農薬名</th>
               <th class="ps-th ps-th-target">対象</th>
+              <th class="ps-th ps-th-dilution">希釈</th>
               <th class="ps-th">使用量</th>
               <th class="ps-th"></th>
             </tr>
@@ -8392,6 +8441,57 @@ function _adpTogglePesticideCard(cropId) {
   if (arrow) arrow.textContent = isOpen ? '▼' : '▶';
 }
 
+/** 希釈のみフォームの表示/非表示トグル */
+function _adpTogglePesticideDilForm(cropId) {
+  const form    = document.getElementById(`ps-dil-form-${cropId}`);
+  const openBtn = document.getElementById(`ps-open-dil-btn-${cropId}`);
+  const mainBtn = document.getElementById(`ps-open-btn-${cropId}`);
+  if (!form) return;
+  const isHidden = form.style.display === 'none';
+  form.style.display = isHidden ? 'block' : 'none';
+  if (openBtn) openBtn.style.display = isHidden ? 'none' : 'inline-flex';
+  if (mainBtn) mainBtn.style.display = isHidden ? 'none' : 'inline-flex';
+  // 通常フォームは閉じる
+  const mainForm = document.getElementById(`ps-form-${cropId}`);
+  if (mainForm && isHidden) mainForm.style.display = 'none';
+}
+
+/** 希釈のみプリセット選択 → 標準倍率を自動入力 */
+function _adpPesticideDilPresetChange(cropId) {
+  const sel = document.getElementById(`ps-dil-name-${cropId}`);
+  const inp = document.getElementById(`ps-dil-val-${cropId}`);
+  if (!sel || !inp) return;
+  const opt = sel.options[sel.selectedIndex];
+  const dilution = opt?.dataset.dilution;
+  if (dilution) inp.value = dilution;
+}
+
+/** 希釈のみレコードを追加 */
+function _adpAddPesticideDilRecord(cropId, areaId) {
+  const pc = _adpPracticecrops.find(c => c.cropId === cropId);
+  if (!pc) return;
+
+  const date     = document.getElementById(`ps-dil-date-${cropId}`)?.value || '';
+  const name     = document.getElementById(`ps-dil-name-${cropId}`)?.value || '';
+  const dilution = parseFloat(document.getElementById(`ps-dil-val-${cropId}`)?.value) || null;
+  const target   = document.getElementById(`ps-dil-target-${cropId}`)?.value.trim() || '';
+
+  if (!date)     { if (typeof showToast === 'function') showToast('日付を入力してください', 'amber'); return; }
+  if (!name)     { if (typeof showToast === 'function') showToast('農薬名を選択してください', 'amber'); return; }
+  if (!dilution) { if (typeof showToast === 'function') showToast('希釈倍率を入力してください', 'amber'); return; }
+
+  if (!pc.pesticideRecords) pc.pesticideRecords = [];
+  pc.pesticideRecords.unshift({
+    id: Date.now().toString(),
+    date, name, target, dilution,
+    amount: null, unit: '', memo: '',
+  });
+
+  _adpSavePracticecrops(areaId);
+  _adpRenderPesticidePane();
+  if (typeof showToast === 'function') showToast('農薬記録を追加しました');
+}
+
 /** 入力フォームの表示/非表示トグル */
 function _adpTogglePesticideForm(cropId) {
   const form    = document.getElementById(`ps-form-${cropId}`);
@@ -8400,6 +8500,10 @@ function _adpTogglePesticideForm(cropId) {
   const isHidden = form.style.display === 'none';
   form.style.display    = isHidden ? 'block' : 'none';
   if (openBtn) openBtn.style.display = isHidden ? 'none' : 'inline-flex';
+  // 希釈のみフォームは閉じる
+  const dilForm    = document.getElementById(`ps-dil-form-${cropId}`);
+  const dilOpenBtn = document.getElementById(`ps-open-dil-btn-${cropId}`);
+  if (isHidden && dilForm) { dilForm.style.display = 'none'; if (dilOpenBtn) dilOpenBtn.style.display = 'inline-flex'; }
   // フォームを開いたときに希釈倍数を初期表示
   if (isHidden) _adpPesticidePresetChange(cropId);
 }

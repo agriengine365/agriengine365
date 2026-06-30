@@ -167,6 +167,28 @@ const SHIPPING_TYPES = {
   },
 };
 
+// ─── 出荷フォーム入力履歴（No.3） ───
+const RECORDS_FIELD_HISTORY_KEY = 'agri_sh_field_history';
+
+function _shHistoryLoad() {
+  try { return JSON.parse(localStorage.getItem(RECORDS_FIELD_HISTORY_KEY) || '{}'); }
+  catch { return {}; }
+}
+function _shHistorySave(type, fieldId, value) {
+  if (!value || !value.toString().trim()) return;
+  const val = value.toString().trim();
+  const key = `${type}__${fieldId}`;
+  const all = _shHistoryLoad();
+  const arr = all[key] || [];
+  const deduped = [val, ...arr.filter(v => v !== val)].slice(0, 10);
+  all[key] = deduped;
+  localStorage.setItem(RECORDS_FIELD_HISTORY_KEY, JSON.stringify(all));
+}
+function _shHistoryGet(type, fieldId) {
+  const key = `${type}__${fieldId}`;
+  return (_shHistoryLoad()[key] || []);
+}
+
 // ─── ストレージ操作 ───
 function recordsLoad() {
   try { return JSON.parse(localStorage.getItem(RECORDS_KEY) || '[]'); }
@@ -281,7 +303,7 @@ function _shInjectAutoFill() {
 }
 
 // ─── フィールドHTML生成 ───
-function _shBuildFieldHTML(f) {
+function _shBuildFieldHTML(f, shippingType) {
   if (f.type === 'select') {
     const opts = f.options.map(o => `<option value="${o}">${o}</option>`).join('');
     return `<select class="sh-input" name="${f.id}"><option value="">—</option>${opts}</select>`;
@@ -289,18 +311,45 @@ function _shBuildFieldHTML(f) {
   if (f.type === 'textarea') {
     return `<textarea class="sh-input sh-textarea" name="${f.id}" placeholder="${f.placeholder || ''}"></textarea>`;
   }
+  // date フィールドは履歴なし
+  if (f.type === 'date') {
+    return `<input class="sh-input" type="date" name="${f.id}">`;
+  }
+
+  // 入力履歴プルダウン付きフィールド
+  const history = shippingType ? _shHistoryGet(shippingType, f.id) : [];
   const unit    = f.unit ? `<span class="sh-unit">${f.unit}</span>` : '';
-  const wrap    = f.unit ? `<div class="sh-input-with-unit">` : '';
-  const wrapEnd = f.unit ? `</div>` : '';
-  return `${wrap}<input class="sh-input" type="${f.type}" name="${f.id}" placeholder="${f.placeholder || ''}">${unit}${wrapEnd}`;
+  const inputEl = `<input class="sh-input sh-input-hist" type="${f.type}" name="${f.id}" placeholder="${history.length ? '▲ 履歴から選ぶか直接入力' : (f.placeholder || '')}">`;
+
+  if (!history.length) {
+    const wrap    = f.unit ? `<div class="sh-input-with-unit">` : '';
+    const wrapEnd = f.unit ? `</div>` : '';
+    return `${wrap}${inputEl}${unit}${wrapEnd}`;
+  }
+
+  // 先頭を「前回」として案内
+  const histOpts = history.map((v, i) =>
+    `<option value="${v}">${i === 0 ? `前回: ${v}` : v}</option>`
+  ).join('');
+
+  return `
+    <div class="sh-hist-wrap${f.unit ? ' sh-hist-wrap-unit' : ''}">
+      <select class="sh-hist-select" onchange="this.nextElementSibling.querySelector('input').value=this.value;this.value=''">
+        <option value="">履歴から選択…</option>
+        ${histOpts}
+      </select>
+      <div class="sh-input-with-unit-inner">
+        ${inputEl}${unit}
+      </div>
+    </div>`;
 }
 
 // ─── セクションHTML生成 ───
-function _shBuildSectionHTML(section) {
+function _shBuildSectionHTML(section, shippingType) {
   const fieldsHTML = section.fields.map(f => `
     <div class="sh-field">
       <label class="sh-label">${f.label}</label>
-      ${_shBuildFieldHTML(f)}
+      ${_shBuildFieldHTML(f, shippingType)}
     </div>`).join('');
 
   if (section.collapsed) {
@@ -430,7 +479,7 @@ function renderShippingForm(opts) {
     container.dataset.opts = JSON.stringify({ area, practicecrops });
   }
 
-  const sectionsHTML = def.sections.map(_shBuildSectionHTML).join('');
+  const sectionsHTML = def.sections.map(s => _shBuildSectionHTML(s, currentType)).join('');
 
   return `
     ${_shBuildProfileHTML()}
@@ -473,7 +522,7 @@ function shSwitchType(type) {
     const def = SHIPPING_TYPES[type];
     wrap.innerHTML = `<div id="sh-form">
       ${_shBuildCropSelectHTML(pc)}
-      ${def.sections.map(_shBuildSectionHTML).join('')}
+      ${def.sections.map(s => _shBuildSectionHTML(s, type)).join('')}
       <div class="sh-form-actions">
         <button class="sh-submit-btn" onclick="shSubmitRecord('${type}')">✓ 保存する</button>
       </div>
@@ -494,6 +543,19 @@ function shSubmitRecord(type) {
   const inputs = form.querySelectorAll('[name]');
   const data   = {};
   inputs.forEach(el => { if (el.value.trim()) data[el.name] = el.value.trim(); });
+
+  // 入力履歴を保存（date・autoFill系は除外）
+  const def = SHIPPING_TYPES[type];
+  if (def) {
+    const skipIds = new Set();
+    def.sections.forEach(sec => sec.fields.forEach(f => {
+      if (f.type === 'date' || f.autoFill) skipIds.add(f.id);
+    }));
+    inputs.forEach(el => {
+      const val = el.value.trim();
+      if (val && !skipIds.has(el.name)) _shHistorySave(type, el.name, val);
+    });
+  }
 
   // エリア情報付与
   let opts = {};
