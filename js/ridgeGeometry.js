@@ -157,19 +157,43 @@ const RidgeGeometry = (() => {
     const projMin = Math.min(...projections);
     const projMax = Math.max(...projections);
 
+    // 3b. 畝方向（ridgeDir）側の走査に使う線分の長さを決定。
+    //     _linePolyIntersections は有限長の線分として交差判定するため、
+    //     ridgeDir（単位ベクトル＝長さ1）をそのまま渡すと畝方向1mしか
+    //     判定できず、実際の圃場（数十m規模）では交点がほぼ見つからない。
+    //     ポリゴンの対角線長を基準に、確実に圃場全体をまたぐ長さを用意する。
+    const xs = poly.map(p => p.x);
+    const ys = poly.map(p => p.y);
+    const spanX = Math.max(...xs) - Math.min(...xs);
+    const spanY = Math.max(...ys) - Math.min(...ys);
+    const diag  = Math.sqrt(spanX * spanX + spanY * spanY);
+    const scanLen = diag * 2 + 10; // 余裕を持たせる（対角線の2倍＋10m）
+
     // 4. 最初のオフセット位置（projMin + 半畝幅 から始めて畝幅ずつ進む）
     const allSegments = [];
     let offset = projMin + rowWidth / 2;
 
     while (offset <= projMax - rowWidth / 2 + 1e-6) {
-      // オフセット線の原点
-      const lineOrigin = {
+      // オフセット線上の基準点（法線方向にoffsetだけ進んだ点）
+      const baseOrigin = {
         x: normalDir.x * offset,
         y: normalDir.y * offset,
       };
 
-      // ポリゴンとの交差 t 値を収集
-      const tValues = _linePolyIntersections(lineOrigin, ridgeDir, poly);
+      // 畝方向へ scanLen 分の有限線分を、基準点を中心に前後に伸ばして構築する
+      const lineOrigin = {
+        x: baseOrigin.x - ridgeDir.x * (scanLen / 2),
+        y: baseOrigin.y - ridgeDir.y * (scanLen / 2),
+      };
+      const lineDir = {
+        x: ridgeDir.x * scanLen,
+        y: ridgeDir.y * scanLen,
+      };
+
+      // ポリゴンとの交差 t 値（0〜1、lineOriginからの比率）を収集し、
+      // 実距離 [m] に変換する
+      const tValues = _linePolyIntersections(lineOrigin, lineDir, poly)
+        .map(t => t * scanLen);
       const segs    = _validSegments(tValues);
 
       segs.forEach(seg => {
