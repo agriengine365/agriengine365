@@ -7567,6 +7567,38 @@ function _adpUnmarkProvisional(design, field) {
   }
 }
 
+/**
+ * rowWidth変更時、ridgeDirection設定済みならridgeSegmentsを再計算する共通処理。
+ * 実務側・分析側の両方から呼ぶ（旧: 実務側にのみベタ書きされていて分析側が非対応だった）。
+ * @param {object} design - plantingDesignオブジェクト（破壊的に更新）
+ * @param {number|null} rowWidthCm - 変更後の畝幅[cm]
+ */
+function _adpRecalcRidgeSegmentsForRowWidth(design, rowWidthCm) {
+  if (!design?.ridgeDirection || typeof RidgeGeometry === 'undefined') return;
+  if (!(rowWidthCm > 0)) return;
+  let latLngs = [];
+  try {
+    const gj = typeof _adpArea?.geojson === 'string' ? JSON.parse(_adpArea.geojson) : _adpArea?.geojson;
+    const coords = gj?.geometry?.coordinates?.[0] || gj?.coordinates?.[0] || [];
+    latLngs = coords.map(([lng, lat]) => ({ lat, lng }));
+  } catch (e) {}
+  if (latLngs.length < 3) return;
+  const gResult = RidgeGeometry.calcRidges(latLngs, design.ridgeDirection.p1, design.ridgeDirection.p2, rowWidthCm / 100);
+  design.ridgeSegments = gResult.rows > 0 ? gResult.ridgeSegments : null;
+}
+
+/**
+ * .plt-ridgedir-row（畝方向ボタン／プレビューボタン／ステータス）をDOM上で再描画する共通処理。
+ * rowWidth変更でridgeSegmentsが変わった際、表示ズレを防ぐために呼ぶ。
+ */
+function _adpRefreshRidgeDirRow(card, cropId, seg, design) {
+  const ridgeDirRow = card?.querySelector('.plt-ridgedir-row');
+  if (!ridgeDirRow) return;
+  const hasAutoCalc = Array.isArray(design.ridgeSegments) && design.ridgeSegments.length > 0;
+  const hasRidgeDir = !!(design.ridgeDirection || _adpArea?.meta?.ridgeBaseDirection);
+  ridgeDirRow.outerHTML = _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir);
+}
+
 function _adpUpdatePlantingField(cropId, field, value, seg) {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   const parsed = value === '' ? null : Number(value);
@@ -7575,6 +7607,9 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
     if (!_adpAnalysisPlantingDesign) return;
     _adpAnalysisPlantingDesign[field] = parsed;
     _adpUnmarkProvisional(_adpAnalysisPlantingDesign, field);
+    if (field === 'rowWidth') {
+      _adpRecalcRidgeSegmentsForRowWidth(_adpAnalysisPlantingDesign, parsed);
+    }
     // 結果部分のみ再描画（入力フォーカスを失わないよう result div のみ更新）
     const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
     if (!card) return;
@@ -7583,6 +7618,9 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
     const calc    = _adpCalcPlanting(_adpAnalysisPlantingDesign);
     const resultEl = card.querySelector('.plt-result');
     if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
+    if (field === 'rowWidth') {
+      _adpRefreshRidgeDirRow(card, cropId, seg, _adpAnalysisPlantingDesign);
+    }
     return;
   }
 
@@ -7596,19 +7634,7 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
   _adpUnmarkProvisional(_adpPracticecrops[idx].plantingDesign, field);
   // rowWidth が変わった場合、ridgeDirection が設定済みなら ridgeSegments を再計算
   if (field === 'rowWidth') {
-    const d = _adpPracticecrops[idx].plantingDesign;
-    if (d.ridgeDirection && typeof RidgeGeometry !== 'undefined') {
-      let latLngs = [];
-      try {
-        const gj = typeof _adpArea?.geojson === 'string' ? JSON.parse(_adpArea.geojson) : _adpArea?.geojson;
-        const coords = gj?.geometry?.coordinates?.[0] || gj?.coordinates?.[0] || [];
-        latLngs = coords.map(([lng, lat]) => ({ lat, lng }));
-      } catch(e) {}
-      if (latLngs.length >= 3 && parsed > 0) {
-        const gResult = RidgeGeometry.calcRidges(latLngs, d.ridgeDirection.p1, d.ridgeDirection.p2, parsed / 100);
-        _adpPracticecrops[idx].plantingDesign.ridgeSegments = gResult.rows > 0 ? gResult.ridgeSegments : null;
-      }
-    }
+    _adpRecalcRidgeSegmentsForRowWidth(_adpPracticecrops[idx].plantingDesign, parsed);
   }
 
   // purchase を先に計算して書き戻してから保存（施肥タブの株数基準に必要）
@@ -7637,12 +7663,7 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
   // rowWidth変更時はridgeSegmentsが再計算され得るため、
   // プレビューボタン／ステータス行（plt-ridgedir-row）も再描画してズレを防ぐ
   if (field === 'rowWidth') {
-    const ridgeDirRow = card.querySelector('.plt-ridgedir-row');
-    if (ridgeDirRow) {
-      const hasAutoCalc = Array.isArray(design.ridgeSegments) && design.ridgeSegments.length > 0;
-      const hasRidgeDir = !!(design.ridgeDirection || _adpArea?.meta?.ridgeBaseDirection);
-      ridgeDirRow.outerHTML = _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir);
-    }
+    _adpRefreshRidgeDirRow(card, cropId, seg, design);
   }
 }
 
@@ -9151,4 +9172,4 @@ function _buildRotationDetailHtml(area) {
       <div class="env-detail-section-title">🔄 輪作履歴</div>
       ${rows}
     </div>`;
-}
+}
