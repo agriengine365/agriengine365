@@ -7165,6 +7165,19 @@ html.draw-dialog-active .bottom-nav {
   border-color: var(--text3);
 }
 
+/* 暫定自動入力バッジ（畝方向確定時にcropDB標準値で自動セットされた項目） */
+.plt-badge-provisional {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(251,191,36,0.16);
+  color: #b45309;
+  font-size: 10px;
+  font-weight: 600;
+  vertical-align: middle;
+  margin-left: 4px;
+}
+
 .preview-modal-overlay {
   display: none;
   position: fixed;

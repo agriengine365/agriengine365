@@ -7143,7 +7143,36 @@ function _adpInitPlantingDesign(cropId) {
     missingRate:    null,
     ridgeDirection: null,   // { p1:{lat,lng}, p2:{lat,lng} } | null
     ridgeSegments:  null,   // [{ length }] | null（地図自動計算結果キャッシュ）
+    provisionalFields: [],  // 畝方向確定時に暫定自動セットされたフィールド名（例: ['rowWidth']）
   };
+}
+
+/**
+ * design の指定フィールドが「暫定自動入力」中かどうかを判定。
+ * 旧データ（provisionalFieldsが無い）でも安全に動くようフォールバックする。
+ */
+function _adpIsProvisional(design, field) {
+  return Array.isArray(design?.provisionalFields) && design.provisionalFields.includes(field);
+}
+
+/**
+ * 畝方向確定時、未入力の rowWidth / linesPerRow / plantSpacing を
+ * cropDBのplantingStandardから暫定値として自動セットする。
+ * 実際に埋めたフィールドは design.provisionalFields に記録し、
+ * カードUIで「暫定」バッジ表示に使う（ユーザーが手動編集すると解除される）。
+ */
+function _adpApplyProvisionalDefaults(design, cropId) {
+  if (!design) return;
+  const crop = _adpGetCropById(cropId);
+  const std  = crop?.plantingStandard;
+  if (!std) return;
+  if (!Array.isArray(design.provisionalFields)) design.provisionalFields = [];
+  ['rowWidth', 'linesPerRow', 'plantSpacing'].forEach(field => {
+    if (design[field] == null && std[field] != null) {
+      design[field] = std[field];
+      if (!design.provisionalFields.includes(field)) design.provisionalFields.push(field);
+    }
+  });
 }
 
 /**
@@ -7390,18 +7419,18 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
       <div class="plt-inputs">
         <div class="plt-input-grid">
           ${rowsRowLengthHTML}
-          <div class="plt-input-item">
-            <label class="plt-label">畝幅</label>
+          <div class="plt-input-item" data-field="rowWidth">
+            <label class="plt-label">畝幅${_adpIsProvisional(design, 'rowWidth') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
             <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowWidth ?? ''}" placeholder="例: 90"
               oninput="_adpUpdatePlantingField('${cropId}','rowWidth',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
           </div>
-          <div class="plt-input-item">
-            <label class="plt-label">条数</label>
+          <div class="plt-input-item" data-field="linesPerRow">
+            <label class="plt-label">条数${_adpIsProvisional(design, 'linesPerRow') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
             <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.linesPerRow ?? ''}" placeholder="例: 2"
               oninput="_adpUpdatePlantingField('${cropId}','linesPerRow',this.value,'${seg}')"><span class="plt-unit">条</span></div>
           </div>
-          <div class="plt-input-item">
-            <label class="plt-label">株間</label>
+          <div class="plt-input-item" data-field="plantSpacing">
+            <label class="plt-label">株間${_adpIsProvisional(design, 'plantSpacing') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
             <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.plantSpacing ?? ''}" placeholder="例: 30"
               oninput="_adpUpdatePlantingField('${cropId}','plantSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
           </div>
@@ -7474,8 +7503,14 @@ function _adpStartRidgeDirForCrop(cropId, seg) {
       design = _adpAnalysisPlantingDesign;
     } else {
       const entry = _adpPracticecrops.find(c => c.cropId === cropId);
-      design = entry?.plantingDesign || _adpInitPlantingDesign(cropId);
+      if (entry && !entry.plantingDesign) {
+        entry.plantingDesign = _adpInitPlantingDesign(cropId);
+      }
+      design = entry?.plantingDesign;
     }
+
+    // 未入力の畝幅・条数・株間をcropDB標準値で暫定自動セット
+    _adpApplyProvisionalDefaults(design, cropId);
 
     const rowWidthM = design?.rowWidth ? design.rowWidth / 100 : 0.9; // デフォルト90cm
 
@@ -7522,6 +7557,16 @@ function _adpStartRidgeDirForCrop(cropId, seg) {
  * 入力フィールド変更時のハンドラ。
  * seg = 'practice' | 'analysis'
  */
+/**
+ * 手動編集されたフィールドを provisionalFields から除外する（暫定→確定扱いへ）。
+ */
+function _adpUnmarkProvisional(design, field) {
+  if (Array.isArray(design?.provisionalFields)) {
+    const i = design.provisionalFields.indexOf(field);
+    if (i >= 0) design.provisionalFields.splice(i, 1);
+  }
+}
+
 function _adpUpdatePlantingField(cropId, field, value, seg) {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   const parsed = value === '' ? null : Number(value);
@@ -7529,9 +7574,12 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
   if (seg === 'analysis') {
     if (!_adpAnalysisPlantingDesign) return;
     _adpAnalysisPlantingDesign[field] = parsed;
+    _adpUnmarkProvisional(_adpAnalysisPlantingDesign, field);
     // 結果部分のみ再描画（入力フォーカスを失わないよう result div のみ更新）
     const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
     if (!card) return;
+    const badgeEl = card.querySelector(`.plt-input-item[data-field="${field}"] .plt-badge-provisional`);
+    if (badgeEl) badgeEl.remove();
     const calc    = _adpCalcPlanting(_adpAnalysisPlantingDesign);
     const resultEl = card.querySelector('.plt-result');
     if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
@@ -7545,6 +7593,7 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
     _adpPracticecrops[idx].plantingDesign = _adpInitPlantingDesign(cropId);
   }
   _adpPracticecrops[idx].plantingDesign[field] = parsed;
+  _adpUnmarkProvisional(_adpPracticecrops[idx].plantingDesign, field);
   // rowWidth が変わった場合、ridgeDirection が設定済みなら ridgeSegments を再計算
   if (field === 'rowWidth') {
     const d = _adpPracticecrops[idx].plantingDesign;
@@ -7580,6 +7629,10 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
   if (warnContainer) warnContainer.innerHTML = warn
     ? `<div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と占有面積（${warn.occupiedSqm}㎡）が${warn.diffPct}%乖離しています</div>`
     : '';
+
+  // 手動編集されたフィールドの「暫定」バッジをDOMからも除去
+  const badgeEl = card.querySelector(`.plt-input-item[data-field="${field}"] .plt-badge-provisional`);
+  if (badgeEl) badgeEl.remove();
 
   // rowWidth変更時はridgeSegmentsが再計算され得るため、
   // プレビューボタン／ステータス行（plt-ridgedir-row）も再描画してズレを防ぐ
@@ -9098,4 +9151,4 @@ function _buildRotationDetailHtml(area) {
       <div class="env-detail-section-title">🔄 輪作履歴</div>
       ${rows}
     </div>`;
-}
+}
