@@ -3,6 +3,12 @@
 //  地図をドラッグして中央スコープに合わせ、「確定」で頂点追加
 // ═══════════════════════════════════════════
 
+// ─── aria-hidden 適用前にフォーカスを外す共通ヘルパー ───
+function _blurIfInside(container) {
+  const ae = document.activeElement;
+  if (ae && container && container.contains(ae)) ae.blur();
+}
+
 const PolygonDraw = (() => {
   let active = false;
   /** @type {L.LatLng[]} */
@@ -137,6 +143,7 @@ const PolygonDraw = (() => {
   function setControlsVisible(visible) {
     const dlg = document.getElementById('map-draw-dialog');
     if (dlg) {
+      if (!visible) _blurIfInside(dlg);
       dlg.hidden = !visible;
       dlg.setAttribute('aria-hidden', String(!visible));
     }
@@ -390,7 +397,11 @@ const RidgeDirDraw = (() => {
     _showPhase(false);
     // ダイアログ自体を閉じる（showWizard が開き直す）
     const dlg = document.getElementById('map-draw-dialog');
-    if (dlg) { dlg.hidden = true; dlg.setAttribute('aria-hidden', 'true'); }
+    if (dlg) {
+      _blurIfInside(dlg);
+      dlg.hidden = true;
+      dlg.setAttribute('aria-hidden', 'true');
+    }
     document.documentElement.classList.remove('draw-dialog-active');
   }
 
