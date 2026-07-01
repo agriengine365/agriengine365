@@ -7270,6 +7270,28 @@ function _adpRenderPlantingPane() {
 }
 
 /**
+ * 「📐 畝方向を指定」ボタン＋「👁️ プレビュー」ボタン＋ステータス文言の行HTMLを生成。
+ * カード新規描画（_adpBuildPlantingCard）と部分更新（_adpUpdatePlantingField）の
+ * 両方から呼ぶことで、畝幅変更などによる ridgeSegments 再計算後の表示ズレを防ぐ。
+ */
+function _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir) {
+  const ridgeDirBtnLabel = hasRidgeDir ? '📐 畝方向を再指定' : '📐 畝方向を地図で指定';
+  // プレビューボタン（自動計算済み＝ridgeSegmentsがある場合のみ表示）
+  const previewBtnHTML = hasAutoCalc ? `
+      <button class="plt-preview-btn" onclick="_adpShowPlantingPreview('${cropId}','${seg}')">
+        👁️ プレビュー
+      </button>` : '';
+  return `
+    <div class="plt-ridgedir-row">
+      <button class="plt-ridgedir-btn" onclick="_adpStartRidgeDirForCrop('${cropId}','${seg}')">
+        ${ridgeDirBtnLabel}
+      </button>
+      ${previewBtnHTML}
+      ${hasAutoCalc ? `<span class="plt-ridgedir-status plt-ridgedir-status-ok">✓ 計算済み（${(design.ridgeSegments?.length ?? 0)}畝）</span>` : (hasRidgeDir ? '<span class="plt-ridgedir-status">方向設定済み（幅・条数・株間を入力すると自動計算されます）</span>' : '')}
+    </div>`;
+}
+
+/**
  * 1作物分の栽植設計カードHTMLを生成。
  */
 function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false, isAnalysis = false }) {
@@ -7354,21 +7376,8 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
         oninput="_adpUpdatePlantingField('${cropId}','rowLength',this.value,'${seg}')"><span class="plt-unit">m</span></div>
     </div>`;
 
-  // 地図で指定ボタン（実務側・分析側ともに表示）
-  const ridgeDirBtnLabel = hasRidgeDir ? '📐 畝方向を再指定' : '📐 畝方向を地図で指定';
-  // プレビューボタン（自動計算済み＝ridgeSegmentsがある場合のみ表示）
-  const previewBtnHTML = hasAutoCalc ? `
-      <button class="plt-preview-btn" onclick="_adpShowPlantingPreview('${cropId}','${seg}')">
-        👁️ プレビュー
-      </button>` : '';
-  const ridgeDirBtnHTML = `
-    <div class="plt-ridgedir-row">
-      <button class="plt-ridgedir-btn" onclick="_adpStartRidgeDirForCrop('${cropId}','${seg}')">
-        ${ridgeDirBtnLabel}
-      </button>
-      ${previewBtnHTML}
-      ${hasAutoCalc ? `<span class="plt-ridgedir-status plt-ridgedir-status-ok">✓ 計算済み（${(design.ridgeSegments?.length ?? 0)}畝）</span>` : (hasRidgeDir ? '<span class="plt-ridgedir-status">方向設定済み（幅・条数・株間を入力すると自動計算されます）</span>' : '')}
-    </div>`;
+  // 地図で指定ボタン＋プレビューボタン＋ステータス（独立関数化・部分更新でも再利用するため）
+  const ridgeDirBtnHTML = _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir);
 
   return `
     <div class="plt-card" data-crop-id="${cropId}">
@@ -7571,6 +7580,17 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
   if (warnContainer) warnContainer.innerHTML = warn
     ? `<div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と占有面積（${warn.occupiedSqm}㎡）が${warn.diffPct}%乖離しています</div>`
     : '';
+
+  // rowWidth変更時はridgeSegmentsが再計算され得るため、
+  // プレビューボタン／ステータス行（plt-ridgedir-row）も再描画してズレを防ぐ
+  if (field === 'rowWidth') {
+    const ridgeDirRow = card.querySelector('.plt-ridgedir-row');
+    if (ridgeDirRow) {
+      const hasAutoCalc = Array.isArray(design.ridgeSegments) && design.ridgeSegments.length > 0;
+      const hasRidgeDir = !!(design.ridgeDirection || _adpArea?.meta?.ridgeBaseDirection);
+      ridgeDirRow.outerHTML = _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir);
+    }
+  }
 }
 
 /** 計算結果HTMLだけ生成するヘルパー（部分更新用） */
@@ -9078,4 +9098,4 @@ function _buildRotationDetailHtml(area) {
       <div class="env-detail-section-title">🔄 輪作履歴</div>
       ${rows}
     </div>`;
-}
+}
