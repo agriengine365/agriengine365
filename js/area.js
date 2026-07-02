@@ -7212,16 +7212,29 @@ function _adpIsProvisional(design, field) {
  */
 function _adpApplyProvisionalDefaults(design, cropId) {
   if (!design) return;
+  if (!Array.isArray(design.provisionalFields)) design.provisionalFields = [];
+
   const crop = _adpGetCropById(cropId);
   const std  = crop?.plantingStandard;
-  if (!std) return;
-  if (!Array.isArray(design.provisionalFields)) design.provisionalFields = [];
-  ['rowWidth', 'linesPerRow', 'plantSpacing'].forEach(field => {
-    if (design[field] == null && std[field] != null) {
-      design[field] = std[field];
+  if (std) {
+    ['rowWidth', 'linesPerRow', 'plantSpacing'].forEach(field => {
+      if (design[field] == null && std[field] != null) {
+        design[field] = std[field];
+        if (!design.provisionalFields.includes(field)) design.provisionalFields.push(field);
+      }
+    });
+  }
+
+  // 詳細入力モード（畝上幅・畝間）の共通暫定プリセット。
+  // 一旦汎用値（畝上幅60cm・畝間30cm）で共通プリセットし、ユーザーに再設定を促す。
+  // 既存入力を上書きしないよう、両方未入力の場合のみセットする。
+  if (design.ridgeTopWidth == null && design.pathWidth == null) {
+    design.ridgeTopWidth = 60;
+    design.pathWidth = 30;
+    ['ridgeTopWidth', 'pathWidth'].forEach(field => {
       if (!design.provisionalFields.includes(field)) design.provisionalFields.push(field);
-    }
-  });
+    });
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -7433,14 +7446,17 @@ function _adpSaveHouseMargin(areaId) {
  * 返り値: { seedlings, purchase, rowAreaSqm, density, totalLine, autoCalc } or null
  */
 function _adpCalcPlanting(d) {
-  const rowWidth    = Number(d.rowWidth);
   const linesPerRow = Number(d.linesPerRow);
   const plantSpacing= Number(d.plantSpacing);
   const missingRate = (d.missingRate !== null && d.missingRate !== '') ? Number(d.missingRate) : null;
 
   // ── 積算方式（ridgeSegments あり）──
   if (Array.isArray(d.ridgeSegments) && d.ridgeSegments.length > 0) {
-    if (!rowWidth || !linesPerRow || !plantSpacing) return null;
+    // ①バグ修正：畝面積の算出には、実際にridgeSegments生成に使われた実効ピッチ
+    // （詳細入力モード時は畝上幅＋畝間、それ以外はrowWidth）を使う。
+    // 生のrowWidthをそのまま使うと詳細入力モード時に乖離・null化の原因になる。
+    const pitchCm = _adpEffectivePitchCm(d);
+    if (!pitchCm || !linesPerRow || !plantSpacing) return null;
     if (typeof RidgeGeometry === 'undefined') return null;
 
     const seedlings  = RidgeGeometry.totalPlants(d.ridgeSegments, linesPerRow, plantSpacing);
@@ -7448,7 +7464,7 @@ function _adpCalcPlanting(d) {
       ? Math.ceil(seedlings * (1 + missingRate / 100))
       : Math.ceil(seedlings);
     const totalLen   = d.ridgeSegments.reduce((s, seg) => s + seg.length, 0);
-    const rowAreaSqm = Math.round(totalLen * (rowWidth / 100) * 10) / 10;
+    const rowAreaSqm = Math.round(totalLen * (pitchCm / 100) * 10) / 10;
     const density    = rowAreaSqm > 0 ? Math.round(seedlings / rowAreaSqm * 10) / 10 : null;
     const totalLine  = Math.round(totalLen * linesPerRow * 10) / 10;
     const rows       = d.ridgeSegments.length;
@@ -7457,9 +7473,10 @@ function _adpCalcPlanting(d) {
     return { seedlings, purchase, rowAreaSqm, density, totalLine, rows, rowLength, autoCalc: true };
   }
 
-  // ── 手動入力方式（後方互換）──
+  // ── 手動入力方式（後方互換・詳細入力モード非対応のためrowWidthを直接使用）──
   const rows      = Number(d.rows);
   const rowLength = Number(d.rowLength);
+  const rowWidth  = Number(d.rowWidth);
 
   if (!rows || !rowLength || !rowWidth || !linesPerRow || !plantSpacing) return null;
 
@@ -7900,21 +7917,29 @@ function _adpBuildDetailWidthSection(seg, cropId, design) {
   const isDetailMode = _adpIsDetailWidthMode(design);
   const isOpen = _adpDetailWidthOpen.has(key) || isDetailMode;
   const pitchCm = _adpEffectivePitchCm(design);
+  const topProvisional  = _adpIsProvisional(design, 'ridgeTopWidth');
+  const pathProvisional = _adpIsProvisional(design, 'pathWidth');
+  const isProvisionalDetail = topProvisional || pathProvisional;
 
   const toggleLabel = isOpen ? '⚙️ 詳細入力を閉じる' : '⚙️ 畝上幅・畝間で詳細入力';
   const statusHTML = (!isOpen && isDetailMode)
-    ? `<span class="plt-detailwidth-status">詳細入力中（ピッチ ${pitchCm ?? '—'}cm）</span>`
+    ? `<span class="plt-detailwidth-status">詳細入力中（ピッチ ${pitchCm ?? '—'}cm）${isProvisionalDetail ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</span>`
+    : '';
+
+  const hintHTML = (isOpen && isProvisionalDetail)
+    ? `<div class="plt-detailwidth-hint">💡 汎用値を仮設定しています。作物に合わせて調整してください。</div>`
     : '';
 
   const bodyHTML = isOpen ? `
     <div class="plt-detailwidth-body">
-      <div class="plt-input-item">
-        <label class="plt-label">畝上幅</label>
+      ${hintHTML}
+      <div class="plt-input-item" data-field="ridgeTopWidth">
+        <label class="plt-label">畝上幅${topProvisional ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
         <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.ridgeTopWidth ?? ''}" placeholder="例: 60"
           oninput="_adpUpdatePlantingField('${cropId}','ridgeTopWidth',this.value,'${seg}');_adpRefreshDetailPitchDisplay('${seg}','${cropId}')"><span class="plt-unit">cm</span></div>
       </div>
-      <div class="plt-input-item">
-        <label class="plt-label">畝間</label>
+      <div class="plt-input-item" data-field="pathWidth">
+        <label class="plt-label">畝間${pathProvisional ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
         <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" value="${design.pathWidth ?? ''}" placeholder="例: 30"
           oninput="_adpUpdatePlantingField('${cropId}','pathWidth',this.value,'${seg}');_adpRefreshDetailPitchDisplay('${seg}','${cropId}')"><span class="plt-unit">cm</span></div>
       </div>
@@ -7961,6 +7986,8 @@ function _adpClearDetailWidth(seg, cropId) {
 
   design.ridgeTopWidth = null;
   design.pathWidth = null;
+  _adpUnmarkProvisional(design, 'ridgeTopWidth');
+  _adpUnmarkProvisional(design, 'pathWidth');
 
   const pitchCm = _adpEffectivePitchCm(design); // rowWidthへフォールバック
   if (seg === 'analysis') {
@@ -8004,6 +8031,14 @@ function _adpRefreshDetailPitchDisplay(seg, cropId) {
 
     const pitchValEl = card.querySelector('.plt-detailwidth-pitch-val');
     if (pitchValEl) pitchValEl.textContent = pitchCm ?? '—';
+
+    // 暫定ヒント（畝上幅・畝間とも編集されると不要になる）は編集後に消しておく。
+    // ラベル横の個別バッジは_adpUpdatePlantingField側で即時除去済みのため、
+    // ここでは行全体を差し替えず、入力フォーカスを保ったままヒントのみ除去する。
+    if (!_adpIsProvisional(design, 'ridgeTopWidth') && !_adpIsProvisional(design, 'pathWidth')) {
+      const hintEl = card.querySelector('.plt-detailwidth-hint');
+      if (hintEl) hintEl.remove();
+    }
 
     _adpRefreshRidgeDirRow(card, cropId, seg, design);
 
