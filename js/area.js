@@ -7148,6 +7148,26 @@ function _adpRenderGrowthCompare(cropId) {
 // ═══════════════════════════════════════════
 
 /**
+ * 汎用debounceヘルパー。同一keyの呼び出しは最後の1回だけ、delay[ms]後に実行される。
+ * 畝設計関連の数値入力（栽植設計カード・ハウスマージン設定）で、連続入力時の
+ * 再計算・DOM更新・保存処理を間引くために使用する（入力値そのものの代入は即時実行し、
+ * ここでdebounceするのは「重い処理」のみとする）。
+ * @param {string} key - タイマー識別キー（同じkeyの先行タイマーはキャンセルされる）
+ * @param {Function} fn - delay後に実行する処理
+ * @param {number} [delay=300] - 遅延[ms]
+ */
+const _adpDebounceTimers = new Map();
+function _adpDebounce(key, fn, delay = 300) {
+  const existing = _adpDebounceTimers.get(key);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(() => {
+    _adpDebounceTimers.delete(key);
+    fn();
+  }, delay);
+  _adpDebounceTimers.set(key, timer);
+}
+
+/**
  * cropDB の plantingStandard から初期値を生成する。
  * cropDB に値が無い場合は全フィールドを null（手動入力）。
  */
@@ -7516,6 +7536,15 @@ function _adpStartAreaRidgeDir() {
     _adpArea.meta.ridgeBaseDirection = result;
     _adpSaveRidgeBaseDirection(_adpArea.id || _adpArea.name);
 
+    // 畝方向を新規設定・再設定するたび、未入力の実務作物フィールドにcropDB標準値を暫定セット
+    // （既存値は上書きしない。設定済みフィールドは対象外なので毎回発火しても無害）
+    if (Array.isArray(_adpPracticecrops)) {
+      _adpPracticecrops.forEach(entry => {
+        if (!entry.plantingDesign) entry.plantingDesign = _adpInitPlantingDesign(entry.cropId);
+        _adpApplyProvisionalDefaults(entry.plantingDesign, entry.cropId);
+      });
+    }
+
     _adpRecalcAllBands();
     if (_adpAnalysisPlantingDesign) {
       const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
@@ -7674,19 +7703,24 @@ function _adpBuildEntranceEdgeMiniSVG(polygon, entranceIdx) {
 function _adpUpdateHouseMarginField(field, value) {
   if (!_adpArea) return;
   if (!_adpHouseMargin) _adpHouseMargin = { entranceEdgeIndex: -1 };
-  _adpHouseMargin[field] = value === '' ? null : Number(value);
+  // ①負の値ガード：入力値は即座に0未満を0へ丸める（空文字＝未入力はnullのまま許容）
+  _adpHouseMargin[field] = value === '' ? null : Math.max(0, Number(value) || 0);
 
   const areaId = _adpArea?.id || _adpArea?.name || '';
-  _adpSaveHouseMargin(areaId);
 
-  _adpRecalcAllBands();
-  if (_adpAnalysisPlantingDesign) {
-    const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
-    _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
-  }
+  // ②連続入力時の保存・全帯再計算・プレビュー/カード再描画を300ms間引き
+  _adpDebounce('housemargin', () => {
+    _adpSaveHouseMargin(areaId);
 
-  _adpRefreshHouseMarginSection();
-  _adpRefreshAllCardsAfterGeometryChange();
+    _adpRecalcAllBands();
+    if (_adpAnalysisPlantingDesign) {
+      const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
+      _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
+    }
+
+    _adpRefreshHouseMarginSection();
+    _adpRefreshAllCardsAfterGeometryChange();
+  }, 300);
 }
 
 /** 入口辺を次の辺へローテーションする（「違う辺にする」ボタン）。 */
@@ -7953,27 +7987,30 @@ function _adpClearDetailWidth(seg, cropId) {
  * _adpUpdatePlantingField による design 更新の「後」に呼ぶこと（oninputで連結）。
  */
 function _adpRefreshDetailPitchDisplay(seg, cropId) {
-  const design = _adpGetDesignFor(seg, cropId);
-  if (!design) return;
+  // ②畝上幅／畝間（詳細入力）の連続入力時、帯再計算・DOM更新を300ms間引く
+  _adpDebounce(`pitchdisplay:${seg}:${cropId}`, () => {
+    const design = _adpGetDesignFor(seg, cropId);
+    if (!design) return;
 
-  const pitchCm = _adpEffectivePitchCm(design);
-  if (seg === 'analysis') {
-    _adpRecalcAnalysisRidgeSegments(design, pitchCm);
-  } else {
-    _adpRecalcAllBands();
-  }
+    const pitchCm = _adpEffectivePitchCm(design);
+    if (seg === 'analysis') {
+      _adpRecalcAnalysisRidgeSegments(design, pitchCm);
+    } else {
+      _adpRecalcAllBands();
+    }
 
-  const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
-  if (!card) return;
+    const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
+    if (!card) return;
 
-  const pitchValEl = card.querySelector('.plt-detailwidth-pitch-val');
-  if (pitchValEl) pitchValEl.textContent = pitchCm ?? '—';
+    const pitchValEl = card.querySelector('.plt-detailwidth-pitch-val');
+    if (pitchValEl) pitchValEl.textContent = pitchCm ?? '—';
 
-  _adpRefreshRidgeDirRow(card, cropId, seg, design);
+    _adpRefreshRidgeDirRow(card, cropId, seg, design);
 
-  const calc = _adpCalcPlanting(design);
-  const resultEl = card.querySelector('.plt-result');
-  if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
+    const calc = _adpCalcPlanting(design);
+    const resultEl = card.querySelector('.plt-result');
+    if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
+  }, 300);
 }
 
 /**
@@ -8143,70 +8180,88 @@ function _adpRefreshRidgeDirRow(card, cropId, seg, design) {
 
 function _adpUpdatePlantingField(cropId, field, value, seg) {
   const areaId = _adpArea?.id || _adpArea?.name || '';
-  const parsed = value === '' ? null : Number(value);
+  // ①負の値ガード：入力値は即座に0未満を0へ丸める（空文字＝未入力はnullのまま許容）
+  const parsed = value === '' ? null : Math.max(0, Number(value) || 0);
 
   if (seg === 'analysis') {
     if (!_adpAnalysisPlantingDesign) return;
     _adpAnalysisPlantingDesign[field] = parsed;
     _adpUnmarkProvisional(_adpAnalysisPlantingDesign, field);
-    if (field === 'rowWidth') {
-      _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, _adpEffectivePitchCm(_adpAnalysisPlantingDesign));
-    }
-    // 結果部分のみ再描画（入力フォーカスを失わないよう result div のみ更新）
-    const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
-    if (!card) return;
-    const badgeEl = card.querySelector(`.plt-input-item[data-field="${field}"] .plt-badge-provisional`);
-    if (badgeEl) badgeEl.remove();
-    const calc    = _adpCalcPlanting(_adpAnalysisPlantingDesign);
-    const resultEl = card.querySelector('.plt-result');
-    if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
-    if (field === 'rowWidth') {
-      _adpRefreshRidgeDirRow(card, cropId, seg, _adpAnalysisPlantingDesign);
-    }
+
+    // 「暫定」バッジは体感速度優先で即座に除去（重い再計算・再描画のみdebounce）
+    const cardImmediate = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
+    const badgeElImmediate = cardImmediate?.querySelector(`.plt-input-item[data-field="${field}"] .plt-badge-provisional`);
+    if (badgeElImmediate) badgeElImmediate.remove();
+
+    // ②連続入力時の再計算・DOM更新を300ms間引き
+    _adpDebounce(`pltfield:analysis:${cropId}:${field}`, () => {
+      if (!_adpAnalysisPlantingDesign) return;
+      if (field === 'rowWidth') {
+        _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, _adpEffectivePitchCm(_adpAnalysisPlantingDesign));
+      }
+      // 結果部分のみ再描画（入力フォーカスを失わないよう result div のみ更新）
+      const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
+      if (!card) return;
+      const calc    = _adpCalcPlanting(_adpAnalysisPlantingDesign);
+      const resultEl = card.querySelector('.plt-result');
+      if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
+      if (field === 'rowWidth') {
+        _adpRefreshRidgeDirRow(card, cropId, seg, _adpAnalysisPlantingDesign);
+      }
+    }, 300);
     return;
   }
 
-  // 実務側
-  const idx = _adpPracticecrops.findIndex(c => c.cropId === cropId);
-  if (idx < 0) return;
-  if (!_adpPracticecrops[idx].plantingDesign) {
-    _adpPracticecrops[idx].plantingDesign = _adpInitPlantingDesign(cropId);
+  // 実務側：値の代入は即時（保存・再計算はdebounce後にcropIdで改めて検索する＝
+  // debounce待機中に配列の並び替え・削除が起きてもindexのズレで誤動作しないようにする）
+  const idxNow = _adpPracticecrops.findIndex(c => c.cropId === cropId);
+  if (idxNow < 0) return;
+  if (!_adpPracticecrops[idxNow].plantingDesign) {
+    _adpPracticecrops[idxNow].plantingDesign = _adpInitPlantingDesign(cropId);
   }
-  _adpPracticecrops[idx].plantingDesign[field] = parsed;
-  _adpUnmarkProvisional(_adpPracticecrops[idx].plantingDesign, field);
-  // rowWidth が変わった場合、エリア共通の畝方向が設定済みなら全帯を再計算
-  if (field === 'rowWidth') {
-    _adpRecalcAllBands();
-  }
+  _adpPracticecrops[idxNow].plantingDesign[field] = parsed;
+  _adpUnmarkProvisional(_adpPracticecrops[idxNow].plantingDesign, field);
 
-  // purchase を先に計算して書き戻してから保存（施肥タブの株数基準に必要）
-  const calcForSave = _adpCalcPlanting(_adpPracticecrops[idx].plantingDesign);
-  _adpPracticecrops[idx].plantingDesign.purchase = calcForSave ? calcForSave.purchase : null;
-  _adpSavePracticecrops(areaId);
+  // 「暫定」バッジは即座に除去
+  const cardImmediate2 = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
+  const badgeElImmediate2 = cardImmediate2?.querySelector(`.plt-input-item[data-field="${field}"] .plt-badge-provisional`);
+  if (badgeElImmediate2) badgeElImmediate2.remove();
 
-  // 結果部分のみ再描画
-  const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
-  if (!card) return;
-  const ratio   = _adpPracticecrops[idx].ratio;
-  const design  = _adpPracticecrops[idx].plantingDesign;
-  const calc    = calcForSave; // 再計算不要・上で取得済み
-  const warn    = _adpPlantingAreaWarn(ratio, calc?.rowAreaSqm ?? null);
-  const resultEl      = card.querySelector('.plt-result');
-  const warnContainer = card.querySelector('.plt-warn-wrap');
-  if (resultEl)      resultEl.innerHTML      = _adpBuildPlantingResultHTML(calc, null, cropId);
-  if (warnContainer) warnContainer.innerHTML = warn
-    ? `<div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と占有面積（${warn.occupiedSqm}㎡）が${warn.diffPct}%乖離しています</div>`
-    : '';
+  _adpDebounce(`pltfield:practice:${cropId}:${field}`, () => {
+    const idx = _adpPracticecrops.findIndex(c => c.cropId === cropId);
+    if (idx < 0) return;
+    const design = _adpPracticecrops[idx].plantingDesign;
+    if (!design) return;
 
-  // 手動編集されたフィールドの「暫定」バッジをDOMからも除去
-  const badgeEl = card.querySelector(`.plt-input-item[data-field="${field}"] .plt-badge-provisional`);
-  if (badgeEl) badgeEl.remove();
+    // rowWidth が変わった場合、エリア共通の畝方向が設定済みなら全帯を再計算
+    if (field === 'rowWidth') {
+      _adpRecalcAllBands();
+    }
 
-  // rowWidth変更時はridgeSegmentsが再計算され得るため、
-  // プレビューボタン／ステータス行（plt-ridgedir-row）も再描画してズレを防ぐ
-  if (field === 'rowWidth') {
-    _adpRefreshRidgeDirRow(card, cropId, seg, design);
-  }
+    // purchase を先に計算して書き戻してから保存（施肥タブの株数基準に必要）
+    const calcForSave = _adpCalcPlanting(design);
+    design.purchase = calcForSave ? calcForSave.purchase : null;
+    _adpSavePracticecrops(areaId);
+
+    // 結果部分のみ再描画
+    const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
+    if (!card) return;
+    const ratio   = _adpPracticecrops[idx].ratio;
+    const calc    = calcForSave; // 再計算不要・上で取得済み
+    const warn    = _adpPlantingAreaWarn(ratio, calc?.rowAreaSqm ?? null);
+    const resultEl      = card.querySelector('.plt-result');
+    const warnContainer = card.querySelector('.plt-warn-wrap');
+    if (resultEl)      resultEl.innerHTML      = _adpBuildPlantingResultHTML(calc, null, cropId);
+    if (warnContainer) warnContainer.innerHTML = warn
+      ? `<div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と占有面積（${warn.occupiedSqm}㎡）が${warn.diffPct}%乖離しています</div>`
+      : '';
+
+    // rowWidth変更時はridgeSegmentsが再計算され得るため、
+    // プレビューボタン／ステータス行（plt-ridgedir-row）も再描画してズレを防ぐ
+    if (field === 'rowWidth') {
+      _adpRefreshRidgeDirRow(card, cropId, seg, design);
+    }
+  }, 300);
 }
 
 /** 計算結果HTMLだけ生成するヘルパー（部分更新用） */
