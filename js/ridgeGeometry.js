@@ -1,7 +1,11 @@
 // ═══════════════════════════════════════════
 //  RIDGE GEOMETRY — 畝設計 座標計算ライブラリ
 //  依存なし（純粋関数のみ）
-//  使用方法: RidgeGeometry.calcRidges(latLngs, dirP1, dirP2, rowWidth)
+//  使用方法:
+//    RidgeGeometry.calcRidges(latLngs, dirP1, dirP2, rowWidth, holesLatLngs?)
+//    RidgeGeometry.splitPolygonByRatio(latLngs, dirP1, dirP2, ratios)
+//    RidgeGeometry.computeHouseGeometry(latLngs, opts)
+//    RidgeGeometry.getPolygonEdges(latLngs)
 // ═══════════════════════════════════════════
 
 const RidgeGeometry = (() => {
@@ -10,9 +14,10 @@ const RidgeGeometry = (() => {
   //  定数
   // ────────────────────────────────────────
   const MIN_RIDGE_LENGTH = 1.0; // m未満の畝は除外
+  const EARTH_R = 6371000;      // 地球半径 [m]（等距離近似に使用）
 
   // ────────────────────────────────────────
-  //  緯度経度 → ローカル平面座標（メートル）
+  //  緯度経度 ⇄ ローカル平面座標（メートル）
   //  原点は polygonLatLngs の重心
   // ────────────────────────────────────────
 
@@ -34,11 +39,23 @@ const RidgeGeometry = (() => {
    * @returns {{x:number,y:number}}
    */
   function _toLocal(pt, origin) {
-    const R = 6371000;
     const lat0rad = origin.lat * Math.PI / 180;
-    const x = (pt.lng - origin.lng) * Math.PI / 180 * R * Math.cos(lat0rad);
-    const y = (pt.lat - origin.lat) * Math.PI / 180 * R;
+    const x = (pt.lng - origin.lng) * Math.PI / 180 * EARTH_R * Math.cos(lat0rad);
+    const y = (pt.lat - origin.lat) * Math.PI / 180 * EARTH_R;
     return { x, y };
+  }
+
+  /**
+   * ローカル XY [m] → LatLng（_toLocal の逆変換）
+   * @param {{x:number,y:number}} xy
+   * @param {{lat:number,lng:number}} origin
+   * @returns {{lat:number,lng:number}}
+   */
+  function _fromLocal(xy, origin) {
+    const lat0rad = origin.lat * Math.PI / 180;
+    const lng = origin.lng + (xy.x / (EARTH_R * Math.cos(lat0rad))) * 180 / Math.PI;
+    const lat = origin.lat + (xy.y / EARTH_R) * 180 / Math.PI;
+    return { lat, lng };
   }
 
   // ────────────────────────────────────────
@@ -54,6 +71,85 @@ const RidgeGeometry = (() => {
   }
 
   function _dot(a, b) { return a.x * b.x + a.y * b.y; }
+
+  // ────────────────────────────────────────
+  //  多角形演算（面積・符号付き面積・半平面クリップ）
+  // ────────────────────────────────────────
+
+  /**
+   * 符号付き面積（CCWなら正、CWなら負）
+   * @param {{x:number,y:number}[]} poly
+   */
+  function _signedArea(poly) {
+    let area = 0;
+    const n = poly.length;
+    for (let i = 0; i < n; i++) {
+      const a = poly[i], b = poly[(i + 1) % n];
+      area += a.x * b.y - b.x * a.y;
+    }
+    return area / 2;
+  }
+
+  /**
+   * 多角形の面積（絶対値）[m²]
+   * @param {{x:number,y:number}[]} poly
+   */
+  function _polygonArea(poly) {
+    if (!poly || poly.length < 3) return 0;
+    return Math.abs(_signedArea(poly));
+  }
+
+  /**
+   * 多角形を半平面でクリップする（Sutherland–Hodgman法）。
+   * keepSide > 0 : dot(p, normal) >= threshold の側を残す
+   * keepSide < 0 : dot(p, normal) <= threshold の側を残す
+   * @param {{x:number,y:number}[]} poly
+   * @param {{x:number,y:number}} normal
+   * @param {number} threshold
+   * @param {number} keepSide
+   * @returns {{x:number,y:number}[]}
+   */
+  function _clipHalfPlane(poly, normal, threshold, keepSide) {
+    if (!poly || poly.length === 0) return [];
+    const out = [];
+    const n = poly.length;
+    const eps = 1e-9;
+    for (let i = 0; i < n; i++) {
+      const curr = poly[i];
+      const next = poly[(i + 1) % n];
+      const dCurr = _dot(curr, normal) - threshold;
+      const dNext = _dot(next, normal) - threshold;
+      const currIn = keepSide > 0 ? dCurr >= -eps : dCurr <= eps;
+      const nextIn = keepSide > 0 ? dNext >= -eps : dNext <= eps;
+      if (currIn) out.push(curr);
+      if (currIn !== nextIn) {
+        const denom = dCurr - dNext;
+        if (Math.abs(denom) > 1e-12) {
+          const t = dCurr / denom;
+          out.push({
+            x: curr.x + (next.x - curr.x) * t,
+            y: curr.y + (next.y - curr.y) * t,
+          });
+        }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * 無限直線同士の交点（線分ではなく直線として交差判定）
+   * @param {{x:number,y:number}} p 直線1の通過点
+   * @param {{x:number,y:number}} dirP 直線1の方向ベクトル
+   * @param {{x:number,y:number}} q 直線2の通過点
+   * @param {{x:number,y:number}} dirQ 直線2の方向ベクトル
+   * @returns {{x:number,y:number}|null}
+   */
+  function _lineLineIntersect(p, dirP, q, dirQ) {
+    const denom = dirP.x * dirQ.y - dirP.y * dirQ.x;
+    if (Math.abs(denom) < 1e-10) return null; // 平行
+    const t = ((q.x - p.x) * dirQ.y - (q.y - p.y) * dirQ.x) / denom;
+    return { x: p.x + dirP.x * t, y: p.y + dirP.y * t };
+  }
 
   // ────────────────────────────────────────
   //  線分交差判定
@@ -73,27 +169,31 @@ const RidgeGeometry = (() => {
   }
 
   // ────────────────────────────────────────
-  //  無限線とポリゴン全エッジの交差点を収集
-  //  line: { origin:{x,y}, dir:{x,y} }
-  //  戻り値: ポリゴン内部の t 値リスト（dirに沿った距離）
+  //  無限線と複数リング（外周＋穴）の交差点を収集
+  //  line: origin + dir（有限長の線分として渡す）
+  //  rings: [ [{x,y},...], ... ] — 1リング目が外周、以降は穴
+  //  戻り値: 全リング分の t 値リスト（dirに沿った距離の比率）
   // ────────────────────────────────────────
-  function _linePolyIntersections(lineOrigin, lineDir, poly) {
+  function _linePolyIntersectionsMulti(lineOrigin, lineDir, rings) {
     const tValues = [];
-    const n = poly.length;
-    for (let i = 0; i < n; i++) {
-      const a = poly[i];
-      const b = poly[(i + 1) % n];
-      const edgeDir = { x: b.x - a.x, y: b.y - a.y };
-      const t = _segIntersectT(lineOrigin, lineDir, a, edgeDir);
-      if (t !== null) {
-        tValues.push(t);
+    rings.forEach(ring => {
+      const n = ring.length;
+      for (let i = 0; i < n; i++) {
+        const a = ring[i];
+        const b = ring[(i + 1) % n];
+        const edgeDir = { x: b.x - a.x, y: b.y - a.y };
+        const t = _segIntersectT(lineOrigin, lineDir, a, edgeDir);
+        if (t !== null) tValues.push(t);
       }
-    }
+    });
     return tValues;
   }
 
   // ────────────────────────────────────────
   //  オフセット線ごとの有効区間を計算（偶奇ルール）
+  //  外周＋穴を1つのtValuesリストとして渡せば、
+  //  穴の部分は自動的に「外」として除外される
+  //  （偶奇ルールは向き・リング数に依存しないため）
   //  tValues: 交差点の t 値リスト
   //  戻り値: [{tStart, tEnd, length}] — 内部区間のみ
   // ────────────────────────────────────────
@@ -112,26 +212,31 @@ const RidgeGeometry = (() => {
   }
 
   // ────────────────────────────────────────
-  //  メイン計算
+  //  メイン計算：畝配置
   // ────────────────────────────────────────
 
   /**
    * 畝配置を計算する
    *
    * @param {Array<{lat:number,lng:number}>} polygonLatLngs
-   *   圃場ポリゴンの頂点配列（Leaflet LatLng 互換）
+   *   圃場（またはその一部＝比率帯）ポリゴンの頂点配列（Leaflet LatLng 互換）
    * @param {{lat:number,lng:number}} dirP1 — 畝方向線の1点目
    * @param {{lat:number,lng:number}} dirP2 — 畝方向線の2点目
-   * @param {number} rowWidth — 畝幅 [m]（うねの中心間距離）
+   * @param {number} rowWidth — 畝幅 [m]（うねの中心間距離＝ピッチ）
+   * @param {Array<Array<{lat:number,lng:number}>>} [holesLatLngs] —
+   *   除外領域（ハウスの入口・設備通路など）のポリゴン配列（各要素が1つの穴）。
+   *   省略時は穴なし（従来どおりの挙動、後方互換）。
    *
    * @returns {{
    *   rows: number,
    *   rowLength: number,
-   *   ridgeSegments: Array<{length:number}>,
+   *   ridgeSegments: Array<{length:number, p1:{lat:number,lng:number}, p2:{lat:number,lng:number}}>,
    *   totalArea: number
    * }}
+   *   ridgeSegments[].p1 / p2 は畝セグメントの始点・終点（緯度経度）。
+   *   実形状プレビュー描画用（後方互換：length は従来どおり必ず存在する）。
    */
-  function calcRidges(polygonLatLngs, dirP1, dirP2, rowWidth) {
+  function calcRidges(polygonLatLngs, dirP1, dirP2, rowWidth, holesLatLngs) {
     if (!polygonLatLngs || polygonLatLngs.length < 3) {
       return { rows: 0, rowLength: 0, ridgeSegments: [], totalArea: 0 };
     }
@@ -147,18 +252,22 @@ const RidgeGeometry = (() => {
     const poly   = polygonLatLngs.map(p => _toLocal(p, origin));
     const lp1    = _toLocal(dirP1, origin);
     const lp2    = _toLocal(dirP2, origin);
+    const holes  = Array.isArray(holesLatLngs)
+      ? holesLatLngs.map(hole => hole.map(p => _toLocal(p, origin)))
+      : [];
+    const rings  = [poly, ...holes];
 
     // 2. 畝方向ベクトルと法線（投影方向）
     const ridgeDir  = _normalize({ x: lp2.x - lp1.x, y: lp2.y - lp1.y });
     const normalDir = { x: -ridgeDir.y, y: ridgeDir.x }; // 90°回転
 
-    // 3. ポリゴン全頂点を法線方向へ投影し、走査範囲を決定
+    // 3. ポリゴン全頂点を法線方向へ投影し、走査範囲を決定（穴は範囲に含めない＝外周のみ基準）
     const projections = poly.map(p => _dot(p, normalDir));
     const projMin = Math.min(...projections);
     const projMax = Math.max(...projections);
 
     // 3b. 畝方向（ridgeDir）側の走査に使う線分の長さを決定。
-    //     _linePolyIntersections は有限長の線分として交差判定するため、
+    //     _linePolyIntersectionsMulti は有限長の線分として交差判定するため、
     //     ridgeDir（単位ベクトル＝長さ1）をそのまま渡すと畝方向1mしか
     //     判定できず、実際の圃場（数十m規模）では交点がほぼ見つからない。
     //     ポリゴンの対角線長を基準に、確実に圃場全体をまたぐ長さを用意する。
@@ -190,14 +299,27 @@ const RidgeGeometry = (() => {
         y: ridgeDir.y * scanLen,
       };
 
-      // ポリゴンとの交差 t 値（0〜1、lineOriginからの比率）を収集し、
+      // ポリゴン（外周＋穴）との交差 t 値（0〜1、lineOriginからの比率）を収集し、
       // 実距離 [m] に変換する
-      const tValues = _linePolyIntersections(lineOrigin, lineDir, poly)
+      const tValues = _linePolyIntersectionsMulti(lineOrigin, lineDir, rings)
         .map(t => t * scanLen);
       const segs    = _validSegments(tValues);
 
       segs.forEach(seg => {
-        allSegments.push({ length: Math.round(seg.length * 100) / 100 });
+        // セグメントの実座標（緯度経度）を復元（実形状プレビュー用）
+        const p1Local = {
+          x: lineOrigin.x + ridgeDir.x * seg.tStart,
+          y: lineOrigin.y + ridgeDir.y * seg.tStart,
+        };
+        const p2Local = {
+          x: lineOrigin.x + ridgeDir.x * seg.tEnd,
+          y: lineOrigin.y + ridgeDir.y * seg.tEnd,
+        };
+        allSegments.push({
+          length: Math.round(seg.length * 100) / 100,
+          p1: _fromLocal(p1Local, origin),
+          p2: _fromLocal(p2Local, origin),
+        });
       });
 
       offset += rowWidth;
@@ -243,8 +365,333 @@ const RidgeGeometry = (() => {
   }
 
   // ────────────────────────────────────────
+  //  作物比率に応じた帯状ポリゴン分割
+  // ────────────────────────────────────────
+
+  /**
+   * 指定オフセット範囲 [offsetStart, projMax] の中で、offsetStart から
+   * 面積が targetArea になる offsetEnd を二分探索で求める。
+   * 面積は offsetEnd に対して単調非減少なので二分探索が成立する。
+   *
+   * @param {{x:number,y:number}[]} polyLocal — ローカル座標の外周ポリゴン
+   * @param {{x:number,y:number}} normalDir — 法線方向（帯を切る軸）
+   * @param {number} offsetStart
+   * @param {number} projMax
+   * @param {number} targetArea
+   * @returns {number} offsetEnd
+   */
+  function _findOffsetForArea(polyLocal, normalDir, offsetStart, projMax, targetArea) {
+    const MAX_ITER = 40;
+    const AREA_TOL = 0.05; // m²単位の許容誤差
+
+    // まず offsetStart 以降の最大面積を確認。targetAreaに届かない場合は projMax を返す
+    const fullBand  = _clipHalfPlane(polyLocal, normalDir, offsetStart, 1);
+    const fullArea  = _polygonArea(fullBand);
+    if (targetArea >= fullArea) return projMax;
+    if (targetArea <= 0) return offsetStart;
+
+    let lo = offsetStart, hi = projMax;
+    let mid = hi;
+    for (let i = 0; i < MAX_ITER; i++) {
+      mid = (lo + hi) / 2;
+      const band = _clipHalfPlane(fullBand, normalDir, mid, -1);
+      const area = _polygonArea(band);
+      if (Math.abs(area - targetArea) < AREA_TOL) break;
+      if (area < targetArea) lo = mid; else hi = mid;
+    }
+    return mid;
+  }
+
+  /**
+   * 圃場ポリゴンを畝方向に垂直な軸で、指定した比率どおりの「実面積」になるよう
+   * 帯状に分割する（占有率ベースの栽植設計・自動帯分割用）。
+   *
+   * 分割順序は ratios 配列の順（圃場の projMin 側から順に割り当て）。
+   * ratios の合計が100%未満でも構わない（残りは未割当のまま返さない＝
+   * 呼び出し側で「最後の帯より先」は何も描画しなければよい）。
+   *
+   * @param {Array<{lat:number,lng:number}>} polygonLatLngs — 圃場ポリゴン全体
+   * @param {{lat:number,lng:number}} dirP1 — 畝方向線の1点目（エリア共通）
+   * @param {{lat:number,lng:number}} dirP2 — 畝方向線の2点目（エリア共通）
+   * @param {number[]} ratios — 各作物の占有率 [%]（0〜100、合計100以下を推奨）
+   *
+   * @returns {Array<{
+   *   ratio: number,
+   *   polygon: Array<{lat:number,lng:number}>,
+   *   areaSqm: number
+   * }>} ratios と同じ順番・同じ長さの配列
+   */
+  function splitPolygonByRatio(polygonLatLngs, dirP1, dirP2, ratios) {
+    if (!polygonLatLngs || polygonLatLngs.length < 3) return [];
+    if (!dirP1 || !dirP2) return [];
+    if (!Array.isArray(ratios) || ratios.length === 0) return [];
+
+    const origin = _centroid(polygonLatLngs);
+    const poly   = polygonLatLngs.map(p => _toLocal(p, origin));
+    const lp1    = _toLocal(dirP1, origin);
+    const lp2    = _toLocal(dirP2, origin);
+
+    const ridgeDir  = _normalize({ x: lp2.x - lp1.x, y: lp2.y - lp1.y });
+    const normalDir = { x: -ridgeDir.y, y: ridgeDir.x };
+
+    const projections = poly.map(p => _dot(p, normalDir));
+    const projMin = Math.min(...projections);
+    const projMax = Math.max(...projections);
+    const totalArea = _polygonArea(poly);
+
+    const results = [];
+    let offsetStart = projMin;
+
+    for (let i = 0; i < ratios.length; i++) {
+      const ratio = Number(ratios[i]) || 0;
+      const targetArea = totalArea * (ratio / 100);
+      const offsetEnd = _findOffsetForArea(poly, normalDir, offsetStart, projMax, targetArea);
+
+      const bandLocal = _clipHalfPlane(
+        _clipHalfPlane(poly, normalDir, offsetStart, 1),
+        normalDir, offsetEnd, -1
+      );
+      const bandLatLng = bandLocal.map(p => _fromLocal(p, origin));
+
+      results.push({
+        ratio,
+        polygon: bandLatLng,
+        areaSqm: Math.round(_polygonArea(bandLocal) * 10) / 10,
+      });
+
+      offsetStart = offsetEnd;
+    }
+
+    return results;
+  }
+
+  // ────────────────────────────────────────
+  //  ハウス用ジオメトリ（外膜マージン・入口・設備通路）
+  // ────────────────────────────────────────
+
+  /**
+   * 圃場ポリゴンの各辺の情報を返す（入口辺の手動選択UI等に使用）。
+   *
+   * @param {Array<{lat:number,lng:number}>} polygonLatLngs
+   * @returns {Array<{index:number, lengthM:number, midpoint:{lat:number,lng:number}}>}
+   */
+  function getPolygonEdges(polygonLatLngs) {
+    if (!polygonLatLngs || polygonLatLngs.length < 3) return [];
+    const origin = _centroid(polygonLatLngs);
+    const poly   = polygonLatLngs.map(p => _toLocal(p, origin));
+    const n = poly.length;
+    const edges = [];
+    for (let i = 0; i < n; i++) {
+      const a = poly[i], b = poly[(i + 1) % n];
+      const lengthM = _len({ x: b.x - a.x, y: b.y - a.y });
+      const midLocal = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+      edges.push({
+        index: i,
+        lengthM: Math.round(lengthM * 100) / 100,
+        midpoint: _fromLocal(midLocal, origin),
+      });
+    }
+    return edges;
+  }
+
+  /**
+   * ポリゴンを一律 marginM だけ内側にオフセットする（辺法線オフセット方式）。
+   * 凸多角形・矩形に近い形状を想定した簡易実装（極端な凹多角形では
+   * 頂点が交差する等の破綻がありうるが、ハウス圃場は概ね凸形状のため許容する）。
+   *
+   * @param {{x:number,y:number}[]} poly — ローカル座標のポリゴン
+   * @param {number} marginM
+   * @returns {{x:number,y:number}[]}
+   */
+  function _offsetPolygonInward(poly, marginM) {
+    if (!marginM || marginM <= 0) return poly;
+    const n = poly.length;
+    if (n < 3) return poly;
+
+    const signedArea = _signedArea(poly);
+    const sign = signedArea >= 0 ? 1 : -1; // CCW: 1, CW: -1
+
+    const offsetEdges = [];
+    for (let i = 0; i < n; i++) {
+      const a = poly[i], b = poly[(i + 1) % n];
+      const edgeDir = _normalize({ x: b.x - a.x, y: b.y - a.y });
+      // 内向き法線: CCWなら進行方向の左側（edgeDirを+90°回転）、CWなら右側（-90°回転）
+      const normal = sign > 0
+        ? { x: -edgeDir.y, y: edgeDir.x }
+        : { x: edgeDir.y, y: -edgeDir.x };
+      offsetEdges.push({
+        a: { x: a.x + normal.x * marginM, y: a.y + normal.y * marginM },
+        dir: edgeDir,
+      });
+    }
+
+    const newPoly = [];
+    for (let i = 0; i < n; i++) {
+      const prev = offsetEdges[(i - 1 + n) % n];
+      const curr = offsetEdges[i];
+      const pt = _lineLineIntersect(prev.a, prev.dir, curr.a, curr.dir);
+      newPoly.push(pt || curr.a); // 平行等で交点が求まらない場合はフォールバック
+    }
+    return newPoly;
+  }
+
+  /**
+   * 指定辺（offsetPoly上のedgeIndex）の中央に、指定幅・奥行きの矩形（穴）を
+   * ローカル座標で生成する。offsetAlongEdgeM を指定すると、辺方向にその分
+   * ずらした位置に配置する（入口の隣に設備通路を並べて配置する用途）。
+   *
+   * @param {{x:number,y:number}[]} offsetPoly
+   * @param {number} edgeIndex
+   * @param {number} widthM
+   * @param {number} depthM
+   * @param {number} [offsetAlongEdgeM] — 辺方向への中心オフセット（省略時0＝辺の中点）
+   * @returns {{x:number,y:number}[]} 矩形（穴）のローカル座標4点
+   */
+  function _buildEdgeNotch(offsetPoly, edgeIndex, widthM, depthM, offsetAlongEdgeM) {
+    const n = offsetPoly.length;
+    const a = offsetPoly[edgeIndex % n];
+    const b = offsetPoly[(edgeIndex + 1) % n];
+    const edgeDir = _normalize({ x: b.x - a.x, y: b.y - a.y });
+
+    const signedArea = _signedArea(offsetPoly);
+    const sign = signedArea >= 0 ? 1 : -1;
+    const inward = sign > 0
+      ? { x: -edgeDir.y, y: edgeDir.x }
+      : { x: edgeDir.y, y: -edgeDir.x };
+
+    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+    const shift = offsetAlongEdgeM || 0;
+    const center = {
+      x: mid.x + edgeDir.x * shift,
+      y: mid.y + edgeDir.y * shift,
+    };
+    const half = widthM / 2;
+
+    const c1 = { x: center.x - edgeDir.x * half, y: center.y - edgeDir.y * half };
+    const c2 = { x: center.x + edgeDir.x * half, y: center.y + edgeDir.y * half };
+    const c3 = { x: c2.x + inward.x * depthM, y: c2.y + inward.y * depthM };
+    const c4 = { x: c1.x + inward.x * depthM, y: c1.y + inward.y * depthM };
+
+    return [c1, c2, c3, c4];
+  }
+
+  /**
+   * ハウス圃場の実効ジオメトリ（外膜マージン内側オフセット＋入口・設備通路の穴）を計算する。
+   * 入口辺は省略時、元ポリゴンの最短辺を自動選択する。
+   *
+   * @param {Array<{lat:number,lng:number}>} polygonLatLngs — 圃場ポリゴン全体
+   * @param {Object} opts
+   * @param {number} opts.frameMarginM — 外膜マージン（外周一律内側オフセット）[m]
+   * @param {number} [opts.entranceWidthM] — 入口幅 [m]（未指定/0なら入口の穴は作らない）
+   * @param {number} [opts.entranceDepthM] — 入口奥行き（進入通路長）[m]
+   * @param {number} [opts.equipWidthM] — 設備通路幅 [m]（未指定/0なら設備通路の穴は作らない）
+   * @param {number} [opts.entranceEdgeIndex] — 入口辺のインデックス（省略時は最短辺を自動選択）
+   *
+   * @returns {{
+   *   outerPolygon: Array<{lat:number,lng:number}>,
+   *   holes: Array<Array<{lat:number,lng:number}>>,
+   *   entranceEdgeIndex: number,
+   *   availableAreaSqm: number
+   * }}
+   */
+  function computeHouseGeometry(polygonLatLngs, opts) {
+    const empty = { outerPolygon: [], holes: [], entranceEdgeIndex: -1, availableAreaSqm: 0 };
+    if (!polygonLatLngs || polygonLatLngs.length < 3) return empty;
+
+    const o = opts || {};
+    const frameMarginM   = Number(o.frameMarginM)   || 0;
+    const entranceWidthM = Number(o.entranceWidthM) || 0;
+    const entranceDepthM = Number(o.entranceDepthM) || 0;
+    const equipWidthM    = Number(o.equipWidthM)    || 0;
+
+    const origin = _centroid(polygonLatLngs);
+    const poly   = polygonLatLngs.map(p => _toLocal(p, origin));
+    const n = poly.length;
+
+    // 1. 入口辺の決定（指定が無ければ元ポリゴンの最短辺を自動選択）
+    let entranceEdgeIndex = Number.isInteger(o.entranceEdgeIndex) ? o.entranceEdgeIndex : -1;
+    if (entranceEdgeIndex < 0 || entranceEdgeIndex >= n) {
+      let minLen = Infinity;
+      for (let i = 0; i < n; i++) {
+        const a = poly[i], b = poly[(i + 1) % n];
+        const len = _len({ x: b.x - a.x, y: b.y - a.y });
+        if (len < minLen) { minLen = len; entranceEdgeIndex = i; }
+      }
+    }
+
+    // 2. 外膜マージンぶん内側オフセット
+    const offsetPoly = frameMarginM > 0 ? _offsetPolygonInward(poly, frameMarginM) : poly;
+
+    // 3. 入口・設備通路の穴を生成（辺方向に並べて隣接配置）
+    const holesLocal = [];
+    let entranceHoleLocal = null;
+    if (entranceWidthM > 0 && entranceDepthM > 0) {
+      entranceHoleLocal = _buildEdgeNotch(offsetPoly, entranceEdgeIndex, entranceWidthM, entranceDepthM, 0);
+      holesLocal.push(entranceHoleLocal);
+    }
+    if (equipWidthM > 0) {
+      const equipDepthM = entranceDepthM > 0 ? entranceDepthM : Math.max(equipWidthM, 1);
+      // 入口の隣（辺方向にentranceWidthM/2 + equipWidthM/2ぶんずらす）に配置
+      const shift = (entranceWidthM > 0 ? entranceWidthM / 2 : 0) + equipWidthM / 2;
+      const equipHoleLocal = _buildEdgeNotch(offsetPoly, entranceEdgeIndex, equipWidthM, equipDepthM, shift);
+      holesLocal.push(equipHoleLocal);
+    }
+
+    // 4. 面積集計（外周オフセットポリゴン − 各穴）
+    let availableArea = _polygonArea(offsetPoly);
+    holesLocal.forEach(hole => { availableArea -= _polygonArea(hole); });
+
+    return {
+      outerPolygon: offsetPoly.map(p => _fromLocal(p, origin)),
+      holes: holesLocal.map(hole => hole.map(p => _fromLocal(p, origin))),
+      entranceEdgeIndex,
+      availableAreaSqm: Math.round(Math.max(availableArea, 0) * 10) / 10,
+    };
+  }
+
+  // ────────────────────────────────────────
+  //  座標変換ヘルパーの公開（プレビュー描画等での再利用向け）
+  // ────────────────────────────────────────
+
+  /**
+   * 圃場ポリゴンをローカルXY座標（重心原点、メートル単位）に変換する。
+   * SVGプレビュー等での実形状描画に使用する。
+   *
+   * @param {Array<{lat:number,lng:number}>} polygonLatLngs
+   * @returns {{origin:{lat:number,lng:number}, points:Array<{x:number,y:number}>}}
+   */
+  function toLocalCoords(polygonLatLngs) {
+    if (!polygonLatLngs || polygonLatLngs.length === 0) {
+      return { origin: { lat: 0, lng: 0 }, points: [] };
+    }
+    const origin = _centroid(polygonLatLngs);
+    const points = polygonLatLngs.map(p => _toLocal(p, origin));
+    return { origin, points };
+  }
+
+  /**
+   * 既知の origin を使って単一のLatLng点をローカルXYに変換する
+   * （splitPolygonByRatio 等で得た複数ポリゴンを同一座標系に揃える場合に使用）。
+   *
+   * @param {{lat:number,lng:number}} pt
+   * @param {{lat:number,lng:number}} origin
+   * @returns {{x:number,y:number}}
+   */
+  function toLocalPoint(pt, origin) {
+    return _toLocal(pt, origin);
+  }
+
+  // ────────────────────────────────────────
   //  公開API
   // ────────────────────────────────────────
-  return { calcRidges, totalPlants };
+  return {
+    calcRidges,
+    totalPlants,
+    splitPolygonByRatio,
+    computeHouseGeometry,
+    getPolygonEdges,
+    toLocalCoords,
+    toLocalPoint,
+  };
 
 })();
