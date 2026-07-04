@@ -7170,17 +7170,31 @@ function _adpDebounce(key, fn, delay = 300) {
 /**
  * cropDB の plantingStandard から初期値を生成する。
  * cropDB に値が無い場合は全フィールドを null（手動入力）。
+ * cropDBから値を埋めたフィールドは、生成時点で provisionalFields に記録し
+ * 「暫定」バッジ対象にする（ユーザーが手動編集すると _adpUnmarkProvisional で解除される）。
  */
 function _adpInitPlantingDesign(cropId) {
   const crop = _adpGetCropById(cropId);
   const std  = crop?.plantingStandard;
+
+  const rowWidth     = std?.rowWidth     ?? null;
+  const linesPerRow  = std?.linesPerRow  ?? null;
+  const plantSpacing = std?.plantSpacing ?? null;
+  const rowSpacing   = std?.rowSpacing   ?? null;
+
+  const provisionalFields = [];
+  if (rowWidth     != null) provisionalFields.push('rowWidth');
+  if (linesPerRow  != null) provisionalFields.push('linesPerRow');
+  if (plantSpacing != null) provisionalFields.push('plantSpacing');
+  if (rowSpacing   != null) provisionalFields.push('rowSpacing');
+
   return {
     rows:           null,
     rowLength:      null,
-    rowWidth:       std?.rowWidth     ?? null,
-    linesPerRow:    std?.linesPerRow  ?? null,
-    plantSpacing:   std?.plantSpacing ?? null,
-    rowSpacing:     std?.rowSpacing   ?? null,
+    rowWidth,
+    linesPerRow,
+    plantSpacing,
+    rowSpacing,
     missingRate:    null,
     // NOTE: ridgeDirection は旧・作物ごと畝方向の名残。エリア共通バー（_adpArea.meta.ridgeBaseDirection）
     // への一本化が完了したため、以後どこからも書き込まれない（後方互換のためフィールドのみ残置）。
@@ -7192,7 +7206,7 @@ function _adpInitPlantingDesign(cropId) {
     // ── 作物比率連動・帯状分割（仕様書セクション1）── _adpRecalcAllBands が書き込むキャッシュ
     _bandPolygon:   null,   // このデザインが担当する帯ポリゴン [{lat,lng},...] | null（未割当 or 未計算）
     _bandAreaSqm:   null,   // 帯の実面積 [m²] | null
-    provisionalFields: [],  // 畝方向確定時に暫定自動セットされたフィールド名（例: ['rowWidth']）
+    provisionalFields,      // 暫定自動セットされたフィールド名（例: ['rowWidth','rowSpacing']）
   };
 }
 
@@ -7205,8 +7219,10 @@ function _adpIsProvisional(design, field) {
 }
 
 /**
- * 畝方向確定時、未入力の rowWidth / linesPerRow / plantSpacing を
+ * 畝方向確定時、未入力の rowWidth / linesPerRow / plantSpacing / rowSpacing を
  * cropDBのplantingStandardから暫定値として自動セットする。
+ * Step5でセット済み（_adpInitPlantingDesign）の分は既にnullでないため通常は無害にスキップされる。
+ * 旧セッションで作成済みのデータ（生成時点マーク導入前）に対する救済フォールバックとして残す。
  * 実際に埋めたフィールドは design.provisionalFields に記録し、
  * カードUIで「暫定」バッジ表示に使う（ユーザーが手動編集すると解除される）。
  */
@@ -7217,7 +7233,7 @@ function _adpApplyProvisionalDefaults(design, cropId) {
   const crop = _adpGetCropById(cropId);
   const std  = crop?.plantingStandard;
   if (std) {
-    ['rowWidth', 'linesPerRow', 'plantSpacing'].forEach(field => {
+    ['rowWidth', 'linesPerRow', 'plantSpacing', 'rowSpacing'].forEach(field => {
       if (design[field] == null && std[field] != null) {
         design[field] = std[field];
         if (!design.provisionalFields.includes(field)) design.provisionalFields.push(field);
@@ -7511,69 +7527,122 @@ function _adpPlantingAreaWarn(ratio, rowAreaSqm) {
 /**
  * エリア共通の畝方向バー（実務・分析どちらのペインの先頭にも表示）。
  * カード個別の「畝方向を地図で指定」ボタンは廃止し、ここに一本化。
+ *
+ * 【畝設計UI統合仕様書 セクションA-3】
+ * RidgeDirDraw（自由2点クリック）は廃止し、圃場の辺を選択する方式に統一。
+ * ハウスマージン入口辺選択と同じ汎用部品（_adpBuildEdgeSelectMiniSVG／_adpNextEdgeIndex）を利用する。
  */
 function _adpBuildAreaRidgeDirBar() {
-  const dir = _adpArea?.meta?.ridgeBaseDirection;
-  const hasDir = !!(dir?.p1 && dir?.p2);
-  const label = hasDir ? '📐 畝方向を再指定' : '📐 畝方向を地図で指定';
-  const statusHTML = hasDir
-    ? `<span class="plt-arearidgedir-status plt-arearidgedir-status-ok">✓ 設定済み</span>
-       <button type="button" class="plt-arearidgedir-clear" onclick="_adpClearAreaRidgeDir()">クリア</button>`
-    : `<span class="plt-arearidgedir-status">未設定（畝の自動計算にはエリア共通の畝方向が必要です）</span>`;
+  if (!_adpArea) return '';
+
+  const polygon = _adpGetFieldPolygon();
+  if (!polygon || typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.getPolygonEdges !== 'function') {
+    return `
+      <div class="plt-arearidgedir-bar">
+        <div class="plt-arearidgedir-title">📐 畝方向</div>
+        <span class="plt-arearidgedir-status">圃場データが取得できません</span>
+      </div>`;
+  }
+
+  const dir   = _adpArea.meta?.ridgeBaseDirection;
+  const edges = RidgeGeometry.getPolygonEdges(polygon);
+
+  // edgeIndexが辺数の範囲内にある場合のみ「選択中の辺」として扱う。
+  // 旧形式（edgeIndexなし・p1/p2のみ）は辺リスト上ではハイライトできないが、
+  // p1/p2自体は従来通り計算に使えるため「設定済み（旧形式）」として扱う（後方互換）。
+  const hasValidEdgeIndex = !!dir && Number.isInteger(dir.edgeIndex) && dir.edgeIndex >= 0 && dir.edgeIndex < edges.length;
+  const selectedIdx = hasValidEdgeIndex ? dir.edgeIndex : -1;
+  const hasLegacyDir = !!dir && !hasValidEdgeIndex && dir.p1 && dir.p2;
+
+  const svgHTML = _adpBuildEdgeSelectMiniSVG(polygon, selectedIdx, {
+    svgClass: 'plt-arearidgedir-svg',
+    outlineClass: 'plt-arearidgedir-outline',
+    lineClass: 'plt-arearidgedir-line',
+  });
+
+  const edgeListHTML = edges.map(e => `
+    <button type="button" class="plt-arearidgedir-edgeitem${e.index === selectedIdx ? ' is-selected' : ''}"
+      onclick="_adpSelectRidgeDirEdge(${e.index})">辺${e.index + 1}（${e.lengthM}m）</button>`
+  ).join('');
+
+  let statusHTML;
+  if (hasValidEdgeIndex) {
+    statusHTML = `<span class="plt-arearidgedir-status plt-arearidgedir-status-ok">✓ 辺${selectedIdx + 1}を畝方向に設定中</span>
+       <button type="button" class="plt-arearidgedir-clear" onclick="_adpClearAreaRidgeDir()">クリア</button>`;
+  } else if (hasLegacyDir) {
+    statusHTML = `<span class="plt-arearidgedir-status plt-arearidgedir-status-ok">✓ 設定済み（旧形式・下の辺リストから選び直すと更新されます）</span>
+       <button type="button" class="plt-arearidgedir-clear" onclick="_adpClearAreaRidgeDir()">クリア</button>`;
+  } else {
+    statusHTML = `<span class="plt-arearidgedir-status">未設定（畝の自動計算にはエリア共通の畝方向が必要です）</span>`;
+  }
+
   return `
     <div class="plt-arearidgedir-bar">
-      <button type="button" class="plt-arearidgedir-btn" onclick="_adpStartAreaRidgeDir()">${label}</button>
-      ${statusHTML}
+      <div class="plt-arearidgedir-title">📐 畝方向（圃場の辺を選択）</div>
+      ${svgHTML}
+      <div class="plt-arearidgedir-edgelist">${edgeListHTML}</div>
+      <div class="plt-arearidgedir-footer">
+        <button type="button" class="plt-arearidgedir-rotate" onclick="_adpRotateRidgeDirEdge()">↻ 違う辺にする</button>
+        ${statusHTML}
+      </div>
     </div>`;
 }
 
 /**
- * エリア共通の畝方向を地図で指定する。結果は _adpArea.meta.ridgeBaseDirection に保存し、
- * 実務側は全帯を、分析側は表示中であれば併せて再計算する。
+ * 指定した圃場の辺を畝方向として確定する。
+ * 辺リストの直接タップ、およびローテートボタンの両方から呼ばれる。
+ * （旧 _adpStartAreaRidgeDir のコールバック内ロジックを踏襲）
+ * @param {number} edgeIndex - 選択する辺のインデックス（polygon[edgeIndex] → polygon[edgeIndex+1]）
  */
-function _adpStartAreaRidgeDir() {
+function _adpSelectRidgeDirEdge(edgeIndex) {
   if (!_adpArea) return;
-  if (typeof RidgeDirDraw === 'undefined') {
-    showToast('RidgeDirDraw が読み込まれていません', 'amber');
-    return;
+  const polygon = _adpGetFieldPolygon();
+  if (!polygon || !Number.isInteger(edgeIndex) || edgeIndex < 0 || edgeIndex >= polygon.length) return;
+
+  const p1 = polygon[edgeIndex];
+  const p2 = polygon[(edgeIndex + 1) % polygon.length];
+
+  if (!_adpArea.meta) _adpArea.meta = {};
+  _adpArea.meta.ridgeBaseDirection = { edgeIndex, p1, p2 };
+  _adpSaveRidgeBaseDirection(_adpArea.id || _adpArea.name);
+
+  // 畝方向を新規設定・再設定するたび、未入力の実務作物フィールドにcropDB標準値を暫定セット
+  // （既存値は上書きしない。設定済みフィールドは対象外なので毎回発火しても無害）
+  if (Array.isArray(_adpPracticecrops)) {
+    _adpPracticecrops.forEach(entry => {
+      if (!entry.plantingDesign) entry.plantingDesign = _adpInitPlantingDesign(entry.cropId);
+      _adpApplyProvisionalDefaults(entry.plantingDesign, entry.cropId);
+    });
   }
 
-  const panel = document.getElementById('adp-view');
-  if (panel) panel.style.display = 'none';
+  _adpRecalcAllBands();
+  if (_adpAnalysisPlantingDesign) {
+    const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
+    _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
+  }
 
-  RidgeDirDraw.start((result) => {
-    if (panel) panel.style.display = '';
-
-    if (!result) {
-      showToast('畝方向指定をスキップしました');
-      return;
-    }
-
-    if (!_adpArea.meta) _adpArea.meta = {};
-    _adpArea.meta.ridgeBaseDirection = result;
-    _adpSaveRidgeBaseDirection(_adpArea.id || _adpArea.name);
-
-    // 畝方向を新規設定・再設定するたび、未入力の実務作物フィールドにcropDB標準値を暫定セット
-    // （既存値は上書きしない。設定済みフィールドは対象外なので毎回発火しても無害）
-    if (Array.isArray(_adpPracticecrops)) {
-      _adpPracticecrops.forEach(entry => {
-        if (!entry.plantingDesign) entry.plantingDesign = _adpInitPlantingDesign(entry.cropId);
-        _adpApplyProvisionalDefaults(entry.plantingDesign, entry.cropId);
-      });
-    }
-
-    _adpRecalcAllBands();
-    if (_adpAnalysisPlantingDesign) {
-      const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
-      _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
-    }
-
-    _adpRenderPlantingPane();
-    showToast('畝方向を設定しました', 'green');
-  });
+  _adpRenderPlantingPane();
+  showToast(`辺${edgeIndex + 1}を畝方向に設定しました`, 'green');
 }
 
-/** エリア共通の畝方向をクリアし、rowWidth手動入力ベースの状態に戻す。 */
+/**
+ * 畝方向の辺を次の辺へローテーションする（「↻ 違う辺にする」ボタン）。
+ * ハウスマージン側の _adpRotateEntranceEdge と対になる、畝方向側の実装。
+ */
+function _adpRotateRidgeDirEdge() {
+  if (!_adpArea) return;
+  const polygon = _adpGetFieldPolygon();
+  if (!polygon || typeof RidgeGeometry === 'undefined') return;
+  const edges = RidgeGeometry.getPolygonEdges(polygon);
+  if (!edges.length) return;
+
+  const dir = _adpArea.meta?.ridgeBaseDirection;
+  const baseIndex = (dir && Number.isInteger(dir.edgeIndex)) ? dir.edgeIndex : -1;
+  const nextIndex = _adpNextEdgeIndex(baseIndex, edges.length);
+  _adpSelectRidgeDirEdge(nextIndex);
+}
+
+/** エリア共通の畝方向（辺選択）をクリアし、rowWidth手動入力ベースの状態に戻す。 */
 function _adpClearAreaRidgeDir() {
   if (!_adpArea) return;
   if (!_adpArea.meta) _adpArea.meta = {};
@@ -7666,12 +7735,25 @@ function _adpBuildHouseMarginPreviewInner() {
 }
 
 /**
- * 圃場ポリゴンの簡易ミニSVGを生成し、入口辺だけ太線でハイライトする。
- * Leaflet実地図には触れない、独立した簡易プレビュー（既存の畝プレビューモーダルと同系統）。
+ * 【汎用】圃場ポリゴンの簡易ミニSVGを生成し、指定した辺だけ太線でハイライトする。
+ * Leaflet実地図には触れない、独立した簡易プレビュー。
+ * 入口辺選択（ハウスマージン）・畝方向選択の両方から呼び出せるよう、
+ * ハイライト線／外周のCSSクラス名をoptsで差し替え可能にしている。
+ * （畝設計UI統合仕様書 セクションA-1：入口辺ロジックの汎用化）
  * @param {Array<{lat:number,lng:number}>} polygon
- * @param {number} entranceIdx - ハイライトする辺のインデックス（-1なら無し）
+ * @param {number} selectedIdx - ハイライトする辺のインデックス（-1なら無し）
+ * @param {Object} [opts]
+ * @param {string} [opts.svgClass='plt-housemargin-svg']
+ * @param {string} [opts.outlineClass='plt-housemargin-outline']
+ * @param {string} [opts.lineClass='plt-housemargin-entrance-line']
  */
-function _adpBuildEntranceEdgeMiniSVG(polygon, entranceIdx) {
+function _adpBuildEdgeSelectMiniSVG(polygon, selectedIdx, opts = {}) {
+  const {
+    svgClass = 'plt-housemargin-svg',
+    outlineClass = 'plt-housemargin-outline',
+    lineClass = 'plt-housemargin-entrance-line',
+  } = opts;
+
   if (typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.toLocalCoords !== 'function') return '';
   const { points } = RidgeGeometry.toLocalCoords(polygon);
   if (!points.length) return '';
@@ -7698,18 +7780,28 @@ function _adpBuildEntranceEdgeMiniSVG(polygon, entranceIdx) {
   const polyPointsStr = svgPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 
   const n = points.length;
-  let entranceLineHTML = '';
-  if (Number.isInteger(entranceIdx) && entranceIdx >= 0 && entranceIdx < n) {
-    const a = svgPts[entranceIdx];
-    const b = svgPts[(entranceIdx + 1) % n];
-    entranceLineHTML = `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" class="plt-housemargin-entrance-line" />`;
+  let selectedLineHTML = '';
+  if (Number.isInteger(selectedIdx) && selectedIdx >= 0 && selectedIdx < n) {
+    const a = svgPts[selectedIdx];
+    const b = svgPts[(selectedIdx + 1) % n];
+    selectedLineHTML = `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" class="${lineClass}" />`;
   }
 
   return `
-    <svg class="plt-housemargin-svg" viewBox="0 0 ${viewW} ${viewH}" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="${polyPointsStr}" class="plt-housemargin-outline" />
-      ${entranceLineHTML}
+    <svg class="${svgClass}" viewBox="0 0 ${viewW} ${viewH}" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="${polyPointsStr}" class="${outlineClass}" />
+      ${selectedLineHTML}
     </svg>`;
+}
+
+/**
+ * 【後方互換ラッパー】入口辺ミニSVG。挙動・出力HTMLは従来と完全に同一。
+ * 既存の呼び出し箇所（_adpBuildHouseMarginPreviewInner等）は無改修で動作する。
+ * @param {Array<{lat:number,lng:number}>} polygon
+ * @param {number} entranceIdx - ハイライトする辺のインデックス（-1なら無し）
+ */
+function _adpBuildEntranceEdgeMiniSVG(polygon, entranceIdx) {
+  return _adpBuildEdgeSelectMiniSVG(polygon, entranceIdx);
 }
 
 /**
@@ -7740,6 +7832,20 @@ function _adpUpdateHouseMarginField(field, value) {
   }, 300);
 }
 
+/**
+ * 【汎用】辺インデックスを次の辺へ進める純粋関数（入口辺・畝方向共通）。
+ * baseIndexが未確定（-1やnull等）の場合は0番の辺から開始する。
+ * （畝設計UI統合仕様書 セクションA-1：ローテート操作の汎用化）
+ * @param {number} baseIndex - 現在の辺インデックス（未選択なら-1等）
+ * @param {number} edgeCount - 圃場の辺の総数
+ * @returns {number} 次の辺インデックス（edgeCountが0ならそのまま-1を返す）
+ */
+function _adpNextEdgeIndex(baseIndex, edgeCount) {
+  if (!edgeCount) return -1;
+  const base = Number.isInteger(baseIndex) && baseIndex >= 0 ? baseIndex : 0;
+  return (base + 1) % edgeCount;
+}
+
 /** 入口辺を次の辺へローテーションする（「違う辺にする」ボタン）。 */
 function _adpRotateEntranceEdge() {
   if (!_adpArea) return;
@@ -7754,7 +7860,7 @@ function _adpRotateEntranceEdge() {
     const geo = RidgeGeometry.computeHouseGeometry(polygon, _adpHouseMargin);
     baseIndex = geo.entranceEdgeIndex >= 0 ? geo.entranceEdgeIndex : 0;
   }
-  _adpHouseMargin.entranceEdgeIndex = (baseIndex + 1) % edges.length;
+  _adpHouseMargin.entranceEdgeIndex = _adpNextEdgeIndex(baseIndex, edges.length);
 
   const areaId = _adpArea?.id || _adpArea?.name || '';
   _adpSaveHouseMargin(areaId);
@@ -7815,7 +7921,7 @@ function _adpRenderPlantingPane() {
     // エリア共通の畝方向が設定済みなら、圃場全体基準で畝セグメントを自動計算
     const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
     _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
-    el.innerHTML = _adpBuildAreaRidgeDirBar() + _adpBuildHouseMarginSection() + _adpBuildPlantingCard({
+    el.innerHTML = _adpBuildAreaRidgeDirBar() + _adpBuildHouseMarginSection() + _adpBuildProvisionalLegendHTML() + _adpBuildPlantingCard({
       cropId,
       cropName,
       ratio: null,
@@ -7846,7 +7952,7 @@ function _adpRenderPlantingPane() {
       </div>
     </div>` : '';
 
-  el.innerHTML = _adpBuildAreaRidgeDirBar() + _adpBuildHouseMarginSection() + ratioBarHTML + _adpPracticecrops.map(({ cropId, ratio, plantingDesign }, idx) => {
+  el.innerHTML = _adpBuildAreaRidgeDirBar() + _adpBuildHouseMarginSection() + _adpBuildProvisionalLegendHTML() + ratioBarHTML + _adpPracticecrops.map(({ cropId, ratio, plantingDesign }, idx) => {
     const design   = plantingDesign || _adpInitPlantingDesign(cropId);
     const cropName = _adpCropIdToName(cropId);
     const isLast   = idx === _adpPracticecrops.length - 1;
@@ -7855,13 +7961,23 @@ function _adpRenderPlantingPane() {
 }
 
 /**
- * 「📐 畝方向を指定」ボタン＋「👁️ プレビュー」ボタン＋ステータス文言の行HTMLを生成。
+ * 「📐 畝方向を指定」ボタン／プレビューボタン／ステータス文言／実形状SVGの行HTMLを生成。
  * カード新規描画（_adpBuildPlantingCard）と部分更新（_adpUpdatePlantingField）の
  * 両方から呼ぶことで、畝幅変更などによる ridgeSegments 再計算後の表示ズレを防ぐ。
+ *
+ * Step3（畝設計UI統合）：
+ * - 実務側（seg !== 'analysis'）は「👁️ プレビュー」ボタン＋モーダルを廃止し、
+ *   自動計算済みなら実形状SVG（_adpBuildRidgeShapePreviewSVG）をこの行の下に常時インライン表示する。
+ * - 分析側（seg === 'analysis'）は帯（_bandPolygon）を持たずセクション4対象外のため、
+ *   Step3では従来どおりモーダル方式（_adpShowPlantingPreview）を維持する。
+ * - 戻り値は .plt-ridgedir-block で1要素にラップし、_adpRefreshRidgeDirRow の
+ *   outerHTML差し替え時にインラインSVG部分が重複追加されないようにしている。
  */
 function _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir) {
-  // プレビューボタン（自動計算済み＝ridgeSegmentsがある場合のみ表示）
-  const previewBtnHTML = hasAutoCalc ? `
+  const isAnalysis = seg === 'analysis';
+
+  // プレビューボタン（分析側のみ・モーダル表示。実務側はインライン常設表示のため不要）
+  const previewBtnHTML = (hasAutoCalc && isAnalysis) ? `
       <button class="plt-preview-btn" onclick="_adpShowPlantingPreview('${cropId}','${seg}')">
         👁️ プレビュー
       </button>` : '';
@@ -7877,27 +7993,28 @@ function _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir)
     statusHTML = '<span class="plt-ridgedir-status">↑ エリア共通バーから畝方向を設定してください</span>';
   }
 
+  // 実務側：畝が自動計算済みなら実形状SVGを常時インライン表示（モーダル廃止・骨組み段階）
+  const inlinePreviewHTML = (hasAutoCalc && !isAnalysis) ? _adpBuildRidgeShapePreviewSVG(cropId) : '';
+
   return `
-    <div class="plt-ridgedir-row">
-      ${previewBtnHTML}
-      ${statusHTML}
+    <div class="plt-ridgedir-block">
+      <div class="plt-ridgedir-row">
+        ${previewBtnHTML}
+        ${statusHTML}
+      </div>
+      ${inlinePreviewHTML}
     </div>`;
 }
 
 // ═══════════════════════════════════════════
-//  ⚙️ 詳細入力モード（畝上幅・畝間）UI
-//  （仕様書：畝設計拡張仕様書 セクション2）
+//  ⚙️ 畝上幅・畝間（詳細幅）UI
+//  （仕様書：畝設計拡張仕様書 セクション2／畝設計UI統合仕様書 Step4）
 //
 //  計算ロジックは _adpEffectivePitchCm() が既にデータドリブンで判定済み
 //  （ridgeTopWidth+pathWidthが両方あれば優先、無ければrowWidthにフォールバック）。
-//  ここで管理する _adpDetailWidthOpen は「入力欄を開いて見せるかどうか」という
-//  表示状態のみを扱い、計算結果には一切影響しない。
-//  → トグルを閉じても値はクリアされず、計算にも使われ続ける。
-//     rowWidthベースに戻したい場合は明示的に _adpClearDetailWidth() を呼ぶ。
+//  Step4：開閉トグルを廃止し、常時表示フォームの一部として常に表示する。
+//  rowWidthベースに戻したい場合は明示的に _adpClearDetailWidth() を呼ぶ。
 // ═══════════════════════════════════════════
-
-/** 詳細入力セクションの開閉状態（表示のみ管理）。key: `${seg}:${cropId}` */
-const _adpDetailWidthOpen = new Set();
 
 /** seg・cropIdからplantingDesignを取得する共通ヘルパー */
 function _adpGetDesignFor(seg, cropId) {
@@ -7906,79 +8023,48 @@ function _adpGetDesignFor(seg, cropId) {
 }
 
 /**
- * 畝上幅・畝間の詳細入力セクションHTMLを生成。
- * トグルボタン＋（開いている場合のみ）入力欄2つ＋実効ピッチ表示＋クリアボタン。
+ * 畝上幅・畝間の入力欄HTMLを生成（常時表示フォームの一部・Step4でトグル廃止）。
+ * 入力欄2つ＋実効ピッチ表示＋クリアボタンを常に表示する。
  * @param {string} seg - 'practice' | 'analysis'
  * @param {string} cropId
  * @param {object} design - plantingDesign
  */
 function _adpBuildDetailWidthSection(seg, cropId, design) {
   const key = `${seg}:${cropId}`;
-  const isDetailMode = _adpIsDetailWidthMode(design);
-  const isOpen = _adpDetailWidthOpen.has(key) || isDetailMode;
   const pitchCm = _adpEffectivePitchCm(design);
   const topProvisional  = _adpIsProvisional(design, 'ridgeTopWidth');
   const pathProvisional = _adpIsProvisional(design, 'pathWidth');
   const isProvisionalDetail = topProvisional || pathProvisional;
 
-  const toggleLabel = isOpen ? '⚙️ 詳細入力を閉じる' : '⚙️ 畝上幅・畝間で詳細入力';
-  const statusHTML = (!isOpen && isDetailMode)
-    ? `<span class="plt-detailwidth-status">詳細入力中（ピッチ ${pitchCm ?? '—'}cm）${isProvisionalDetail ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</span>`
-    : '';
-
-  const hintHTML = (isOpen && isProvisionalDetail)
+  const hintHTML = isProvisionalDetail
     ? `<div class="plt-detailwidth-hint">💡 汎用値を仮設定しています。作物に合わせて調整してください。</div>`
     : '';
 
-  const bodyHTML = isOpen ? `
-    <div class="plt-detailwidth-body">
+  return `
+    <div class="plt-detailwidth-row" data-detailwidth-key="${key}">
+      <div class="plt-detailwidth-heading">畝上幅・畝間（詳細）</div>
       ${hintHTML}
-      <div class="plt-input-item" data-field="ridgeTopWidth">
-        <label class="plt-label">畝上幅${topProvisional ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
-        <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.ridgeTopWidth ?? ''}" placeholder="例: 60"
-          oninput="_adpUpdatePlantingField('${cropId}','ridgeTopWidth',this.value,'${seg}');_adpRefreshDetailPitchDisplay('${seg}','${cropId}')"><span class="plt-unit">cm</span></div>
-      </div>
-      <div class="plt-input-item" data-field="pathWidth">
-        <label class="plt-label">畝間${pathProvisional ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
-        <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" value="${design.pathWidth ?? ''}" placeholder="例: 30"
-          oninput="_adpUpdatePlantingField('${cropId}','pathWidth',this.value,'${seg}');_adpRefreshDetailPitchDisplay('${seg}','${cropId}')"><span class="plt-unit">cm</span></div>
+      <div class="plt-input-grid">
+        <div class="plt-input-item" data-field="ridgeTopWidth">
+          <label class="plt-label">畝上幅${topProvisional ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+          <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.ridgeTopWidth ?? ''}" placeholder="例: 60"
+            oninput="_adpUpdatePlantingField('${cropId}','ridgeTopWidth',this.value,'${seg}');_adpRefreshDetailPitchDisplay('${seg}','${cropId}')"><span class="plt-unit">cm</span></div>
+        </div>
+        <div class="plt-input-item" data-field="pathWidth">
+          <label class="plt-label">畝間${pathProvisional ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+          <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" value="${design.pathWidth ?? ''}" placeholder="例: 30"
+            oninput="_adpUpdatePlantingField('${cropId}','pathWidth',this.value,'${seg}');_adpRefreshDetailPitchDisplay('${seg}','${cropId}')"><span class="plt-unit">cm</span></div>
+        </div>
       </div>
       <div class="plt-detailwidth-pitch">
         実効ピッチ：<span class="plt-detailwidth-pitch-val">${pitchCm ?? '—'}</span> cm
       </div>
       <button type="button" class="plt-detailwidth-clear" onclick="_adpClearDetailWidth('${seg}','${cropId}')">畝幅入力に戻す（クリア）</button>
-    </div>` : '';
-
-  return `
-    <div class="plt-detailwidth-row" data-detailwidth-key="${key}">
-      <button type="button" class="plt-detailwidth-toggle" onclick="_adpToggleDetailWidth('${seg}','${cropId}')">
-        ${toggleLabel}
-      </button>
-      ${statusHTML}
-      ${bodyHTML}
     </div>`;
 }
 
 /**
- * 詳細入力セクションの開閉をトグルする。値はクリアしない（表示状態のみ）。
- */
-function _adpToggleDetailWidth(seg, cropId) {
-  const key = `${seg}:${cropId}`;
-  if (_adpDetailWidthOpen.has(key)) {
-    _adpDetailWidthOpen.delete(key);
-  } else {
-    _adpDetailWidthOpen.add(key);
-  }
-  const design = _adpGetDesignFor(seg, cropId);
-  if (!design) return;
-  const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
-  const row  = card?.querySelector('.plt-detailwidth-row');
-  if (row) row.outerHTML = _adpBuildDetailWidthSection(seg, cropId, design);
-}
-
-/**
  * 畝上幅・畝間を明示的にクリアし、rowWidth（直接入力）ベースの計算に戻す。
- * トグルを閉じる操作（_adpToggleDetailWidth）とは別動作（値は保持しない）。
  */
 function _adpClearDetailWidth(seg, cropId) {
   const design = _adpGetDesignFor(seg, cropId);
@@ -8051,6 +8137,19 @@ function _adpRefreshDetailPitchDisplay(seg, cropId) {
 /**
  * 1作物分の栽植設計カードHTMLを生成。
  */
+/**
+ * 固定／暫定の凡例（Step5-4→改修：畝設計UI統合仕様書セクションC-2）。
+ * 凡例の意味はカードごとに変わらないため、パネル単位で1回だけ表示する
+ * （旧実装ではカードごとに埋め込んでおり、複数作物カード表示時に文言が重複していた）。
+ */
+function _adpBuildProvisionalLegendHTML() {
+  return `
+    <div class="plt-provisional-legend">
+      <span class="plt-provisional-legend-item plt-provisional-legend-fixed">🔒 固定＝入力済み</span>
+      <span class="plt-provisional-legend-item plt-provisional-legend-tentative">🟡 暫定＝自動計算中（未入力）</span>
+    </div>`;
+}
+
 function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false, isAnalysis = false }) {
   const calc = _adpCalcPlanting(design);
   const warn = isAnalysis ? null : _adpPlantingAreaWarn(ratio, calc?.rowAreaSqm ?? null);
@@ -8136,7 +8235,17 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
   // 地図で指定ボタン＋プレビューボタン＋ステータス（独立関数化・部分更新でも再利用するため）
   const ridgeDirBtnHTML = _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir);
 
-  // 詳細入力モード（畝上幅・畝間）セクション
+  // 畝幅：Step4でSVG直下に単独表示（他の入力項目とは分離）
+  const rowWidthHTML = `
+    <div class="plt-rowwidth-row">
+      <div class="plt-input-item" data-field="rowWidth">
+        <label class="plt-label">畝幅${_adpIsProvisional(design, 'rowWidth') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+        <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowWidth ?? ''}" placeholder="例: 90"
+          oninput="_adpUpdatePlantingField('${cropId}','rowWidth',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
+      </div>
+    </div>`;
+
+  // 畝上幅・畝間（詳細）セクション：Step4で常時表示化
   const detailWidthHTML = _adpBuildDetailWidthSection(seg, cropId, design);
 
   return `
@@ -8147,15 +8256,10 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
       </div>
       ${sliderHTML}
       ${ridgeDirBtnHTML}
-      ${detailWidthHTML}
+      ${rowWidthHTML}
       <div class="plt-inputs">
         <div class="plt-input-grid">
           ${rowsRowLengthHTML}
-          <div class="plt-input-item" data-field="rowWidth">
-            <label class="plt-label">畝幅${_adpIsProvisional(design, 'rowWidth') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
-            <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowWidth ?? ''}" placeholder="例: 90"
-              oninput="_adpUpdatePlantingField('${cropId}','rowWidth',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
-          </div>
           <div class="plt-input-item" data-field="linesPerRow">
             <label class="plt-label">条数${_adpIsProvisional(design, 'linesPerRow') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
             <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.linesPerRow ?? ''}" placeholder="例: 2"
@@ -8166,8 +8270,8 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
             <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.plantSpacing ?? ''}" placeholder="例: 30"
               oninput="_adpUpdatePlantingField('${cropId}','plantSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
           </div>
-          <div class="plt-input-item">
-            <label class="plt-label">条間</label>
+          <div class="plt-input-item" data-field="rowSpacing">
+            <label class="plt-label">条間${_adpIsProvisional(design, 'rowSpacing') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
             <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowSpacing ?? ''}" placeholder="例: 40"
               oninput="_adpUpdatePlantingField('${cropId}','rowSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
           </div>
@@ -8177,6 +8281,7 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
               oninput="_adpUpdatePlantingField('${cropId}','missingRate',this.value,'${seg}')"><span class="plt-unit">%</span></div>
           </div>
         </div>
+        ${detailWidthHTML}
       </div>
       ${warnHTML}
       <div class="plt-result">
@@ -8202,15 +8307,16 @@ function _adpUnmarkProvisional(design, field) {
 
 
 /**
- * .plt-ridgedir-row（畝方向ボタン／プレビューボタン／ステータス）をDOM上で再描画する共通処理。
- * rowWidth変更でridgeSegmentsが変わった際、表示ズレを防ぐために呼ぶ。
+ * .plt-ridgedir-block（畝方向ボタン／プレビューボタン／ステータス／実形状SVG）を
+ * DOM上で再描画する共通処理。rowWidth変更でridgeSegmentsが変わった際、表示ズレを防ぐために呼ぶ。
+ * ブロック単位（1ルート要素）で差し替えることで、インラインSVG部分が重複追加されないようにしている。
  */
 function _adpRefreshRidgeDirRow(card, cropId, seg, design) {
-  const ridgeDirRow = card?.querySelector('.plt-ridgedir-row');
-  if (!ridgeDirRow) return;
+  const ridgeDirBlock = card?.querySelector('.plt-ridgedir-block');
+  if (!ridgeDirBlock) return;
   const hasAutoCalc = Array.isArray(design.ridgeSegments) && design.ridgeSegments.length > 0;
   const hasRidgeDir = !!_adpArea?.meta?.ridgeBaseDirection;
-  ridgeDirRow.outerHTML = _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir);
+  ridgeDirBlock.outerHTML = _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir);
 }
 
 function _adpUpdatePlantingField(cropId, field, value, seg) {
@@ -8331,24 +8437,20 @@ function _adpBuildPlantingResultHTML(calc, _warn, cropId) {
 }
 
 // ═══════════════════════════════════════════
-//  👁️ 畝プレビュー（モーダル）
-//  「👁️ プレビュー」ボタンから起動。地図上には描画せず、
-//  畝ごとの長さ比例SVG簡易図解 + 集計サマリーをモーダル表示する。
+//  👁️ 畝プレビュー（モーダル・分析側専用）
+//  Step3で実務側は実形状SVGをカード内に常時インライン表示するようになったため、
+//  このモーダルは帯（_bandPolygon）を持たない分析側（セクション4対象外）専用として維持する。
+//  「👁️ プレビュー」ボタンから起動し、畝ごとの長さ比例SVG簡易図解＋集計サマリーを表示する。
 // ═══════════════════════════════════════════
 
 /**
- * プレビューモーダルを開く。
- * seg: 'practice' | 'analysis'
+ * プレビューモーダルを開く（分析側専用）。
+ * seg: 'analysis'
  */
 function _adpShowPlantingPreview(cropId, seg) {
-  let design, ratio = null;
-  if (seg === 'analysis') {
-    design = _adpAnalysisPlantingDesign;
-  } else {
-    const entry = _adpPracticecrops.find(c => c.cropId === cropId);
-    design = entry?.plantingDesign || null;
-    ratio  = entry?.ratio ?? null;
-  }
+  const design = (seg === 'analysis')
+    ? _adpAnalysisPlantingDesign
+    : (_adpPracticecrops.find(c => c.cropId === cropId)?.plantingDesign || null);
 
   if (!design || !Array.isArray(design.ridgeSegments) || design.ridgeSegments.length === 0) {
     showToast('畝が自動計算されていません', 'amber');
@@ -8357,63 +8459,18 @@ function _adpShowPlantingPreview(cropId, seg) {
 
   const calc     = _adpCalcPlanting(design);
   const cropName = _adpCropIdToName(cropId);
-  const warn     = (seg === 'analysis') ? null : _adpPlantingAreaWarn(ratio, calc?.rowAreaSqm ?? null);
 
-  // 実務側：実形状プレビュー（新）＋畝の詳細一覧（旧・横バー一覧を折りたたみ表示）
-  // 分析側：セクション4は対象外のため、従来どおり横バー一覧のみ表示
-  let mainHTML;
-  if (seg === 'analysis') {
-    mainHTML = _adpBuildRidgeBarListSVG(design);
-  } else {
-    const shapeSvgHTML  = _adpBuildRidgeShapePreviewSVG(cropId);
-    const barListHTML   = _adpBuildRidgeBarListSVG(design);
-    const isOpen        = _adpRidgeBarListOpen.has(cropId);
-    const barListId     = `ridgebarlist-${cropId}`;
-    mainHTML = `
-      ${shapeSvgHTML}
-      <div class="plt-shapesvg-barlist-toggle-row">
-        <button type="button" class="plt-shapesvg-barlist-toggle" onclick="_adpToggleRidgeBarList('${cropId}')">
-          ${isOpen ? '▲ 畝の詳細一覧（数値）を閉じる' : '▼ 畝の詳細一覧（数値）を見る'}
-        </button>
-      </div>
-      <div class="plt-shapesvg-barlist-body" id="${barListId}" ${isOpen ? '' : 'hidden'}>
-        ${barListHTML}
-      </div>`;
-  }
-
+  // 分析側は帯を持たないため横バー一覧のみ表示
+  const mainHTML    = _adpBuildRidgeBarListSVG(design);
   const summaryHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
-  const warnHTML    = warn
-    ? `<div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と占有面積（${warn.occupiedSqm}㎡）が${warn.diffPct}%乖離しています</div>`
-    : '';
 
   const titleEl = document.getElementById('preview-modal-title');
   const bodyEl  = document.getElementById('preview-modal-body');
   if (titleEl) titleEl.textContent = `🌿 ${cropName} — 畝プレビュー`;
-  if (bodyEl)  bodyEl.innerHTML = mainHTML + warnHTML + `<div class="preview-summary">${summaryHTML}</div>`;
+  if (bodyEl)  bodyEl.innerHTML = mainHTML + `<div class="preview-summary">${summaryHTML}</div>`;
 
   const overlay = document.getElementById('preview-modal-overlay');
   if (overlay) overlay.classList.add('open');
-}
-
-/** 畝プレビューモーダル内「畝の詳細一覧（数値）」折りたたみの開閉状態（cropId単位、表示のみ管理） */
-const _adpRidgeBarListOpen = new Set();
-
-/**
- * 「畝の詳細一覧（数値）」の折りたたみを開閉する。
- * モーダル全体を再描画せず、該当ブロックの hidden 属性とボタン文言のみ更新する。
- */
-function _adpToggleRidgeBarList(cropId) {
-  if (_adpRidgeBarListOpen.has(cropId)) {
-    _adpRidgeBarListOpen.delete(cropId);
-  } else {
-    _adpRidgeBarListOpen.add(cropId);
-  }
-  const isOpen  = _adpRidgeBarListOpen.has(cropId);
-  const bodyEl  = document.getElementById('preview-modal-body');
-  const listEl  = document.getElementById(`ridgebarlist-${cropId}`);
-  const toggleBtn = bodyEl?.querySelector('.plt-shapesvg-barlist-toggle');
-  if (listEl) listEl.hidden = !isOpen;
-  if (toggleBtn) toggleBtn.textContent = isOpen ? '▲ 畝の詳細一覧（数値）を閉じる' : '▼ 畝の詳細一覧（数値）を見る';
 }
 
 /**
@@ -8536,12 +8593,19 @@ function _adpBuildRidgeShapePreviewSVG(cropId) {
   // --- 4. 選択中作物の畝（ridgeSegments の実座標 p1→p2） ---
   const ownEntry  = (_adpPracticecrops || []).find(c => c.cropId === cropId);
   const segments  = ownEntry?.plantingDesign?.ridgeSegments || [];
-  segments.forEach(seg => {
+  segments.forEach((seg, i) => {
     if (!seg?.p1 || !seg?.p2) return;
     const a = toSvg(toLocal(seg.p1));
     const b = toSvg(toLocal(seg.p2));
-    svgBody += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" class="plt-shapesvg-ridge" />`;
+    // 畝の詳細一覧（旧・横棒一覧）の情報をホバー表示に統合（骨組み段階：ネイティブtitleツールチップ）
+    const lenLabel = (seg.length != null) ? `：${seg.length}m` : '';
+    svgBody += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" class="plt-shapesvg-ridge"><title>畝${i + 1}${lenLabel}</title></line>`;
   });
+
+  // --- 4b. 畝幅寸法線オーバーレイ（Step5-2：タップで数値ポップオーバー編集） ---
+  // 実務側専用（分析側はStep3の方針でこのSVGを使用しないため、design常にownEntry側のみ）
+  const dimResult = _adpBuildRidgeDimensionSVG(cropId, ownEntry?.plantingDesign || null, toLocal, toSvg, fieldLocalPts);
+  svgBody += dimResult.svg;
 
   // --- 5. 凡例（表示中の要素に応じて出し分け） ---
   const legendItems = [
@@ -8560,6 +8624,13 @@ function _adpBuildRidgeShapePreviewSVG(cropId) {
   if (hasEquip) {
     legendItems.push(`<span class="plt-shapesvg-legend-item"><i class="plt-shapesvg-swatch plt-shapesvg-swatch-equip"></i>🔧 設備通路（幅${equipWidthLabel}）</span>`);
   }
+  if (dimResult.hasDim) {
+    legendItems.push(`<span class="plt-shapesvg-legend-item"><i class="plt-shapesvg-swatch plt-shapesvg-swatch-dim"></i>📏 畝幅寸法線（タップで編集）</span>`);
+  }
+
+  const dimNoteHTML = dimResult.isSchematic
+    ? `<div class="plt-dimline-schematic-note">📏 寸法線は模式図です（畝上幅・畝間の内訳は実際のポリゴン形状には反映されません）。</div>`
+    : '';
 
   return `
     <div class="plt-shapesvg-wrap">
@@ -8567,8 +8638,240 @@ function _adpBuildRidgeShapePreviewSVG(cropId) {
         ${svgBody}
       </svg>
       ${marginNoteHTML}
+      ${dimNoteHTML}
       <div class="plt-shapesvg-legend">${legendItems.join('')}</div>
     </div>`;
+}
+
+/**
+ * Step5-2：畝幅寸法線オーバーレイ（タップ編集可能）を生成する。
+ * 代表1組（design.ridgeSegments[0]・[1]）の中心点間に、畝方向の法線ベクトル
+ * （RidgeGeometry.calcRidgesと同じ90°回転規則）方向へピッチ全長分の寸法線を描画する。
+ * - 通常モード（rowWidth直接入力）：ピッチ全体を1本
+ * - 詳細入力モード（ridgeTopWidth+pathWidth）：ピッチを按分した畝上幅／畝間の2区間（模式図・色分け）
+ * - 畝が1列のみの場合：エリア共通の畝方向（法線）を使い、破線で模式的に延長表示
+ * 各線本体（当たり判定込み）・数値ラベルのタップで _adpOpenRidgeDimPopover を起動する。
+ *
+ * @param {string} cropId
+ * @param {object|null} design - plantingDesign（実務側のみ対象）
+ * @param {function} toLocal - latlng → ローカルXY[m]変換（呼び出し元と同一originを使うこと）
+ * @param {function} toSvg   - ローカルXY[m] → SVG座標変換（呼び出し元と同一スケールを使うこと）
+ * @param {Array<{x:number,y:number}>} [fieldLocalPts] - 圃場外周のローカル座標点列。
+ *   隣接畝（seg1）が無い「畝1列のみ」の場合の符号補正に使用する（省略時は補正なし＝従来挙動）。
+ * @returns {{svg: string, hasDim: boolean, isSchematic: boolean}}
+ */
+function _adpBuildRidgeDimensionSVG(cropId, design, toLocal, toSvg, fieldLocalPts) {
+  const empty = { svg: '', hasDim: false, isSchematic: false };
+  if (!design) return empty;
+
+  const segments = design.ridgeSegments;
+  if (!Array.isArray(segments) || segments.length === 0) return empty;
+
+  const dir = _adpArea?.meta?.ridgeBaseDirection;
+  if (!dir?.p1 || !dir?.p2) return empty;
+
+  const pitchCm = _adpEffectivePitchCm(design);
+  if (!(pitchCm > 0)) return empty;
+  const pitchM = pitchCm / 100;
+
+  // 畝方向の法線ベクトル（RidgeGeometry.calcRidgesのnormalDirと同一の90°回転規則）
+  const lp1 = toLocal(dir.p1);
+  const lp2 = toLocal(dir.p2);
+  const rdx = lp2.x - lp1.x, rdy = lp2.y - lp1.y;
+  const rlen = Math.sqrt(rdx * rdx + rdy * rdy) || 1;
+  const ridgeDirLocal = { x: rdx / rlen, y: rdy / rlen };
+  let normalDir = { x: -ridgeDirLocal.y, y: ridgeDirLocal.x };
+
+  const seg0 = segments[0];
+  if (!seg0?.p1 || !seg0?.p2) return empty;
+  const seg0p1 = toLocal(seg0.p1), seg0p2 = toLocal(seg0.p2);
+  const m0 = { x: (seg0p1.x + seg0p2.x) / 2, y: (seg0p1.y + seg0p2.y) / 2 };
+
+  const isSingleRow = segments.length < 2;
+  if (!isSingleRow) {
+    // 隣接畝（seg1）側へ向かう符号に補正し、視覚的に対応する位置へ寸法線を描く
+    const seg1 = segments[1];
+    if (seg1?.p1 && seg1?.p2) {
+      const seg1p1 = toLocal(seg1.p1), seg1p2 = toLocal(seg1.p2);
+      const m1 = { x: (seg1p1.x + seg1p2.x) / 2, y: (seg1p1.y + seg1p2.y) / 2 };
+      const toward = { x: m1.x - m0.x, y: m1.y - m0.y };
+      if (toward.x * normalDir.x + toward.y * normalDir.y < 0) {
+        normalDir = { x: -normalDir.x, y: -normalDir.y };
+      }
+    }
+  } else if (Array.isArray(fieldLocalPts) && fieldLocalPts.length >= 3) {
+    // 畝1列のみ＝隣接畝で符号補正できないため、圃場重心へ向かう側（＝境界内側）を選ぶ。
+    // 模式的な延長線であり厳密な内外判定ではないが、圃場外側へ飛び出す見え方は抑制できる。
+    const fcx = fieldLocalPts.reduce((s, p) => s + p.x, 0) / fieldLocalPts.length;
+    const fcy = fieldLocalPts.reduce((s, p) => s + p.y, 0) / fieldLocalPts.length;
+    const toward = { x: fcx - m0.x, y: fcy - m0.y };
+    if (toward.x * normalDir.x + toward.y * normalDir.y < 0) {
+      normalDir = { x: -normalDir.x, y: -normalDir.y };
+    }
+  }
+
+  const isDetail = design.ridgeTopWidth != null && design.pathWidth != null
+    && Number(design.ridgeTopWidth) > 0 && Number(design.pathWidth) >= 0;
+
+  const A = m0;
+  const B = { x: A.x + normalDir.x * pitchM, y: A.y + normalDir.y * pitchM };
+  const svgA = toSvg(A);
+  const svgB = toSvg(B);
+
+  // ティック（寸法線であることを示す短い直交マーク）用：SVG空間上のridgeDir単位ベクトル
+  const svgOriginRef = toSvg(A);
+  const svgTickRef    = toSvg({ x: A.x + ridgeDirLocal.x * 0.01, y: A.y + ridgeDirLocal.y * 0.01 });
+  let tdx = svgTickRef.x - svgOriginRef.x, tdy = svgTickRef.y - svgOriginRef.y;
+  const tlen = Math.sqrt(tdx * tdx + tdy * tdy) || 1;
+  tdx /= tlen; tdy /= tlen;
+  const TICK = 5;
+  function tickLine(svgP, cls) {
+    return `<line x1="${(svgP.x - tdx * TICK).toFixed(1)}" y1="${(svgP.y - tdy * TICK).toFixed(1)}" x2="${(svgP.x + tdx * TICK).toFixed(1)}" y2="${(svgP.y + tdy * TICK).toFixed(1)}" class="${cls}" />`;
+  }
+
+  const dashAttr = isSingleRow ? ' stroke-dasharray="5 4"' : '';
+  const midOf = (p, q) => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });
+
+  let svg = '<g class="plt-dimline-group">';
+
+  if (!isDetail) {
+    // 通常モード：ピッチ全体を1本（rowWidth）
+    const curVal = design.rowWidth ?? pitchCm;
+    const onclick = `onclick="_adpOpenRidgeDimPopover(event,'${cropId}','rowWidth',${curVal})"`;
+    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline-hit" ${onclick} />`;
+    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline plt-dimline-single"${dashAttr} ${onclick} />`;
+    svg += tickLine(svgA, 'plt-dimline-tick-single');
+    svg += tickLine(svgB, 'plt-dimline-tick-single');
+    const mid = midOf(svgA, svgB);
+    svg += `<text x="${mid.x.toFixed(1)}" y="${(mid.y - 6).toFixed(1)}" text-anchor="middle" class="plt-dimline-label" ${onclick}>畝幅 ${curVal}cm</text>`;
+  } else {
+    // 詳細入力モード：畝上幅／畝間の按分2区間（実際のポリゴンには内訳が無いため模式図）
+    const topCm  = Number(design.ridgeTopWidth);
+    const pathCm = Number(design.pathWidth);
+    const topRatio = (topCm + pathCm) > 0 ? topCm / (topCm + pathCm) : 0.5;
+    const C = { x: A.x + normalDir.x * pitchM * topRatio, y: A.y + normalDir.y * pitchM * topRatio };
+    const svgC = toSvg(C);
+
+    const onclickTop  = `onclick="_adpOpenRidgeDimPopover(event,'${cropId}','ridgeTopWidth',${topCm})"`;
+    const onclickPath = `onclick="_adpOpenRidgeDimPopover(event,'${cropId}','pathWidth',${pathCm})"`;
+
+    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgC.x.toFixed(1)}" y2="${svgC.y.toFixed(1)}" class="plt-dimline-hit" ${onclickTop} />`;
+    svg += `<line x1="${svgC.x.toFixed(1)}" y1="${svgC.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline-hit" ${onclickPath} />`;
+    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgC.x.toFixed(1)}" y2="${svgC.y.toFixed(1)}" class="plt-dimline plt-dimline-top"${dashAttr} ${onclickTop} />`;
+    svg += `<line x1="${svgC.x.toFixed(1)}" y1="${svgC.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline plt-dimline-path"${dashAttr} ${onclickPath} />`;
+    svg += tickLine(svgA, 'plt-dimline-tick-top');
+    svg += tickLine(svgC, 'plt-dimline-tick-path');
+    svg += tickLine(svgB, 'plt-dimline-tick-path');
+
+    const midTop  = midOf(svgA, svgC);
+    const midPath = midOf(svgC, svgB);
+    svg += `<text x="${midTop.x.toFixed(1)}" y="${(midTop.y - 6).toFixed(1)}" text-anchor="middle" class="plt-dimline-label" ${onclickTop}>畝上幅 ${topCm}cm</text>`;
+    svg += `<text x="${midPath.x.toFixed(1)}" y="${(midPath.y - 6).toFixed(1)}" text-anchor="middle" class="plt-dimline-label plt-dimline-label-path" ${onclickPath}>畝間 ${pathCm}cm</text>`;
+  }
+
+  svg += '</g>';
+
+  return { svg, hasDim: true, isSchematic: isDetail || isSingleRow };
+}
+
+/**
+ * SVG寸法線／数値ラベルのタップで数値ポップオーバーを開く（Step5-2）。
+ * ポップオーバーは .plt-shapesvg-wrap 内に絶対配置で表示し、タップ座標を基準に
+ * ラップ矩形内へクランプする。既存のポップオーバーがあれば先に閉じる（多重表示防止）。
+ * @param {MouseEvent} event
+ * @param {string} cropId
+ * @param {'rowWidth'|'ridgeTopWidth'|'pathWidth'} field
+ * @param {number} currentValue - 現在値 [cm]
+ */
+function _adpOpenRidgeDimPopover(event, cropId, field, currentValue) {
+  if (event) event.stopPropagation();
+  const wrap = event?.currentTarget?.closest ? event.currentTarget.closest('.plt-shapesvg-wrap') : null;
+  if (!wrap) return;
+
+  _adpCloseRidgeDimPopover(wrap);
+
+  const wrapRect = wrap.getBoundingClientRect();
+  const tapX = event.clientX - wrapRect.left;
+  const tapY = event.clientY - wrapRect.top;
+
+  const fieldLabel = { rowWidth: '畝幅', ridgeTopWidth: '畝上幅', pathWidth: '畝間' }[field] || field;
+
+  const pop = document.createElement('div');
+  pop.className = 'plt-dimpopover';
+  pop.dataset.cropId = cropId;
+  pop.dataset.field  = field;
+  pop.innerHTML = `
+    <div class="plt-dimpopover-label">${fieldLabel}を編集</div>
+    <div class="plt-dimpopover-row">
+      <input type="number" class="plt-dimpopover-input" min="0" step="1" value="${currentValue ?? ''}"
+        onkeydown="if(event.key==='Enter'){_adpConfirmRidgeDimPopover(this.closest('.plt-dimpopover'))}">
+      <span class="plt-dimpopover-unit">cm</span>
+    </div>
+    <div class="plt-dimpopover-actions">
+      <button type="button" class="plt-dimpopover-btn plt-dimpopover-cancel" onclick="_adpCancelRidgeDimPopover(this.closest('.plt-dimpopover'))">キャンセル</button>
+      <button type="button" class="plt-dimpopover-btn plt-dimpopover-confirm" onclick="_adpConfirmRidgeDimPopover(this.closest('.plt-dimpopover'))">確定</button>
+    </div>`;
+
+  wrap.appendChild(pop);
+
+  // ラップ矩形内に収まるようクランプ（サイズはstyle.cssの.plt-dimpopoverと合わせる）
+  const POP_W = 172, POP_H = 112;
+  const maxLeft = Math.max(8, wrapRect.width  - POP_W - 8);
+  const maxTop  = Math.max(8, wrapRect.height - POP_H - 8);
+  pop.style.left = Math.min(Math.max(tapX - POP_W / 2, 8), maxLeft) + 'px';
+  pop.style.top  = Math.min(Math.max(tapY - POP_H - 12, 8), maxTop) + 'px';
+
+  const input = pop.querySelector('.plt-dimpopover-input');
+  if (input) { input.focus(); input.select(); }
+}
+
+/** ポップオーバーを閉じる（wrap指定時はその配下のみ検索、省略時はdocument全体） */
+function _adpCloseRidgeDimPopover(wrap) {
+  const scope = wrap || document;
+  scope.querySelectorAll('.plt-dimpopover').forEach(el => el.remove());
+}
+
+/** キャンセル：何もせず閉じる */
+function _adpCancelRidgeDimPopover(popEl) {
+  if (popEl) popEl.remove();
+}
+
+/**
+ * 確定：数値バリデーション（正の数値のみ）→ _adpUpdatePlantingField で再計算・保存 →
+ * provisionalFieldsから除去（_adpUpdatePlantingField内部で実施済み）→
+ * 常時表示フォームの対応input欄にも即時同期（二重入力防止）→ ポップオーバーを閉じる。
+ */
+function _adpConfirmRidgeDimPopover(popEl) {
+  if (!popEl) return;
+  const cropId = popEl.dataset.cropId;
+  const field  = popEl.dataset.field;
+  const input  = popEl.querySelector('.plt-dimpopover-input');
+  const raw    = input ? input.value.trim() : '';
+  const num    = Number(raw);
+
+  if (raw === '' || !Number.isFinite(num) || num <= 0) {
+    if (typeof showToast === 'function') showToast('正の数値を入力してください', 'amber');
+    return;
+  }
+
+  // Step3の方針により、このSVGは実務側（practice）専用
+  _adpUpdatePlantingField(cropId, field, String(num), 'practice');
+
+  // ridgeTopWidth/pathWidthは既存の常時表示フォームと同じ二段呼び出し
+  // （実効ピッチ再計算・畝セグメント再計算・ridgeDirRow再描画）を行う。
+  // rowWidthは_adpUpdatePlantingField内部で処理済みのため不要。
+  if (field === 'ridgeTopWidth' || field === 'pathWidth') {
+    _adpRefreshDetailPitchDisplay('practice', cropId);
+  }
+
+  // 常時表示フォーム側の対応input欄にも即時反映（デバウンス完了前の表示ズレ防止）
+  const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
+  if (card) {
+    const inputEl = card.querySelector(`.plt-input-item[data-field="${field}"] input.plt-input`);
+    if (inputEl) inputEl.value = num;
+  }
+
+  popEl.remove();
 }
 
 /** プレビューモーダルを閉じる */

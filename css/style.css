@@ -14,6 +14,7 @@
   --text3:    #5a7a5c;
   --bg4:      #26382a;   /* bg3よりさらに明るい背景階調（カード内強調ブロック用） */
   --blue:     #60a5fa;   /* 情報系ハイライト用（灌水自動計算・農薬希釈フォーム等） */
+  --violet:   #c084fc;   /* 畝幅寸法線用（入口ノッチのamberと区別するため） */
   --mono:     'DM Mono', monospace;
   --sans:     'Noto Sans JP', sans-serif;
   --radius:   12px;
@@ -7299,6 +7300,7 @@ html.draw-dialog-active .bottom-nav {
     ridge-prev-* は「畝の詳細一覧」として下部に折りたたみ存続）
    ═══════════════════════════════════════════ */
 .plt-shapesvg-wrap {
+  position: relative; /* Step5-2：寸法線ポップオーバーの絶対配置基準 */
   background: var(--bg2);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -7348,11 +7350,12 @@ html.draw-dialog-active .bottom-nav {
   stroke-width: 0.75;
   stroke-opacity: 0.5;
 }
-/* 選択中作物の畝（実位置・実長の線） */
+/* 選択中作物の畝（実位置・実長の線）。ホバーで畝番号・長さをtitle表示するためcursorをhelpに */
 .plt-shapesvg-ridge {
   stroke: var(--green3);
   stroke-width: 2;
   stroke-linecap: round;
+  cursor: help;
 }
 
 /* ハウス：入口ノッチ（オレンジ系＝amber） */
@@ -7390,6 +7393,148 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text3);
   margin-top: 8px;
   line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════
+   Step5-2：畝幅寸法線タップ編集（SVGオーバーレイ＋ポップオーバー）
+   ═══════════════════════════════════════════ */
+
+/* 寸法線本体（可視部分） */
+.plt-dimline {
+  fill: none;
+  stroke-width: 1.75;
+  cursor: pointer;
+}
+.plt-dimline-single {
+  stroke: var(--violet);
+}
+.plt-dimline-top {
+  stroke: var(--violet);
+}
+.plt-dimline-path {
+  stroke: var(--blue);
+}
+
+/* 当たり判定（太い透明線・見た目には出ない） */
+.plt-dimline-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+  cursor: pointer;
+}
+
+/* 矢印ティック（線端の直交マーク） */
+.plt-dimline-tick-single,
+.plt-dimline-tick-top {
+  stroke: var(--violet);
+  stroke-width: 1.5;
+}
+.plt-dimline-tick-path {
+  stroke: var(--blue);
+  stroke-width: 1.5;
+}
+
+/* 数値ラベル（畝幅／畝上幅／畝間） */
+.plt-dimline-label {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  fill: var(--violet);
+  paint-order: stroke;
+  stroke: var(--bg2);
+  stroke-width: 3px;
+}
+.plt-dimline-label-path {
+  fill: var(--blue);
+}
+
+/* 詳細入力モード・1列のみの場合に表示する「模式図」注記 */
+.plt-dimline-schematic-note {
+  font-size: 10.5px;
+  color: var(--text3);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+
+/* 数値編集ポップオーバー */
+.plt-dimpopover {
+  position: absolute;
+  width: 172px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  padding: 10px;
+  z-index: 20;
+}
+.plt-dimpopover-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+.plt-dimpopover-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.plt-dimpopover-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-size: 14px;
+  padding: 6px 8px;
+}
+.plt-dimpopover-unit {
+  font-size: 11px;
+  color: var(--text3);
+}
+.plt-dimpopover-actions {
+  display: flex;
+  gap: 6px;
+}
+.plt-dimpopover-btn {
+  flex: 1;
+  padding: 6px 0;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text2);
+  cursor: pointer;
+}
+.plt-dimpopover-cancel:active {
+  border-color: var(--text3);
+}
+.plt-dimpopover-confirm {
+  background: var(--green3);
+  border-color: var(--green3);
+  color: #fff;
+}
+.plt-dimpopover-confirm:active {
+  background: var(--green2);
+}
+
+/* 固定／暫定の凡例（Step5-4：全カード常設表示。既存.plt-badge-provisionalの配色を流用） */
+.plt-provisional-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin: 2px 0 10px;
+  font-size: 10.5px;
+  color: var(--text3);
+}
+.plt-provisional-legend-item {
+  white-space: nowrap;
+}
+.plt-provisional-legend-tentative {
+  color: #b45309;
 }
 
 /* 凡例 */
@@ -7442,6 +7587,12 @@ html.draw-dialog-active .bottom-nav {
 .plt-shapesvg-swatch-equip {
   background: transparent;
   border: 2px solid var(--blue);
+}
+.plt-shapesvg-swatch-dim {
+  background: var(--violet);
+  height: 3px;
+  border-radius: 0;
+  align-self: center;
 }
 
 /* 「畝の詳細一覧（数値）」折りたたみ（旧・横バー一覧） */
@@ -8631,32 +8782,79 @@ html.draw-dialog-active .bottom-nav {
    ════════════════════════════════════════════════════════════════ */
 
 /* エリア共通の畝方向バー（実務・分析ペイン共通、最上部に1本） */
+/* 【畝設計UI統合仕様書 Step2】RidgeDirDraw地図遷移方式を廃止し、辺選択パネル方式に変更 */
 .plt-arearidgedir-bar {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--green2) 5%, transparent);
 }
-.plt-arearidgedir-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  border-radius: 6px;
-  border: 1.5px solid var(--green2);
-  background: transparent;
-  color: var(--green2);
+.plt-arearidgedir-title {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--text2);
+}
+.plt-arearidgedir-svg {
+  width: 100%;
+  max-width: 260px;
+  height: auto;
+  margin: 0 auto;
+}
+.plt-arearidgedir-outline {
+  fill: color-mix(in srgb, var(--green2) 8%, transparent);
+  stroke: var(--text3);
+  stroke-width: 1.5;
+}
+.plt-arearidgedir-line {
+  stroke: var(--green2);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.plt-arearidgedir-edgelist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.plt-arearidgedir-edgeitem {
+  padding: 4px 9px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text2);
+  font-size: 11px;
   cursor: pointer;
   white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.plt-arearidgedir-edgeitem.is-selected {
+  border-color: var(--green2);
+  background: var(--green2);
+  color: #fff;
+  font-weight: 600;
+}
+.plt-arearidgedir-edgeitem:active {
+  background: color-mix(in srgb, var(--green2) 20%, transparent);
+}
+.plt-arearidgedir-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.plt-arearidgedir-rotate {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1.5px solid var(--text2);
+  background: transparent;
+  color: var(--text2);
+  font-size: 11px;
+  cursor: pointer;
   transition: background .15s, color .15s;
 }
-.plt-arearidgedir-btn:active {
-  background: var(--green2);
+.plt-arearidgedir-rotate:active {
+  background: var(--text2);
   color: #fff;
 }
 .plt-arearidgedir-status {
@@ -10755,6 +10953,11 @@ html.draw-dialog-active .bottom-nav {
    畝設計 Phase 1 — 地図指定・自動計算UI
    ═══════════════════════════════════════════ */
 
+/* 畝方向ブロック（ステータス行＋実務側は実形状SVGを常時インライン表示） */
+.plt-ridgedir-block {
+  display: block;
+}
+
 /* 畝方向指定ボタン行 */
 .plt-ridgedir-row {
   display: flex;
@@ -10794,52 +10997,38 @@ html.draw-dialog-active .bottom-nav {
   font-weight: 600;
 }
 
-/* ⚙️ 詳細入力モード（畝上幅・畝間） */
+/* 畝幅：Step4でSVG直下に単独表示（実形状SVGのすぐ下・他の入力とは分離） */
+.plt-rowwidth-row {
+  margin: 6px 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--green2) 6%, transparent);
+}
+.plt-rowwidth-row .plt-input-item { max-width: 200px; }
+
+/* ⚙️ 畝上幅・畝間（詳細）：Step4でトグル廃止・常時表示化 */
 .plt-detailwidth-row {
-  margin: 6px 0 8px;
-}
-
-.plt-detailwidth-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  border-radius: 6px;
-  border: 1.5px dashed var(--text2);
-  background: transparent;
-  color: var(--text2);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background .15s, color .15s, border-color .15s;
-}
-.plt-detailwidth-toggle:active {
-  background: var(--text2);
-  color: #fff;
-}
-
-.plt-detailwidth-status {
-  margin-left: 8px;
-  font-size: 11px;
-  color: var(--green);
-  font-weight: 600;
-}
-
-.plt-detailwidth-body {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 10px;
-  margin-top: 8px;
+  margin-top: 4px;
   padding: 10px;
   border-radius: 8px;
   background: color-mix(in srgb, var(--text2) 6%, transparent);
 }
 
+.plt-detailwidth-heading {
+  font-size: 11px;
+  color: var(--text3);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.plt-detailwidth-row .plt-input-grid {
+  margin-bottom: 8px;
+}
+
 .plt-detailwidth-pitch {
-  grid-column: 1 / -1;
   font-size: 12px;
   color: var(--text2);
+  margin-bottom: 8px;
 }
 .plt-detailwidth-pitch-val {
   font-weight: 600;
@@ -10848,7 +11037,6 @@ html.draw-dialog-active .bottom-nav {
 
 /* 暫定プリセット（畝上幅・畝間）の再設定を促すヒント */
 .plt-detailwidth-hint {
-  grid-column: 1 / -1;
   font-size: 11px;
   color: var(--text2);
   background: rgba(251,191,36,0.10);
@@ -10856,10 +11044,10 @@ html.draw-dialog-active .bottom-nav {
   border-radius: 6px;
   padding: 5px 8px;
   line-height: 1.5;
+  margin-bottom: 8px;
 }
 
 .plt-detailwidth-clear {
-  grid-column: 1 / -1;
   padding: 5px 10px;
   border-radius: 6px;
   border: 1.5px solid var(--red);
@@ -10868,7 +11056,6 @@ html.draw-dialog-active .bottom-nav {
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
-  justify-self: start;
   transition: background .15s, color .15s;
 }
 .plt-detailwidth-clear:active {
