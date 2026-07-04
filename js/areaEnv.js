@@ -131,12 +131,31 @@ function buildEnvFromClimate(climateData, existingEnv = {}) {
   if (Array.isArray(climateData.monthly) && climateData.monthly.length > 0) {
     env.monthlyJson = JSON.stringify(climateData.monthly);
   }
-  if (Array.isArray(climateData.decadeArr) && climateData.decadeArr.length > 0) {
+  // NOTE: decadeArrは { tMax[36], tMin[36], tMean[36], sun[36], rain[36], keys[36] } という
+  // 「配列を値に持つオブジェクト」であり、それ自体は配列ではない。
+  // 以前は Array.isArray(climateData.decadeArr) で判定していたため常にfalseとなり、
+  // decadeJsonが一度も保存されないバグになっていた。
+  if (climateData.decadeArr && Array.isArray(climateData.decadeArr.tMean) && climateData.decadeArr.tMean.length > 0) {
     env.decadeJson = JSON.stringify(climateData.decadeArr);
   }
 
   // 自動計算
-  const monthly = climateData.monthly || parseEnvArrays(env).monthly;
+  // NOTE: AmedasLoader.getClimateAt() は climateData.monthly を返さない
+  //（返却されるのは decadeArr＝旬36点データのみ）ため、climateData.monthly は常に undefined。
+  // 以前はここで monthly.length が常に0になり、GDD・無霜期間・8月最高気温が
+  // 一度も計算されないバグになっていた。decadeArr から月別平均を組み立てて代用する。
+  const monthly = (Array.isArray(climateData.monthly) && climateData.monthly.length > 0)
+    ? climateData.monthly
+    : (climateData.decadeArr
+        ? _buildMonthlyFromDecadeArr(climateData.decadeArr)
+        : parseEnvArrays(env).monthly);
+
+  // decadeArrから組み立てた月別配列も、次回参照用にmonthlyJsonへ保存しておく
+  // （climateData.monthly由来の場合は既に上で保存済みのため、ここでは二重保存を避ける）
+  if (!(Array.isArray(climateData.monthly) && climateData.monthly.length > 0) && monthly.length > 0) {
+    env.monthlyJson = JSON.stringify(monthly);
+  }
+
   if (monthly.length > 0) {
     env.gdd          = calcGDD(monthly);
     env.frostFreeDays = calcFrostFreeDays(monthly);
@@ -145,6 +164,33 @@ function buildEnvFromClimate(climateData, existingEnv = {}) {
   }
 
   return env;
+}
+
+// ─── decadeArr（旬36点：tMax[36]/tMin[36]/tMean[36]）→ 月別配列12件へ変換 ───
+// AmedasLoader.buildDecadeArr()と同じ並び（各月 early/mid/late の3旬）を前提に、
+// 3旬の単純平均（欠測=nullは除外）で月平均を出す。
+// calcGDD/calcFrostFreeDaysは配列インデックス基準（0=1月）で日数を加算するため、
+// 1月始まり12件・欠月なしの配列で返す（値が取れない月はtempMax/tempMin/tempMean=null）。
+function _buildMonthlyFromDecadeArr(decadeArr) {
+  if (!decadeArr || !Array.isArray(decadeArr.tMean)) return [];
+
+  function avg3(arr, monthIndex) {
+    if (!Array.isArray(arr)) return null;
+    const vals = [arr[monthIndex * 3], arr[monthIndex * 3 + 1], arr[monthIndex * 3 + 2]]
+      .filter(v => v != null);
+    return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+  }
+
+  const monthly = [];
+  for (let mi = 0; mi < 12; mi++) {
+    monthly.push({
+      month:    mi + 1,
+      tempMax:  avg3(decadeArr.tMax,  mi),
+      tempMin:  avg3(decadeArr.tMin,  mi),
+      tempMean: avg3(decadeArr.tMean, mi),
+    });
+  }
+  return monthly;
 }
 
 // ─── 配列フィールドをパース（参照時に使う） ───
