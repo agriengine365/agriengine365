@@ -7805,9 +7805,139 @@ function _adpBuildEntranceEdgeBar() {
 /**
  * 入口辺セクション＋畝方向辺セクションを1つの統合パネルとして返す。
  * 各セクションは独立した色分けバー（入口＝アンバー系／畝方向＝グリーン系）のまま上下に積む構成。
+ * ⚠️Step7-3で _adpBuildEdgeToggleBar() に置き換えられ、呼び出し箇所は無くなった（未使用）。
+ * Step7-6の一括デッドコード削除まで残置。
  */
 function _adpBuildEdgeSelectionPanel() {
   return _adpBuildEntranceEdgeBar() + _adpBuildAreaRidgeDirBar();
+}
+
+// ═══════════════════════════════════════════
+//  🔀 辺選択トグルバー（入口辺／畝方向を1つに統合）
+//  （圃場マージン再設計・栽植プレビュー統合仕様書 Step7-3）
+//  Step3の _adpBuildEdgeSelectionPanel は入口辺・畝方向を2本のバー（各々ミニSVG付き）
+//  として常時2つ表示していたが、辺のハイライト自体はStep7-1で統合プレビューSVG側に
+//  実装済み（_adpUnifiedPreviewEdgeMode読取）のため、ミニSVGの重複表示をやめ、
+//  🚪/📐トグルチップで「今どちらの辺を編集しているか」を切り替える1本のバーに統合する。
+//  ハイライト表示は実務側の統合プレビュー（_adpBuildUnifiedRidgePreviewSVG）に一本化。
+// ═══════════════════════════════════════════
+
+/**
+ * 入口辺のステータス文言のみを生成する（ミニSVGなし）。
+ * _adpBuildEntranceEdgeBar の表示ロジックからテキスト部分だけを切り出したもの。
+ * @param {Array<{lat:number,lng:number}>} polygon
+ * @returns {string}
+ */
+function _adpBuildEntranceEdgeStatusText(polygon) {
+  if (!polygon || typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.computeHouseGeometry !== 'function') {
+    return '圃場データが取得できません';
+  }
+  const hm    = _adpHouseMargin || {};
+  const geo   = RidgeGeometry.computeHouseGeometry(polygon, hm);
+  const edges = RidgeGeometry.getPolygonEdges(polygon);
+  const entranceIdx  = geo.entranceEdgeIndex;
+  const entranceEdge = edges.find(e => e.index === entranceIdx);
+
+  const statusText = entranceEdge
+    ? `入口辺：辺${entranceIdx + 1}（長さ${entranceEdge.lengthM}m）`
+    : '入口辺：未計算（外膜マージン等を入力してください）';
+  const areaText = (geo.availableAreaSqm != null && geo.availableAreaSqm > 0)
+    ? `実効面積：${geo.availableAreaSqm}㎡` : '';
+  return `${statusText}${areaText ? '／' + areaText : ''}`;
+}
+
+/**
+ * 畝方向のステータス文言のみを生成する（ミニSVGなし）。
+ * _adpBuildAreaRidgeDirBar の表示ロジックからテキスト部分だけを切り出したもの。
+ * Step7-3の確認事項：「クリア」ボタンは廃止（↻ローテートで別の辺に切り替えれば充分なため）。
+ * @param {Array<{lat:number,lng:number}>} polygon
+ * @returns {string}
+ */
+function _adpBuildRidgeDirStatusText(polygon) {
+  if (!polygon || typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.getPolygonEdges !== 'function') {
+    return '圃場データが取得できません';
+  }
+  const dir   = _adpArea?.meta?.ridgeBaseDirection;
+  const edges = RidgeGeometry.getPolygonEdges(polygon);
+
+  const hasValidEdgeIndex = !!dir && Number.isInteger(dir.edgeIndex) && dir.edgeIndex >= 0 && dir.edgeIndex < edges.length;
+  const hasLegacyDir = !!dir && !hasValidEdgeIndex && dir.p1 && dir.p2;
+
+  if (hasValidEdgeIndex) return `✓ 辺${dir.edgeIndex + 1}を畝方向に設定中`;
+  if (hasLegacyDir) return '✓ 設定済み（旧形式・↻で選び直すと更新されます）';
+  return '未設定（畝の自動計算にはエリア共通の畝方向が必要です）';
+}
+
+/**
+ * 🚪/📐トグルチップ＋↻ローテートボタン＋選択中モードのみのステータス行を
+ * 1本のバーとして生成する（Step7-3）。
+ * どちらのモードが選択中かは _adpUnifiedPreviewEdgeMode（Step7-1で導入済みの状態変数。
+ * 統合プレビューのハイライト対象と共用）で管理する。
+ */
+function _adpBuildEdgeToggleBar() {
+  const polygon = _adpGetFieldPolygon();
+  if (!polygon || typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.getPolygonEdges !== 'function') {
+    return `
+      <div class="plt-edgetoggle-bar">
+        <div class="plt-edgetoggle-chips">
+          <button type="button" class="plt-edgetoggle-chip plt-edgetoggle-chip-active" disabled>🚪 入口辺</button>
+          <button type="button" class="plt-edgetoggle-chip" disabled>📐 畝方向</button>
+        </div>
+        <span class="plt-edgetoggle-status">圃場データが取得できません</span>
+      </div>`;
+  }
+
+  const mode = _adpUnifiedPreviewEdgeMode === 'ridgedir' ? 'ridgedir' : 'entrance';
+  const statusText = mode === 'ridgedir'
+    ? _adpBuildRidgeDirStatusText(polygon)
+    : _adpBuildEntranceEdgeStatusText(polygon);
+
+  return `
+    <div class="plt-edgetoggle-bar">
+      <div class="plt-edgetoggle-chips">
+        <button type="button" class="plt-edgetoggle-chip ${mode === 'entrance' ? 'plt-edgetoggle-chip-active' : ''}" onclick="_adpSetUnifiedPreviewEdgeMode('entrance')">🚪 入口辺</button>
+        <button type="button" class="plt-edgetoggle-chip ${mode === 'ridgedir' ? 'plt-edgetoggle-chip-active' : ''}" onclick="_adpSetUnifiedPreviewEdgeMode('ridgedir')">📐 畝方向</button>
+      </div>
+      <div class="plt-edgetoggle-footer">
+        <button type="button" class="plt-edgetoggle-rotate" onclick="_adpRotateActiveEdge()">↻ 違う辺にする</button>
+        <span class="plt-edgetoggle-status">${statusText}</span>
+      </div>
+    </div>`;
+}
+
+/**
+ * 統合プレビューのハイライト対象辺モード（'entrance'／'ridgedir'）を切り替える（Step7-3）。
+ * トグルチップから呼ばれる。トグルバー自身のステータス表示と、実務側の統合プレビューの
+ * ハイライトを両方再描画する（分析側は統合プレビュー自体が無いためトグルバーのみ更新）。
+ * @param {string} mode - 'entrance' または 'ridgedir'
+ */
+function _adpSetUnifiedPreviewEdgeMode(mode) {
+  if (mode !== 'entrance' && mode !== 'ridgedir') return;
+  if (_adpUnifiedPreviewEdgeMode === mode) return;
+  _adpUnifiedPreviewEdgeMode = mode;
+  _adpRefreshEdgeToggleBar();
+  if (_adpCurrentSeg !== 'analysis') _adpRefreshUnifiedPreview();
+}
+
+/** 辺選択トグルバーだけを部分更新する（Step7-3）。 */
+function _adpRefreshEdgeToggleBar() {
+  const bar = document.querySelector('#planting-result .plt-edgetoggle-bar');
+  if (bar) bar.outerHTML = _adpBuildEdgeToggleBar();
+}
+
+/**
+ * 現在トグルで選択中のモードに応じて、入口辺／畝方向辺のどちらかをローテーションする（Step7-3）。
+ * - 畝方向側（_adpRotateRidgeDirEdge）は内部で _adpRenderPlantingPane() を呼び全体再描画するため、
+ *   トグルバーも自動的に最新化される。
+ * - 入口辺側（_adpRotateEntranceEdge）は部分更新のみのため、トグルバーはここで個別に更新する。
+ */
+function _adpRotateActiveEdge() {
+  if (_adpUnifiedPreviewEdgeMode === 'ridgedir') {
+    _adpRotateRidgeDirEdge();
+  } else {
+    _adpRotateEntranceEdge();
+    _adpRefreshEdgeToggleBar();
+  }
 }
 
 /**
@@ -7980,7 +8110,7 @@ function _adpRenderPlantingPane() {
   if (_adpCurrentSeg === 'analysis') {
     const cropId = _adpSelectedCropId;
     if (!cropId) {
-      el.innerHTML = _adpBuildEdgeSelectionPanel() + _adpBuildHouseMarginSection() + '<div class="empty-mini">作物を選択すると栽植設計の試算ができます。</div>';
+      el.innerHTML = _adpBuildEdgeToggleBar() + _adpBuildHouseMarginSection() + '<div class="empty-mini">作物を選択すると栽植設計の試算ができます。</div>';
       return;
     }
     const cropName = _adpCropIdToName(cropId);
@@ -7992,7 +8122,7 @@ function _adpRenderPlantingPane() {
     // エリア共通の畝方向が設定済みなら、圃場全体基準で畝セグメントを自動計算
     const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
     _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
-    el.innerHTML = _adpBuildEdgeSelectionPanel() + _adpBuildHouseMarginSection() + _adpBuildRatioLegendRow(true) + _adpBuildPlantingCard({
+    el.innerHTML = _adpBuildEdgeToggleBar() + _adpBuildHouseMarginSection() + _adpBuildRatioLegendRow(true) + _adpBuildPlantingCard({
       cropId,
       cropName,
       ratio: null,
@@ -8004,11 +8134,11 @@ function _adpRenderPlantingPane() {
 
   // ── 実務側 ──
   if (!_adpPracticecrops.length) {
-    el.innerHTML = _adpBuildEdgeSelectionPanel() + _adpBuildHouseMarginSection() + '<div class="empty-mini">作物を追加すると栽植設計が入力できます。</div>';
+    el.innerHTML = _adpBuildEdgeToggleBar() + _adpBuildHouseMarginSection() + '<div class="empty-mini">作物を追加すると栽植設計が入力できます。</div>';
     return;
   }
 
-  el.innerHTML = _adpBuildEdgeSelectionPanel() + _adpBuildHouseMarginSection() + _adpBuildRatioLegendRow(false) + _adpBuildUnifiedRidgePreviewSVG() + _adpPracticecrops.map(({ cropId, ratio, plantingDesign }, idx) => {
+  el.innerHTML = _adpBuildEdgeToggleBar() + _adpBuildHouseMarginSection() + _adpBuildRatioLegendRow(false) + _adpBuildUnifiedRidgePreviewSVG() + _adpPracticecrops.map(({ cropId, ratio, plantingDesign }, idx) => {
     const design   = plantingDesign || _adpInitPlantingDesign(cropId);
     const cropName = _adpCropIdToName(cropId);
     const isLast   = idx === _adpPracticecrops.length - 1;

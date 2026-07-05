@@ -8966,8 +8966,72 @@ html.draw-dialog-active .bottom-nav {
   color: #fff;
 }
 
+/* 🔀 辺選択トグルバー（入口辺／畝方向を1つに統合） */
+/* 【圃場マージン再設計・栽植プレビュー統合仕様書 Step7-3】
+   従来の入口辺バー・畝方向バー（各々ミニSVG付き）2本を、🚪/📐トグルチップ1本に統合。
+   辺のハイライト表示自体は統合プレビューSVG（Step7-1）側に一本化されるため、
+   このバーはチップ・ローテートボタン・選択中モードのステータス文言のみを持つ。 */
+.plt-edgetoggle-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--text2) 4%, transparent);
+}
+.plt-edgetoggle-chips {
+  display: flex;
+  gap: 6px;
+}
+.plt-edgetoggle-chip {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--bg2);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.plt-edgetoggle-chip:disabled {
+  cursor: default;
+  opacity: .6;
+}
+.plt-edgetoggle-chip-active {
+  border-color: var(--green2);
+  background: color-mix(in srgb, var(--green2) 18%, transparent);
+  color: var(--green);
+}
+.plt-edgetoggle-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.plt-edgetoggle-rotate {
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1.5px solid var(--text2);
+  background: transparent;
+  color: var(--text2);
+  font-size: 11px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.plt-edgetoggle-rotate:active {
+  background: var(--text2);
+  color: #fff;
+}
+.plt-edgetoggle-status {
+  font-size: 11px;
+  color: var(--text2);
+}
+
 /* 🚪 入口辺セクション（辺選択統合パネルの上段。畝方向辺セクションと対になる） */
 /* 【圃場マージン再設計・栽植プレビュー統合仕様書 Step3】旧・圃場マージン設定パネル内プレビューを分離independent化 */
+/* ⚠️Step7-3で .plt-edgetoggle-bar に統合され、_adpBuildEntranceEdgeBar自体は未使用のまま残置（Step7-6で削除予定） */
 .plt-entranceedge-bar {
   display: flex;
   flex-direction: column;
