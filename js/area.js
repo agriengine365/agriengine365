@@ -7670,26 +7670,39 @@ function _adpClearAreaRidgeDir() {
  * 圃場マージン設定パネルのHTMLを生成する（数値入力のみ）。
  * 表示条件は撤廃済み：全cultivationMode（露地含む）で表示する。
  * 入口辺の選択UI（ミニSVG・ローテート）は Step3 で辺選択統合パネル（_adpBuildEdgeSelectionPanel）へ移設済み。
+ *
+ * 【圃場マージン再設計・栽植プレビュー統合仕様書 Step7-4】
+ * 数値入力グリッドを、畝設計UI統合仕様書Step5と同じ `.plt-detail-accordion` 構造
+ * （トグルボタン＋body、デフォルト閉、開閉はDOM上のみ保持）でラップする。
+ * 開閉ハンドラは既存の汎用関数 `_adpToggleDetailAccordion(btn)`
+ * （`btn.closest('.plt-detail-accordion')` で動く汎用実装）をそのまま流用し、新規関数は追加しない。
  */
 function _adpBuildHouseMarginSection() {
   const hm = _adpHouseMargin || {};
 
   return `
     <div class="plt-housemargin-section">
-      <div class="plt-housemargin-title">🌾 圃場マージン設定</div>
-      <div class="plt-housemargin-grid">
-        <div class="plt-input-item">
-          <label class="plt-label">外膜マージン</label>
-          <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" step="0.1" value="${hm.frameMarginM ?? ''}" placeholder="例: 0.5"
-            oninput="_adpUpdateHouseMarginField('frameMarginM', this.value)"><span class="plt-unit">m</span></div>
-        </div>
-        <div class="plt-input-item">
-          <label class="plt-label">入口奥行き</label>
-          <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" step="0.1" value="${hm.entranceDepthM ?? ''}" placeholder="例: 1.0"
-            oninput="_adpUpdateHouseMarginField('entranceDepthM', this.value)"><span class="plt-unit">m</span></div>
-        </div>
-        <div class="plt-input-item plt-input-item-wide" data-opposite-depth-block>
-          ${_adpBuildOppositeDepthInner()}
+      <div class="plt-detail-accordion" data-detail-key="housemargin">
+        <button type="button" class="plt-detail-toggle" onclick="_adpToggleDetailAccordion(this)" aria-expanded="false">
+          <span class="plt-detail-toggle-label">🌾 圃場マージン設定（外周・入口奥行き・反対側）</span>
+          <span class="plt-detail-toggle-arrow">▼</span>
+        </button>
+        <div class="plt-detail-accordion-body">
+          <div class="plt-housemargin-grid">
+            <div class="plt-input-item">
+              <label class="plt-label">外膜マージン</label>
+              <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" step="0.1" value="${hm.frameMarginM ?? ''}" placeholder="例: 0.5"
+                oninput="_adpUpdateHouseMarginField('frameMarginM', this.value)"><span class="plt-unit">m</span></div>
+            </div>
+            <div class="plt-input-item">
+              <label class="plt-label">入口奥行き</label>
+              <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" step="0.1" value="${hm.entranceDepthM ?? ''}" placeholder="例: 1.0"
+                oninput="_adpUpdateHouseMarginField('entranceDepthM', this.value)"><span class="plt-unit">m</span></div>
+            </div>
+            <div class="plt-input-item plt-input-item-wide" data-opposite-depth-block>
+              ${_adpBuildOppositeDepthInner()}
+            </div>
+          </div>
         </div>
       </div>
     </div>`;
@@ -7744,8 +7757,9 @@ function _adpToggleOppositeSameDepth(checked) {
   const block = document.querySelector('#planting-result [data-opposite-depth-block]');
   if (block) block.innerHTML = _adpBuildOppositeDepthInner();
 
-  // 反対側奥行きの実効値は入口辺バー側の実効面積表示にも影響するため、そちらも更新する
-  _adpRefreshEntranceEdgeBar();
+  // 反対側奥行きの実効値は辺選択トグルバー側の実効面積表示にも影響するため、そちらも更新する
+  // （Step7-3で入口辺バーがトグルバーに統合された際に更新漏れしていたものをStep7-4で修正）
+  _adpRefreshEdgeToggleBar();
   _adpRefreshAllCardsAfterGeometryChange();
 }
 
@@ -7935,8 +7949,7 @@ function _adpRotateActiveEdge() {
   if (_adpUnifiedPreviewEdgeMode === 'ridgedir') {
     _adpRotateRidgeDirEdge();
   } else {
-    _adpRotateEntranceEdge();
-    _adpRefreshEdgeToggleBar();
+    _adpRotateEntranceEdge(); // 内部で _adpRefreshEdgeToggleBar() を呼ぶため、ここでの追加更新は不要
   }
 }
 
@@ -8024,9 +8037,9 @@ function _adpUpdateHouseMarginField(field, value) {
       _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
     }
 
-    // 数値変更は入口辺バー側の実効面積表示にも影響するため、そちらを更新する
-    // （辺選択統合パネルへ移設済み：Step3）
-    _adpRefreshEntranceEdgeBar();
+    // 数値変更は辺選択トグルバー側の実効面積表示にも影響するため、そちらを更新する
+    // （Step7-3で入口辺バーがトグルバーに統合された際に更新漏れしていたものをStep7-4で修正）
+    _adpRefreshEdgeToggleBar();
     _adpRefreshAllCardsAfterGeometryChange();
   }, 300);
 }
@@ -8070,11 +8083,15 @@ function _adpRotateEntranceEdge() {
     _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
   }
 
-  _adpRefreshEntranceEdgeBar();
+  _adpRefreshEdgeToggleBar();
   _adpRefreshAllCardsAfterGeometryChange();
 }
 
-/** 入口辺バー（ミニSVG＋ステータス＋ローテート）だけを部分更新する。 */
+/**
+ * 入口辺バー（ミニSVG＋ステータス＋ローテート）だけを部分更新する。
+ * ⚠️Step7-3で辺選択トグルバー（_adpRefreshEdgeToggleBar）に統合され、
+ * 呼び出し箇所は無くなった（未使用）。Step7-6の一括デッドコード削除まで残置。
+ */
 function _adpRefreshEntranceEdgeBar() {
   const bar = document.querySelector('#planting-result .plt-entranceedge-bar');
   if (bar) bar.outerHTML = _adpBuildEntranceEdgeBar();

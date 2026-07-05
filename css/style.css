@@ -8903,11 +8903,18 @@ html.draw-dialog-active .bottom-nav {
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--amber, #f59e0b) 5%, transparent);
 }
+/* ⚠️Step7-4でタイトル行はアコーディオントグル（.plt-detail-toggle-label）に統合され、
+   .plt-housemargin-title自体は未使用になった（Step7-6で削除予定）。 */
 .plt-housemargin-title {
   font-size: 12px;
   font-weight: 600;
   color: var(--text2);
   margin-bottom: 8px;
+}
+/* Step7-4：.plt-housemargin-section内では.plt-detail-accordionが唯一の子要素になるため、
+   Step5（カード内利用）で付与しているmargin-top:8pxを打ち消し、外側paddingとの二重余白を防ぐ */
+.plt-housemargin-section .plt-detail-accordion {
+  margin-top: 0;
 }
 .plt-housemargin-grid {
   display: grid;
