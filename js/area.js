@@ -521,6 +521,12 @@ let _adpWeatherCache   = null;  // 天気予報キャッシュ { areaId, fetched
 // - oppositeEdgeIndex は保存不要（RidgeGeometry.computeHouseGeometryが毎回自動算出）
 let _adpHouseMargin    = null;
 
+// 統合作物プレビュー（_adpBuildUnifiedRidgePreviewSVG）の辺ハイライト表示モード。
+// 'entrance'（🚪入口辺）／'ridgedir'（📐畝方向辺）／null（非表示）。
+// トグルチップ（Step7-3で新設）から _adpSetUnifiedPreviewEdgeMode() 経由で切り替える想定。
+// パネル再描画ではリセットされる想定のため保存はしない（DOM上のみで保持する他の開閉状態と同じ扱い）。
+let _adpUnifiedPreviewEdgeMode = 'entrance';
+
 // ─── エリア選択時プリフェッチ（AMeDAS + 天気予報を並列取得） ───
 // openAreaDetailPanel より先に呼ぶことでパネル表示時にキャッシュ済み状態にする
 function _adpPrefetch(area) {
@@ -8579,7 +8585,12 @@ function _adpShowPlantingPreview(cropId, seg) {
  * 座標変換は RidgeGeometry.toLocalCoords / toLocalPoint（重心原点のローカルXY）を
  * 一貫して使うことで、帯・畝・ハウスマージンすべてが同一座標系で正しく重なる。
  *
- * @returns {string} HTML文字列（未計算時・圃場データ取得不可時は空文字を返す＝非表示）
+ * Step7-1（圃場マージン再設計・栽植プレビュー統合仕様書）：
+ * - 圃場外周は作物・畝の計算有無に関わらず常に描画する（辺選択トグルの置き場所を確保するため）。
+ * - _adpUnifiedPreviewEdgeMode（'entrance'／'ridgedir'）で選択中の辺を1本だけハイライト表示する
+ *   （トグルUI自体はStep7-3で新設。ここでは状態変数を読んで描くだけ）。
+ *
+ * @returns {string} HTML文字列（圃場データ取得不可時のみ空文字を返す＝非表示）
  */
 function _adpBuildUnifiedRidgePreviewSVG() {
   const rawPolygon = _adpGetFieldPolygon();
@@ -8588,8 +8599,10 @@ function _adpBuildUnifiedRidgePreviewSVG() {
   }
 
   const crops = _adpPracticecrops || [];
-  const hasAnyCalc = crops.some(c => Array.isArray(c?.plantingDesign?.ridgeSegments) && c.plantingDesign.ridgeSegments.length > 0);
-  if (!hasAnyCalc) return '';
+  // Step7-1（圃場マージン再設計・栽植プレビュー統合仕様書）：
+  // 従来は畝計算が1つも無いと空文字を返し非表示にしていたが、これだと畝方向を
+  // 最初に設定する前段階で辺選択トグル（Step7-3）の置き場所が無くなってしまう。
+  // → 圃場外周だけは常に描画し、作物帯・畝・寸法線は計算済みのものだけ重ねる形に変更する。
 
   const { origin, points: fieldLocalPts } = RidgeGeometry.toLocalCoords(rawPolygon);
   if (!fieldLocalPts.length) return '';
@@ -8622,6 +8635,21 @@ function _adpBuildUnifiedRidgePreviewSVG() {
   // --- 1. 圃場外周線 ---
   const fieldSvgPts = fieldLocalPts.map(toSvg);
   svgBody += `<polygon points="${ptsStr(fieldSvgPts)}" class="plt-shapesvg-field" />`;
+
+  // --- 1.5 辺ハイライト（Step7-1：トグル選択中の辺を1本だけハイライト） ---
+  // トグルUI自体はStep7-3で新設。ここでは _adpUnifiedPreviewEdgeMode を読んで描画するだけ。
+  // 辺の端点は fieldSvgPts（圃場外周のSVG座標。rawPolygonと同じ頂点順）をそのまま使い、
+  // 座標変換・辺情報の再取得は増やさない。
+  const highlightEdgeIdx = _adpGetUnifiedPreviewHighlightEdgeIndex(rawPolygon, fieldSvgPts.length);
+  if (highlightEdgeIdx != null) {
+    const n = fieldSvgPts.length;
+    const ha = fieldSvgPts[highlightEdgeIdx];
+    const hb = fieldSvgPts[(highlightEdgeIdx + 1) % n];
+    const highlightClass = _adpUnifiedPreviewEdgeMode === 'ridgedir'
+      ? 'plt-shapesvg-edgehighlight-ridgedir'
+      : 'plt-shapesvg-edgehighlight-entrance';
+    svgBody += `<line x1="${ha.x.toFixed(1)}" y1="${ha.y.toFixed(1)}" x2="${hb.x.toFixed(1)}" y2="${hb.y.toFixed(1)}" class="plt-shapesvg-edgehighlight ${highlightClass}" />`;
+  }
 
   // --- 2. 圃場マージン（外膜オフセット境界・入口帯・反対側帯） ---
   // 表示条件は撤廃済み：全cultivationMode（露地含む）で圃場マージンを反映する。
@@ -8738,6 +8766,39 @@ function _adpBuildUnifiedRidgePreviewSVG() {
       ${dimNoteHTML}
       <div class="plt-shapesvg-legend">${legendItems.join('')}</div>
     </div>`;
+}
+
+/**
+ * Step7-1：統合プレビューSVG上でハイライトすべき辺のインデックスを返す。
+ * _adpUnifiedPreviewEdgeMode の現在値に応じて、対応する辺インデックスを
+ * 既存の状態（圃場マージンの入口辺／エリア共通の畝方向辺）から取得する。
+ * インデックスが辺総数の範囲外・未確定の場合は null を返し、ハイライトなしとする。
+ *
+ * @param {Array<{lat:number,lng:number}>} rawPolygon - 圃場ポリゴン
+ * @param {number} edgeCount - 圃場の辺の総数（＝頂点数）
+ * @returns {number|null}
+ */
+function _adpGetUnifiedPreviewHighlightEdgeIndex(rawPolygon, edgeCount) {
+  const mode = _adpUnifiedPreviewEdgeMode;
+  if (!mode || !edgeCount) return null;
+
+  if (mode === 'entrance') {
+    const hm = _adpHouseMargin || {};
+    let idx = Number.isInteger(hm.entranceEdgeIndex) ? hm.entranceEdgeIndex : -1;
+    if (idx < 0 && rawPolygon && typeof RidgeGeometry !== 'undefined' && typeof RidgeGeometry.computeHouseGeometry === 'function') {
+      const geo = RidgeGeometry.computeHouseGeometry(rawPolygon, hm);
+      idx = Number.isInteger(geo.entranceEdgeIndex) ? geo.entranceEdgeIndex : -1;
+    }
+    return (idx >= 0 && idx < edgeCount) ? idx : null;
+  }
+
+  if (mode === 'ridgedir') {
+    const dir = _adpArea?.meta?.ridgeBaseDirection;
+    const idx = (dir && Number.isInteger(dir.edgeIndex)) ? dir.edgeIndex : -1;
+    return (idx >= 0 && idx < edgeCount) ? idx : null;
+  }
+
+  return null;
 }
 
 /**

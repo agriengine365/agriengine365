@@ -7335,6 +7335,18 @@ html.draw-dialog-active .bottom-nav {
   stroke-dasharray: 4 3;
 }
 
+/* Step7-1：統合プレビュー内の辺ハイライト（🚪入口辺／📐畝方向辺トグル、Step7-3で接続） */
+.plt-shapesvg-edgehighlight {
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.plt-shapesvg-edgehighlight-entrance {
+  stroke: var(--amber);
+}
+.plt-shapesvg-edgehighlight-ridgedir {
+  stroke: var(--green2);
+}
+
 /* ═══════════════════════════════════════════
    Step4：統合作物プレビュー（作物ごとの色分け）
    旧・単一作物方式（選択中＝緑／他＝薄グレーの帯・畝色分け）を、
