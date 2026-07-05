@@ -64,15 +64,7 @@
     </div>
   </div>
 
-  <!-- フェーズ A2: 畝方向指定 -->
-  <div class="draw-phase" id="draw-phase-ridgedir" hidden>
-    <p class="map-draw-dialog-hint" id="rdraw-hint">畝の方向を2点で指定してください</p>
-    <div class="map-draw-dialog-actions">
-      <button type="button" class="map-draw-btn map-draw-btn-cancel"  onclick="ridgeDirSkip()">スキップ</button>
-      <button type="button" class="map-draw-btn map-draw-btn-sub"     id="btn-rdraw-back"    onclick="ridgeDirBack()"    disabled>戻る</button>
-      <button type="button" class="map-draw-btn map-draw-btn-confirm" id="btn-rdraw-confirm" onclick="ridgeDirConfirm()">確定</button>
-    </div>
-  </div>
+  <!-- フェーズA2（畝方向2点指定）は廃止済み。畝方向は辺選択パネル方式（area.js）に一本化。 -->
 
   <!-- フェーズ B: 保存ウィザード -->
   <div class="draw-phase" id="draw-phase-wizard" hidden>
