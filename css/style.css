@@ -8823,93 +8823,11 @@ html.draw-dialog-active .bottom-nav {
    🌱 栽植設計ペイン
    ════════════════════════════════════════════════════════════════ */
 
-/* エリア共通の畝方向バー（実務・分析ペイン共通、最上部に1本） */
-/* 【畝設計UI統合仕様書 Step2】RidgeDirDraw地図遷移方式を廃止し、辺選択パネル方式に変更 */
-.plt-arearidgedir-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--green2) 5%, transparent);
-}
-.plt-arearidgedir-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text2);
-}
-.plt-arearidgedir-svg {
-  width: 100%;
-  max-width: 260px;
-  height: auto;
-  margin: 0 auto;
-}
-.plt-arearidgedir-outline {
-  fill: color-mix(in srgb, var(--green2) 8%, transparent);
-  stroke: var(--text3);
-  stroke-width: 1.5;
-}
-.plt-arearidgedir-line {
-  stroke: var(--green2);
-  stroke-width: 4;
-  stroke-linecap: round;
-}
-.plt-arearidgedir-footer {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.plt-arearidgedir-rotate {
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1.5px solid var(--text2);
-  background: transparent;
-  color: var(--text2);
-  font-size: 11px;
-  cursor: pointer;
-  transition: background .15s, color .15s;
-}
-.plt-arearidgedir-rotate:active {
-  background: var(--text2);
-  color: #fff;
-}
-.plt-arearidgedir-status {
-  font-size: 11px;
-  color: var(--text2);
-}
-.plt-arearidgedir-status-ok {
-  color: var(--green);
-  font-weight: 600;
-}
-.plt-arearidgedir-clear {
-  padding: 3px 8px;
-  border-radius: 5px;
-  border: 1.5px solid var(--red);
-  background: transparent;
-  color: var(--red);
-  font-size: 11px;
-  cursor: pointer;
-  transition: background .15s, color .15s;
-}
-.plt-arearidgedir-clear:active {
-  background: var(--red);
-  color: #fff;
-}
-
 /* 🌾 圃場マージン設定パネル（全cultivationModeで表示。旧ハウスマージン設定） */
 .plt-housemargin-section {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--amber, #f59e0b) 5%, transparent);
-}
-/* ⚠️Step7-4でタイトル行はアコーディオントグル（.plt-detail-toggle-label）に統合され、
-   .plt-housemargin-title自体は未使用になった（Step7-6で削除予定）。 */
-.plt-housemargin-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text2);
-  margin-bottom: 8px;
 }
 /* Step7-4：.plt-housemargin-section内では.plt-detail-accordionが唯一の子要素になるため、
    Step5（カード内利用）で付与しているmargin-top:8pxを打ち消し、外側paddingとの二重余白を防ぐ */
@@ -8937,42 +8855,6 @@ html.draw-dialog-active .bottom-nav {
   margin: 0;
   cursor: pointer;
 }
-.plt-housemargin-svg {
-  width: 100%;
-  max-width: 260px;
-  height: auto;
-  margin: 0 auto;
-}
-.plt-housemargin-outline {
-  fill: color-mix(in srgb, var(--green2) 8%, transparent);
-  stroke: var(--text3);
-  stroke-width: 1.5;
-}
-.plt-housemargin-entrance-line {
-  stroke: var(--red);
-  stroke-width: 4;
-  stroke-linecap: round;
-}
-.plt-housemargin-status {
-  font-size: 11px;
-  color: var(--text2);
-  text-align: center;
-}
-.plt-housemargin-rotate {
-  padding: 4px 10px;
-  border-radius: 6px;
-  border: 1.5px solid var(--text2);
-  background: transparent;
-  color: var(--text2);
-  font-size: 11px;
-  cursor: pointer;
-  transition: background .15s, color .15s;
-}
-.plt-housemargin-rotate:active {
-  background: var(--text2);
-  color: #fff;
-}
-
 /* 🔀 辺選択トグルバー（入口辺／畝方向を1つに統合） */
 /* 【圃場マージン再設計・栽植プレビュー統合仕様書 Step7-3】
    従来の入口辺バー・畝方向バー（各々ミニSVG付き）2本を、🚪/📐トグルチップ1本に統合。
@@ -9034,29 +8916,6 @@ html.draw-dialog-active .bottom-nav {
 .plt-edgetoggle-status {
   font-size: 11px;
   color: var(--text2);
-}
-
-/* 🚪 入口辺セクション（辺選択統合パネルの上段。畝方向辺セクションと対になる） */
-/* 【圃場マージン再設計・栽植プレビュー統合仕様書 Step3】旧・圃場マージン設定パネル内プレビューを分離independent化 */
-/* ⚠️Step7-3で .plt-edgetoggle-bar に統合され、_adpBuildEntranceEdgeBar自体は未使用のまま残置（Step7-6で削除予定） */
-.plt-entranceedge-bar {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--amber, #f59e0b) 5%, transparent);
-}
-.plt-entranceedge-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text2);
-}
-.plt-entranceedge-footer {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 /* 占有率合計バー（実務・複数作物時） */

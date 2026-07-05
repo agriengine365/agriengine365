@@ -7529,69 +7529,6 @@ function _adpPlantingAreaWarn(ratio, rowAreaSqm) {
 }
 
 /**
- * 栽植設計ペインを描画する。
- * 実務側 (_adpCurrentSeg === 'practice'): 複数作物 × 占有率スライダー＋削除＋設計入力
- * 分析側 (_adpCurrentSeg === 'analysis'): _adpSelectedCropId の単一作物・保存なし
- */
-/**
- * エリア共通の畝方向バー（実務・分析どちらのペインの先頭にも表示）。
- * カード個別の「畝方向を地図で指定」ボタンは廃止し、ここに一本化。
- *
- * 【畝設計UI統合仕様書 セクションA-3】
- * RidgeDirDraw（自由2点クリック）は廃止し、圃場の辺を選択する方式に統一。
- * ハウスマージン入口辺選択と同じ汎用部品（_adpBuildEdgeSelectMiniSVG／_adpNextEdgeIndex）を利用する。
- */
-function _adpBuildAreaRidgeDirBar() {
-  if (!_adpArea) return '';
-
-  const polygon = _adpGetFieldPolygon();
-  if (!polygon || typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.getPolygonEdges !== 'function') {
-    return `
-      <div class="plt-arearidgedir-bar">
-        <div class="plt-arearidgedir-title">📐 畝方向</div>
-        <span class="plt-arearidgedir-status">圃場データが取得できません</span>
-      </div>`;
-  }
-
-  const dir   = _adpArea.meta?.ridgeBaseDirection;
-  const edges = RidgeGeometry.getPolygonEdges(polygon);
-
-  // edgeIndexが辺数の範囲内にある場合のみ「選択中の辺」として扱う。
-  // 旧形式（edgeIndexなし・p1/p2のみ）は辺リスト上ではハイライトできないが、
-  // p1/p2自体は従来通り計算に使えるため「設定済み（旧形式）」として扱う（後方互換）。
-  const hasValidEdgeIndex = !!dir && Number.isInteger(dir.edgeIndex) && dir.edgeIndex >= 0 && dir.edgeIndex < edges.length;
-  const selectedIdx = hasValidEdgeIndex ? dir.edgeIndex : -1;
-  const hasLegacyDir = !!dir && !hasValidEdgeIndex && dir.p1 && dir.p2;
-
-  const svgHTML = _adpBuildEdgeSelectMiniSVG(polygon, selectedIdx, {
-    svgClass: 'plt-arearidgedir-svg',
-    outlineClass: 'plt-arearidgedir-outline',
-    lineClass: 'plt-arearidgedir-line',
-  });
-
-  let statusHTML;
-  if (hasValidEdgeIndex) {
-    statusHTML = `<span class="plt-arearidgedir-status plt-arearidgedir-status-ok">✓ 辺${selectedIdx + 1}を畝方向に設定中</span>
-       <button type="button" class="plt-arearidgedir-clear" onclick="_adpClearAreaRidgeDir()">クリア</button>`;
-  } else if (hasLegacyDir) {
-    statusHTML = `<span class="plt-arearidgedir-status plt-arearidgedir-status-ok">✓ 設定済み（旧形式・↻で選び直すと更新されます）</span>
-       <button type="button" class="plt-arearidgedir-clear" onclick="_adpClearAreaRidgeDir()">クリア</button>`;
-  } else {
-    statusHTML = `<span class="plt-arearidgedir-status">未設定（畝の自動計算にはエリア共通の畝方向が必要です）</span>`;
-  }
-
-  return `
-    <div class="plt-arearidgedir-bar">
-      <div class="plt-arearidgedir-title">📐 畝方向（圃場の辺を選択）</div>
-      ${svgHTML}
-      <div class="plt-arearidgedir-footer">
-        <button type="button" class="plt-arearidgedir-rotate" onclick="_adpRotateRidgeDirEdge()">↻ 違う辺にする</button>
-        ${statusHTML}
-      </div>
-    </div>`;
-}
-
-/**
  * 指定した圃場の辺を畝方向として確定する。
  * 辺リストの直接タップ、およびローテートボタンの両方から呼ばれる。
  * （旧 _adpStartAreaRidgeDir のコールバック内ロジックを踏襲）
@@ -7645,20 +7582,6 @@ function _adpRotateRidgeDirEdge() {
   _adpSelectRidgeDirEdge(nextIndex);
 }
 
-/** エリア共通の畝方向（辺選択）をクリアし、rowWidth手動入力ベースの状態に戻す。 */
-function _adpClearAreaRidgeDir() {
-  if (!_adpArea) return;
-  if (!_adpArea.meta) _adpArea.meta = {};
-  _adpArea.meta.ridgeBaseDirection = null;
-  _adpSaveRidgeBaseDirection(_adpArea.id || _adpArea.name);
-
-  _adpRecalcAllBands();
-  if (_adpAnalysisPlantingDesign) _adpAnalysisPlantingDesign.ridgeSegments = null;
-
-  _adpRenderPlantingPane();
-  showToast('畝方向をクリアしました');
-}
-
 // ═══════════════════════════════════════════
 //  🌾 圃場マージン設定UI（旧ハウスマージン設定）
 //  （圃場マージン再設計・栽植プレビュー統合仕様書 Step2。
@@ -7669,7 +7592,7 @@ function _adpClearAreaRidgeDir() {
 /**
  * 圃場マージン設定パネルのHTMLを生成する（数値入力のみ）。
  * 表示条件は撤廃済み：全cultivationMode（露地含む）で表示する。
- * 入口辺の選択UI（ミニSVG・ローテート）は Step3 で辺選択統合パネル（_adpBuildEdgeSelectionPanel）へ移設済み。
+ * 入口辺の選択UI（ミニSVG・ローテート）は Step3→Step7-3を経て辺選択トグルバー（_adpBuildEdgeToggleBar）へ移設済み。
  *
  * 【圃場マージン再設計・栽植プレビュー統合仕様書 Step7-4】
  * 数値入力グリッドを、畝設計UI統合仕様書Step5と同じ `.plt-detail-accordion` 構造
@@ -7761,69 +7684,6 @@ function _adpToggleOppositeSameDepth(checked) {
   // （Step7-3で入口辺バーがトグルバーに統合された際に更新漏れしていたものをStep7-4で修正）
   _adpRefreshEdgeToggleBar();
   _adpRefreshAllCardsAfterGeometryChange();
-}
-
-// ═══════════════════════════════════════════
-//  📐 辺選択統合パネル（入口辺・畝方向辺）
-//  （圃場マージン再設計・栽植プレビュー統合仕様書 Step3）
-//  従来別々に表示していた「入口辺選択」（旧・圃場マージン設定パネル内）と
-//  「畝方向辺選択」（_adpBuildAreaRidgeDirBar）を1つの統合パネルにまとめる。
-//  入口辺・畝方向辺は引き続き独立して選択可能（同一辺である保証はしない）。
-//  両セクションとも「辺リストのタップ選択」は持たず、↻ローテートボタンのみに統一。
-// ═══════════════════════════════════════════
-
-/**
- * 入口辺セクション（ミニSVG＋ステータス＋ローテートボタン）のHTMLを生成する。
- * 辺選択統合パネルの上段として表示される。数値入力（外膜マージン等）は含まない
- * （そちらは _adpBuildHouseMarginSection が別パネルとして担当）。
- */
-function _adpBuildEntranceEdgeBar() {
-  const polygon = _adpGetFieldPolygon();
-  if (!polygon || typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.computeHouseGeometry !== 'function') {
-    return `
-      <div class="plt-entranceedge-bar">
-        <div class="plt-entranceedge-title">🚪 入口辺（圃場の辺を選択）</div>
-        <span class="plt-housemargin-status">圃場データが取得できません</span>
-      </div>`;
-  }
-
-  const hm    = _adpHouseMargin || {};
-  const geo   = RidgeGeometry.computeHouseGeometry(polygon, hm);
-  const edges = RidgeGeometry.getPolygonEdges(polygon);
-  const entranceIdx  = geo.entranceEdgeIndex;
-  const entranceEdge = edges.find(e => e.index === entranceIdx);
-
-  const svgHTML = _adpBuildEdgeSelectMiniSVG(polygon, entranceIdx, {
-    svgClass: 'plt-housemargin-svg',
-    outlineClass: 'plt-housemargin-outline',
-    lineClass: 'plt-housemargin-entrance-line',
-  });
-
-  const statusText = entranceEdge
-    ? `入口辺：辺${entranceIdx + 1}（長さ${entranceEdge.lengthM}m）`
-    : '入口辺：未計算（外膜マージン等を入力してください）';
-  const areaText = (geo.availableAreaSqm != null && geo.availableAreaSqm > 0)
-    ? `実効面積：${geo.availableAreaSqm}㎡` : '';
-
-  return `
-    <div class="plt-entranceedge-bar">
-      <div class="plt-entranceedge-title">🚪 入口辺（圃場の辺を選択）</div>
-      ${svgHTML}
-      <div class="plt-entranceedge-footer">
-        <button type="button" class="plt-housemargin-rotate" onclick="_adpRotateEntranceEdge()">↻ 違う辺にする</button>
-        <span class="plt-housemargin-status">${statusText}${areaText ? '／' + areaText : ''}</span>
-      </div>
-    </div>`;
-}
-
-/**
- * 入口辺セクション＋畝方向辺セクションを1つの統合パネルとして返す。
- * 各セクションは独立した色分けバー（入口＝アンバー系／畝方向＝グリーン系）のまま上下に積む構成。
- * ⚠️Step7-3で _adpBuildEdgeToggleBar() に置き換えられ、呼び出し箇所は無くなった（未使用）。
- * Step7-6の一括デッドコード削除まで残置。
- */
-function _adpBuildEdgeSelectionPanel() {
-  return _adpBuildEntranceEdgeBar() + _adpBuildAreaRidgeDirBar();
 }
 
 // ═══════════════════════════════════════════
@@ -7954,66 +7814,6 @@ function _adpRotateActiveEdge() {
 }
 
 /**
- * 【汎用】圃場ポリゴンの簡易ミニSVGを生成し、指定した辺だけ太線でハイライトする。
- * Leaflet実地図には触れない、独立した簡易プレビュー。
- * 入口辺選択（ハウスマージン）・畝方向選択の両方から呼び出せるよう、
- * ハイライト線／外周のCSSクラス名をoptsで差し替え可能にしている。
- * （畝設計UI統合仕様書 セクションA-1：入口辺ロジックの汎用化）
- * @param {Array<{lat:number,lng:number}>} polygon
- * @param {number} selectedIdx - ハイライトする辺のインデックス（-1なら無し）
- * @param {Object} [opts]
- * @param {string} [opts.svgClass='plt-housemargin-svg']
- * @param {string} [opts.outlineClass='plt-housemargin-outline']
- * @param {string} [opts.lineClass='plt-housemargin-entrance-line']
- */
-function _adpBuildEdgeSelectMiniSVG(polygon, selectedIdx, opts = {}) {
-  const {
-    svgClass = 'plt-housemargin-svg',
-    outlineClass = 'plt-housemargin-outline',
-    lineClass = 'plt-housemargin-entrance-line',
-  } = opts;
-
-  if (typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.toLocalCoords !== 'function') return '';
-  const { points } = RidgeGeometry.toLocalCoords(polygon);
-  if (!points.length) return '';
-
-  const xs = points.map(p => p.x);
-  const ys = points.map(p => p.y);
-  const minX = Math.min(...xs), maxX = Math.max(...xs);
-  const minY = Math.min(...ys), maxY = Math.max(...ys);
-  const w = Math.max(maxX - minX, 0.1);
-  const h = Math.max(maxY - minY, 0.1);
-
-  const viewW = 220, viewH = 140, pad = 16;
-  const scale = Math.min((viewW - pad * 2) / w, (viewH - pad * 2) / h);
-  const offX  = (viewW - w * scale) / 2;
-  const offY  = (viewH - h * scale) / 2;
-
-  // ローカル座標は北=+Yのため、SVG（Y下向き）に合わせて上下反転
-  const toSvg = (p) => ({
-    x: offX + (p.x - minX) * scale,
-    y: offY + (maxY - p.y) * scale,
-  });
-
-  const svgPts = points.map(toSvg);
-  const polyPointsStr = svgPts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-
-  const n = points.length;
-  let selectedLineHTML = '';
-  if (Number.isInteger(selectedIdx) && selectedIdx >= 0 && selectedIdx < n) {
-    const a = svgPts[selectedIdx];
-    const b = svgPts[(selectedIdx + 1) % n];
-    selectedLineHTML = `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" class="${lineClass}" />`;
-  }
-
-  return `
-    <svg class="${svgClass}" viewBox="0 0 ${viewW} ${viewH}" xmlns="http://www.w3.org/2000/svg">
-      <polygon points="${polyPointsStr}" class="${outlineClass}" />
-      ${selectedLineHTML}
-    </svg>`;
-}
-
-/**
  * 圃場マージン入力欄の変更ハンドラ（外膜マージン・入口奥行き・反対側奥行き）。
  * 全帯・分析側の畝を再計算し、プレビュー部分＋各カードの結果表示のみを部分更新する
  * （入力欄自体は再描画しないため、typingにより入力フォーカスを失わない）。
@@ -8085,16 +7885,6 @@ function _adpRotateEntranceEdge() {
 
   _adpRefreshEdgeToggleBar();
   _adpRefreshAllCardsAfterGeometryChange();
-}
-
-/**
- * 入口辺バー（ミニSVG＋ステータス＋ローテート）だけを部分更新する。
- * ⚠️Step7-3で辺選択トグルバー（_adpRefreshEdgeToggleBar）に統合され、
- * 呼び出し箇所は無くなった（未使用）。Step7-6の一括デッドコード削除まで残置。
- */
-function _adpRefreshEntranceEdgeBar() {
-  const bar = document.querySelector('#planting-result .plt-entranceedge-bar');
-  if (bar) bar.outerHTML = _adpBuildEntranceEdgeBar();
 }
 
 /**
@@ -8354,22 +8144,6 @@ function _adpRefreshDetailPitchDisplay(seg, cropId) {
 /**
  * 1作物分の栽植設計カードHTMLを生成。
  */
-/**
- * 固定／暫定の凡例（Step5-4→改修：畝設計UI統合仕様書セクションC-2）。
- * 凡例の意味はカードごとに変わらないため、パネル単位で1回だけ表示する
- * （旧実装ではカードごとに埋め込んでおり、複数作物カード表示時に文言が重複していた）。
- *
- * ⚠️Step7-2で _adpBuildRatioLegendRow() に統合され、呼び出し箇所は無くなった（未使用）。
- * デッドコードとしてStep7-6で削除予定のため、それまでは残置する。
- */
-function _adpBuildProvisionalLegendHTML() {
-  return `
-    <div class="plt-provisional-legend">
-      <span class="plt-provisional-legend-item plt-provisional-legend-fixed">🔒 固定＝入力済み</span>
-      <span class="plt-provisional-legend-item plt-provisional-legend-tentative">🟡 暫定＝自動計算中（未入力）</span>
-    </div>`;
-}
-
 /**
  * Step7-2（圃場マージン再設計・栽植プレビュー統合仕様書）：
  * 占有率合計バーと固定／暫定／自動の凡例を1行に統合したHTMLを生成する。
