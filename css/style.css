@@ -11074,6 +11074,53 @@ html.draw-dialog-active .bottom-nav {
   color: #fff;
 }
 
+/* 詳細設定アコーディオン（畝設計UI統合仕様書 Step5）：
+   条数・株間・条間・欠株率・畝上幅畝間（詳細）をまとめて折りたたむ。
+   デフォルト閉・タップ展開／開閉状態はDOM上のみ保持（保存不要）。 */
+.plt-detail-accordion {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.plt-detail-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  background: var(--bg3);
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.plt-detail-toggle:active {
+  background: color-mix(in srgb, var(--bg3) 70%, var(--text3) 30%);
+}
+.plt-detail-toggle-label { text-align: left; }
+.plt-detail-toggle-arrow {
+  font-size: 10px;
+  color: var(--text3);
+  flex-shrink: 0;
+  transition: transform .2s ease;
+}
+.plt-detail-accordion.open .plt-detail-toggle-arrow { transform: rotate(180deg); }
+
+.plt-detail-accordion-body {
+  display: none;
+  padding: 10px 10px 2px;
+  border-top: 1px solid var(--border);
+  background: var(--bg2);
+}
+.plt-detail-accordion.open .plt-detail-accordion-body { display: block; }
+.plt-detail-accordion-body .plt-input-grid { margin-bottom: 0; }
+.plt-detail-accordion-body .plt-detailwidth-row { margin-top: 10px; }
+
 /* 自動計算済み：読み取り専用の畝数・畝長表示 */
 .plt-input-auto {
   background: color-mix(in srgb, var(--green) 6%, transparent);

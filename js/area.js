@@ -8325,28 +8325,38 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
       <div class="plt-inputs">
         <div class="plt-input-grid">
           ${rowsRowLengthHTML}
-          <div class="plt-input-item" data-field="linesPerRow">
-            <label class="plt-label">条数${_adpIsProvisional(design, 'linesPerRow') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
-            <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.linesPerRow ?? ''}" placeholder="例: 2"
-              oninput="_adpUpdatePlantingField('${cropId}','linesPerRow',this.value,'${seg}')"><span class="plt-unit">条</span></div>
-          </div>
-          <div class="plt-input-item" data-field="plantSpacing">
-            <label class="plt-label">株間${_adpIsProvisional(design, 'plantSpacing') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
-            <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.plantSpacing ?? ''}" placeholder="例: 30"
-              oninput="_adpUpdatePlantingField('${cropId}','plantSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
-          </div>
-          <div class="plt-input-item" data-field="rowSpacing">
-            <label class="plt-label">条間${_adpIsProvisional(design, 'rowSpacing') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
-            <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowSpacing ?? ''}" placeholder="例: 40"
-              oninput="_adpUpdatePlantingField('${cropId}','rowSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
-          </div>
-          <div class="plt-input-item plt-input-item-wide">
-            <label class="plt-label">欠株率 <span class="plt-label-opt">任意</span></label>
-            <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" max="100" value="${design.missingRate ?? ''}" placeholder="例: 5"
-              oninput="_adpUpdatePlantingField('${cropId}','missingRate',this.value,'${seg}')"><span class="plt-unit">%</span></div>
+        </div>
+        <div class="plt-detail-accordion" data-detail-key="${seg}:${cropId}">
+          <button type="button" class="plt-detail-toggle" onclick="_adpToggleDetailAccordion(this)" aria-expanded="false">
+            <span class="plt-detail-toggle-label">🔧 詳細設定（条数・株間・条間・欠株率・畝上幅畝間）</span>
+            <span class="plt-detail-toggle-arrow">▼</span>
+          </button>
+          <div class="plt-detail-accordion-body">
+            <div class="plt-input-grid">
+              <div class="plt-input-item" data-field="linesPerRow">
+                <label class="plt-label">条数${_adpIsProvisional(design, 'linesPerRow') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+                <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.linesPerRow ?? ''}" placeholder="例: 2"
+                  oninput="_adpUpdatePlantingField('${cropId}','linesPerRow',this.value,'${seg}')"><span class="plt-unit">条</span></div>
+              </div>
+              <div class="plt-input-item" data-field="plantSpacing">
+                <label class="plt-label">株間${_adpIsProvisional(design, 'plantSpacing') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+                <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.plantSpacing ?? ''}" placeholder="例: 30"
+                  oninput="_adpUpdatePlantingField('${cropId}','plantSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
+              </div>
+              <div class="plt-input-item" data-field="rowSpacing">
+                <label class="plt-label">条間${_adpIsProvisional(design, 'rowSpacing') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+                <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowSpacing ?? ''}" placeholder="例: 40"
+                  oninput="_adpUpdatePlantingField('${cropId}','rowSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
+              </div>
+              <div class="plt-input-item plt-input-item-wide">
+                <label class="plt-label">欠株率 <span class="plt-label-opt">任意</span></label>
+                <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" max="100" value="${design.missingRate ?? ''}" placeholder="例: 5"
+                  oninput="_adpUpdatePlantingField('${cropId}','missingRate',this.value,'${seg}')"><span class="plt-unit">%</span></div>
+              </div>
+            </div>
+            ${detailWidthHTML}
           </div>
         </div>
-        ${detailWidthHTML}
       </div>
       ${warnHTML}
       <div class="plt-result">
@@ -8354,6 +8364,18 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
         ${calcHTML}
       </div>
     </div>`;
+}
+
+/**
+ * 詳細設定アコーディオン（条数・株間・条間・欠株率・畝上幅畝間）の開閉トグル。
+ * 畝設計UI統合仕様書 Step5：開閉状態はDOM上のみで保持し、保存はしない
+ * （カード再描画（rowWidth変更等）が起きると閉じた状態にリセットされる想定）。
+ */
+function _adpToggleDetailAccordion(btn) {
+  const wrap = btn.closest('.plt-detail-accordion');
+  if (!wrap) return;
+  const isOpen = wrap.classList.toggle('open');
+  btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 }
 
 /**
