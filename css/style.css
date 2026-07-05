@@ -7568,6 +7568,31 @@ html.draw-dialog-active .bottom-nav {
 .plt-provisional-legend-tentative {
   color: #b45309;
 }
+.plt-provisional-legend-auto {
+  color: var(--green);
+}
+
+/* Step7-2：占有率合計バー＋固定/暫定/自動の凡例を1行（フレックス折り返し）に統合 */
+.plt-ratiolegend-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 14px;
+  margin-bottom: 4px;
+}
+.plt-ratiolegend-row .plt-ratio-bar-wrap {
+  flex: 1 1 160px;
+  padding: 0;
+  border-bottom: none;
+  margin-bottom: 6px;
+}
+.plt-ratiolegend-row .plt-provisional-legend {
+  flex: 0 0 auto;
+  margin: 0 0 6px;
+}
+.plt-ratiolegend-row-analysis {
+  margin-bottom: 8px;
+}
 
 /* 凡例 */
 .plt-shapesvg-legend {

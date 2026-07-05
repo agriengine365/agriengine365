@@ -7992,7 +7992,7 @@ function _adpRenderPlantingPane() {
     // エリア共通の畝方向が設定済みなら、圃場全体基準で畝セグメントを自動計算
     const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
     _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
-    el.innerHTML = _adpBuildEdgeSelectionPanel() + _adpBuildHouseMarginSection() + _adpBuildProvisionalLegendHTML() + _adpBuildPlantingCard({
+    el.innerHTML = _adpBuildEdgeSelectionPanel() + _adpBuildHouseMarginSection() + _adpBuildRatioLegendRow(true) + _adpBuildPlantingCard({
       cropId,
       cropName,
       ratio: null,
@@ -8008,22 +8008,7 @@ function _adpRenderPlantingPane() {
     return;
   }
 
-  const total = _adpPracticeTotalRatio();
-  const over  = total > 100;
-
-  // 合計占有率バー
-  const ratioBarHTML = _adpPracticecrops.length >= 2 ? `
-    <div class="plt-ratio-bar-wrap">
-      <div class="plt-ratio-bar-labels">
-        <span>占有率合計</span>
-        <span style="color:${over ? 'var(--red)' : 'var(--text2)'}">${total}%</span>
-      </div>
-      <div class="plt-ratio-bar-track">
-        <div class="plt-ratio-bar-fill" style="width:${Math.min(total,100)}%;background:${over ? 'var(--red)' : total===100 ? 'var(--green)' : 'var(--green2)'}"></div>
-      </div>
-    </div>` : '';
-
-  el.innerHTML = _adpBuildEdgeSelectionPanel() + _adpBuildHouseMarginSection() + _adpBuildProvisionalLegendHTML() + ratioBarHTML + _adpBuildUnifiedRidgePreviewSVG() + _adpPracticecrops.map(({ cropId, ratio, plantingDesign }, idx) => {
+  el.innerHTML = _adpBuildEdgeSelectionPanel() + _adpBuildHouseMarginSection() + _adpBuildRatioLegendRow(false) + _adpBuildUnifiedRidgePreviewSVG() + _adpPracticecrops.map(({ cropId, ratio, plantingDesign }, idx) => {
     const design   = plantingDesign || _adpInitPlantingDesign(cropId);
     const cropName = _adpCropIdToName(cropId);
     const isLast   = idx === _adpPracticecrops.length - 1;
@@ -8212,6 +8197,9 @@ function _adpRefreshDetailPitchDisplay(seg, cropId) {
  * 固定／暫定の凡例（Step5-4→改修：畝設計UI統合仕様書セクションC-2）。
  * 凡例の意味はカードごとに変わらないため、パネル単位で1回だけ表示する
  * （旧実装ではカードごとに埋め込んでおり、複数作物カード表示時に文言が重複していた）。
+ *
+ * ⚠️Step7-2で _adpBuildRatioLegendRow() に統合され、呼び出し箇所は無くなった（未使用）。
+ * デッドコードとしてStep7-6で削除予定のため、それまでは残置する。
  */
 function _adpBuildProvisionalLegendHTML() {
   return `
@@ -8219,6 +8207,51 @@ function _adpBuildProvisionalLegendHTML() {
       <span class="plt-provisional-legend-item plt-provisional-legend-fixed">🔒 固定＝入力済み</span>
       <span class="plt-provisional-legend-item plt-provisional-legend-tentative">🟡 暫定＝自動計算中（未入力）</span>
     </div>`;
+}
+
+/**
+ * Step7-2（圃場マージン再設計・栽植プレビュー統合仕様書）：
+ * 占有率合計バーと固定／暫定／自動の凡例を1行に統合したHTMLを生成する。
+ * 旧 _adpBuildProvisionalLegendHTML（凡例のみ）と、_adpRenderPlantingPane内に
+ * 直接書かれていた占有率合計バー生成ロジック（total/over計算含む）を統合し、
+ * 呼び出し側は isAnalysis を渡すだけで良い形に一本化した。
+ *
+ * - 凡例（🔒固定／🟡暫定／🗺️自動）は実務・分析どちらでも常に表示する説明文。
+ *   🗺️自動＝占有率スライダーで最後の作物が残り%を自動的に受け取る既存機能
+ *   （adp-pcc-auto-badgeと同じ意味。バー操作だけで計算が完結することを示す）。
+ * - 占有率合計バーは実務側（isAnalysis=false）かつ作物が2件以上の場合のみ表示する
+ *   （従来のratioBarHTML表示条件をそのまま踏襲）。分析側は凡例のみ表示する。
+ *
+ * @param {boolean} isAnalysis
+ * @returns {string}
+ */
+function _adpBuildRatioLegendRow(isAnalysis) {
+  const legendHTML = `
+    <div class="plt-provisional-legend">
+      <span class="plt-provisional-legend-item plt-provisional-legend-fixed">🔒 固定＝入力済み</span>
+      <span class="plt-provisional-legend-item plt-provisional-legend-tentative">🟡 暫定＝自動計算中（未入力）</span>
+      <span class="plt-provisional-legend-item plt-provisional-legend-auto">🗺️ 自動＝残り%を自動計算</span>
+    </div>`;
+
+  if (isAnalysis) {
+    return `<div class="plt-ratiolegend-row plt-ratiolegend-row-analysis">${legendHTML}</div>`;
+  }
+
+  const total = _adpPracticeTotalRatio();
+  const over  = total > 100;
+
+  const ratioBarHTML = _adpPracticecrops.length >= 2 ? `
+    <div class="plt-ratio-bar-wrap">
+      <div class="plt-ratio-bar-labels">
+        <span>占有率合計</span>
+        <span style="color:${over ? 'var(--red)' : 'var(--text2)'}">${total}%</span>
+      </div>
+      <div class="plt-ratio-bar-track">
+        <div class="plt-ratio-bar-fill" style="width:${Math.min(total,100)}%;background:${over ? 'var(--red)' : total===100 ? 'var(--green)' : 'var(--green2)'}"></div>
+      </div>
+    </div>` : '';
+
+  return `<div class="plt-ratiolegend-row">${ratioBarHTML}${legendHTML}</div>`;
 }
 
 function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false, isAnalysis = false }) {
