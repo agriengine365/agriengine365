@@ -8117,6 +8117,20 @@ function _adpRefreshAllCardsAfterGeometryChange() {
   if (seg === 'practice') _adpRefreshUnifiedPreview();
 }
 
+/**
+ * Step7-5（圃場マージン再設計・栽植プレビュー統合仕様書）：
+ * 占有率legend／辺選択トグル／統合畝プレビュー（実務側のみ）／圃場マージン設定の4部品を
+ * 常に同じ並び順で1つに集約する。空状態（分析側：作物未選択／実務側：作物0件）でも
+ * 4部品すべてを統一して表示する（圃場の形・辺選択トグルの効果を空状態でも確認できるようにする）。
+ * 並び順：占有率legend → 辺選択トグル → （実務側のみ）統合畝プレビュー → 圃場マージン設定
+ */
+function _adpBuildUnifiedFieldPanel(isAnalysis) {
+  return _adpBuildRatioLegendRow(isAnalysis)
+    + _adpBuildEdgeToggleBar()
+    + (isAnalysis ? '' : _adpBuildUnifiedRidgePreviewSVG())
+    + _adpBuildHouseMarginSection();
+}
+
 function _adpRenderPlantingPane() {
   const el = document.getElementById('planting-result');
   if (!el) return;
@@ -8127,7 +8141,7 @@ function _adpRenderPlantingPane() {
   if (_adpCurrentSeg === 'analysis') {
     const cropId = _adpSelectedCropId;
     if (!cropId) {
-      el.innerHTML = _adpBuildEdgeToggleBar() + _adpBuildHouseMarginSection() + '<div class="empty-mini">作物を選択すると栽植設計の試算ができます。</div>';
+      el.innerHTML = _adpBuildUnifiedFieldPanel(true) + '<div class="empty-mini">作物を選択すると栽植設計の試算ができます。</div>';
       return;
     }
     const cropName = _adpCropIdToName(cropId);
@@ -8139,7 +8153,7 @@ function _adpRenderPlantingPane() {
     // エリア共通の畝方向が設定済みなら、圃場全体基準で畝セグメントを自動計算
     const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
     _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
-    el.innerHTML = _adpBuildEdgeToggleBar() + _adpBuildHouseMarginSection() + _adpBuildRatioLegendRow(true) + _adpBuildPlantingCard({
+    el.innerHTML = _adpBuildUnifiedFieldPanel(true) + _adpBuildPlantingCard({
       cropId,
       cropName,
       ratio: null,
@@ -8151,11 +8165,11 @@ function _adpRenderPlantingPane() {
 
   // ── 実務側 ──
   if (!_adpPracticecrops.length) {
-    el.innerHTML = _adpBuildEdgeToggleBar() + _adpBuildHouseMarginSection() + '<div class="empty-mini">作物を追加すると栽植設計が入力できます。</div>';
+    el.innerHTML = _adpBuildUnifiedFieldPanel(false) + '<div class="empty-mini">作物を追加すると栽植設計が入力できます。</div>';
     return;
   }
 
-  el.innerHTML = _adpBuildEdgeToggleBar() + _adpBuildHouseMarginSection() + _adpBuildRatioLegendRow(false) + _adpBuildUnifiedRidgePreviewSVG() + _adpPracticecrops.map(({ cropId, ratio, plantingDesign }, idx) => {
+  el.innerHTML = _adpBuildUnifiedFieldPanel(false) + _adpPracticecrops.map(({ cropId, ratio, plantingDesign }, idx) => {
     const design   = plantingDesign || _adpInitPlantingDesign(cropId);
     const cropName = _adpCropIdToName(cropId);
     const isLast   = idx === _adpPracticecrops.length - 1;
@@ -8986,8 +9000,8 @@ function _adpGetUnifiedPreviewHighlightEdgeIndex(rawPolygon, edgeCount) {
  * 圃場マージン変更・畝方向変更・畝幅寸法編集など、bandやridgeSegmentsが変わり得る操作の後に呼ぶ。
  * - 既に表示中（#unified-ridge-preview が存在）：内容を再生成して outerHTML 差し替え。
  *   再生成結果が空文字（＝計算対象が無くなった）場合は要素そのものを削除する。
- * - 未表示（要素が無い）：再生成結果があれば、最初の .plt-card の直前に挿入する
- *   （占有率バーの直後という表示仕様上、カード一覧の先頭＝占有率バー直後の位置に一致する）。
+ * - 未表示（要素が無い）：再生成結果があれば .plt-edgetoggle-bar の直後に挿入する
+ *   （Step7-5の並び順：占有率legend→辺選択トグル→統合プレビュー→圃場マージン設定 に一致する位置）。
  */
 function _adpRefreshUnifiedPreview() {
   const container = document.getElementById('planting-result');
@@ -9003,8 +9017,8 @@ function _adpRefreshUnifiedPreview() {
   }
   if (!html) return;
 
-  const firstCard = container.querySelector('.plt-card');
-  if (firstCard) firstCard.insertAdjacentHTML('beforebegin', html);
+  const edgeBar = container.querySelector('.plt-edgetoggle-bar');
+  if (edgeBar) edgeBar.insertAdjacentHTML('afterend', html);
 }
 
 /**
