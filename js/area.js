@@ -8599,6 +8599,7 @@ function _adpBuildUnifiedRidgePreviewSVG() {
   const ptsStr = (pts) => pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 
   let svgBody = '';
+  const labelDescriptors = []; // Step6：入口/反対側ラベル＋各作物の畝寸法ラベルをここに集約し、最後に一括で衝突解決する
 
   // --- 1. 圃場外周線 ---
   const fieldSvgPts = fieldLocalPts.map(toSvg);
@@ -8661,12 +8662,12 @@ function _adpBuildUnifiedRidgePreviewSVG() {
 
       if (kind === 'entrance') {
         svgBody += `<polygon points="${ptsStr(holeSvgPts)}" class="plt-shapesvg-entrance" />`;
-        svgBody += `<text x="${labelSvg.x.toFixed(1)}" y="${labelSvg.y.toFixed(1)}" text-anchor="middle" class="plt-shapesvg-entrance-label">🚪入口 奥行き${entranceDepthM}m</text>`;
+        labelDescriptors.push({ x: labelSvg.x, y: labelSvg.y, text: `🚪入口 奥行き${entranceDepthM}m`, cssClass: 'plt-shapesvg-entrance-label' });
         hasEntrance = true;
         entranceDepthLabel = `${entranceDepthM}m`;
       } else if (kind === 'opposite') {
         svgBody += `<polygon points="${ptsStr(holeSvgPts)}" class="plt-shapesvg-opposite" />`;
-        svgBody += `<text x="${labelSvg.x.toFixed(1)}" y="${labelSvg.y.toFixed(1)}" text-anchor="middle" class="plt-shapesvg-opposite-label">🔄反対側 奥行き${oppositeDepthM}m</text>`;
+        labelDescriptors.push({ x: labelSvg.x, y: labelSvg.y, text: `🔄反対側 奥行き${oppositeDepthM}m`, cssClass: 'plt-shapesvg-opposite-label' });
         hasOpposite = true;
         oppositeDepthLabel = `${oppositeDepthM}m`;
       }
@@ -8701,10 +8702,15 @@ function _adpBuildUnifiedRidgePreviewSVG() {
     const dimResult = _adpBuildRidgeDimensionSVG(entry.cropId, entry.plantingDesign || null, toLocal, toSvg, fieldLocalPts);
     if (dimResult.hasDim) {
       svgBody += dimResult.svg;
+      if (Array.isArray(dimResult.labels)) labelDescriptors.push(...dimResult.labels);
       anyDim = true;
       if (dimResult.isSchematic) anyDimSchematic = true;
     }
   });
+
+  // --- 3.5 ラベル一括衝突解決（Step6）---
+  // 入口/反対側ラベル・各作物の畝寸法ラベルをまとめて解決し、帯・線・寸法線本体より後（最前面）に追加する。
+  svgBody += _adpRenderLabelsSVG(_adpResolveLabelCollisions(labelDescriptors));
 
   // --- 4. 凡例 ---
   const legendItems = [...cropLegendItems];
@@ -8812,8 +8818,93 @@ function _adpRefreshUnifiedPreview() {
  *   隣接畝（seg1）が無い「畝1列のみ」の場合の符号補正に使用する（省略時は補正なし＝従来挙動）。
  * @returns {{svg: string, hasDim: boolean, isSchematic: boolean}}
  */
+/**
+ * Step6（畝設計UI統合・ラベル衝突回避）：
+ * テキストの内容から、SVGラベルのバウンディングボックス半幅・半高を簡易推定する。
+ * 絵文字混在テキストの厳密なDOM計測は行わない簡易ヒューリスティック（多少のズレは残る前提）。
+ * - 全角相当（絵文字・漢字・かな等、コードポイントが0x3000以上）：1文字1.0em幅として概算
+ * - それ以外（半角英数字・記号・スペース等）：1文字0.55em幅として概算
+ * @param {string} text
+ * @returns {{halfW: number, halfH: number}}
+ */
+function _adpEstimateLabelBox(text) {
+  const FONT_SIZE = 11; // entrance/opposite=11px, dimline=10.5px の代表値として概算に使用
+  let widthUnits = 0;
+  for (const ch of String(text || '')) {
+    const code = ch.codePointAt(0) || 0;
+    widthUnits += (code < 0x3000) ? 0.55 : 1.0;
+  }
+  const halfW = Math.max((widthUnits * FONT_SIZE) / 2, FONT_SIZE / 2);
+  const halfH = FONT_SIZE * 0.6; // 上下の見た目の余白を含めた概算半高
+  return { halfW, halfH };
+}
+
+/**
+ * Step6：複数のSVGラベル記述子を受け取り、矩形（AABB）が重ならないよう座標を解決する。
+ * y昇順に処理し、既に確定済みの他ラベルと重なっていればy方向下に押し出す。
+ * 3つ以上のラベルが連続して重なる場合も、順次下にずれていく汎用ロジック（無限ループ防止のガード付き）。
+ * @param {Array<{x:number, y:number, text:string, cssClass:string, onclick?:string}>} labels
+ * @returns {Array<{x:number, y:number, text:string, cssClass:string, onclick?:string}>}
+ */
+function _adpResolveLabelCollisions(labels) {
+  if (!Array.isArray(labels) || labels.length === 0) return [];
+
+  const GAP = 2;        // ラベル間に残す最小余白[px]
+  const MAX_ITER = 50;  // 無限ループ防止ガード（1ラベルあたりの最大押し出し回数）
+
+  const boxes = labels.map(l => {
+    const { halfW, halfH } = _adpEstimateLabelBox(l.text);
+    return {
+      ...l, halfW, halfH,
+      top: l.y - halfH, bottom: l.y + halfH,
+      left: l.x - halfW, right: l.x + halfW,
+    };
+  });
+
+  // y昇順（画面上から下）に処理することで、上のラベルを基準に下のラベルを押し出す
+  boxes.sort((a, b) => a.y - b.y);
+
+  const resolved = [];
+  boxes.forEach(box => {
+    let moved = true;
+    let iter = 0;
+    while (moved && iter < MAX_ITER) {
+      moved = false;
+      for (const r of resolved) {
+        const overlapX = box.left < r.right && box.right > r.left;
+        const overlapY = box.top < r.bottom && box.bottom > r.top;
+        if (overlapX && overlapY) {
+          const shift = (r.bottom - box.top) + GAP;
+          box.y += shift;
+          box.top += shift;
+          box.bottom += shift;
+          moved = true;
+        }
+      }
+      iter++;
+    }
+    resolved.push(box);
+  });
+
+  return resolved.map(({ x, y, text, cssClass, onclick }) => ({ x, y, text, cssClass, onclick }));
+}
+
+/**
+ * Step6：衝突解決済みのラベル記述子配列から、まとめて<text>のSVG文字列を生成する。
+ * 帯・線・寸法線本体などより後（＝最前面）に追加することを想定。
+ * @param {Array<{x:number, y:number, text:string, cssClass:string, onclick?:string}>} labels
+ * @returns {string}
+ */
+function _adpRenderLabelsSVG(labels) {
+  if (!Array.isArray(labels) || labels.length === 0) return '';
+  return labels.map(l => {
+    const onclickAttr = l.onclick ? ` ${l.onclick}` : '';
+    return `<text x="${l.x.toFixed(1)}" y="${l.y.toFixed(1)}" text-anchor="middle" class="${l.cssClass}"${onclickAttr}>${l.text}</text>`;
+  }).join('');
+}
+
 function _adpBuildRidgeDimensionSVG(cropId, design, toLocal, toSvg, fieldLocalPts) {
-  const empty = { svg: '', hasDim: false, isSchematic: false };
+  const empty = { svg: '', hasDim: false, isSchematic: false, labels: [] };
   if (!design) return empty;
 
   const segments = design.ridgeSegments;
@@ -8885,6 +8976,7 @@ function _adpBuildRidgeDimensionSVG(cropId, design, toLocal, toSvg, fieldLocalPt
   const midOf = (p, q) => ({ x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 });
 
   let svg = '<g class="plt-dimline-group">';
+  const labels = []; // Step6：<text>は直接埋め込まず記述子として集約し、呼び出し元で一括衝突解決する
 
   if (!isDetail) {
     // 通常モード：ピッチ全体を1本（rowWidth）
@@ -8895,7 +8987,7 @@ function _adpBuildRidgeDimensionSVG(cropId, design, toLocal, toSvg, fieldLocalPt
     svg += tickLine(svgA, 'plt-dimline-tick-single');
     svg += tickLine(svgB, 'plt-dimline-tick-single');
     const mid = midOf(svgA, svgB);
-    svg += `<text x="${mid.x.toFixed(1)}" y="${(mid.y - 6).toFixed(1)}" text-anchor="middle" class="plt-dimline-label" ${onclick}>畝幅 ${curVal}cm</text>`;
+    labels.push({ x: mid.x, y: mid.y - 6, text: `畝幅 ${curVal}cm`, cssClass: 'plt-dimline-label', onclick });
   } else {
     // 詳細入力モード：畝上幅／畝間の按分2区間（実際のポリゴンには内訳が無いため模式図）
     const topCm  = Number(design.ridgeTopWidth);
@@ -8917,13 +9009,13 @@ function _adpBuildRidgeDimensionSVG(cropId, design, toLocal, toSvg, fieldLocalPt
 
     const midTop  = midOf(svgA, svgC);
     const midPath = midOf(svgC, svgB);
-    svg += `<text x="${midTop.x.toFixed(1)}" y="${(midTop.y - 6).toFixed(1)}" text-anchor="middle" class="plt-dimline-label" ${onclickTop}>畝上幅 ${topCm}cm</text>`;
-    svg += `<text x="${midPath.x.toFixed(1)}" y="${(midPath.y - 6).toFixed(1)}" text-anchor="middle" class="plt-dimline-label plt-dimline-label-path" ${onclickPath}>畝間 ${pathCm}cm</text>`;
+    labels.push({ x: midTop.x, y: midTop.y - 6, text: `畝上幅 ${topCm}cm`, cssClass: 'plt-dimline-label', onclick: onclickTop });
+    labels.push({ x: midPath.x, y: midPath.y - 6, text: `畝間 ${pathCm}cm`, cssClass: 'plt-dimline-label plt-dimline-label-path', onclick: onclickPath });
   }
 
   svg += '</g>';
 
-  return { svg, hasDim: true, isSchematic: isDetail || isSingleRow };
+  return { svg, hasDim: true, isSchematic: isDetail || isSingleRow, labels };
 }
 
 /**

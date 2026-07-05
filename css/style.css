@@ -7401,7 +7401,7 @@ html.draw-dialog-active .bottom-nav {
   font-size: 11px;
   fill: var(--amber);
   paint-order: stroke;
-  stroke: var(--bg2);
+  stroke: #fff; /* Step6：作物帯(色付き)に重なっても読めるよう白フチに変更（旧: var(--bg2)） */
   stroke-width: 3px;
 }
 /* 圃場マージン：反対側（Uターンスペース）帯（青） */
@@ -7415,7 +7415,7 @@ html.draw-dialog-active .bottom-nav {
   font-size: 11px;
   fill: var(--blue);
   paint-order: stroke;
-  stroke: var(--bg2);
+  stroke: #fff; /* Step6：作物帯(色付き)に重なっても読めるよう白フチに変更（旧: var(--bg2)） */
   stroke-width: 3px;
 }
 
@@ -7474,7 +7474,7 @@ html.draw-dialog-active .bottom-nav {
   cursor: pointer;
   fill: var(--violet);
   paint-order: stroke;
-  stroke: var(--bg2);
+  stroke: #fff; /* Step6：作物帯(色付き)に重なっても読めるよう白フチに変更（旧: var(--bg2)） */
   stroke-width: 3px;
 }
 .plt-dimline-label-path {
