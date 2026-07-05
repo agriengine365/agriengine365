@@ -7335,27 +7335,47 @@ html.draw-dialog-active .bottom-nav {
   stroke-dasharray: 4 3;
 }
 
-/* 選択中の作物の帯（緑） */
-.plt-shapesvg-ownband {
-  fill: var(--green2);
+/* ═══════════════════════════════════════════
+   Step4：統合作物プレビュー（作物ごとの色分け）
+   旧・単一作物方式（選択中＝緑／他＝薄グレーの帯・畝色分け）を、
+   全作物同時描画・固有色分けに置き換え。_adpPracticecrops の並び順インデックスに応じて
+   plt-cropcolor-0〜7 を巡回割当てし、帯・畝・凡例スワッチで同じ色を使う。
+   ═══════════════════════════════════════════ */
+.plt-cropcolor-0 { --cc: #4ade80; } /* green */
+.plt-cropcolor-1 { --cc: #38bdf8; } /* sky */
+.plt-cropcolor-2 { --cc: #fb923c; } /* orange */
+.plt-cropcolor-3 { --cc: #f472b6; } /* pink */
+.plt-cropcolor-4 { --cc: #2dd4bf; } /* teal */
+.plt-cropcolor-5 { --cc: #facc15; } /* yellow */
+.plt-cropcolor-6 { --cc: #94a3b8; } /* slate */
+.plt-cropcolor-7 { --cc: #a3e635; } /* lime */
+
+/* 作物ごとの帯（塗り分け表示） */
+.plt-shapesvg-cropband {
+  fill: var(--cc);
   fill-opacity: 0.32;
-  stroke: var(--green2);
+  stroke: var(--cc);
   stroke-width: 1.2;
 }
-/* 他作物の帯（薄グレー背景） */
-.plt-shapesvg-otherband {
-  fill: var(--text3);
-  fill-opacity: 0.16;
-  stroke: var(--text3);
-  stroke-width: 0.75;
-  stroke-opacity: 0.5;
-}
-/* 選択中作物の畝（実位置・実長の線）。ホバーで畝番号・長さをtitle表示するためcursorをhelpに */
-.plt-shapesvg-ridge {
-  stroke: var(--green3);
+/* 作物ごとの畝（実位置・実長の線）。ホバーで作物名・畝番号・長さをtitle表示するためcursorをhelpに */
+.plt-shapesvg-cropridge {
+  stroke: var(--cc);
   stroke-width: 2;
   stroke-linecap: round;
   cursor: help;
+}
+/* 凡例：作物ごとの色チップ（plt-shapesvg-swatchと組み合わせて使用） */
+.plt-shapesvg-swatch.plt-cropcolor-0,
+.plt-shapesvg-swatch.plt-cropcolor-1,
+.plt-shapesvg-swatch.plt-cropcolor-2,
+.plt-shapesvg-swatch.plt-cropcolor-3,
+.plt-shapesvg-swatch.plt-cropcolor-4,
+.plt-shapesvg-swatch.plt-cropcolor-5,
+.plt-shapesvg-swatch.plt-cropcolor-6,
+.plt-shapesvg-swatch.plt-cropcolor-7 {
+  background: var(--cc);
+  opacity: 0.6;
+  border: 1px solid var(--cc);
 }
 
 /* ハウス：入口ノッチ（オレンジ系＝amber） */
@@ -7372,13 +7392,13 @@ html.draw-dialog-active .bottom-nav {
   stroke: var(--bg2);
   stroke-width: 3px;
 }
-/* ハウス：設備通路ノッチ（青） */
-.plt-shapesvg-equip {
+/* 圃場マージン：反対側（Uターンスペース）帯（青） */
+.plt-shapesvg-opposite {
   fill: rgba(96, 165, 250, 0.12);
   stroke: var(--blue);
   stroke-width: 2;
 }
-.plt-shapesvg-equip-label {
+.plt-shapesvg-opposite-label {
   font-family: var(--mono);
   font-size: 11px;
   fill: var(--blue);
@@ -7561,21 +7581,6 @@ html.draw-dialog-active .bottom-nav {
   display: inline-block;
   flex-shrink: 0;
 }
-.plt-shapesvg-swatch-own {
-  background: var(--green2);
-  opacity: 0.55;
-  border: 1px solid var(--green2);
-}
-.plt-shapesvg-swatch-other {
-  background: var(--text3);
-  opacity: 0.35;
-}
-.plt-shapesvg-swatch-ridge {
-  background: var(--green3);
-  height: 3px;
-  border-radius: 0;
-  align-self: center;
-}
 .plt-shapesvg-swatch-margin {
   background: transparent;
   border: 1px dashed var(--text3);
@@ -7584,7 +7589,7 @@ html.draw-dialog-active .bottom-nav {
   background: transparent;
   border: 2px solid var(--amber);
 }
-.plt-shapesvg-swatch-equip {
+.plt-shapesvg-swatch-opposite {
   background: transparent;
   border: 2px solid var(--blue);
 }
@@ -8812,31 +8817,6 @@ html.draw-dialog-active .bottom-nav {
   stroke-width: 4;
   stroke-linecap: round;
 }
-.plt-arearidgedir-edgelist {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.plt-arearidgedir-edgeitem {
-  padding: 4px 9px;
-  border-radius: 6px;
-  border: 1.5px solid var(--border);
-  background: transparent;
-  color: var(--text2);
-  font-size: 11px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background .15s, color .15s, border-color .15s;
-}
-.plt-arearidgedir-edgeitem.is-selected {
-  border-color: var(--green2);
-  background: var(--green2);
-  color: #fff;
-  font-weight: 600;
-}
-.plt-arearidgedir-edgeitem:active {
-  background: color-mix(in srgb, var(--green2) 20%, transparent);
-}
 .plt-arearidgedir-footer {
   display: flex;
   align-items: center;
@@ -8880,7 +8860,7 @@ html.draw-dialog-active .bottom-nav {
   color: #fff;
 }
 
-/* 🏠 ハウスマージン設定パネル（ハウス種別のエリアのみ表示） */
+/* 🌾 圃場マージン設定パネル（全cultivationModeで表示。旧ハウスマージン設定） */
 .plt-housemargin-section {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
@@ -8897,18 +8877,27 @@ html.draw-dialog-active .bottom-nav {
   grid-template-columns: 1fr 1fr;
   gap: 8px 10px;
 }
-.plt-housemargin-preview {
-  grid-column: 1 / -1;
-  margin-top: 10px;
+/* 反対側奥行き：「入口と同じ値を使う」チェックボックス行 */
+.plt-checkbox-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text2);
+  cursor: pointer;
+  user-select: none;
+}
+.plt-checkbox-row input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  cursor: pointer;
 }
 .plt-housemargin-svg {
   width: 100%;
   max-width: 260px;
   height: auto;
+  margin: 0 auto;
 }
 .plt-housemargin-outline {
   fill: color-mix(in srgb, var(--green2) 8%, transparent);
@@ -8938,6 +8927,28 @@ html.draw-dialog-active .bottom-nav {
 .plt-housemargin-rotate:active {
   background: var(--text2);
   color: #fff;
+}
+
+/* 🚪 入口辺セクション（辺選択統合パネルの上段。畝方向辺セクションと対になる） */
+/* 【圃場マージン再設計・栽植プレビュー統合仕様書 Step3】旧・圃場マージン設定パネル内プレビューを分離independent化 */
+.plt-entranceedge-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--amber, #f59e0b) 5%, transparent);
+}
+.plt-entranceedge-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+}
+.plt-entranceedge-footer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 /* 占有率合計バー（実務・複数作物時） */

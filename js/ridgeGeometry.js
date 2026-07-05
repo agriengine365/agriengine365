@@ -536,18 +536,17 @@ const RidgeGeometry = (() => {
   }
 
   /**
-   * 指定辺（offsetPoly上のedgeIndex）の中央に、指定幅・奥行きの矩形（穴）を
-   * ローカル座標で生成する。offsetAlongEdgeM を指定すると、辺方向にその分
-   * ずらした位置に配置する（入口の隣に設備通路を並べて配置する用途）。
+   * 指定辺（offsetPoly上のedgeIndex）の全長ぶんを幅とする帯（穴）を、
+   * 指定奥行きでローカル座標に生成する。
+   * 【圃場マージン再設計】従来の _buildEdgeNotch（辺中央に幅×奥行きのノッチを配置）を、
+   * 辺全体をカバーする帯に変更したもの。入口帯・反対側（Uターン）帯の両方で使用する。
    *
    * @param {{x:number,y:number}[]} offsetPoly
    * @param {number} edgeIndex
-   * @param {number} widthM
-   * @param {number} depthM
-   * @param {number} [offsetAlongEdgeM] — 辺方向への中心オフセット（省略時0＝辺の中点）
-   * @returns {{x:number,y:number}[]} 矩形（穴）のローカル座標4点
+   * @param {number} depthM — 辺から内側への奥行き
+   * @returns {{x:number,y:number}[]} 帯（穴）のローカル座標4点
    */
-  function _buildEdgeNotch(offsetPoly, edgeIndex, widthM, depthM, offsetAlongEdgeM) {
+  function _buildEdgeBand(offsetPoly, edgeIndex, depthM) {
     const n = offsetPoly.length;
     const a = offsetPoly[edgeIndex % n];
     const b = offsetPoly[(edgeIndex + 1) % n];
@@ -559,16 +558,8 @@ const RidgeGeometry = (() => {
       ? { x: -edgeDir.y, y: edgeDir.x }
       : { x: edgeDir.y, y: -edgeDir.x };
 
-    const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
-    const shift = offsetAlongEdgeM || 0;
-    const center = {
-      x: mid.x + edgeDir.x * shift,
-      y: mid.y + edgeDir.y * shift,
-    };
-    const half = widthM / 2;
-
-    const c1 = { x: center.x - edgeDir.x * half, y: center.y - edgeDir.y * half };
-    const c2 = { x: center.x + edgeDir.x * half, y: center.y + edgeDir.y * half };
+    const c1 = a;
+    const c2 = b;
     const c3 = { x: c2.x + inward.x * depthM, y: c2.y + inward.y * depthM };
     const c4 = { x: c1.x + inward.x * depthM, y: c1.y + inward.y * depthM };
 
@@ -576,33 +567,44 @@ const RidgeGeometry = (() => {
   }
 
   /**
-   * ハウス圃場の実効ジオメトリ（外膜マージン内側オフセット＋入口・設備通路の穴）を計算する。
+   * 圃場の実効ジオメトリ（外周マージン内側オフセット＋入口帯・反対側（Uターン）帯の穴）を計算する。
+   * 全栽培タイプ（露地・ハウス問わず）共通で使用する。
    * 入口辺は省略時、元ポリゴンの最短辺を自動選択する。
+   * 反対側（Uターンスペース）帯の辺は、矩形圃場を前提に入口辺の対辺を自動特定する
+   * （辺総数の半分だけインデックスをずらす簡易近似。変形圃場では厳密な対辺にならない場合がある）。
+   *
+   * 【圃場マージン再設計】
+   * - entranceWidthM は廃止。入口帯は「辺全体を幅とする帯」になった（_buildEdgeBand）。
+   * - equipWidthM（設備通路幅）は廃止。入口帯に統合された。
+   * - oppositeDepthM（反対側帯の奥行き）を新設。未指定時は entranceDepthM を共通値として使う。
    *
    * @param {Array<{lat:number,lng:number}>} polygonLatLngs — 圃場ポリゴン全体
    * @param {Object} opts
-   * @param {number} opts.frameMarginM — 外膜マージン（外周一律内側オフセット）[m]
-   * @param {number} [opts.entranceWidthM] — 入口幅 [m]（未指定/0なら入口の穴は作らない）
-   * @param {number} [opts.entranceDepthM] — 入口奥行き（進入通路長）[m]
-   * @param {number} [opts.equipWidthM] — 設備通路幅 [m]（未指定/0なら設備通路の穴は作らない）
+   * @param {number} opts.frameMarginM — 外周マージン（外周一律内側オフセット）[m]
+   * @param {number} [opts.entranceDepthM] — 入口帯の奥行き [m]（未指定/0なら入口帯の穴は作らない）
+   * @param {number} [opts.oppositeDepthM] — 反対側（Uターン）帯の奥行き [m]（未指定時は entranceDepthM を使用。明示的に0にすると反対側帯なし）
    * @param {number} [opts.entranceEdgeIndex] — 入口辺のインデックス（省略時は最短辺を自動選択）
    *
    * @returns {{
    *   outerPolygon: Array<{lat:number,lng:number}>,
    *   holes: Array<Array<{lat:number,lng:number}>>,
    *   entranceEdgeIndex: number,
+   *   oppositeEdgeIndex: number,
    *   availableAreaSqm: number
    * }}
    */
   function computeHouseGeometry(polygonLatLngs, opts) {
-    const empty = { outerPolygon: [], holes: [], entranceEdgeIndex: -1, availableAreaSqm: 0 };
+    const empty = { outerPolygon: [], holes: [], entranceEdgeIndex: -1, oppositeEdgeIndex: -1, availableAreaSqm: 0 };
     if (!polygonLatLngs || polygonLatLngs.length < 3) return empty;
 
     const o = opts || {};
     const frameMarginM   = Number(o.frameMarginM)   || 0;
-    const entranceWidthM = Number(o.entranceWidthM) || 0;
     const entranceDepthM = Number(o.entranceDepthM) || 0;
-    const equipWidthM    = Number(o.equipWidthM)    || 0;
+    // oppositeDepthM未指定（null/undefined/空文字）ならentranceDepthMを共通値として使う。
+    // 明示的に0が指定された場合は「反対側帯なし」の意図として尊重する。
+    const oppositeDepthM = (o.oppositeDepthM === undefined || o.oppositeDepthM === null || o.oppositeDepthM === '')
+      ? entranceDepthM
+      : (Number(o.oppositeDepthM) || 0);
 
     const origin = _centroid(polygonLatLngs);
     const poly   = polygonLatLngs.map(p => _toLocal(p, origin));
@@ -619,25 +621,26 @@ const RidgeGeometry = (() => {
       }
     }
 
-    // 2. 外膜マージンぶん内側オフセット
+    // 2. 反対側（Uターン）辺の決定：矩形圃場前提で対辺を自動特定
+    let oppositeEdgeIndex = -1;
+    if (n >= 3) {
+      oppositeEdgeIndex = (entranceEdgeIndex + Math.round(n / 2)) % n;
+      if (oppositeEdgeIndex === entranceEdgeIndex) oppositeEdgeIndex = -1; // 三角形等、対辺が定義できない場合
+    }
+
+    // 3. 外周マージンぶん内側オフセット
     const offsetPoly = frameMarginM > 0 ? _offsetPolygonInward(poly, frameMarginM) : poly;
 
-    // 3. 入口・設備通路の穴を生成（辺方向に並べて隣接配置）
+    // 4. 入口帯・反対側帯の穴を生成（それぞれ辺全体を幅とする帯）
     const holesLocal = [];
-    let entranceHoleLocal = null;
-    if (entranceWidthM > 0 && entranceDepthM > 0) {
-      entranceHoleLocal = _buildEdgeNotch(offsetPoly, entranceEdgeIndex, entranceWidthM, entranceDepthM, 0);
-      holesLocal.push(entranceHoleLocal);
+    if (entranceDepthM > 0) {
+      holesLocal.push(_buildEdgeBand(offsetPoly, entranceEdgeIndex, entranceDepthM));
     }
-    if (equipWidthM > 0) {
-      const equipDepthM = entranceDepthM > 0 ? entranceDepthM : Math.max(equipWidthM, 1);
-      // 入口の隣（辺方向にentranceWidthM/2 + equipWidthM/2ぶんずらす）に配置
-      const shift = (entranceWidthM > 0 ? entranceWidthM / 2 : 0) + equipWidthM / 2;
-      const equipHoleLocal = _buildEdgeNotch(offsetPoly, entranceEdgeIndex, equipWidthM, equipDepthM, shift);
-      holesLocal.push(equipHoleLocal);
+    if (oppositeDepthM > 0 && oppositeEdgeIndex >= 0) {
+      holesLocal.push(_buildEdgeBand(offsetPoly, oppositeEdgeIndex, oppositeDepthM));
     }
 
-    // 4. 面積集計（外周オフセットポリゴン − 各穴）
+    // 5. 面積集計（外周オフセットポリゴン − 各穴）
     let availableArea = _polygonArea(offsetPoly);
     holesLocal.forEach(hole => { availableArea -= _polygonArea(hole); });
 
@@ -645,6 +648,7 @@ const RidgeGeometry = (() => {
       outerPolygon: offsetPoly.map(p => _fromLocal(p, origin)),
       holes: holesLocal.map(hole => hole.map(p => _fromLocal(p, origin))),
       entranceEdgeIndex,
+      oppositeEdgeIndex,
       availableAreaSqm: Math.round(Math.max(availableArea, 0) * 10) / 10,
     };
   }
