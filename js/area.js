@@ -641,8 +641,8 @@ async function openAreaDetailPanel(area) {
 
   // 実務側の占有率帯・畝セグメントを最新状態に同期（エリア再オープン時に前回の
   // 保存データと畝方向・畝間設定にズレがあっても、開いた時点で必ず正しく揃える）
-  if (typeof _adpRecalcAllBands === 'function') {
-    _adpRecalcAllBands();
+  if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+    _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
   }
 
   _adpEnsureView();
@@ -5140,7 +5140,7 @@ function _adpOpenCropSelectSheet(seg) {
           ...c,
           ratio: baseRatio + (i === 0 ? rem : 0),
         }));
-        _adpPracticecrops.push({ cropId, ratio: baseRatio, plantingDesign: _adpInitPlantingDesign(cropId), variety: '', sowDate: '', transplantDate: '', harvestStart: '', harvestEnd: '', fertRecords: [], pesticideRecords: [], harvestRecords: [] });
+        _adpPracticecrops.push({ cropId, ratio: baseRatio, plantingDesign: PlantingLogic.initDesign(cropId), variety: '', sowDate: '', transplantDate: '', harvestStart: '', harvestEnd: '', fertRecords: [], pesticideRecords: [], harvestRecords: [] });
         _adpSavePracticecrops(areaId);
         _adpRenderPracticecrops();
         _adpRefreshPracticeTabs();
@@ -5231,7 +5231,9 @@ function _adpPracticeAreaSqm(ratio) {
 
 function _adpRefreshPracticeTabs() {
   // 占有率変更・作物追加削除のたびに帯状分割（実面積比例）・畝セグメントを再計算する
-  if (typeof _adpRecalcAllBands === 'function') _adpRecalcAllBands();
+  if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+    _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
+  }
   if (typeof _renderFertResultMulti === 'function')  _renderFertResultMulti(_adpPracticecrops);
   if (typeof _renderRiskResultMulti === 'function')  _renderRiskResultMulti(_adpPracticecrops);
   if (typeof _renderCalendarMulti   === 'function')  _renderCalendarMulti(_adpPracticecrops, 'calendar-result');
@@ -7176,235 +7178,12 @@ function _adpDebounce(key, fn, delay = 300) {
   _adpDebounceTimers.set(key, timer);
 }
 
-/**
- * cropDB の plantingStandard から初期値を生成する。
- * cropDB に値が無い場合は全フィールドを null（手動入力）。
- * cropDBから値を埋めたフィールドは、生成時点で provisionalFields に記録し
- * 「暫定」バッジ対象にする（ユーザーが手動編集すると _adpUnmarkProvisional で解除される）。
- */
-function _adpInitPlantingDesign(cropId) {
-  const crop = _adpGetCropById(cropId);
-  const std  = crop?.plantingStandard;
-
-  const rowWidth     = std?.rowWidth     ?? null;
-  const linesPerRow  = std?.linesPerRow  ?? null;
-  const plantSpacing = std?.plantSpacing ?? null;
-  const rowSpacing   = std?.rowSpacing   ?? null;
-
-  const provisionalFields = [];
-  if (rowWidth     != null) provisionalFields.push('rowWidth');
-  if (linesPerRow  != null) provisionalFields.push('linesPerRow');
-  if (plantSpacing != null) provisionalFields.push('plantSpacing');
-  if (rowSpacing   != null) provisionalFields.push('rowSpacing');
-
-  return {
-    rows:           null,
-    rowLength:      null,
-    rowWidth,
-    linesPerRow,
-    plantSpacing,
-    rowSpacing,
-    missingRate:    null,
-    // NOTE: ridgeDirection は旧・作物ごと畝方向の名残。エリア共通バー（_adpArea.meta.ridgeBaseDirection）
-    // への一本化が完了したため、以後どこからも書き込まれない（後方互換のためフィールドのみ残置）。
-    ridgeDirection: null,   // { p1:{lat,lng}, p2:{lat,lng} } | null（未使用・レガシー）
-    ridgeSegments:  null,   // [{ length, p1:{lat,lng}, p2:{lat,lng} }] | null（地図自動計算結果キャッシュ）
-    // ── 畝の実効幅／畝間分離（仕様書セクション2）──
-    ridgeTopWidth:  null,   // 畝の実効幅（作付け部分）[cm]（詳細入力モード用）
-    pathWidth:      null,   // 畝間（通路幅）[cm]（詳細入力モード用）
-    // ── 作物比率連動・帯状分割（仕様書セクション1）── _adpRecalcAllBands が書き込むキャッシュ
-    _bandPolygon:   null,   // このデザインが担当する帯ポリゴン [{lat,lng},...] | null（未割当 or 未計算）
-    _bandAreaSqm:   null,   // 帯の実面積 [m²] | null
-    provisionalFields,      // 暫定自動セットされたフィールド名（例: ['rowWidth','rowSpacing']）
-  };
-}
-
-/**
- * design の指定フィールドが「暫定自動入力」中かどうかを判定。
- * 旧データ（provisionalFieldsが無い）でも安全に動くようフォールバックする。
- */
-function _adpIsProvisional(design, field) {
-  return Array.isArray(design?.provisionalFields) && design.provisionalFields.includes(field);
-}
-
-/**
- * 畝方向確定時、未入力の rowWidth / linesPerRow / plantSpacing / rowSpacing を
- * cropDBのplantingStandardから暫定値として自動セットする。
- * Step5でセット済み（_adpInitPlantingDesign）の分は既にnullでないため通常は無害にスキップされる。
- * 旧セッションで作成済みのデータ（生成時点マーク導入前）に対する救済フォールバックとして残す。
- * 実際に埋めたフィールドは design.provisionalFields に記録し、
- * カードUIで「暫定」バッジ表示に使う（ユーザーが手動編集すると解除される）。
- */
-function _adpApplyProvisionalDefaults(design, cropId) {
-  if (!design) return;
-  if (!Array.isArray(design.provisionalFields)) design.provisionalFields = [];
-
-  const crop = _adpGetCropById(cropId);
-  const std  = crop?.plantingStandard;
-  if (std) {
-    ['rowWidth', 'linesPerRow', 'plantSpacing', 'rowSpacing'].forEach(field => {
-      if (design[field] == null && std[field] != null) {
-        design[field] = std[field];
-        if (!design.provisionalFields.includes(field)) design.provisionalFields.push(field);
-      }
-    });
-  }
-
-  // 詳細入力モード（畝上幅・畝間）の共通暫定プリセット。
-  // 一旦汎用値（畝上幅60cm・畝間30cm）で共通プリセットし、ユーザーに再設定を促す。
-  // 既存入力を上書きしないよう、両方未入力の場合のみセットする。
-  if (design.ridgeTopWidth == null && design.pathWidth == null) {
-    design.ridgeTopWidth = 60;
-    design.pathWidth = 30;
-    ['ridgeTopWidth', 'pathWidth'].forEach(field => {
-      if (!design.provisionalFields.includes(field)) design.provisionalFields.push(field);
-    });
-  }
-}
-
 // ═══════════════════════════════════════════
-//  畝の実効幅／畝間分離・作物比率連動 帯状分割
-//  （仕様書：畝設計拡張仕様書 セクション1・2）
+//  栽植設計の計算・ジオメトリ取得ロジックは js/adpPlantingLogic.js（PlantingLogic）に分離済み。
+//  initDesign / isProvisional / applyProvisionalDefaults / effectivePitchCm / isDetailWidthMode /
+//  getFieldPolygon / getEffectiveFieldGeometry / recalcAllBands / recalcAnalysisRidgeSegments /
+//  calcPlanting / areaWarn は全て PlantingLogic.xxx(...) を直接呼ぶこと。
 // ═══════════════════════════════════════════
-
-/**
- * 実効ピッチ（畝の中心間距離＝RidgeGeometry.calcRidgesに渡すrowWidth）[cm] を返す。
- * ridgeTopWidth（畝の実効幅）・pathWidth（畝間）が両方入力されていれば
- * その合計を優先し自動計算する（詳細入力モード）。
- * どちらか一方でも未入力の場合は、従来通り rowWidth（直接入力）にフォールバックする。
- * @param {object} design - plantingDesign
- * @returns {number|null} ピッチ [cm]（不正・未入力時は null）
- */
-function _adpEffectivePitchCm(design) {
-  if (!design) return null;
-  const top  = design.ridgeTopWidth;
-  const path = design.pathWidth;
-  if (top != null && path != null && Number(top) > 0 && Number(path) >= 0) {
-    return Number(top) + Number(path);
-  }
-  return design.rowWidth != null && Number(design.rowWidth) > 0 ? Number(design.rowWidth) : null;
-}
-
-/**
- * design が「詳細入力モード」（ridgeTopWidth/pathWidthで管理）かどうかを判定。
- * カードUIの表示切替（詳細セクションの初期展開状態）に使う。
- */
-function _adpIsDetailWidthMode(design) {
-  return !!(design && design.ridgeTopWidth != null && design.pathWidth != null);
-}
-
-/**
- * 現在のエリアの圃場ポリゴン（緯度経度配列）を取得する共通ヘルパー。
- * geojsonのパース処理を一箇所に集約する（旧: _adpRecalcRidgeSegmentsForRowWidth 等に
- * 同一ロジックが重複していたものを共通化。既存の重複実装はそのまま残し、
- * 新規コードはこちらを使う）。
- * @returns {Array<{lat:number,lng:number}>|null} 頂点3点未満・パース失敗時は null
- */
-function _adpGetFieldPolygon() {
-  try {
-    const gj = typeof _adpArea?.geojson === 'string' ? JSON.parse(_adpArea.geojson) : _adpArea?.geojson;
-    const coords = gj?.geometry?.coordinates?.[0] || gj?.coordinates?.[0] || [];
-    const latLngs = coords.map(([lng, lat]) => ({ lat, lng }));
-    return latLngs.length >= 3 ? latLngs : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-/**
- * 畝計算・苗数計算で実際に使うべき「実効ポリゴン」を返す共通ヘルパー。
- * ハウス（greenhouse/heatedGreenhouse）かつ _adpHouseMargin が設定済みの場合のみ、
- * RidgeGeometry.computeHouseGeometry() で外膜マージンの内側オフセット＋
- * 入口・設備通路の穴を反映した形状を返す。それ以外（露地・未設定）は
- * 素の圃場ポリゴンをそのまま返す（holesは常に空配列）。
- *
- * @returns {{polygon: Array<{lat:number,lng:number}>, holes: Array<Array<{lat:number,lng:number}>>,
- *            entranceEdgeIndex: number, availableAreaSqm: number|null} | null}
- */
-function _adpGetEffectiveFieldGeometry() {
-  const raw = _adpGetFieldPolygon();
-  if (!raw) return null;
-
-  const isHouse = _adpArea?.cultivationMode === 'greenhouse' || _adpArea?.cultivationMode === 'heatedGreenhouse';
-  if (!isHouse || !_adpHouseMargin || typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.computeHouseGeometry !== 'function') {
-    return { polygon: raw, holes: [], entranceEdgeIndex: -1, availableAreaSqm: null };
-  }
-
-  const geo = RidgeGeometry.computeHouseGeometry(raw, _adpHouseMargin);
-  if (!Array.isArray(geo.outerPolygon) || geo.outerPolygon.length < 3) {
-    return { polygon: raw, holes: [], entranceEdgeIndex: -1, availableAreaSqm: null };
-  }
-  return {
-    polygon:           geo.outerPolygon,
-    holes:              geo.holes || [],
-    entranceEdgeIndex:  geo.entranceEdgeIndex,
-    availableAreaSqm:   geo.availableAreaSqm,
-  };
-}
-
-/**
- * 実務側の全作物について、占有率（ratio）に応じた実面積比例の帯状分割を再計算し、
- * 各作物の plantingDesign に帯ポリゴン（_bandPolygon）・帯実面積（_bandAreaSqm）・
- * 帯内の畝セグメント（ridgeSegments）をキャッシュする中心的な関数。
- *
- * 呼び出しタイミング：エリア再オープン時／占有率変更時／作物追加・削除時／
- * 畝間設定（ridgeTopWidth・pathWidth・rowWidth）変更時。
- *
- * 前提が揃っていない場合（エリア共通の畝方向が未設定、圃場ポリゴン未取得、
- * 実務側に作物が無い等）は何もしない（既存のUI側メッセージ表示に委ねる）。
- * 占有率合計が100%未満の場合、割り当てられなかった残余分はそのまま
- * 「未割当」として扱われる（RidgeGeometry.splitPolygonByRatio の仕様どおり）。
- */
-function _adpRecalcAllBands() {
-  if (!_adpPracticecrops || !_adpPracticecrops.length) return;
-  const dir = _adpArea?.meta?.ridgeBaseDirection;
-  if (!dir?.p1 || !dir?.p2) return;
-  if (typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.splitPolygonByRatio !== 'function') return;
-
-  const geometry = _adpGetEffectiveFieldGeometry();
-  if (!geometry) return;
-  const { polygon, holes } = geometry;
-
-  const ratios = _adpPracticecrops.map(c => Number(c.ratio) || 0);
-  let bands;
-  try {
-    bands = RidgeGeometry.splitPolygonByRatio(polygon, dir.p1, dir.p2, ratios);
-  } catch (e) {
-    return;
-  }
-  if (!Array.isArray(bands) || bands.length !== _adpPracticecrops.length) return;
-
-  _adpPracticecrops.forEach((entry, idx) => {
-    if (!entry.plantingDesign) entry.plantingDesign = _adpInitPlantingDesign(entry.cropId);
-    const design = entry.plantingDesign;
-    const band   = bands[idx];
-
-    if (!band || !Array.isArray(band.polygon) || band.polygon.length < 3 || !(band.areaSqm > 0)) {
-      // 占有率0% や分割失敗時は「未割当」扱い（畝計算は行わない）
-      design._bandPolygon = null;
-      design._bandAreaSqm = 0;
-      design.ridgeSegments = null;
-      return;
-    }
-
-    design._bandPolygon = band.polygon;
-    design._bandAreaSqm = band.areaSqm;
-
-    const pitchCm = _adpEffectivePitchCm(design);
-    if (pitchCm != null && pitchCm > 0) {
-      const gResult = RidgeGeometry.calcRidges(band.polygon, dir.p1, dir.p2, pitchCm / 100, holes);
-      design.ridgeSegments = gResult.rows > 0 ? gResult.ridgeSegments : null;
-    } else {
-      design.ridgeSegments = null;
-    }
-
-    const calcForSave = _adpCalcPlanting(design);
-    design.purchase = calcForSave?.purchase ?? null;
-  });
-
-  const areaId = _adpArea?.id || _adpArea?.name || '';
-  if (typeof _adpSavePracticecrops === 'function') _adpSavePracticecrops(areaId);
-}
 
 /**
  * エリア共通の畝方向（meta.ridgeBaseDirection）を localStorage / Firestore に永続化する。
@@ -7433,25 +7212,6 @@ function _adpSaveRidgeBaseDirection(areaId) {
 }
 
 /**
- * 分析側（単一作物・圃場全体基準）の畝セグメントを、エリア共通の畝方向で再計算する。
- * 実務側の帯（バンド）分割とは異なり、圃場ポリゴン全体を対象にする。
- * @param {object} design - _adpAnalysisPlantingDesign
- * @param {number|null} pitchCm - _adpEffectivePitchCm(design) の結果
- */
-function _adpRecalcAnalysisRidgeSegments(design, pitchCm) {
-  if (!design) return;
-  const dir = _adpArea?.meta?.ridgeBaseDirection;
-  if (!dir?.p1 || !dir?.p2 || typeof RidgeGeometry === 'undefined' || !(pitchCm > 0)) {
-    design.ridgeSegments = null;
-    return;
-  }
-  const geometry = _adpGetEffectiveFieldGeometry();
-  if (!geometry) { design.ridgeSegments = null; return; }
-  const gResult = RidgeGeometry.calcRidges(geometry.polygon, dir.p1, dir.p2, pitchCm / 100, geometry.holes);
-  design.ridgeSegments = gResult.rows > 0 ? gResult.ridgeSegments : null;
-}
-
-/**
  * ハウスマージン設定を localStorage に保存する。
  * @param {string} areaId
  */
@@ -7465,70 +7225,6 @@ function _adpSaveHouseMargin(areaId) {
 }
 
 /**
- * 栽植設計の計算ロジック。
- * ridgeSegments が存在する場合は積算方式（地図自動計算）、
- * 無い場合は手動入力（rows×rowLength）にフォールバック。
- * 返り値: { seedlings, purchase, rowAreaSqm, density, totalLine, autoCalc } or null
- */
-function _adpCalcPlanting(d) {
-  const linesPerRow = Number(d.linesPerRow);
-  const plantSpacing= Number(d.plantSpacing);
-  const missingRate = (d.missingRate !== null && d.missingRate !== '') ? Number(d.missingRate) : null;
-
-  // ── 積算方式（ridgeSegments あり）──
-  if (Array.isArray(d.ridgeSegments) && d.ridgeSegments.length > 0) {
-    // ①バグ修正：畝面積の算出には、実際にridgeSegments生成に使われた実効ピッチ
-    // （詳細入力モード時は畝上幅＋畝間、それ以外はrowWidth）を使う。
-    // 生のrowWidthをそのまま使うと詳細入力モード時に乖離・null化の原因になる。
-    const pitchCm = _adpEffectivePitchCm(d);
-    if (!pitchCm || !linesPerRow || !plantSpacing) return null;
-    if (typeof RidgeGeometry === 'undefined') return null;
-
-    const seedlings  = RidgeGeometry.totalPlants(d.ridgeSegments, linesPerRow, plantSpacing);
-    const purchase   = missingRate !== null
-      ? Math.ceil(seedlings * (1 + missingRate / 100))
-      : Math.ceil(seedlings);
-    const totalLen   = d.ridgeSegments.reduce((s, seg) => s + seg.length, 0);
-    const rowAreaSqm = Math.round(totalLen * (pitchCm / 100) * 10) / 10;
-    const density    = rowAreaSqm > 0 ? Math.round(seedlings / rowAreaSqm * 10) / 10 : null;
-    const totalLine  = Math.round(totalLen * linesPerRow * 10) / 10;
-    const rows       = d.ridgeSegments.length;
-    const rowLength  = rows > 0 ? Math.round((totalLen / rows) * 10) / 10 : 0;
-
-    return { seedlings, purchase, rowAreaSqm, density, totalLine, rows, rowLength, autoCalc: true };
-  }
-
-  // ── 手動入力方式（後方互換・詳細入力モード非対応のためrowWidthを直接使用）──
-  const rows      = Number(d.rows);
-  const rowLength = Number(d.rowLength);
-  const rowWidth  = Number(d.rowWidth);
-
-  if (!rows || !rowLength || !rowWidth || !linesPerRow || !plantSpacing) return null;
-
-  const seedlings    = Math.floor((rowLength * 100 / plantSpacing) * rows * linesPerRow);
-  const purchase     = missingRate !== null
-    ? Math.ceil(seedlings * (1 + missingRate / 100))
-    : Math.ceil(seedlings);
-  const rowAreaSqm   = Math.round(rows * rowLength * rowWidth / 100 * 10) / 10;
-  const density      = rowAreaSqm > 0 ? Math.round(seedlings / rowAreaSqm * 10) / 10 : null;
-  const totalLine    = Math.round(rowLength * rows * linesPerRow * 10) / 10;
-
-  return { seedlings, purchase, rowAreaSqm, density, totalLine, rows, rowLength, autoCalc: false };
-}
-
-/**
- * 占有面積と畝面積の不一致を判定する（5%超で警告）。
- * ratio が null の場合（分析側）は警告しない。
- */
-function _adpPlantingAreaWarn(ratio, rowAreaSqm) {
-  if (ratio === null || rowAreaSqm === null) return null;
-  const occupiedSqm = _adpPracticeAreaSqm(ratio);
-  if (!occupiedSqm) return null;
-  const diff = Math.abs(occupiedSqm - rowAreaSqm) / occupiedSqm;
-  return diff > 0.05 ? { occupiedSqm, rowAreaSqm, diffPct: Math.round(diff * 100) } : null;
-}
-
-/**
  * 指定した圃場の辺を畝方向として確定する。
  * 辺リストの直接タップ、およびローテートボタンの両方から呼ばれる。
  * （旧 _adpStartAreaRidgeDir のコールバック内ロジックを踏襲）
@@ -7536,7 +7232,7 @@ function _adpPlantingAreaWarn(ratio, rowAreaSqm) {
  */
 function _adpSelectRidgeDirEdge(edgeIndex) {
   if (!_adpArea) return;
-  const polygon = _adpGetFieldPolygon();
+  const polygon = PlantingLogic.getFieldPolygon(_adpArea);
   if (!polygon || !Number.isInteger(edgeIndex) || edgeIndex < 0 || edgeIndex >= polygon.length) return;
 
   const p1 = polygon[edgeIndex];
@@ -7550,15 +7246,17 @@ function _adpSelectRidgeDirEdge(edgeIndex) {
   // （既存値は上書きしない。設定済みフィールドは対象外なので毎回発火しても無害）
   if (Array.isArray(_adpPracticecrops)) {
     _adpPracticecrops.forEach(entry => {
-      if (!entry.plantingDesign) entry.plantingDesign = _adpInitPlantingDesign(entry.cropId);
-      _adpApplyProvisionalDefaults(entry.plantingDesign, entry.cropId);
+      if (!entry.plantingDesign) entry.plantingDesign = PlantingLogic.initDesign(entry.cropId);
+      PlantingLogic.applyProvisionalDefaults(entry.plantingDesign, entry.cropId);
     });
   }
 
-  _adpRecalcAllBands();
+  if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+    _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
+  }
   if (_adpAnalysisPlantingDesign) {
-    const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
-    _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
+    const pitchCm = PlantingLogic.effectivePitchCm(_adpAnalysisPlantingDesign);
+    PlantingLogic.recalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm, _adpArea, _adpHouseMargin);
   }
 
   _adpRenderPlantingPane();
@@ -7571,7 +7269,7 @@ function _adpSelectRidgeDirEdge(edgeIndex) {
  */
 function _adpRotateRidgeDirEdge() {
   if (!_adpArea) return;
-  const polygon = _adpGetFieldPolygon();
+  const polygon = PlantingLogic.getFieldPolygon(_adpArea);
   if (!polygon || typeof RidgeGeometry === 'undefined') return;
   const edges = RidgeGeometry.getPolygonEdges(polygon);
   if (!edges.length) return;
@@ -7671,10 +7369,12 @@ function _adpToggleOppositeSameDepth(checked) {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   _adpSaveHouseMargin(areaId);
 
-  _adpRecalcAllBands();
+  if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+    _adpSavePracticecrops(areaId);
+  }
   if (_adpAnalysisPlantingDesign) {
-    const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
-    _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
+    const pitchCm = PlantingLogic.effectivePitchCm(_adpAnalysisPlantingDesign);
+    PlantingLogic.recalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm, _adpArea, _adpHouseMargin);
   }
 
   const block = document.querySelector('#planting-result [data-opposite-depth-block]');
@@ -7749,7 +7449,7 @@ function _adpBuildRidgeDirStatusText(polygon) {
  * 統合プレビューのハイライト対象と共用）で管理する。
  */
 function _adpBuildEdgeToggleBar() {
-  const polygon = _adpGetFieldPolygon();
+  const polygon = PlantingLogic.getFieldPolygon(_adpArea);
   if (!polygon || typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.getPolygonEdges !== 'function') {
     return `
       <div class="plt-edgetoggle-bar">
@@ -7831,10 +7531,12 @@ function _adpUpdateHouseMarginField(field, value) {
   _adpDebounce('housemargin', () => {
     _adpSaveHouseMargin(areaId);
 
-    _adpRecalcAllBands();
+    if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+      _adpSavePracticecrops(areaId);
+    }
     if (_adpAnalysisPlantingDesign) {
-      const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
-      _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
+      const pitchCm = PlantingLogic.effectivePitchCm(_adpAnalysisPlantingDesign);
+      PlantingLogic.recalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm, _adpArea, _adpHouseMargin);
     }
 
     // 数値変更は辺選択トグルバー側の実効面積表示にも影響するため、そちらを更新する
@@ -7861,7 +7563,7 @@ function _adpNextEdgeIndex(baseIndex, edgeCount) {
 /** 入口辺を次の辺へローテーションする（「違う辺にする」ボタン）。 */
 function _adpRotateEntranceEdge() {
   if (!_adpArea) return;
-  const polygon = _adpGetFieldPolygon();
+  const polygon = PlantingLogic.getFieldPolygon(_adpArea);
   if (!polygon || typeof RidgeGeometry === 'undefined') return;
   const edges = RidgeGeometry.getPolygonEdges(polygon);
   if (!edges.length) return;
@@ -7877,10 +7579,12 @@ function _adpRotateEntranceEdge() {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   _adpSaveHouseMargin(areaId);
 
-  _adpRecalcAllBands();
+  if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+    _adpSavePracticecrops(areaId);
+  }
   if (_adpAnalysisPlantingDesign) {
-    const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
-    _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
+    const pitchCm = PlantingLogic.effectivePitchCm(_adpAnalysisPlantingDesign);
+    PlantingLogic.recalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm, _adpArea, _adpHouseMargin);
   }
 
   _adpRefreshEdgeToggleBar();
@@ -7900,7 +7604,7 @@ function _adpRefreshAllCardsAfterGeometryChange() {
     const design = _adpGetDesignFor(seg, cropId);
     if (!design) return;
     _adpRefreshRidgeDirRow(card, cropId, seg, design);
-    const calc = _adpCalcPlanting(design);
+    const calc = PlantingLogic.calcPlanting(design);
     const resultEl = card.querySelector('.plt-result');
     if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
   });
@@ -7938,11 +7642,11 @@ function _adpRenderPlantingPane() {
     // 分析側は一時ステートをクロージャ外に持つ（ペイン再描画でリセットされる）
     // _adpAnalysisPlantingDesign をモジュール変数として管理
     if (!_adpAnalysisPlantingDesign || _adpAnalysisPlantingDesign._cropId !== cropId) {
-      _adpAnalysisPlantingDesign = { ..._adpInitPlantingDesign(cropId), _cropId: cropId };
+      _adpAnalysisPlantingDesign = { ...PlantingLogic.initDesign(cropId), _cropId: cropId };
     }
     // エリア共通の畝方向が設定済みなら、圃場全体基準で畝セグメントを自動計算
-    const pitchCm = _adpEffectivePitchCm(_adpAnalysisPlantingDesign);
-    _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm);
+    const pitchCm = PlantingLogic.effectivePitchCm(_adpAnalysisPlantingDesign);
+    PlantingLogic.recalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm, _adpArea, _adpHouseMargin);
     el.innerHTML = _adpBuildUnifiedFieldPanel(true) + _adpBuildPlantingCard({
       cropId,
       cropName,
@@ -7960,7 +7664,7 @@ function _adpRenderPlantingPane() {
   }
 
   el.innerHTML = _adpBuildUnifiedFieldPanel(false) + _adpPracticecrops.map(({ cropId, ratio, plantingDesign }, idx) => {
-    const design   = plantingDesign || _adpInitPlantingDesign(cropId);
+    const design   = plantingDesign || PlantingLogic.initDesign(cropId);
     const cropName = _adpCropIdToName(cropId);
     const isLast   = idx === _adpPracticecrops.length - 1;
     return _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast, isAnalysis: false });
@@ -8013,7 +7717,7 @@ function _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir)
 //  ⚙️ 畝上幅・畝間（詳細幅）UI
 //  （仕様書：畝設計拡張仕様書 セクション2／畝設計UI統合仕様書 Step4）
 //
-//  計算ロジックは _adpEffectivePitchCm() が既にデータドリブンで判定済み
+//  計算ロジックは PlantingLogic.effectivePitchCm() が既にデータドリブンで判定済み
 //  （ridgeTopWidth+pathWidthが両方あれば優先、無ければrowWidthにフォールバック）。
 //  Step4：開閉トグルを廃止し、常時表示フォームの一部として常に表示する。
 //  rowWidthベースに戻したい場合は明示的に _adpClearDetailWidth() を呼ぶ。
@@ -8034,9 +7738,9 @@ function _adpGetDesignFor(seg, cropId) {
  */
 function _adpBuildDetailWidthSection(seg, cropId, design) {
   const key = `${seg}:${cropId}`;
-  const pitchCm = _adpEffectivePitchCm(design);
-  const topProvisional  = _adpIsProvisional(design, 'ridgeTopWidth');
-  const pathProvisional = _adpIsProvisional(design, 'pathWidth');
+  const pitchCm = PlantingLogic.effectivePitchCm(design);
+  const topProvisional  = PlantingLogic.isProvisional(design, 'ridgeTopWidth');
+  const pathProvisional = PlantingLogic.isProvisional(design, 'pathWidth');
   const isProvisionalDetail = topProvisional || pathProvisional;
 
   const hintHTML = isProvisionalDetail
@@ -8078,11 +7782,13 @@ function _adpClearDetailWidth(seg, cropId) {
   _adpUnmarkProvisional(design, 'ridgeTopWidth');
   _adpUnmarkProvisional(design, 'pathWidth');
 
-  const pitchCm = _adpEffectivePitchCm(design); // rowWidthへフォールバック
+  const pitchCm = PlantingLogic.effectivePitchCm(design); // rowWidthへフォールバック
   if (seg === 'analysis') {
-    _adpRecalcAnalysisRidgeSegments(design, pitchCm);
+    PlantingLogic.recalcAnalysisRidgeSegments(design, pitchCm, _adpArea, _adpHouseMargin);
   } else {
-    _adpRecalcAllBands(); // 内部で _adpSavePracticecrops まで実行済み
+    if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+      _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
+    }
   }
 
   const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
@@ -8093,7 +7799,7 @@ function _adpClearDetailWidth(seg, cropId) {
 
   _adpRefreshRidgeDirRow(card, cropId, seg, design);
 
-  const calc = _adpCalcPlanting(design);
+  const calc = PlantingLogic.calcPlanting(design);
   const resultEl = card.querySelector('.plt-result');
   if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
 
@@ -8110,11 +7816,13 @@ function _adpRefreshDetailPitchDisplay(seg, cropId) {
     const design = _adpGetDesignFor(seg, cropId);
     if (!design) return;
 
-    const pitchCm = _adpEffectivePitchCm(design);
+    const pitchCm = PlantingLogic.effectivePitchCm(design);
     if (seg === 'analysis') {
-      _adpRecalcAnalysisRidgeSegments(design, pitchCm);
+      PlantingLogic.recalcAnalysisRidgeSegments(design, pitchCm, _adpArea, _adpHouseMargin);
     } else {
-      _adpRecalcAllBands();
+      if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+        _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
+      }
     }
 
     const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
@@ -8126,14 +7834,14 @@ function _adpRefreshDetailPitchDisplay(seg, cropId) {
     // 暫定ヒント（畝上幅・畝間とも編集されると不要になる）は編集後に消しておく。
     // ラベル横の個別バッジは_adpUpdatePlantingField側で即時除去済みのため、
     // ここでは行全体を差し替えず、入力フォーカスを保ったままヒントのみ除去する。
-    if (!_adpIsProvisional(design, 'ridgeTopWidth') && !_adpIsProvisional(design, 'pathWidth')) {
+    if (!PlantingLogic.isProvisional(design, 'ridgeTopWidth') && !PlantingLogic.isProvisional(design, 'pathWidth')) {
       const hintEl = card.querySelector('.plt-detailwidth-hint');
       if (hintEl) hintEl.remove();
     }
 
     _adpRefreshRidgeDirRow(card, cropId, seg, design);
 
-    const calc = _adpCalcPlanting(design);
+    const calc = PlantingLogic.calcPlanting(design);
     const resultEl = card.querySelector('.plt-result');
     if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
 
@@ -8190,8 +7898,8 @@ function _adpBuildRatioLegendRow(isAnalysis) {
 }
 
 function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false, isAnalysis = false }) {
-  const calc = _adpCalcPlanting(design);
-  const warn = isAnalysis ? null : _adpPlantingAreaWarn(ratio, calc?.rowAreaSqm ?? null);
+  const calc = PlantingLogic.calcPlanting(design);
+  const warn = isAnalysis ? null : PlantingLogic.areaWarn(ratio, calc?.rowAreaSqm ?? null);
   const areaId = _adpArea?.id || _adpArea?.name || '';
 
   // 地図自動計算済みかどうか
@@ -8278,7 +7986,7 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
   const rowWidthHTML = `
     <div class="plt-rowwidth-row">
       <div class="plt-input-item" data-field="rowWidth">
-        <label class="plt-label">畝幅${_adpIsProvisional(design, 'rowWidth') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+        <label class="plt-label">畝幅${PlantingLogic.isProvisional(design, 'rowWidth') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
         <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowWidth ?? ''}" placeholder="例: 90"
           oninput="_adpUpdatePlantingField('${cropId}','rowWidth',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
       </div>
@@ -8308,17 +8016,17 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
           <div class="plt-detail-accordion-body">
             <div class="plt-input-grid">
               <div class="plt-input-item" data-field="linesPerRow">
-                <label class="plt-label">条数${_adpIsProvisional(design, 'linesPerRow') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+                <label class="plt-label">条数${PlantingLogic.isProvisional(design, 'linesPerRow') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
                 <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.linesPerRow ?? ''}" placeholder="例: 2"
                   oninput="_adpUpdatePlantingField('${cropId}','linesPerRow',this.value,'${seg}')"><span class="plt-unit">条</span></div>
               </div>
               <div class="plt-input-item" data-field="plantSpacing">
-                <label class="plt-label">株間${_adpIsProvisional(design, 'plantSpacing') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+                <label class="plt-label">株間${PlantingLogic.isProvisional(design, 'plantSpacing') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
                 <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.plantSpacing ?? ''}" placeholder="例: 30"
                   oninput="_adpUpdatePlantingField('${cropId}','plantSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
               </div>
               <div class="plt-input-item" data-field="rowSpacing">
-                <label class="plt-label">条間${_adpIsProvisional(design, 'rowSpacing') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+                <label class="plt-label">条間${PlantingLogic.isProvisional(design, 'rowSpacing') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
                 <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowSpacing ?? ''}" placeholder="例: 40"
                   oninput="_adpUpdatePlantingField('${cropId}','rowSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
               </div>
@@ -8399,12 +8107,12 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
     _adpDebounce(`pltfield:analysis:${cropId}:${field}`, () => {
       if (!_adpAnalysisPlantingDesign) return;
       if (field === 'rowWidth') {
-        _adpRecalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, _adpEffectivePitchCm(_adpAnalysisPlantingDesign));
+        PlantingLogic.recalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, PlantingLogic.effectivePitchCm(_adpAnalysisPlantingDesign), _adpArea, _adpHouseMargin);
       }
       // 結果部分のみ再描画（入力フォーカスを失わないよう result div のみ更新）
       const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
       if (!card) return;
-      const calc    = _adpCalcPlanting(_adpAnalysisPlantingDesign);
+      const calc    = PlantingLogic.calcPlanting(_adpAnalysisPlantingDesign);
       const resultEl = card.querySelector('.plt-result');
       if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
       if (field === 'rowWidth') {
@@ -8419,7 +8127,7 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
   const idxNow = _adpPracticecrops.findIndex(c => c.cropId === cropId);
   if (idxNow < 0) return;
   if (!_adpPracticecrops[idxNow].plantingDesign) {
-    _adpPracticecrops[idxNow].plantingDesign = _adpInitPlantingDesign(cropId);
+    _adpPracticecrops[idxNow].plantingDesign = PlantingLogic.initDesign(cropId);
   }
   _adpPracticecrops[idxNow].plantingDesign[field] = parsed;
   _adpUnmarkProvisional(_adpPracticecrops[idxNow].plantingDesign, field);
@@ -8437,11 +8145,11 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
 
     // rowWidth が変わった場合、エリア共通の畝方向が設定済みなら全帯を再計算
     if (field === 'rowWidth') {
-      _adpRecalcAllBands();
+      PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin);
     }
 
     // purchase を先に計算して書き戻してから保存（施肥タブの株数基準に必要）
-    const calcForSave = _adpCalcPlanting(design);
+    const calcForSave = PlantingLogic.calcPlanting(design);
     design.purchase = calcForSave ? calcForSave.purchase : null;
     _adpSavePracticecrops(areaId);
 
@@ -8450,7 +8158,7 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
     if (!card) return;
     const ratio   = _adpPracticecrops[idx].ratio;
     const calc    = calcForSave; // 再計算不要・上で取得済み
-    const warn    = _adpPlantingAreaWarn(ratio, calc?.rowAreaSqm ?? null);
+    const warn    = PlantingLogic.areaWarn(ratio, calc?.rowAreaSqm ?? null);
     const resultEl      = card.querySelector('.plt-result');
     const warnContainer = card.querySelector('.plt-warn-wrap');
     if (resultEl)      resultEl.innerHTML      = _adpBuildPlantingResultHTML(calc, null, cropId);
@@ -8519,7 +8227,7 @@ function _adpShowPlantingPreview(cropId, seg) {
     return;
   }
 
-  const calc     = _adpCalcPlanting(design);
+  const calc     = PlantingLogic.calcPlanting(design);
   const cropName = _adpCropIdToName(cropId);
 
   // 分析側は帯を持たないため横バー一覧のみ表示
@@ -8561,7 +8269,7 @@ function _adpShowPlantingPreview(cropId, seg) {
  * @returns {string} HTML文字列（圃場データ取得不可時のみ空文字を返す＝非表示）
  */
 function _adpBuildUnifiedRidgePreviewSVG() {
-  const rawPolygon = _adpGetFieldPolygon();
+  const rawPolygon = PlantingLogic.getFieldPolygon(_adpArea);
   if (!rawPolygon || typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.toLocalCoords !== 'function') {
     return '';
   }
@@ -8913,7 +8621,7 @@ function _adpBuildRidgeDimensionSVG(cropId, design, toLocal, toSvg, fieldLocalPt
   const dir = _adpArea?.meta?.ridgeBaseDirection;
   if (!dir?.p1 || !dir?.p2) return empty;
 
-  const pitchCm = _adpEffectivePitchCm(design);
+  const pitchCm = PlantingLogic.effectivePitchCm(design);
   if (!(pitchCm > 0)) return empty;
   const pitchM = pitchCm / 100;
 
