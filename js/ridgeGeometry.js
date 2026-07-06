@@ -278,11 +278,32 @@ const RidgeGeometry = (() => {
     const diag  = Math.sqrt(spanX * spanX + spanY * spanY);
     const scanLen = diag * 2 + 10; // 余裕を持たせる（対角線の2倍＋10m）
 
-    // 4. 最初のオフセット位置（projMin + 半畝幅 から始めて畝幅ずつ進む）
-    const allSegments = [];
-    let offset = projMin + rowWidth / 2;
+    // 4. オフセット位置の一覧を「帯の中心」基準・両側展開で生成する。
+    //    【圃場マージン再設計】従来は projMin + 半畝幅 から畝幅ずつ進む片側走査だったが、
+    //    帯（band）の中心に必ず1本目の畝が来るよう、中心から左右対称に rowWidth ずつ
+    //    展開する方式に変更。帯そのものが各作物の band.polygon であるため、
+    //    この変更だけで「各作物の帯ごとに中心基準で配置」の要件を満たす。
+    const bandWidth = projMax - projMin;
+    const offsets = [];
+    if (bandWidth >= rowWidth - 1e-6) {
+      const center = (projMin + projMax) / 2;
+      offsets.push(center);
+      let k = 1;
+      while (true) {
+        const oPlus  = center + k * rowWidth;
+        const oMinus = center - k * rowWidth;
+        let added = false;
+        if (oPlus <= projMax - rowWidth / 2 + 1e-6) { offsets.push(oPlus); added = true; }
+        if (oMinus >= projMin + rowWidth / 2 - 1e-6) { offsets.push(oMinus); added = true; }
+        if (!added) break;
+        k++;
+      }
+      offsets.sort((a, b) => a - b);
+    }
 
-    while (offset <= projMax - rowWidth / 2 + 1e-6) {
+    const allSegments = [];
+
+    offsets.forEach(offset => {
       // オフセット線上の基準点（法線方向にoffsetだけ進んだ点）
       const baseOrigin = {
         x: normalDir.x * offset,
@@ -321,9 +342,7 @@ const RidgeGeometry = (() => {
           p2: _fromLocal(p2Local, origin),
         });
       });
-
-      offset += rowWidth;
-    }
+    });
 
     // 5. 集計
     const rows      = allSegments.length;
@@ -369,8 +388,39 @@ const RidgeGeometry = (() => {
   // ────────────────────────────────────────
 
   /**
+   * [offsetStart, offsetEnd] 区間の帯面積を、穴（holesLocal）との重なりを
+   * 差し引いた「実面積」として計算する。
+   * 【圃場マージン再設計】穴（入口・反対側帯）は栽植不可のため、占有率ベースの
+   * 面積計算から常に除外する。
+   *
+   * @param {{x:number,y:number}[]} polyLocal — ローカル座標の外周ポリゴン
+   * @param {{x:number,y:number}} normalDir — 法線方向（帯を切る軸）
+   * @param {number} offsetStart
+   * @param {number} offsetEnd
+   * @param {{x:number,y:number}[][]} holesLocal — 穴（ローカル座標）の配列
+   * @returns {number} 穴除外後の帯面積 [m²]
+   */
+  function _bandAreaWithHoles(polyLocal, normalDir, offsetStart, offsetEnd, holesLocal) {
+    const bandLocal = _clipHalfPlane(
+      _clipHalfPlane(polyLocal, normalDir, offsetStart, 1),
+      normalDir, offsetEnd, -1
+    );
+    let area = _polygonArea(bandLocal);
+    if (Array.isArray(holesLocal) && holesLocal.length) {
+      holesLocal.forEach(hole => {
+        const clippedHole = _clipHalfPlane(
+          _clipHalfPlane(hole, normalDir, offsetStart, 1),
+          normalDir, offsetEnd, -1
+        );
+        area -= _polygonArea(clippedHole);
+      });
+    }
+    return Math.max(area, 0);
+  }
+
+  /**
    * 指定オフセット範囲 [offsetStart, projMax] の中で、offsetStart から
-   * 面積が targetArea になる offsetEnd を二分探索で求める。
+   * 実面積（穴除外後）が targetArea になる offsetEnd を二分探索で求める。
    * 面積は offsetEnd に対して単調非減少なので二分探索が成立する。
    *
    * @param {{x:number,y:number}[]} polyLocal — ローカル座標の外周ポリゴン
@@ -378,15 +428,15 @@ const RidgeGeometry = (() => {
    * @param {number} offsetStart
    * @param {number} projMax
    * @param {number} targetArea
+   * @param {{x:number,y:number}[][]} [holesLocal] — 穴（ローカル座標）の配列
    * @returns {number} offsetEnd
    */
-  function _findOffsetForArea(polyLocal, normalDir, offsetStart, projMax, targetArea) {
+  function _findOffsetForArea(polyLocal, normalDir, offsetStart, projMax, targetArea, holesLocal) {
     const MAX_ITER = 40;
     const AREA_TOL = 0.05; // m²単位の許容誤差
 
-    // まず offsetStart 以降の最大面積を確認。targetAreaに届かない場合は projMax を返す
-    const fullBand  = _clipHalfPlane(polyLocal, normalDir, offsetStart, 1);
-    const fullArea  = _polygonArea(fullBand);
+    // まず offsetStart 以降（穴除外後）の最大面積を確認。targetAreaに届かない場合は projMax を返す
+    const fullArea = _bandAreaWithHoles(polyLocal, normalDir, offsetStart, projMax, holesLocal);
     if (targetArea >= fullArea) return projMax;
     if (targetArea <= 0) return offsetStart;
 
@@ -394,12 +444,55 @@ const RidgeGeometry = (() => {
     let mid = hi;
     for (let i = 0; i < MAX_ITER; i++) {
       mid = (lo + hi) / 2;
-      const band = _clipHalfPlane(fullBand, normalDir, mid, -1);
-      const area = _polygonArea(band);
+      const area = _bandAreaWithHoles(polyLocal, normalDir, offsetStart, mid, holesLocal);
       if (Math.abs(area - targetArea) < AREA_TOL) break;
       if (area < targetArea) lo = mid; else hi = mid;
     }
     return mid;
+  }
+
+  /**
+   * ratios に従って [projMin, projMax] を順に帯分割する共通コア処理。
+   * gapWidthsM を渡すと、各帯の終端と次の帯の開始点の間に指定幅の
+   * 隙間（境界の畝間確保用）を空けて次の帯を開始する。
+   *
+   * @param {{x:number,y:number}[]} poly — ローカル座標の外周ポリゴン
+   * @param {{x:number,y:number}} normalDir
+   * @param {number} projMin
+   * @param {number} projMax
+   * @param {number[]} ratios
+   * @param {number} totalAreaForRatios — 比率の基準となる面積（100%に対応する値）
+   * @param {{x:number,y:number}[][]} holesLocal
+   * @param {number[]|null} gapWidthsM — 帯 i と i+1 の間に確保する隙間幅 [m]（i = 0..ratios.length-2）
+   * @returns {Array<{ratio:number, polygonLocal:{x:number,y:number}[], boundaryStart:number, boundaryEnd:number, areaSqm:number}>}
+   */
+  function _splitBandsCore(poly, normalDir, projMin, projMax, ratios, totalAreaForRatios, holesLocal, gapWidthsM) {
+    const results = [];
+    let offsetCursor = projMin;
+
+    for (let i = 0; i < ratios.length; i++) {
+      const ratio = Number(ratios[i]) || 0;
+      const targetArea = totalAreaForRatios * (ratio / 100);
+      const offsetEnd = _findOffsetForArea(poly, normalDir, offsetCursor, projMax, targetArea, holesLocal);
+
+      const bandLocal = _clipHalfPlane(
+        _clipHalfPlane(poly, normalDir, offsetCursor, 1),
+        normalDir, offsetEnd, -1
+      );
+
+      results.push({
+        ratio,
+        polygonLocal: bandLocal,
+        boundaryStart: offsetCursor,
+        boundaryEnd: offsetEnd,
+        areaSqm: _bandAreaWithHoles(poly, normalDir, offsetCursor, offsetEnd, holesLocal),
+      });
+
+      const gap = (Array.isArray(gapWidthsM) && Number(gapWidthsM[i]) > 0) ? Number(gapWidthsM[i]) : 0;
+      offsetCursor = Math.min(offsetEnd + gap, projMax);
+    }
+
+    return results;
   }
 
   /**
@@ -410,10 +503,23 @@ const RidgeGeometry = (() => {
    * ratios の合計が100%未満でも構わない（残りは未割当のまま返さない＝
    * 呼び出し側で「最後の帯より先」は何も描画しなければよい）。
    *
+   * 【圃場マージン再設計】
+   * - holesLatLngs（入口・反対側帯など）は面積計算から常に除外される
+   *   （占有率100%は「穴を除いた実面積」を基準とする）。
+   * - gapWidthsM を渡すと、隣接する2作物の境界に必ず指定幅の畝間（パス）を
+   *   確保する。面積の基準（比率の正確性）を優先するため、以下の2段階で計算する：
+   *   1) パス1：ギャップ無視で通常どおり比率分割し、各境界の暫定位置を得る
+   *   2) パス1の境界位置をもとに各ギャップ帯の実面積を見積もり、
+   *      圃場の実面積からギャップ合計面積を差し引いた「実効面積」に対して
+   *      比率を再適用し、帯と帯の間に実際にギャップ幅ぶんの隙間を空けて
+   *      最終的な帯を確定する（矩形圃場では誤差なし、変形圃場でも近似精度は高い）。
+   *
    * @param {Array<{lat:number,lng:number}>} polygonLatLngs — 圃場ポリゴン全体
    * @param {{lat:number,lng:number}} dirP1 — 畝方向線の1点目（エリア共通）
    * @param {{lat:number,lng:number}} dirP2 — 畝方向線の2点目（エリア共通）
    * @param {number[]} ratios — 各作物の占有率 [%]（0〜100、合計100以下を推奨）
+   * @param {Array<Array<{lat:number,lng:number}>>} [holesLatLngs] — 除外領域（入口・反対側帯など）。省略時は穴なし（後方互換）
+   * @param {number[]} [gapWidthsM] — 境界iとi+1の間に確保する畝間幅 [m]（長さ ratios.length-1）。省略時は境界ギャップなし（後方互換）
    *
    * @returns {Array<{
    *   ratio: number,
@@ -421,7 +527,7 @@ const RidgeGeometry = (() => {
    *   areaSqm: number
    * }>} ratios と同じ順番・同じ長さの配列
    */
-  function splitPolygonByRatio(polygonLatLngs, dirP1, dirP2, ratios) {
+  function splitPolygonByRatio(polygonLatLngs, dirP1, dirP2, ratios, holesLatLngs, gapWidthsM) {
     if (!polygonLatLngs || polygonLatLngs.length < 3) return [];
     if (!dirP1 || !dirP2) return [];
     if (!Array.isArray(ratios) || ratios.length === 0) return [];
@@ -430,6 +536,9 @@ const RidgeGeometry = (() => {
     const poly   = polygonLatLngs.map(p => _toLocal(p, origin));
     const lp1    = _toLocal(dirP1, origin);
     const lp2    = _toLocal(dirP2, origin);
+    const holesLocal = Array.isArray(holesLatLngs)
+      ? holesLatLngs.map(hole => hole.map(p => _toLocal(p, origin)))
+      : [];
 
     const ridgeDir  = _normalize({ x: lp2.x - lp1.x, y: lp2.y - lp1.y });
     const normalDir = { x: -ridgeDir.y, y: ridgeDir.x };
@@ -437,32 +546,43 @@ const RidgeGeometry = (() => {
     const projections = poly.map(p => _dot(p, normalDir));
     const projMin = Math.min(...projections);
     const projMax = Math.max(...projections);
-    const totalArea = _polygonArea(poly);
 
-    const results = [];
-    let offsetStart = projMin;
+    // 穴を除いた圃場全体の実面積（占有率100%に対応する基準面積）
+    const totalArea = _bandAreaWithHoles(poly, normalDir, projMin, projMax, holesLocal);
 
-    for (let i = 0; i < ratios.length; i++) {
-      const ratio = Number(ratios[i]) || 0;
-      const targetArea = totalArea * (ratio / 100);
-      const offsetEnd = _findOffsetForArea(poly, normalDir, offsetStart, projMax, targetArea);
+    const hasGaps = Array.isArray(gapWidthsM) && gapWidthsM.some(g => Number(g) > 0);
 
-      const bandLocal = _clipHalfPlane(
-        _clipHalfPlane(poly, normalDir, offsetStart, 1),
-        normalDir, offsetEnd, -1
-      );
-      const bandLatLng = bandLocal.map(p => _fromLocal(p, origin));
+    let finalBands;
+    if (!hasGaps) {
+      // ギャップなし：従来どおり単純な比率分割（穴のみ考慮）
+      finalBands = _splitBandsCore(poly, normalDir, projMin, projMax, ratios, totalArea, holesLocal, null);
+    } else {
+      // gapWidthsM[i] は帯iと帯i+1の間の隙間。最終帯の後ろには隙間を作らない。
+      const gaps = ratios.map((_, i) => (i < ratios.length - 1 ? (Number(gapWidthsM[i]) || 0) : 0));
 
-      results.push({
-        ratio,
-        polygon: bandLatLng,
-        areaSqm: Math.round(_polygonArea(bandLocal) * 10) / 10,
-      });
+      // パス1：ギャップ無視の暫定分割で境界の暫定位置を得る
+      const provisional = _splitBandsCore(poly, normalDir, projMin, projMax, ratios, totalArea, holesLocal, null);
 
-      offsetStart = offsetEnd;
+      // パス1の境界位置に基づき、各ギャップ帯の実面積（穴除外後）を見積もる
+      let totalGapArea = 0;
+      for (let i = 0; i < gaps.length; i++) {
+        if (gaps[i] <= 0) continue;
+        const gStart = provisional[i].boundaryEnd;
+        const gEnd   = Math.min(gStart + gaps[i], projMax);
+        totalGapArea += _bandAreaWithHoles(poly, normalDir, gStart, gEnd, holesLocal);
+      }
+
+      const effectiveArea = Math.max(totalArea - totalGapArea, 0);
+
+      // パス2：実効面積に対して比率を再適用し、帯と帯の間にギャップを確保して確定
+      finalBands = _splitBandsCore(poly, normalDir, projMin, projMax, ratios, effectiveArea, holesLocal, gaps);
     }
 
-    return results;
+    return finalBands.map(b => ({
+      ratio: b.ratio,
+      polygon: b.polygonLocal.map(p => _fromLocal(p, origin)),
+      areaSqm: Math.round(b.areaSqm * 10) / 10,
+    }));
   }
 
   // ────────────────────────────────────────

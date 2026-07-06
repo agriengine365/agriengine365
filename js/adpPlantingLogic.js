@@ -157,13 +157,16 @@ const PlantingLogic = (() => {
 
   /**
    * 畝計算・苗数計算で実際に使うべき「実効ポリゴン」を返す共通ヘルパー。
-   * ハウス（greenhouse/heatedGreenhouse）かつ houseMargin が設定済みの場合のみ、
-   * RidgeGeometry.computeHouseGeometry() で外膜マージンの内側オフセット＋
-   * 入口・設備通路の穴を反映した形状を返す。それ以外（露地・未設定）は
-   * 素の圃場ポリゴンをそのまま返す（holesは常に空配列）。
+   * houseMargin が設定済みであれば、栽培モード（露地／ハウス問わず）
+   * RidgeGeometry.computeHouseGeometry() で外周マージンの内側オフセット＋
+   * 入口・反対側（Uターン）帯の穴を反映した形状を返す。
+   * 【圃場マージン再設計】従来はハウス（greenhouse/heatedGreenhouse）限定の
+   * isHouseゲートがあったが撤去し、露地でも圃場マージンを適用できるようにした。
+   * houseMargin が未設定の場合は、従来どおり素の圃場ポリゴンをそのまま返す
+   * （holesは常に空配列）。
    *
    * @param {object} area - _adpArea 相当のエリアオブジェクト
-   * @param {object|null} houseMargin - _adpHouseMargin 相当のハウスマージン設定
+   * @param {object|null} houseMargin - _adpHouseMargin 相当の圃場マージン設定
    * @returns {{polygon: Array<{lat:number,lng:number}>, holes: Array<Array<{lat:number,lng:number}>>,
    *            entranceEdgeIndex: number, availableAreaSqm: number|null} | null}
    */
@@ -171,8 +174,7 @@ const PlantingLogic = (() => {
     const raw = getFieldPolygon(area);
     if (!raw) return null;
 
-    const isHouse = area?.cultivationMode === 'greenhouse' || area?.cultivationMode === 'heatedGreenhouse';
-    if (!isHouse || !houseMargin || typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.computeHouseGeometry !== 'function') {
+    if (!houseMargin || typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.computeHouseGeometry !== 'function') {
       return { polygon: raw, holes: [], entranceEdgeIndex: -1, availableAreaSqm: null };
     }
 
@@ -189,6 +191,22 @@ const PlantingLogic = (() => {
   }
 
   /**
+   * design の「畝間（pathWidth）」を、境界ギャップ計算用にメートル単位で返す。
+   * 【圃場マージン再設計】作物境界には必ず1畝間分の隙間を確保する仕様のため、
+   * 隣接する2作物のpathWidthのうち大きい方を境界の隙間幅として採用する。
+   * 詳細入力モード（ridgeTopWidth・pathWidthとも入力済み）の場合のみ pathWidth を
+   * 有効な値として扱い、シンプルモード（畝幅のみ入力）の作物は0として扱う
+   * （＝境界の隙間は隣接する他方のpathWidthだけで確保される）。
+   * @param {object} design - plantingDesign
+   * @returns {number} pathWidth [m]（シンプルモード・未入力時は0）
+   */
+  function _boundaryPathWidthM(design) {
+    if (!isDetailWidthMode(design)) return 0;
+    const path = Number(design.pathWidth);
+    return path > 0 ? path / 100 : 0;
+  }
+
+  /**
    * 実務側の全作物について、占有率（ratio）に応じた実面積比例の帯状分割を再計算し、
    * 各作物の plantingDesign に帯ポリゴン（_bandPolygon）・帯実面積（_bandAreaSqm）・
    * 帯内の畝セグメント（ridgeSegments）をキャッシュする中心的な関数。
@@ -200,6 +218,9 @@ const PlantingLogic = (() => {
    * 実務側に作物が無い等）は何もしない（既存のUI側メッセージ表示に委ねる）。
    * 占有率合計が100%未満の場合、割り当てられなかった残余分はそのまま
    * 「未割当」として扱われる（RidgeGeometry.splitPolygonByRatio の仕様どおり）。
+   *
+   * 【圃場マージン再設計】作物境界（帯と帯の間）には、隣接する2作物のうち
+   * 大きい方のpathWidthを隙間として必ず確保する（_boundaryPathWidthM参照）。
    *
    * NOTE: 永続化（localStorageへの保存）は行わない。practicecrops の各要素を
    * 直接書き換える（副作用あり）ため、呼び出し側が戻り値 true を確認した上で
@@ -221,9 +242,14 @@ const PlantingLogic = (() => {
     const { polygon, holes } = geometry;
 
     const ratios = practicecrops.map(c => Number(c.ratio) || 0);
+
+    // 境界iと境界i+1（作物iと作物i+1の間）の隙間幅 = 両側pathWidthのうち大きい方
+    const pathWidthsM = practicecrops.map(c => _boundaryPathWidthM(c.plantingDesign || {}));
+    const gapWidthsM = pathWidthsM.slice(0, -1).map((w, i) => Math.max(w, pathWidthsM[i + 1]));
+
     let bands;
     try {
-      bands = RidgeGeometry.splitPolygonByRatio(polygon, dir.p1, dir.p2, ratios);
+      bands = RidgeGeometry.splitPolygonByRatio(polygon, dir.p1, dir.p2, ratios, holes, gapWidthsM);
     } catch (e) {
       return false;
     }
