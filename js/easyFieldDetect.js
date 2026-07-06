@@ -15,6 +15,14 @@
 //    getBoundingClientRect()から実際の描画位置を取得してcanvasに
 //    描き写す（Leaflet内部のタイル座標計算を再実装しない、DOM基準の
 //    ラスタライズ方式）。
+//  - 輪郭抽出は msqr（js/vendor/msqr.min.js, MIT License）を使用。
+//    flood-fillで作ったmask（Uint8Array）をアルファチャンネル画像に
+//    変換してcanvasへ焼き込み、それをmsqrに渡して輪郭点列を得る
+//    （自作Moore-Neighbor実装 _traceContour は精度検証用に末尾へ
+//    dead codeとして残してあるが、現在は未使用）。
+//    色の許容範囲（感度スライダー, state.sensitivity）は_floodFillMask
+//    側のパラメータであり、msqr側のtolerance（点削減用の距離許容値）
+//    とは別物なので、感度スライダーの挙動はこの変更による影響を受けない。
 // ═══════════════════════════════════════════
 
 const EasyFieldDetect = (() => {
@@ -230,7 +238,11 @@ const EasyFieldDetect = (() => {
       return;
     }
 
-    const contour = _traceContour(mask, w, h);
+    const diag = Math.sqrt(w * w + h * h);
+    // msqr内蔵の点削減（RDP）許容値。自作_douglasPeuckerのepsより小さめにして
+    // 輪郭の精度を優先し、頂点数の最終調整は後段のcomplexモード側ロジックに任せる。
+    const msqrTolerance = Math.max(1.5, diag * 0.0015);
+    const contour = _traceContourMsqr(mask, w, h, msqrTolerance);
     if (contour.length < 3) {
       _setPreviewStatus('輪郭を検出できませんでした。感度を上げてみてください。', true);
       return;
@@ -245,7 +257,6 @@ const EasyFieldDetect = (() => {
         return;
       }
     } else {
-      const diag = Math.sqrt(w * w + h * h);
       let eps = Math.max(2, diag * 0.003);
       let simplified = _douglasPeucker(contour, eps);
       // 頂点が多すぎる場合は簡略度を上げて再調整（最大4回）
@@ -446,7 +457,49 @@ const EasyFieldDetect = (() => {
   }
 
   // ═══════════════════════════════════════════
-  //  輪郭抽出（Moore-Neighbor Tracing）
+  //  輪郭抽出（msqr / Marching Squares）
+  //  flood-fillのmask（Uint8Array, 1=領域内）をアルファチャンネル画像に
+  //  変換し、msqr（js/vendor/msqr.min.js）に渡して輪郭点列を得る。
+  // ═══════════════════════════════════════════
+
+  // ─── mask（Uint8Array）→ アルファチャンネルのみのcanvas ───
+  // msqrは「アルファが閾値を超えるピクセル＝形状の内側」として輪郭を追跡するため、
+  // 色情報は不要（RGBは0固定でよく、mask=1の画素だけalpha=255にする）。
+  function _maskToAlphaCanvas(mask, w, h) {
+    const canvas = document.createElement('canvas');
+    canvas.width  = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.createImageData(w, h);
+    const data = imgData.data;
+    for (let i = 0, n = mask.length; i < n; i++) {
+      data[i * 4 + 3] = mask[i] ? 255 : 0; // alphaのみ設定（RGBは初期値0のまま）
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return canvas;
+  }
+
+  function _traceContourMsqr(mask, w, h, tolerance) {
+    if (typeof MSQR === 'undefined') {
+      console.error('[EasyFieldDetect] msqrライブラリが読み込まれていません（js/vendor/msqr.min.js）。');
+      return [];
+    }
+    try {
+      const canvas = _maskToAlphaCanvas(mask, w, h);
+      const points = MSQR(canvas, {
+        tolerance: tolerance, // 点削減（RDP）の距離許容値（px）
+        align:     true,      // 輪郭のガタつきをならす補正
+      });
+      return points || [];
+    } catch (e) {
+      console.error('[EasyFieldDetect] msqrによる輪郭抽出でエラー:', e);
+      return [];
+    }
+  }
+
+  // ═══════════════════════════════════════════
+  //  輪郭抽出（Moore-Neighbor Tracing）─ 旧実装（現在未使用）
+  //  上記msqr版に置き換え済み。ロールバック用に残置。
   //  4連結マスクの外周を8連結でトレースし、ピクセル座標列を返す
   // ═══════════════════════════════════════════
 
