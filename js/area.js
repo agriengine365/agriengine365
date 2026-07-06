@@ -5181,6 +5181,55 @@ function _adpSaveIrrigationRecords(areaId) {
   localStorage.setItem(`adpIrrigation_${areaId}`, JSON.stringify(_adpIrrigationRecords));
 }
 
+/**
+ * 占有率スライダー ドラッグ中の軽量プレビュー（Step7-x）。
+ * データ本体（_adpPracticecrops）・localStorage保存・recalcAllBands（帯状分割／
+ * 畝ジオメトリ再計算）・カード全体再描画は一切行わない。見た目の数値表示
+ * （自分の%・自動枠(最後の作物)の%・占有率合計バー）だけを即時反映し、
+ * ドラッグ中の重い再計算・フォーカス崩れを防ぐ。
+ * 本確定（保存・recalcAllBands・全体再描画）はスライダーのonchangeで
+ * 呼ばれる _adpUpdatePracticeRatio() が担う。
+ */
+function _adpPreviewPracticeRatio(cropId, newRatio) {
+  const idx = _adpPracticecrops.findIndex(c => c.cropId === cropId);
+  const lastIdx = _adpPracticecrops.length - 1;
+  if (idx < 0 || idx === lastIdx) return;
+
+  const sumOthers = _adpPracticecrops
+    .slice(0, lastIdx)
+    .reduce((s, c, i) => s + (i === idx ? newRatio : (c.ratio || 0)), 0);
+  const autoRatio  = Math.max(0, 100 - sumOthers);
+  const total      = sumOthers + autoRatio;
+  const over       = total > 100;
+  const lastCropId = _adpPracticecrops[lastIdx].cropId;
+
+  // 自分自身の%表示（栽植パネル）
+  const ownValEl = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"] .plt-ratio-val`);
+  if (ownValEl) ownValEl.textContent = `${newRatio}%`;
+
+  // 自動枠（最後の作物）の%表示（栽植パネル）
+  const autoValEl = document.querySelector(`#planting-result .plt-card[data-crop-id="${lastCropId}"] .plt-ratio-val`);
+  if (autoValEl) autoValEl.innerHTML = `${autoRatio}% <span class="adp-pcc-auto-badge">自動</span>`;
+
+  // サムネ一覧（adp-practice-crops-list）のバッジも同期
+  const ownBadgeEl = document.querySelector(`#adp-practice-crops-list .adp-practice-crop-card[data-crop-id="${cropId}"] .adp-pcc-ratio-badge`);
+  if (ownBadgeEl) ownBadgeEl.textContent = `${newRatio}%`;
+  const autoBadgeEl = document.querySelector(`#adp-practice-crops-list .adp-practice-crop-card[data-crop-id="${lastCropId}"] .adp-pcc-ratio-badge`);
+  if (autoBadgeEl) autoBadgeEl.textContent = `${autoRatio}%`;
+
+  // 占有率合計バー（100%超えたら赤、など）
+  const totalLabelEl = document.querySelector('#planting-result .plt-ratio-bar-labels span:last-child');
+  if (totalLabelEl) {
+    totalLabelEl.textContent = `${total}%`;
+    totalLabelEl.style.color = over ? 'var(--red)' : 'var(--text2)';
+  }
+  const barFillEl = document.querySelector('#planting-result .plt-ratio-bar-fill');
+  if (barFillEl) {
+    barFillEl.style.width = `${Math.min(total, 100)}%`;
+    barFillEl.style.background = over ? 'var(--red)' : total === 100 ? 'var(--green)' : 'var(--green2)';
+  }
+}
+
 function _adpUpdatePracticeRatio(cropId, newRatio) {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   const idx = _adpPracticecrops.findIndex(c => c.cropId === cropId);
@@ -7899,7 +7948,7 @@ function _adpBuildRatioLegendRow(isAnalysis) {
 
 function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false, isAnalysis = false }) {
   const calc = PlantingLogic.calcPlanting(design);
-  const warn = isAnalysis ? null : PlantingLogic.areaWarn(ratio, calc?.rowAreaSqm ?? null);
+  const warn = isAnalysis ? null : PlantingLogic.areaWarn(design._bandAreaSqm ?? null, calc?.rowAreaSqm ?? null);
   const areaId = _adpArea?.id || _adpArea?.name || '';
 
   // 地図自動計算済みかどうか
@@ -7914,7 +7963,7 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
       <label class="plt-label">占有率</label>
       <input type="range" min="0" max="100" value="${ratio}"
         class="adp-pcc-slider${isLast ? ' adp-pcc-slider-auto' : ''}"
-        ${isLast ? 'disabled' : `oninput="this.nextElementSibling.textContent=this.value+'%'; _adpUpdatePracticeRatio('${cropId}', Number(this.value))"`}>
+        ${isLast ? 'disabled' : `oninput="_adpPreviewPracticeRatio('${cropId}', Number(this.value))" onchange="_adpUpdatePracticeRatio('${cropId}', Number(this.value))"`}>
       <span class="plt-ratio-val">${ratio}%${isLast ? ' <span class="adp-pcc-auto-badge">自動</span>' : ''}</span>
     </div>`;
 
@@ -7925,7 +7974,7 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
   // 不一致警告（plt-warn-wrap でラップ → 部分更新時に querySelector で確実に取得できる）
   const warnHTML = `<div class="plt-warn-wrap">${warn ? `
     <div class="plt-warn">
-      ⚠️ 畝面積（${warn.rowAreaSqm}㎡）と占有面積（${warn.occupiedSqm}㎡）が${warn.diffPct}%乖離しています
+      ⚠️ 畝面積（${warn.rowAreaSqm}㎡）と帯面積（${warn.bandAreaSqm}㎡）が${warn.diffPct}%乖離しています
     </div>` : ''}</div>`;
 
   // 収量見込み（cropDB.yieldPerPlant × purchase）
@@ -8156,14 +8205,13 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
     // 結果部分のみ再描画
     const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
     if (!card) return;
-    const ratio   = _adpPracticecrops[idx].ratio;
     const calc    = calcForSave; // 再計算不要・上で取得済み
-    const warn    = PlantingLogic.areaWarn(ratio, calc?.rowAreaSqm ?? null);
+    const warn    = PlantingLogic.areaWarn(design._bandAreaSqm ?? null, calc?.rowAreaSqm ?? null);
     const resultEl      = card.querySelector('.plt-result');
     const warnContainer = card.querySelector('.plt-warn-wrap');
     if (resultEl)      resultEl.innerHTML      = _adpBuildPlantingResultHTML(calc, null, cropId);
     if (warnContainer) warnContainer.innerHTML = warn
-      ? `<div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と占有面積（${warn.occupiedSqm}㎡）が${warn.diffPct}%乖離しています</div>`
+      ? `<div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と帯面積（${warn.bandAreaSqm}㎡）が${warn.diffPct}%乖離しています</div>`
       : '';
 
     // rowWidth変更時はridgeSegmentsが再計算され得るため、

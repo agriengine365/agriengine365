@@ -1,8 +1,7 @@
 // ═══════════════════════════════════════════
 //  PLANTING LOGIC — 栽植設計 計算ロジック
 //  area.js から抽出（栽植設計の純計算・ジオメトリ取得ロジック）
-//  依存: RidgeGeometry（畝計算）, _adpGetCropById（cropDB参照ユーティリティ、area.js定義）,
-//        _adpPracticeAreaSqm（占有面積換算、area.js定義）
+//  依存: RidgeGeometry（畝計算）, _adpGetCropById（cropDB参照ユーティリティ、area.js定義）
 //  ※ _adpArea / _adpPracticecrops / _adpHouseMargin などの
 //    「開いているエリア詳細パネルのインスタンス状態」には一切直接アクセスしない。
 //    呼び出し側（area.js）が明示的に引数として渡すこと。
@@ -17,7 +16,7 @@
 //    PlantingLogic.recalcAllBands(practicecrops, area, houseMargin)
 //    PlantingLogic.recalcAnalysisRidgeSegments(design, pitchCm, area, houseMargin)
 //    PlantingLogic.calcPlanting(design)
-//    PlantingLogic.areaWarn(ratio, rowAreaSqm)
+//    PlantingLogic.areaWarn(bandAreaSqm, rowAreaSqm)
 // ═══════════════════════════════════════════
 
 const PlantingLogic = (() => {
@@ -335,17 +334,20 @@ const PlantingLogic = (() => {
   }
 
   /**
-   * 占有面積と畝面積の不一致を判定する（5%超で警告）。
-   * ratio が null の場合（分析側）は警告しない。
-   * NOTE: 占有面積の換算（_adpPracticeAreaSqm）は今回のスコープ外のため、
-   * area.js 側の既存グローバル関数をそのまま呼ぶ。
+   * 帯実面積（占有率で実ポリゴン分割した後の実面積 _bandAreaSqm）と畝面積の
+   * 不一致を判定する（5%超で警告）。
+   * bandAreaSqm が null/0（未割当・分析側等）の場合は警告しない。
+   *
+   * Step7-x: 従来は「圃場全体面積 × 占有率」という単純比率換算
+   * （_adpPracticeAreaSqm）と比較していたが、ハウスマージン・入口穴などで
+   * 登録面積と実効面積がズレる場合に無関係な誤差が混ざる問題があった。
+   * 実際にrecalcAllBandsで分割された帯ポリゴンの実面積と比較することで、
+   * 「畝の敷き詰め効率」だけをフェアに警告する。
    */
-  function areaWarn(ratio, rowAreaSqm) {
-    if (ratio === null || rowAreaSqm === null) return null;
-    const occupiedSqm = _adpPracticeAreaSqm(ratio);
-    if (!occupiedSqm) return null;
-    const diff = Math.abs(occupiedSqm - rowAreaSqm) / occupiedSqm;
-    return diff > 0.05 ? { occupiedSqm, rowAreaSqm, diffPct: Math.round(diff * 100) } : null;
+  function areaWarn(bandAreaSqm, rowAreaSqm) {
+    if (bandAreaSqm === null || bandAreaSqm === undefined || !(bandAreaSqm > 0) || rowAreaSqm === null) return null;
+    const diff = Math.abs(bandAreaSqm - rowAreaSqm) / bandAreaSqm;
+    return diff > 0.05 ? { bandAreaSqm, rowAreaSqm, diffPct: Math.round(diff * 100) } : null;
   }
 
   return {
