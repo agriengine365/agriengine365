@@ -207,6 +207,125 @@ const PlantingLogic = (() => {
   }
 
   /**
+   * 圃場全体（穴のみ考慮・境界ギャップ未考慮）の実効面積 [m²] を取得する共通ヘルパー。
+   * splitPolygonByRatio に ratios=[100] を渡して1帯だけ返させることで、
+   * 「占有率100% = 圃場実面積（穴除外後）」の基準値を面積計算ロジックを重複させずに取得する。
+   * @returns {number} 実効面積 [m²]（計算不可時は0）
+   */
+  function _wholeEffectiveAreaSqm(polygon, dir, holes) {
+    try {
+      const res = RidgeGeometry.splitPolygonByRatio(polygon, dir.p1, dir.p2, [100], holes);
+      return res?.[0]?.areaSqm || 0;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  /**
+   * 指定ゾーン（矩形／余剰形状いずれかのポリゴン）に割り当てられた作物群について、
+   * 「圃場全体に対する占有率」を保ったまま、そのゾーン自身の実効面積を基準とした
+   * ローカル占有率（%）に引き直してから splitPolygonByRatio を呼び出す。
+   * 【矩形補正拡張】ゾーンごとに独立して帯分割するため、境界ギャップ（gapWidthsM）も
+   * ゾーン内の隣接作物同士でのみ計算する（ゾーンをまたぐ隙間は考慮しない）。
+   *
+   * @param {Array<{idx:number, crop:object}>} entries — このゾーンに属する作物（元のpracticecrops内インデックス付き）
+   * @param {Array<{lat:number,lng:number}>} zonePolygon
+   * @param {object} dir — { p1, p2 }
+   * @param {Array<Array<{lat:number,lng:number}>>} holes — 圃場全体の穴（入口・反対側帯）
+   * @param {number} wholeBasisSqm — 圃場全体の実効面積（占有率の絶対基準）
+   * @param {number[]} pathWidthsM — 全作物ぶんのpathWidth配列（元のpracticecrops順）
+   * @param {Array<object|null>} outBands — 結果を書き込む出力先（元のpracticecrops順の配列、idxで直接代入）
+   */
+  function _recalcZone(entries, zonePolygon, dir, holes, wholeBasisSqm, pathWidthsM, outBands) {
+    if (!entries.length) return;
+    const zoneBasisSqm = _wholeEffectiveAreaSqm(zonePolygon, dir, holes);
+    if (!(zoneBasisSqm > 0)) return;
+
+    const localRatios = entries.map(({ crop }) => {
+      const requiredAreaSqm = wholeBasisSqm * ((Number(crop.ratio) || 0) / 100);
+      return (requiredAreaSqm / zoneBasisSqm) * 100;
+    });
+    const zonePathWidthsM = entries.map(({ idx }) => pathWidthsM[idx]);
+    const zoneGapWidthsM  = zonePathWidthsM.slice(0, -1).map((w, i) => Math.max(w, zonePathWidthsM[i + 1]));
+
+    let zoneBands;
+    try {
+      zoneBands = RidgeGeometry.splitPolygonByRatio(zonePolygon, dir.p1, dir.p2, localRatios, holes, zoneGapWidthsM);
+    } catch (e) {
+      return;
+    }
+    if (!Array.isArray(zoneBands)) return;
+
+    entries.forEach(({ idx }, i) => { outBands[idx] = zoneBands[i] || null; });
+  }
+
+  /**
+   * recalcAllBands の帯分割コア処理。
+   * 圃場に「入口辺＋畝方向」から作れる矩形ゾーンが成立する場合は、占有率の高い作物から
+   * 順に矩形ゾーンへ詰め、矩形に収まりきらない作物（以降すべて）は余剰形状ゾーンへ回す
+   * （畝設計UI統合仕様書・矩形補正拡張 Q1=連続配置／Q2=要求面積から矩形奥行きを逆算／
+   * Q3=占有率順の完全自動割当／Q4=矩形に収まりきらない作物は丸ごと余剰形状側）。
+   * ゾーン分割が成立しない（入口辺未設定・矩形が極端に浅い等）場合は、
+   * 従来どおり圃場全体を1つのポリゴンとして帯分割する（後方互換フォールバック）。
+   *
+   * @returns {Array<object|null>|null} practicecropsと同じ順・同じ長さの帯配列（不成立時はnull）
+   */
+  function _recalcAllBandsCore(practicecrops, polygon, holes, dir, entranceEdgeIndex, pathWidthsM) {
+    let zoned = null;
+    if (Number.isInteger(entranceEdgeIndex) && entranceEdgeIndex >= 0 &&
+        typeof RidgeGeometry.computeZonedFieldGeometry === 'function') {
+      const z = RidgeGeometry.computeZonedFieldGeometry(polygon, dir.p1, dir.p2, entranceEdgeIndex);
+      // 余剰形状が実質ゼロ（圃場がほぼ矩形そのもの）ならゾーン分割の意味が無いためフォールバック
+      if (z && z.valid && z.rectPolygon && z.leftoverPolygon && z.leftoverAreaSqm > 0.5) {
+        zoned = z;
+      }
+    }
+
+    if (!zoned) {
+      // ── 従来ロジック：圃場全体を1つのポリゴンとして帯分割 ──
+      const ratios = practicecrops.map(c => Number(c.ratio) || 0);
+      const gapWidthsM = pathWidthsM.slice(0, -1).map((w, i) => Math.max(w, pathWidthsM[i + 1]));
+      try {
+        return RidgeGeometry.splitPolygonByRatio(polygon, dir.p1, dir.p2, ratios, holes, gapWidthsM);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // ── ゾーン分割ロジック：矩形ゾーン＋余剰形状ゾーン ──
+    const wholeBasisSqm = _wholeEffectiveAreaSqm(polygon, dir, holes);
+
+    // 占有率が高い順に矩形ゾーンへ積み上げ、収まりきらなくなった作物以降はすべて余剰形状側へ（Q4=A）
+    const order = practicecrops
+      .map((c, idx) => ({ idx, ratio: Number(c.ratio) || 0 }))
+      .sort((a, b) => b.ratio - a.ratio);
+
+    const rectIdxSet = new Set();
+    let cumulativeSqm = 0;
+    for (const { idx, ratio } of order) {
+      const requiredAreaSqm = wholeBasisSqm * (ratio / 100);
+      if (cumulativeSqm + requiredAreaSqm <= zoned.rectAreaSqm + 1e-6) {
+        rectIdxSet.add(idx);
+        cumulativeSqm += requiredAreaSqm;
+      } else {
+        break;
+      }
+    }
+
+    // 元の並び順を維持したまま矩形／余剰形状それぞれの作物リストに振り分ける
+    const rectEntries = [];
+    const leftoverEntries = [];
+    practicecrops.forEach((crop, idx) => {
+      (rectIdxSet.has(idx) ? rectEntries : leftoverEntries).push({ idx, crop });
+    });
+
+    const bands = new Array(practicecrops.length).fill(null);
+    _recalcZone(rectEntries,     zoned.rectPolygon,     dir, holes, wholeBasisSqm, pathWidthsM, bands);
+    _recalcZone(leftoverEntries, zoned.leftoverPolygon, dir, holes, wholeBasisSqm, pathWidthsM, bands);
+    return bands;
+  }
+
+  /**
    * 実務側の全作物について、占有率（ratio）に応じた実面積比例の帯状分割を再計算し、
    * 各作物の plantingDesign に帯ポリゴン（_bandPolygon）・帯実面積（_bandAreaSqm）・
    * 帯内の畝セグメント（ridgeSegments）をキャッシュする中心的な関数。
@@ -221,6 +340,13 @@ const PlantingLogic = (() => {
    *
    * 【圃場マージン再設計】作物境界（帯と帯の間）には、隣接する2作物のうち
    * 大きい方のpathWidthを隙間として必ず確保する（_boundaryPathWidthM参照）。
+   *
+   * 【矩形補正拡張】入口辺（houseMarginのentranceEdgeIndex）が設定済みで、
+   * かつ入口辺＋畝方向から成立する矩形が圃場の一部だけを占める場合（＝圃場が
+   * 完全な矩形ではない場合）、占有率の高い作物から順に矩形ゾーンへ詰め、
+   * 矩形に収まりきらない作物は（それ以降すべて）余剰形状ゾーンへ自動的に
+   * 割り当てる（実装詳細は _recalcAllBandsCore 参照）。入口辺未設定・矩形が
+   * 成立しない場合は、従来どおり圃場全体を1つのポリゴンとして帯分割する。
    *
    * NOTE: 永続化（localStorageへの保存）は行わない。practicecrops の各要素を
    * 直接書き換える（副作用あり）ため、呼び出し側が戻り値 true を確認した上で
@@ -239,20 +365,12 @@ const PlantingLogic = (() => {
 
     const geometry = getEffectiveFieldGeometry(area, houseMargin);
     if (!geometry) return false;
-    const { polygon, holes } = geometry;
-
-    const ratios = practicecrops.map(c => Number(c.ratio) || 0);
+    const { polygon, holes, entranceEdgeIndex } = geometry;
 
     // 境界iと境界i+1（作物iと作物i+1の間）の隙間幅 = 両側pathWidthのうち大きい方
     const pathWidthsM = practicecrops.map(c => _boundaryPathWidthM(c.plantingDesign || {}));
-    const gapWidthsM = pathWidthsM.slice(0, -1).map((w, i) => Math.max(w, pathWidthsM[i + 1]));
 
-    let bands;
-    try {
-      bands = RidgeGeometry.splitPolygonByRatio(polygon, dir.p1, dir.p2, ratios, holes, gapWidthsM);
-    } catch (e) {
-      return false;
-    }
+    const bands = _recalcAllBandsCore(practicecrops, polygon, holes, dir, entranceEdgeIndex, pathWidthsM);
     if (!Array.isArray(bands) || bands.length !== practicecrops.length) return false;
 
     practicecrops.forEach((entry, idx) => {

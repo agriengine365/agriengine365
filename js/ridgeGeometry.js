@@ -5,6 +5,7 @@
 //    RidgeGeometry.calcRidges(latLngs, dirP1, dirP2, rowWidth, holesLatLngs?)
 //    RidgeGeometry.splitPolygonByRatio(latLngs, dirP1, dirP2, ratios)
 //    RidgeGeometry.computeHouseGeometry(latLngs, opts)
+//    RidgeGeometry.computeZonedFieldGeometry(latLngs, dirP1, dirP2, entranceEdgeIndex)
 //    RidgeGeometry.getPolygonEdges(latLngs)
 // ═══════════════════════════════════════════
 
@@ -774,6 +775,127 @@ const RidgeGeometry = (() => {
   }
 
   // ────────────────────────────────────────
+  //  矩形補正ゾーン分割（畝設計UI統合・矩形補正拡張）
+  // ────────────────────────────────────────
+
+  /**
+   * 圃場ポリゴンを「矩形ゾーン」と「余剰形状（複雑形状）ゾーン」の2つに分割する。
+   *
+   * 【設計方針】
+   * - 入口辺（entranceEdgeIndex）と畝方向（dirP1/dirP2）の2つを基準に、
+   *   入口辺を手前側の境界として畝方向（ridgeDir）へ奥行きを伸ばした
+   *   軸整列の矩形を作る。矩形の幅（normalDir方向）は圃場の全幅
+   *   （projMin〜projMax）を使う＝矩形は常に圃場の帯積み重ね方向いっぱいに広がる。
+   * - 矩形の奥行きは、以下の点から畝方向（内側向き）にレイを飛ばし、
+   *   圃場境界に最初にぶつかるまでの距離のうち最小のものを採用する：
+   *   入口辺の両端点、および圃場のnormalDir方向の両端（projMin側・projMax側）の頂点。
+   *   これにより矩形は（凸形状の圃場であれば）必ず圃場ポリゴン内に収まることが保証される。
+   * - 余剰形状（leftover）は、矩形より奥（畝方向にさらに進んだ側）の部分を
+   *   単純な半平面クリップで取り出したもの。「畝の延長」として扱う想定。
+   * - 凹形状の圃場や、入口辺が畝方向とほぼ平行など極端なケースでは
+   *   矩形が成立しない（奥行きが極端に浅い等）ことがあり、その場合は
+   *   valid:false を返す。呼び出し側は従来の単一ポリゴン分割にフォールバックすること。
+   *
+   * @param {Array<{lat:number,lng:number}>} polygonLatLngs — 圃場ポリゴン（実効ポリゴン＝マージン適用後を想定）
+   * @param {{lat:number,lng:number}} dirP1 — 畝方向線の1点目
+   * @param {{lat:number,lng:number}} dirP2 — 畝方向線の2点目
+   * @param {number} entranceEdgeIndex — 入口辺のインデックス（polygonLatLngs上の辺番号）
+   *
+   * @returns {{
+   *   valid: boolean,
+   *   rectPolygon: Array<{lat:number,lng:number}>|null,
+   *   rectAreaSqm: number,
+   *   leftoverPolygon: Array<{lat:number,lng:number}>|null,
+   *   leftoverAreaSqm: number
+   * }}
+   */
+  function computeZonedFieldGeometry(polygonLatLngs, dirP1, dirP2, entranceEdgeIndex) {
+    const empty = { valid: false, rectPolygon: null, rectAreaSqm: 0, leftoverPolygon: null, leftoverAreaSqm: 0 };
+    if (!polygonLatLngs || polygonLatLngs.length < 3) return empty;
+    if (!dirP1 || !dirP2) return empty;
+    const n = polygonLatLngs.length;
+    if (!Number.isInteger(entranceEdgeIndex) || entranceEdgeIndex < 0 || entranceEdgeIndex >= n) return empty;
+
+    const origin = _centroid(polygonLatLngs);
+    const poly   = polygonLatLngs.map(p => _toLocal(p, origin));
+    const lp1    = _toLocal(dirP1, origin);
+    const lp2    = _toLocal(dirP2, origin);
+
+    const ridgeDir  = _normalize({ x: lp2.x - lp1.x, y: lp2.y - lp1.y });
+    const normalDir = { x: -ridgeDir.y, y: ridgeDir.x };
+
+    const ea = poly[entranceEdgeIndex];
+    const eb = poly[(entranceEdgeIndex + 1) % n];
+
+    // 入口辺のridgeDir投影の平均値＝矩形の手前側境界線の位置
+    const entranceRidgeProj = (_dot(ea, ridgeDir) + _dot(eb, ridgeDir)) / 2;
+
+    // 圃場中心（ローカル原点＝重心）が入口辺よりridgeDirのどちら側にあるかで内側向きを判定
+    const inward = (0 - entranceRidgeProj) >= 0 ? 1 : -1;
+
+    // レイキャスト用のスキャン長（対角線基準。calcRidgesと同様の手法）
+    const xs = poly.map(p => p.x), ys = poly.map(p => p.y);
+    const spanX = Math.max(...xs) - Math.min(...xs);
+    const spanY = Math.max(...ys) - Math.min(...ys);
+    const diag  = Math.sqrt(spanX * spanX + spanY * spanY);
+    const scanLen = diag * 2 + 10;
+
+    // 指定点から畝方向（内側向き）にレイを飛ばし、圃場境界までの距離を返す（当たらなければnull）
+    function _rayDepth(pt) {
+      const lineDir = { x: ridgeDir.x * scanLen * inward, y: ridgeDir.y * scanLen * inward };
+      const tValues = _linePolyIntersectionsMulti(pt, lineDir, [poly])
+        .filter(t => t > 1e-6) // pt自身（始点）での自己交差を除外
+        .map(t => t * scanLen);
+      return tValues.length ? Math.min(...tValues) : null;
+    }
+
+    // 矩形の幅は圃場の全幅（normalDir方向）を使うため、入口辺の両端点に加え、
+    // 圃場のnormalDir方向の最遠2頂点でも矩形が破綻しないことを確認する
+    const normalProjs = poly.map(p => _dot(p, normalDir));
+    const projMin = Math.min(...normalProjs);
+    const projMax = Math.max(...normalProjs);
+    let idxAtMin = 0, idxAtMax = 0;
+    normalProjs.forEach((p, i) => {
+      if (p === projMin) idxAtMin = i;
+      if (p === projMax) idxAtMax = i;
+    });
+
+    const checkPoints = [ea, eb, poly[idxAtMin], poly[idxAtMax]];
+    const depths = checkPoints.map(_rayDepth).filter(d => d !== null && d > 0);
+    if (!depths.length) return empty;
+    const rectDepth = Math.min(...depths);
+    if (rectDepth < 0.5) return empty; // 矩形として成立しないほど浅い場合は不成立扱い
+
+    const farRidgeProj = entranceRidgeProj + inward * rectDepth;
+
+    // (normalDir方向オフセット, ridgeDir方向オフセット) → ローカルXY
+    const corner = (nProj, rProj) => ({
+      x: normalDir.x * nProj + ridgeDir.x * rProj,
+      y: normalDir.y * nProj + ridgeDir.y * rProj,
+    });
+    const rectLocal = [
+      corner(projMin, entranceRidgeProj),
+      corner(projMax, entranceRidgeProj),
+      corner(projMax, farRidgeProj),
+      corner(projMin, farRidgeProj),
+    ];
+
+    // 余剰形状＝矩形より奥（畝方向にさらに進んだ側）の部分
+    const leftoverLocal = _clipHalfPlane(poly, ridgeDir, farRidgeProj, inward);
+
+    const rectAreaSqm     = _polygonArea(rectLocal);
+    const leftoverAreaSqm = _polygonArea(leftoverLocal);
+
+    return {
+      valid: true,
+      rectPolygon:     rectLocal.map(p => _fromLocal(p, origin)),
+      rectAreaSqm:     Math.round(rectAreaSqm * 10) / 10,
+      leftoverPolygon: leftoverLocal.length >= 3 ? leftoverLocal.map(p => _fromLocal(p, origin)) : null,
+      leftoverAreaSqm: Math.round(leftoverAreaSqm * 10) / 10,
+    };
+  }
+
+  // ────────────────────────────────────────
   //  座標変換ヘルパーの公開（プレビュー描画等での再利用向け）
   // ────────────────────────────────────────
 
@@ -813,6 +935,7 @@ const RidgeGeometry = (() => {
     totalPlants,
     splitPolygonByRatio,
     computeHouseGeometry,
+    computeZonedFieldGeometry,
     getPolygonEdges,
     toLocalCoords,
     toLocalPoint,
