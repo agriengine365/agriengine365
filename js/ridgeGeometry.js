@@ -616,65 +616,93 @@ const RidgeGeometry = (() => {
   }
 
   /**
-   * ポリゴンを一律 marginM だけ内側にオフセットする（辺法線オフセット方式）。
-   * 凸多角形・矩形に近い形状を想定した簡易実装（極端な凹多角形では
-   * 頂点が交差する等の破綻がありうるが、ハウス圃場は概ね凸形状のため許容する）。
+   * 【Step7-6：圃場マージン計算方式の刷新】
+   * 旧実装は全辺を一律オフセットし隣接辺同士の交点（マイター結合）で角を作り直していたため、
+   * 入口辺が鋭角に隣接する非矩形圃場でマイタースパイク（交点が本来の辺から大きく飛び出す）が発生し、
+   * 入口/反対側帯が傾いて実際の辺と噛み合わない描画バグの原因になっていた。
    *
-   * @param {{x:number,y:number}[]} poly — ローカル座標のポリゴン
+   * 新方式：
+   * - 入口辺・反対側辺は「原辺（動かさない）」を基準に奥行きを測る（外膜マージンの影響を受けない）。
+   * - それ以外の辺（畝辺＝畝方向に平行な側辺。四角形なら2本、五角形以上でも本数に依存せず動作）だけを
+   *   frameMarginM ぶん内側に半平面クリップ（Sutherland–Hodgman）する。
+   * - 半平面クリップは「動かない基準線」に対して「動く側だけ」を削るため、鋭角があっても暴れない。
+   *
+   * @param {{x:number,y:number}[]} poly — ローカル座標のポリゴン（原辺のまま）
    * @param {number} marginM
-   * @returns {{x:number,y:number}[]}
+   * @param {number} excludeEdgeIndexA — マージンを適用しない辺（入口辺）
+   * @param {number} excludeEdgeIndexB — マージンを適用しない辺（反対側辺。-1なら対象なし）
+   * @returns {{x:number,y:number}[]} 畝辺だけ内側に削られた実効境界ポリゴン
    */
-  function _offsetPolygonInward(poly, marginM) {
-    if (!marginM || marginM <= 0) return poly;
+  function _clipSideEdgesInward(poly, marginM, excludeEdgeIndexA, excludeEdgeIndexB) {
     const n = poly.length;
-    if (n < 3) return poly;
+    if (!marginM || marginM <= 0 || n < 3) return poly;
 
-    const signedArea = _signedArea(poly);
-    const sign = signedArea >= 0 ? 1 : -1; // CCW: 1, CW: -1
+    const sign = _signedArea(poly) >= 0 ? 1 : -1; // CCW: 1, CW: -1
 
-    const offsetEdges = [];
+    let result = poly;
     for (let i = 0; i < n; i++) {
+      if (i === excludeEdgeIndexA || i === excludeEdgeIndexB) continue; // 入口辺・反対側辺は原辺のまま
       const a = poly[i], b = poly[(i + 1) % n];
       const edgeDir = _normalize({ x: b.x - a.x, y: b.y - a.y });
-      // 内向き法線: CCWなら進行方向の左側（edgeDirを+90°回転）、CWなら右側（-90°回転）
-      const normal = sign > 0
+      const inwardNormal = sign > 0
         ? { x: -edgeDir.y, y: edgeDir.x }
         : { x: edgeDir.y, y: -edgeDir.x };
-      offsetEdges.push({
-        a: { x: a.x + normal.x * marginM, y: a.y + normal.y * marginM },
-        dir: edgeDir,
-      });
+      const threshold = _dot(a, inwardNormal) + marginM;
+      result = _clipHalfPlane(result, inwardNormal, threshold, 1);
+      if (result.length < 3) return []; // マージンが大きすぎて圃場が消滅
     }
-
-    const newPoly = [];
-    for (let i = 0; i < n; i++) {
-      const prev = offsetEdges[(i - 1 + n) % n];
-      const curr = offsetEdges[i];
-      const pt = _lineLineIntersect(prev.a, prev.dir, curr.a, curr.dir);
-      newPoly.push(pt || curr.a); // 平行等で交点が求まらない場合はフォールバック
-    }
-    return newPoly;
+    return result;
   }
 
   /**
-   * 指定辺（offsetPoly上のedgeIndex）の全長ぶんを幅とする帯（穴）を、
-   * 指定奥行きでローカル座標に生成する。
-   * 【圃場マージン再設計】従来の _buildEdgeNotch（辺中央に幅×奥行きのノッチを配置）を、
-   * 辺全体をカバーする帯に変更したもの。入口帯・反対側（Uターン）帯の両方で使用する。
+   * 凸多角形 clipPoly に対して poly（帯など任意の多角形）を交差クリップする
+   * （Sutherland–Hodgman法。clipPoly の各辺を半平面として順次クリップする）。
+   * 入口帯・反対側帯を「畝辺のマージンオフセット線まで」に自動的に収めるために使う
+   * （clipPoly = _clipSideEdgesInward 済みの実効境界）。
    *
-   * @param {{x:number,y:number}[]} offsetPoly
+   * @param {{x:number,y:number}[]} poly
+   * @param {{x:number,y:number}[]} clipPoly — 凸多角形前提
+   * @returns {{x:number,y:number}[]}
+   */
+  function _clipPolygonToConvex(poly, clipPoly) {
+    if (!poly.length || clipPoly.length < 3) return [];
+    const cn = clipPoly.length;
+    const clipSign = _signedArea(clipPoly) >= 0 ? 1 : -1;
+
+    let result = poly;
+    for (let i = 0; i < cn; i++) {
+      const a = clipPoly[i], b = clipPoly[(i + 1) % cn];
+      const edgeDir = _normalize({ x: b.x - a.x, y: b.y - a.y });
+      const inwardNormal = clipSign > 0
+        ? { x: -edgeDir.y, y: edgeDir.x }
+        : { x: edgeDir.y, y: -edgeDir.x };
+      const threshold = _dot(a, inwardNormal);
+      result = _clipHalfPlane(result, inwardNormal, threshold, 1);
+      if (result.length < 3) return [];
+    }
+    return result;
+  }
+
+  /**
+   * 指定辺（poly上のedgeIndex＝原辺）の全長ぶんを幅とする帯（穴）を、
+   * 指定奥行きでローカル座標に生成する。
+   * 【圃場マージン再設計・Step7-6】入口辺・反対側辺は外膜マージンの影響を受けないため、
+   * 常に「原辺（poly）」を基準にする（旧実装のoffsetPolyではない）。
+   * 帯の左右の実際の幅は、この後 _clipPolygonToConvex で実効境界に交差クリップすることで
+   * 「畝辺のマージンオフセット線まで」に自動的に収まる。
+   *
+   * @param {{x:number,y:number}[]} poly — 原辺のポリゴン
    * @param {number} edgeIndex
    * @param {number} depthM — 辺から内側への奥行き
    * @returns {{x:number,y:number}[]} 帯（穴）のローカル座標4点
    */
-  function _buildEdgeBand(offsetPoly, edgeIndex, depthM) {
-    const n = offsetPoly.length;
-    const a = offsetPoly[edgeIndex % n];
-    const b = offsetPoly[(edgeIndex + 1) % n];
+  function _buildEdgeBand(poly, edgeIndex, depthM) {
+    const n = poly.length;
+    const a = poly[edgeIndex % n];
+    const b = poly[(edgeIndex + 1) % n];
     const edgeDir = _normalize({ x: b.x - a.x, y: b.y - a.y });
 
-    const signedArea = _signedArea(offsetPoly);
-    const sign = signedArea >= 0 ? 1 : -1;
+    const sign = _signedArea(poly) >= 0 ? 1 : -1;
     const inward = sign > 0
       ? { x: -edgeDir.y, y: edgeDir.x }
       : { x: edgeDir.y, y: -edgeDir.x };
@@ -749,24 +777,33 @@ const RidgeGeometry = (() => {
       if (oppositeEdgeIndex === entranceEdgeIndex) oppositeEdgeIndex = -1; // 三角形等、対辺が定義できない場合
     }
 
-    // 3. 外周マージンぶん内側オフセット
-    const offsetPoly = frameMarginM > 0 ? _offsetPolygonInward(poly, frameMarginM) : poly;
+    // 3. 【Step7-6】畝辺（入口辺・反対側辺以外）だけを外周マージンぶん内側にクリップする。
+    //    入口辺・反対側辺は原辺のまま動かさない（外膜マージンの影響を受けない）。
+    const outerPoly = frameMarginM > 0
+      ? _clipSideEdgesInward(poly, frameMarginM, entranceEdgeIndex, oppositeEdgeIndex)
+      : poly;
+    if (outerPoly.length < 3) return empty; // マージンが大きすぎて圃場が消滅した
 
-    // 4. 入口帯・反対側帯の穴を生成（それぞれ辺全体を幅とする帯）
+    // 4. 入口帯・反対側帯の穴を生成（原辺基準の帯を、実効境界＝outerPolyに交差クリップする）
+    //    交差クリップにより、帯の左右の幅は自動的に「畝辺のマージンオフセット線まで」に収まる。
     const holesLocal = [];
     if (entranceDepthM > 0) {
-      holesLocal.push(_buildEdgeBand(offsetPoly, entranceEdgeIndex, entranceDepthM));
+      const band = _buildEdgeBand(poly, entranceEdgeIndex, entranceDepthM);
+      const clipped = _clipPolygonToConvex(band, outerPoly);
+      if (clipped.length >= 3) holesLocal.push(clipped);
     }
     if (oppositeDepthM > 0 && oppositeEdgeIndex >= 0) {
-      holesLocal.push(_buildEdgeBand(offsetPoly, oppositeEdgeIndex, oppositeDepthM));
+      const band = _buildEdgeBand(poly, oppositeEdgeIndex, oppositeDepthM);
+      const clipped = _clipPolygonToConvex(band, outerPoly);
+      if (clipped.length >= 3) holesLocal.push(clipped);
     }
 
-    // 5. 面積集計（外周オフセットポリゴン − 各穴）
-    let availableArea = _polygonArea(offsetPoly);
+    // 5. 面積集計（実効境界 − 各穴）
+    let availableArea = _polygonArea(outerPoly);
     holesLocal.forEach(hole => { availableArea -= _polygonArea(hole); });
 
     return {
-      outerPolygon: offsetPoly.map(p => _fromLocal(p, origin)),
+      outerPolygon: outerPoly.map(p => _fromLocal(p, origin)),
       holes: holesLocal.map(hole => hole.map(p => _fromLocal(p, origin))),
       entranceEdgeIndex,
       oppositeEdgeIndex,
