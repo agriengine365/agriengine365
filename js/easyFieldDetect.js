@@ -168,50 +168,70 @@ const EasyFieldDetect = (() => {
   function detect() {
     if (state.detecting) return;
     state.detecting = true;
+    console.log('[EFD-DEBUG] detect() 開始');
 
     const btn = document.getElementById('efd-detect-btn');
     if (btn) { btn.disabled = true; btn.textContent = '検出中...'; }
 
-    state.tapLatLng = _getScopeLatLng();
+    // ─── ここから関数全体をtry/finallyで包み、state.detectingのリセット漏れを防ぐ ───
+    // （以前は_getScopeLatLng()やrequestAnimationFrameの登録がtryの外にあり、
+    //   そこで例外が出るとstate.detectingがtrueのまま固まってしまう不具合があった）
+    try {
+      state.tapLatLng = _getScopeLatLng();
+      console.log('[EFD-DEBUG] tapLatLng取得完了', state.tapLatLng);
 
-    // レイアウト確定を1フレーム待ってからラスタライズ（描画直後の座標ズレ対策）
-    requestAnimationFrame(() => {
-      try {
-        const canvas = _rasterizeMapToCanvas();
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-
-        let imageData;
+      // レイアウト確定を1フレーム待ってからラスタライズ（描画直後の座標ズレ対策）
+      requestAnimationFrame(() => {
         try {
-          imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        } catch (secErr) {
-          console.warn('[EasyFieldDetect] getImageData失敗（CORS制限の可能性）:', secErr);
-          _onDetectFailure('タイル画像を解析できませんでした（ブラウザのセキュリティ制限）。ページを再読み込みしてから、もう一度お試しください。');
-          return;
+          console.log('[EFD-DEBUG] rAF発火');
+          const canvas = _rasterizeMapToCanvas();
+          console.log('[EFD-DEBUG] ラスタライズ完了 canvas=', canvas.width, canvas.height);
+          const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+          let imageData;
+          try {
+            imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            console.log('[EFD-DEBUG] getImageData完了');
+          } catch (secErr) {
+            console.warn('[EasyFieldDetect] getImageData失敗（CORS制限の可能性）:', secErr);
+            _onDetectFailure('タイル画像を解析できませんでした（ブラウザのセキュリティ制限）。ページを再読み込みしてから、もう一度お試しください。');
+            return;
+          }
+
+          const seedPt = map.latLngToContainerPoint(state.tapLatLng);
+          const seedX = Math.round(seedPt.x);
+          const seedY = Math.round(seedPt.y);
+          if (seedX < 0 || seedY < 0 || seedX >= canvas.width || seedY >= canvas.height) {
+            _onDetectFailure('検出地点が画面外です。地図を動かしてやり直してください。');
+            return;
+          }
+
+          state.canvas    = canvas;
+          state.imageData = imageData;
+          state.seedX     = seedX;
+          state.seedY     = seedY;
+
+          _runDetectionAndPreview(state.sensitivity);
+        } catch (e) {
+          console.error('[EasyFieldDetect] 検出エラー（rAF内）:', e);
+          _onDetectFailure('検出中にエラーが発生しました。手動描画をご利用ください。');
+        } finally {
+          state.detecting = false;
+          const btn2 = document.getElementById('efd-detect-btn');
+          if (btn2) { btn2.disabled = false; btn2.textContent = 'この地点で検出'; }
+          console.log('[EFD-DEBUG] state.detecting をリセット（rAFコールバック終了）');
         }
-
-        const seedPt = map.latLngToContainerPoint(state.tapLatLng);
-        const seedX = Math.round(seedPt.x);
-        const seedY = Math.round(seedPt.y);
-        if (seedX < 0 || seedY < 0 || seedX >= canvas.width || seedY >= canvas.height) {
-          _onDetectFailure('検出地点が画面外です。地図を動かしてやり直してください。');
-          return;
-        }
-
-        state.canvas    = canvas;
-        state.imageData = imageData;
-        state.seedX     = seedX;
-        state.seedY     = seedY;
-
-        _runDetectionAndPreview(state.sensitivity);
-      } catch (e) {
-        console.error('[EasyFieldDetect] 検出エラー:', e);
-        _onDetectFailure('検出中にエラーが発生しました。手動描画をご利用ください。');
-      } finally {
-        state.detecting = false;
-        const btn2 = document.getElementById('efd-detect-btn');
-        if (btn2) { btn2.disabled = false; btn2.textContent = 'この地点で検出'; }
-      }
-    });
+      });
+    } catch (e) {
+      // _getScopeLatLng() などrAF登録前の同期エラーをここで確実に捕捉し、
+      // state.detectingが固まったままにならないようにする
+      console.error('[EasyFieldDetect] 検出エラー（rAF登録前・同期処理）:', e);
+      _onDetectFailure('検出中にエラーが発生しました。手動描画をご利用ください。');
+      state.detecting = false;
+      const btn3 = document.getElementById('efd-detect-btn');
+      if (btn3) { btn3.disabled = false; btn3.textContent = 'この地点で検出'; }
+      console.log('[EFD-DEBUG] state.detecting をリセット（同期エラー時）');
+    }
   }
 
   function _onDetectFailure(message) {
@@ -233,6 +253,7 @@ const EasyFieldDetect = (() => {
     const w = imageData.width, h = imageData.height;
 
     const mask = _floodFillMask(imageData, seedX, seedY, tolerance);
+    console.log('[EFD-DEBUG] floodFillMask完了 mask=', mask ? `${mask.length}px中${mask.reduce((a,b)=>a+b,0)}px検出` : 'null(失敗)');
     if (!mask) {
       _setPreviewStatus('検出範囲が小さすぎるか大きすぎます。検出感度を調整してください。', true);
       return;
@@ -243,6 +264,7 @@ const EasyFieldDetect = (() => {
     // 輪郭の精度を優先し、頂点数の最終調整は後段のcomplexモード側ロジックに任せる。
     const msqrTolerance = Math.max(1.5, diag * 0.0015);
     const contour = _traceContourMsqr(mask, w, h, msqrTolerance);
+    console.log('[EFD-DEBUG] msqr輪郭抽出完了 contour.length=', contour.length);
     if (contour.length < 3) {
       _setPreviewStatus('輪郭を検出できませんでした。感度を上げてみてください。', true);
       return;
