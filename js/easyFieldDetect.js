@@ -168,7 +168,6 @@ const EasyFieldDetect = (() => {
   function detect() {
     if (state.detecting) return;
     state.detecting = true;
-    console.log('[EFD-DEBUG] detect() 開始');
 
     const btn = document.getElementById('efd-detect-btn');
     if (btn) { btn.disabled = true; btn.textContent = '検出中...'; }
@@ -178,20 +177,16 @@ const EasyFieldDetect = (() => {
     //   そこで例外が出るとstate.detectingがtrueのまま固まってしまう不具合があった）
     try {
       state.tapLatLng = _getScopeLatLng();
-      console.log('[EFD-DEBUG] tapLatLng取得完了', state.tapLatLng);
 
       // レイアウト確定を1フレーム待ってからラスタライズ（描画直後の座標ズレ対策）
       requestAnimationFrame(() => {
         try {
-          console.log('[EFD-DEBUG] rAF発火');
           const canvas = _rasterizeMapToCanvas();
-          console.log('[EFD-DEBUG] ラスタライズ完了 canvas=', canvas.width, canvas.height);
           const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
           let imageData;
           try {
             imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            console.log('[EFD-DEBUG] getImageData完了');
           } catch (secErr) {
             console.warn('[EasyFieldDetect] getImageData失敗（CORS制限の可能性）:', secErr);
             _onDetectFailure('タイル画像を解析できませんでした（ブラウザのセキュリティ制限）。ページを再読み込みしてから、もう一度お試しください。');
@@ -219,7 +214,6 @@ const EasyFieldDetect = (() => {
           state.detecting = false;
           const btn2 = document.getElementById('efd-detect-btn');
           if (btn2) { btn2.disabled = false; btn2.textContent = 'この地点で検出'; }
-          console.log('[EFD-DEBUG] state.detecting をリセット（rAFコールバック終了）');
         }
       });
     } catch (e) {
@@ -230,7 +224,6 @@ const EasyFieldDetect = (() => {
       state.detecting = false;
       const btn3 = document.getElementById('efd-detect-btn');
       if (btn3) { btn3.disabled = false; btn3.textContent = 'この地点で検出'; }
-      console.log('[EFD-DEBUG] state.detecting をリセット（同期エラー時）');
     }
   }
 
@@ -253,7 +246,6 @@ const EasyFieldDetect = (() => {
     const w = imageData.width, h = imageData.height;
 
     const mask = _floodFillMask(imageData, seedX, seedY, tolerance);
-    console.log('[EFD-DEBUG] floodFillMask完了 mask=', mask ? `${mask.length}px中${mask.reduce((a,b)=>a+b,0)}px検出` : 'null(失敗)');
     if (!mask) {
       _setPreviewStatus('検出範囲が小さすぎるか大きすぎます。検出感度を調整してください。', true);
       return;
@@ -264,7 +256,6 @@ const EasyFieldDetect = (() => {
     // 輪郭の精度を優先し、頂点数の最終調整は後段のcomplexモード側ロジックに任せる。
     const msqrTolerance = Math.max(1.5, diag * 0.0015);
     const contour = _traceContourMsqr(mask, w, h, msqrTolerance);
-    console.log('[EFD-DEBUG] msqr輪郭抽出完了 contour.length=', contour.length);
     if (contour.length < 3) {
       _setPreviewStatus('輪郭を検出できませんでした。感度を上げてみてください。', true);
       return;
@@ -508,11 +499,15 @@ const EasyFieldDetect = (() => {
     }
     try {
       const canvas = _maskToAlphaCanvas(mask, w, h);
-      const points = MSQR(canvas, {
+      const shapes = MSQR(canvas, {
         tolerance: tolerance, // 点削減（RDP）の距離許容値（px）
         align:     true,      // 輪郭のガタつきをならす補正
       });
-      return points || [];
+      // MSQRは「複数形状」に対応するため、戻り値は形状(輪郭点列)の配列。
+      // maxShapes未指定（デフォルト1）なので shapes.length は 0 か 1 のいずれかで、
+      // 実際の輪郭点列は shapes[0] に入っている（shapesそのものではない）。
+      if (!shapes || shapes.length === 0) return [];
+      return shapes[0] || [];
     } catch (e) {
       console.error('[EasyFieldDetect] msqrによる輪郭抽出でエラー:', e);
       return [];
