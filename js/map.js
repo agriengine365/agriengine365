@@ -38,10 +38,18 @@ window.addEventListener('beforeunload', () => {
 
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+// crossOrigin: true … 「かんたん圃場追加」機能（easyFieldDetect.js）が
+// canvas上でタイル画像のピクセル解析（flood-fill）を行うために必要。
+// 地理院タイル側は Origin ヘッダーが送られた場合のみ Access-Control-Allow-Origin を
+// 付与する仕様のため、crossOrigin指定で読み込んだタイルのみ解析対象にできる。
+// 注意: この変更を反映した直後は、ブラウザに残っている「crossOrigin指定なしで
+// 取得済み」のタイルキャッシュがCORSヘッダー無しのまま使われ続ける場合がある。
+// 挙動がおかしい場合はブラウザのキャッシュを一度クリアすること。
 L.tileLayer(CONFIG.TILE_URL, {
   attribution: '&copy; <a href="https://maps.gsi.go.jp/development/ichiran.html">国土地理院</a>',
   maxNativeZoom: 18,
   maxZoom: 20,
+  crossOrigin: true,
 }).addTo(map);
 
 const drawnItems = new L.FeatureGroup().addTo(map);

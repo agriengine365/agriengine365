@@ -39,6 +39,10 @@
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     <span>圃場追加</span>
   </button>
+  <button class="bnav-btn" onclick="EasyFieldDetect.start()" title="かんたん追加（自動検出）">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.6 3.9L18 8.2l-3.4 2.6.9 4.2L12 12.8l-3.5 2.2.9-4.2L6 8.2l4.4-1.3z"/><path d="M19 15l.7 1.7L21.5 17l-1.6 1.2.4 2-1.7-1-1.7 1 .4-2L16.7 17l1.8-.3z"/></svg>
+    <span>かんたん追加</span>
+  </button>
   <button class="bnav-btn" data-nav="areas"    onclick="openPage('areas')"    title="エリア">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
     <span>エリア</span>
@@ -65,6 +69,52 @@
   </div>
 
   <!-- フェーズA2（畝方向2点指定）は廃止済み。畝方向は辺選択パネル方式（area.js）に一本化。 -->
+
+  <!-- ═══ かんたん圃場追加（EasyFieldDetect）═══ -->
+
+  <!-- EFD-1: 形状選択 -->
+  <div class="draw-phase" id="efd-phase-shape" hidden>
+    <p class="map-draw-dialog-hint">検出したい圃場の形を選んでください</p>
+    <div class="efd-shape-grid">
+      <button type="button" class="efd-shape-btn" onclick="EasyFieldDetect.selectShape('rect')">
+        <span class="efd-shape-icon">▭</span>四角形
+      </button>
+      <button type="button" class="efd-shape-btn" onclick="EasyFieldDetect.selectShape('complex')">
+        <span class="efd-shape-icon">◆</span>複雑な形
+      </button>
+    </div>
+    <div class="map-draw-dialog-actions efd-actions-single">
+      <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="EasyFieldDetect.cancel()">キャンセル</button>
+    </div>
+  </div>
+
+  <!-- EFD-2: 地図を動かして対象地点をスコープ中央に合わせる -->
+  <div class="draw-phase" id="efd-phase-tap" hidden>
+    <p class="map-draw-dialog-hint" id="efd-tap-hint">地図を動かして、検出したい圃場の中央にスコープを合わせてください</p>
+    <div class="map-draw-dialog-actions efd-actions-three">
+      <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="EasyFieldDetect.cancel()">キャンセル</button>
+      <button type="button" class="map-draw-btn map-draw-btn-confirm" id="efd-detect-btn" onclick="EasyFieldDetect.detect()">この地点で検出</button>
+      <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="EasyFieldDetect.fallbackManual()">手動描画へ</button>
+    </div>
+  </div>
+
+  <!-- EFD-3: 検出結果プレビュー・微調整 -->
+  <div class="draw-phase" id="efd-phase-preview" hidden>
+    <p class="map-draw-dialog-hint" id="efd-preview-hint">検出結果です。頂点をドラッグして微調整できます</p>
+    <div class="efd-sensitivity-row">
+      <span class="efd-sensitivity-label">検出感度</span>
+      <input type="range" id="efd-sensitivity-slider" class="efd-sensitivity-slider"
+             min="6" max="70" value="28" step="1"
+             oninput="EasyFieldDetect.onSensitivityChange(this.value)">
+      <span class="efd-sensitivity-val" id="efd-sensitivity-val">28</span>
+    </div>
+    <div class="efd-preview-status" id="efd-preview-status"></div>
+    <div class="map-draw-dialog-actions efd-actions-three">
+      <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="EasyFieldDetect.backToTap()">← やり直す</button>
+      <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="EasyFieldDetect.fallbackManual()">手動描画へ</button>
+      <button type="button" class="map-draw-btn map-draw-btn-confirm" onclick="EasyFieldDetect.confirm()">この形で確定</button>
+    </div>
+  </div>
 
   <!-- フェーズ B: 保存ウィザード -->
   <div class="draw-phase" id="draw-phase-wizard" hidden>
@@ -255,6 +305,7 @@
 
 <!-- ─── Scripts ─── -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-editable@1.2.0/src/Leaflet.Editable.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
@@ -268,6 +319,7 @@
 <script src="js/map.js"></script>
 <script src="js/ridgeGeometry.js"></script>
 <script src="js/polygonDraw.js"></script>
+<script src="js/easyFieldDetect.js"></script>
 <script src="js/areaEnv.js"></script>
 <script src="js/adpPlantingLogic.js"></script>
 <script src="js/area.js"></script>

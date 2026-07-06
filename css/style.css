@@ -11281,3 +11281,120 @@ html.draw-dialog-active .bottom-nav {
   color: var(--blue);
   font-family: var(--mono, monospace);
 }
+/* ═══════════════════════════════════════════
+   EASY FIELD DETECT — かんたん圃場追加
+   ═══════════════════════════════════════════ */
+
+/* EFD-1: 形状選択グリッド */
+.efd-shape-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.efd-shape-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+  -webkit-tap-highlight-color: transparent;
+}
+.efd-shape-btn:hover, .efd-shape-btn:active {
+  border-color: var(--green3);
+  color: var(--green);
+  transform: scale(0.98);
+}
+.efd-shape-icon {
+  font-size: 26px;
+  line-height: 1;
+  color: var(--green2);
+}
+
+/* アクションボタン行のバリエーション（既存 .map-draw-dialog-actions は4分割グリッド前提のため上書き） */
+.efd-actions-single {
+  grid-template-columns: 1fr;
+}
+.efd-actions-two {
+  grid-template-columns: 1fr 1.6fr;
+}
+.efd-actions-three {
+  grid-template-columns: 1fr 1.6fr 1fr;
+}
+
+/* EFD-3: 検出感度スライダー */
+.efd-sensitivity-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.efd-sensitivity-label {
+  font-size: 11px;
+  color: var(--text3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.efd-sensitivity-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--bg3);
+  outline: none;
+}
+.efd-sensitivity-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--green);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  cursor: pointer;
+}
+.efd-sensitivity-slider::-moz-range-thumb {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--green);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  cursor: pointer;
+  border: none;
+}
+.efd-sensitivity-val {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text);
+  min-width: 24px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* EFD-3: プレビューステータス（検出面積・警告） */
+.efd-preview-status {
+  font-size: 11px;
+  color: var(--text2);
+  margin-bottom: 10px;
+  min-height: 14px;
+  line-height: 1.5;
+}
+.efd-preview-status-warn {
+  color: var(--amber);
+}
+
+/* Leaflet.Editable の頂点ハンドルを既存の確定頂点マーカーと近い見た目に統一 */
+.leaflet-editable-vertex-icon {
+  background: var(--green) !important;
+  border: 1.5px solid #fff !important;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.45), 0 1px 4px rgba(0,0,0,0.6);
+}
