@@ -7335,10 +7335,17 @@ html.draw-dialog-active .bottom-nav {
   stroke-dasharray: 4 3;
 }
 
-/* Step7-1：統合プレビュー内の辺ハイライト（🚪入口辺／📐畝方向辺トグル、Step7-3で接続） */
+/* Step7-1：統合プレビュー内の辺ハイライト（🚪入口辺／📐畝方向辺トグル、Step7-3で接続）
+   【Step8-3】常時表示をやめ、対応するトグルボタンにフォーカスがある間だけ
+   表示・明滅させる方式に変更（plt-highlight-blink付与時のみopacity:1）。 */
 .plt-shapesvg-edgehighlight {
   stroke-width: 4;
   stroke-linecap: round;
+  opacity: 0;
+  transition: opacity .15s;
+}
+.plt-shapesvg-edgehighlight.plt-highlight-blink {
+  opacity: 1;
 }
 .plt-shapesvg-edgehighlight-entrance {
   stroke: var(--amber);
@@ -8834,10 +8841,11 @@ html.draw-dialog-active .bottom-nav {
 .plt-housemargin-section .plt-detail-accordion {
   margin-top: 0;
 }
-.plt-housemargin-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px 10px;
+.plt-housemargin-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 8px;
 }
 /* 反対側奥行き：「入口と同じ値を使う」チェックボックス行 */
 .plt-checkbox-row {
@@ -8854,6 +8862,16 @@ html.draw-dialog-active .bottom-nav {
   height: 14px;
   margin: 0;
   cursor: pointer;
+}
+/* Step8-2：反対側奥行きチップ用のコンパクト版チェックボックス行（チップの外・上に小さく配置） */
+.plt-oppositedepth-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.plt-checkbox-row-compact {
+  font-size: 10px;
+  gap: 4px;
 }
 /* 🔀 辺選択トグルバー（入口辺／畝方向を1つに統合） */
 /* 【圃場マージン再設計・栽植プレビュー統合仕様書 Step7-3】
@@ -8879,7 +8897,7 @@ html.draw-dialog-active .bottom-nav {
   border: 1.5px solid var(--border);
   background: var(--bg2);
   color: var(--text2);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: background .15s, color .15s, border-color .15s;
@@ -9027,6 +9045,60 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text3);
   flex-shrink: 0;
   width: 18px;
+}
+
+/* Step8-2：入力チップ列（ラベル＋数値＋単位を1行に収めたコンパクトUI）。
+   圃場マージン設定（外膜マージン・入口奥行き・反対側奥行き）で使用。
+   見た目のトーンは辺選択トグルバー（.plt-edgetoggle-chip）と統一している。 */
+.plt-inputchip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.plt-input-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  background: var(--bg2);
+}
+.plt-chip-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.plt-chip-inputwrap {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.plt-chip-input {
+  width: 52px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  font-family: var(--mono);
+  padding: 2px 2px;
+  text-align: right;
+  min-width: 0;
+  transition: border-color .15s;
+}
+.plt-chip-input:focus {
+  outline: none;
+  border-color: var(--green2);
+}
+.plt-chip-input:disabled {
+  opacity: .5;
+}
+.plt-chip-unit {
+  font-size: 10px;
+  color: var(--text3);
+  flex-shrink: 0;
 }
 
 /* 警告（外側ラッパー：中身が無い時は余白を残さない） */
@@ -10992,6 +11064,13 @@ html.draw-dialog-active .bottom-nav {
   background: color-mix(in srgb, var(--text2) 6%, transparent);
 }
 
+/* Step8-6（7.4-10）：パネルB直下（畝断面図SVGのすぐ下）に配置する場合のスペーシング調整。
+   見た目パターン（背景・角丸・入力欄等）は.plt-detailwidth-rowをそのまま流用し、
+   断面図SVGとの間隔だけを詰める。新規クラス体系は増やさず既存クラスの修飾のみ。 */
+.plt-detailwidth-row--panelb {
+  margin-top: 8px;
+}
+
 .plt-detailwidth-heading {
   font-size: 11px;
   color: var(--text3);
@@ -11397,4 +11476,143 @@ html.draw-dialog-active .bottom-nav {
   border: 1.5px solid #fff !important;
   border-radius: 50%;
   box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.45), 0 1px 4px rgba(0,0,0,0.6);
+}
+
+/* ═══════════════════════════════════════════
+   Step8-1（畝断面図の統合とプレビュー内入力欄コンパクト化 仕様書）
+   パネルA（圃場平面図）／パネルB（畝断面図）の外枠レイアウト。
+   実務側（isAnalysis=false）のみ適用。中身（legend・辺選択トグル・平面SVG・
+   圃場マージン設定アコーディオン）は既存クラスのスタイルをそのまま流用するため、
+   ここではパネル枠・見出し・パネルB準備中プレースホルダーのみ新設する。
+   ═══════════════════════════════════════════ */
+.plt-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.plt-panel-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.plt-panel-a { /* Step8-1時点では既存の平面図系コンテンツをそのまま内包するのみ */ }
+.plt-panel-b { /* Step8-4bで断面図SVG本体・入力チップを追加予定 */ }
+.plt-cross-section-placeholder {
+  font-size: 12px;
+  color: var(--text2);
+  text-align: center;
+  padding: 24px 8px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+/* ═══════════════════════════════════════════
+   Step8-4a（畝断面図の統合とプレビュー内入力欄コンパクト化 仕様書）
+   パネルB（畝断面図）の作物タブ行。見た目のトーンは辺選択トグルバー
+   （.plt-edgetoggle-chip）と統一しつつ、各タブは平面図の帯色・凡例と同じ
+   plt-cropcolor-N の --cc を左枠線／選択時の背景色として反映する。
+   ═══════════════════════════════════════════ */
+.plt-crosstab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.plt-crosstab-chip {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  border-left: 4px solid var(--cc, var(--border));
+  background: var(--bg2);
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.plt-crosstab-chip-active {
+  border-color: var(--cc, var(--green2));
+  background: color-mix(in srgb, var(--cc, var(--green2)) 18%, transparent);
+  color: var(--text);
+}
+
+/* ═══════════════════════════════════════════
+   Step8-4b（畝断面図の統合とプレビュー内入力欄コンパクト化 仕様書）
+   畝断面図SVG本体（山型シルエット3本・谷2本、静的表示）。
+   横方向は実寸比例、山の高さはcm値と無関係の固定比率で描画する模式図。
+   ═══════════════════════════════════════════ */
+.plt-cross-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  margin-bottom: 6px;
+}
+.plt-crosssection-wrap {
+  position: relative;
+  width: 100%;
+}
+.plt-crosssection-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.plt-crosssection-baseline {
+  stroke: var(--text2);
+  stroke-width: 1.5;
+}
+.plt-crosssection-ridge {
+  fill: var(--cc);
+  fill-opacity: 0.55;
+  stroke: var(--cc);
+  stroke-width: 1.2;
+}
+.plt-crosssection-label {
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--text);
+  /* Step8-6：タップ編集は撤去済み（入力チップに一本化）。表示専用のためcursorは付けない。 */
+}
+.plt-crosssection-label-path {
+  fill: var(--text2);
+}
+
+/* ═══════════════════════════════════════════
+   Step8-5（畝断面図の統合とプレビュー内入力欄コンパクト化 仕様書）
+   断面図側のハイライト連動。畝上幅チップfocus時は既存の山ポリゴン
+  （.plt-crosssection-ridge-mid、中央の1本のみ）に汎用.plt-highlight-blink
+   （drop-shadow＋brightnessの明滅、style.css内の別セクションで定義済み）をそのまま付与するだけで
+   よい（既存の見た目を保ったまま強調を追加）。
+   畝間チップfocus時は、通常モード（畝間=0）だと谷に見た目上の区間が無いため、
+   平面図側の辺ハイライト（.plt-shapesvg-edgehighlight）と同じ考え方で、
+   デフォルト非表示のハイライト帯を明滅と同時にopacity:1で表示する。
+   ═══════════════════════════════════════════ */
+.plt-crosssection-valley-highlight {
+  fill: var(--blue);
+  fill-opacity: 0.28;
+  stroke: none;
+  opacity: 0;
+  pointer-events: none; /* 当たり判定rect（.plt-crosssection-hit）のクリックを妨げない */
+  transition: opacity .15s;
+}
+.plt-crosssection-valley-highlight.plt-highlight-blink {
+  opacity: 1;
+}
+
+/* ═══════════════════════════════════════════
+   Step8-3（畝断面図の統合とプレビュー内入力欄コンパクト化 仕様書）
+   入力チップ（<input>/トグルボタン）のfocus時、対応する平面図SVG要素に
+   付与する明滅ハイライト。既存のfill/strokeを上書きしないよう、
+   filter（drop-shadow＋brightness）のアニメーションのみで表現する。
+   ・常時表示要素（marginline/entrance/opposite）：明滅で「強調」を追加するだけ
+   ・辺ハイライト（edgehighlight）：デフォルト非表示のため、明滅と同時に表示される
+   ═══════════════════════════════════════════ */
+@keyframes plt-blink-pulse {
+  0%, 100% { filter: none; }
+  50% { filter: drop-shadow(0 0 3px currentColor) brightness(1.6); }
+}
+.plt-highlight-blink {
+  animation: plt-blink-pulse 0.5s ease-in-out 3;
 }

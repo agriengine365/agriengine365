@@ -527,6 +527,12 @@ let _adpHouseMargin    = null;
 // パネル再描画ではリセットされる想定のため保存はしない（DOM上のみで保持する他の開閉状態と同じ扱い）。
 let _adpUnifiedPreviewEdgeMode = 'entrance';
 
+// Step8-4a（畝断面図の統合とプレビュー内入力欄コンパクト化 仕様書）：
+// パネルB（畝断面図）で選択中の作物ID。作物タブ（_adpBuildRidgeCrossSectionTabs）から
+// _adpSetCrossSectionActiveCrop() 経由で切り替える。crops配列からの削除等で無効化された場合は
+// _adpResolveCrossSectionActiveCropId() が自動的にフォールバック値へ補正する（保存はしない）。
+let _adpCrossSectionActiveCropId = null;
+
 // ─── エリア選択時プリフェッチ（AMeDAS + 天気予報を並列取得） ───
 // openAreaDetailPanel より先に呼ぶことでパネル表示時にキャッシュ済み状態にする
 function _adpPrefetch(area) {
@@ -1204,12 +1210,6 @@ function _adpSetClimateMode(isClimate) {
   if (_adpSelectedCropId) {
     _adpSelectCropForAnalysis(_adpSelectedCropId);
   }
-}
-
-// ─── 条件編集ショートカット（サマリーバー行1 → ランキング>条件設定タブへジャンプ） ───
-function _adpJumpToCondTab() {
-  _adpSwitchSubTab('ranking');
-  _adpRkSwitchPane('cond');
 }
 
 // ─── サブタブ切替（8タブ構成） ───
@@ -4813,13 +4813,6 @@ function adpCropTap(el, cropId) {
 }
 
 
-function _fmtMoney(val) {
-  if (val == null) return '—';
-  return val >= 10000
-    ? `${Math.round(val / 1000)}千円`
-    : `${val}円`;
-}
-
 // ─── 「この作物で各タブを更新」→ 各ペインに反映 ───
 function _adpSelectCropForAnalysis(cropId) {
   _adpCloseRankingDialog();
@@ -5271,11 +5264,6 @@ function _adpRemovePracticeCrop(cropId) {
 
 function _adpPracticeTotalRatio() {
   return _adpPracticecrops.reduce((s, c) => s + (c.ratio || 0), 0);
-}
-
-function _adpPracticeAreaSqm(ratio) {
-  const total = currentAreaData?.areaSqm || 0;
-  return Math.round(total * ratio / 100);
 }
 
 function _adpRefreshPracticeTabs() {
@@ -7337,6 +7325,23 @@ function _adpRotateRidgeDirEdge() {
 // ═══════════════════════════════════════════
 
 /**
+ * 【Step8-3（畝断面図の統合とプレビュー内入力欄コンパクト化 仕様書）】
+ * 入力チップ（<input>/トグルボタン）のfocus/blurに連動し、平面図SVG内の対応要素に
+ * plt-highlight-blink クラスを付与/除去する汎用ハイライト関数。
+ * - 常時表示要素（marginline/entrance/opposite）：blink付与で明滅「強調」を追加するだけ
+ * - 辺ハイライト（edgehighlight）：CSS側でデフォルト非表示のため、blink付与時のみ表示される
+ * @param {string} selector - ハイライト対象のCSSセレクタ（例: '.plt-shapesvg-marginline'）
+ * @param {boolean} on - true=付与（フォーカス時）, false=除去（フォーカス外れ時）
+ */
+function _adpHighlightPreviewTarget(selector, on) {
+  const root = document.getElementById('planting-result');
+  if (!root) return;
+  root.querySelectorAll(selector).forEach(el => {
+    el.classList.toggle('plt-highlight-blink', on);
+  });
+}
+
+/**
  * 圃場マージン設定パネルのHTMLを生成する（数値入力のみ）。
  * 表示条件は撤廃済み：全cultivationMode（露地含む）で表示する。
  * 入口辺の選択UI（ミニSVG・ローテート）は Step3→Step7-3を経て辺選択トグルバー（_adpBuildEdgeToggleBar）へ移設済み。
@@ -7347,32 +7352,42 @@ function _adpRotateRidgeDirEdge() {
  * 開閉ハンドラは既存の汎用関数 `_adpToggleDetailAccordion(btn)`
  * （`btn.closest('.plt-detail-accordion')` で動く汎用実装）をそのまま流用し、新規関数は追加しない。
  */
+/**
+ * 【Step8-2（畝断面図の統合とプレビュー内入力欄コンパクト化 仕様書）】
+ * アコーディオン（.plt-detail-accordion）を廃止し、常時展開の横1行チップ列
+ * （ラベル＋数値＋単位を1行に収めた.plt-input-chip）に変更した。
+ * 開閉トグル関連（_adpToggleDetailAccordion）はここでは使わなくなったが、
+ * 同関数は他のカード内詳細設定（畝幅アコーディオン等）でも使う汎用関数のため削除しない。
+ */
 function _adpBuildHouseMarginSection() {
   const hm = _adpHouseMargin || {};
 
   return `
     <div class="plt-housemargin-section">
-      <div class="plt-detail-accordion" data-detail-key="housemargin">
-        <button type="button" class="plt-detail-toggle" onclick="_adpToggleDetailAccordion(this)" aria-expanded="false">
-          <span class="plt-detail-toggle-label">🌾 圃場マージン設定（外周・入口奥行き・反対側）</span>
-          <span class="plt-detail-toggle-arrow">▼</span>
-        </button>
-        <div class="plt-detail-accordion-body">
-          <div class="plt-housemargin-grid">
-            <div class="plt-input-item">
-              <label class="plt-label">外膜マージン</label>
-              <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" step="0.1" value="${hm.frameMarginM ?? ''}" placeholder="例: 0.5"
-                oninput="_adpUpdateHouseMarginField('frameMarginM', this.value)"><span class="plt-unit">m</span></div>
-            </div>
-            <div class="plt-input-item">
-              <label class="plt-label">入口奥行き</label>
-              <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" step="0.1" value="${hm.entranceDepthM ?? ''}" placeholder="例: 1.0"
-                oninput="_adpUpdateHouseMarginField('entranceDepthM', this.value)"><span class="plt-unit">m</span></div>
-            </div>
-            <div class="plt-input-item plt-input-item-wide" data-opposite-depth-block>
-              ${_adpBuildOppositeDepthInner()}
-            </div>
+      <div class="plt-housemargin-title">🌾 圃場マージン設定（外周・入口奥行き・反対側）</div>
+      <div class="plt-inputchip-row">
+        <div class="plt-input-chip">
+          <span class="plt-chip-label">外膜マージン</span>
+          <div class="plt-chip-inputwrap">
+            <input type="number" class="plt-chip-input" min="0" step="0.1" value="${hm.frameMarginM ?? ''}" placeholder="0.5"
+              oninput="_adpUpdateHouseMarginField('frameMarginM', this.value)"
+              onfocus="_adpHighlightPreviewTarget('.plt-shapesvg-marginline', true)"
+              onblur="_adpHighlightPreviewTarget('.plt-shapesvg-marginline', false)">
+            <span class="plt-chip-unit">m</span>
           </div>
+        </div>
+        <div class="plt-input-chip">
+          <span class="plt-chip-label">入口奥行き</span>
+          <div class="plt-chip-inputwrap">
+            <input type="number" class="plt-chip-input" min="0" step="0.1" value="${hm.entranceDepthM ?? ''}" placeholder="1.0"
+              oninput="_adpUpdateHouseMarginField('entranceDepthM', this.value)"
+              onfocus="_adpHighlightPreviewTarget('.plt-shapesvg-entrance', true)"
+              onblur="_adpHighlightPreviewTarget('.plt-shapesvg-entrance', false)">
+            <span class="plt-chip-unit">m</span>
+          </div>
+        </div>
+        <div class="plt-oppositedepth-wrap" data-opposite-depth-block>
+          ${_adpBuildOppositeDepthInner()}
         </div>
       </div>
     </div>`;
@@ -7384,26 +7399,33 @@ function _adpBuildHouseMarginSection() {
  * ridgeGeometry.js側のフォールバック（entranceDepthMを共通値として使用）に委ねる。
  * チェックボックスOFF＝個別の数値を入力（入力欄は有効化）。
  * このブロックはチェックボックス切替時に data-opposite-depth-block ごと部分再描画される。
+ *
+ * 【Step8-2】チェックボックスはチップの外・上に小さく残し、チップ自体は数値入力のみにする。
  */
 function _adpBuildOppositeDepthInner() {
   const hm = _adpHouseMargin || {};
   const isSame = (hm.oppositeDepthM === undefined || hm.oppositeDepthM === null || hm.oppositeDepthM === '');
 
   return `
-    <label class="plt-label">反対側奥行き</label>
-    <label class="plt-checkbox-row">
+    <label class="plt-checkbox-row plt-checkbox-row-compact">
       <input type="checkbox" ${isSame ? 'checked' : ''} onchange="_adpToggleOppositeSameDepth(this.checked)">
-      入口と同じ値を使う
+      入口と同じ
     </label>
-    <div class="plt-input-wrap">
-      <input type="number" class="plt-input" min="0" step="0.1"
-        value="${isSame ? '' : (hm.oppositeDepthM ?? '')}"
-        placeholder="例: 1.0"
-        ${isSame ? 'disabled' : ''}
-        oninput="_adpUpdateHouseMarginField('oppositeDepthM', this.value)">
-      <span class="plt-unit">m</span>
+    <div class="plt-input-chip">
+      <span class="plt-chip-label">反対側奥行き</span>
+      <div class="plt-chip-inputwrap">
+        <input type="number" class="plt-chip-input" min="0" step="0.1"
+          value="${isSame ? '' : (hm.oppositeDepthM ?? '')}"
+          placeholder="1.0"
+          ${isSame ? 'disabled' : ''}
+          oninput="_adpUpdateHouseMarginField('oppositeDepthM', this.value)"
+          onfocus="_adpHighlightPreviewTarget('.plt-shapesvg-opposite', true)"
+          onblur="_adpHighlightPreviewTarget('.plt-shapesvg-opposite', false)">
+        <span class="plt-chip-unit">m</span>
+      </div>
     </div>`;
 }
+
 
 /**
  * 「入口と同じ値を使う」チェックボックスの切替ハンドラ。
@@ -7518,8 +7540,12 @@ function _adpBuildEdgeToggleBar() {
   return `
     <div class="plt-edgetoggle-bar">
       <div class="plt-edgetoggle-chips">
-        <button type="button" class="plt-edgetoggle-chip ${mode === 'entrance' ? 'plt-edgetoggle-chip-active' : ''}" onclick="_adpSetUnifiedPreviewEdgeMode('entrance')">🚪 入口辺</button>
-        <button type="button" class="plt-edgetoggle-chip ${mode === 'ridgedir' ? 'plt-edgetoggle-chip-active' : ''}" onclick="_adpSetUnifiedPreviewEdgeMode('ridgedir')">📐 畝方向</button>
+        <button type="button" class="plt-edgetoggle-chip ${mode === 'entrance' ? 'plt-edgetoggle-chip-active' : ''}" onclick="_adpSetUnifiedPreviewEdgeMode('entrance')"
+          onfocus="_adpHighlightPreviewTarget('.plt-shapesvg-edgehighlight', true)"
+          onblur="_adpHighlightPreviewTarget('.plt-shapesvg-edgehighlight', false)">🚪 入口辺</button>
+        <button type="button" class="plt-edgetoggle-chip ${mode === 'ridgedir' ? 'plt-edgetoggle-chip-active' : ''}" onclick="_adpSetUnifiedPreviewEdgeMode('ridgedir')"
+          onfocus="_adpHighlightPreviewTarget('.plt-shapesvg-edgehighlight', true)"
+          onblur="_adpHighlightPreviewTarget('.plt-shapesvg-edgehighlight', false)">📐 畝方向</button>
       </div>
       <div class="plt-edgetoggle-footer">
         <button type="button" class="plt-edgetoggle-rotate" onclick="_adpRotateActiveEdge()">↻ 違う辺にする</button>
@@ -7540,6 +7566,12 @@ function _adpSetUnifiedPreviewEdgeMode(mode) {
   _adpUnifiedPreviewEdgeMode = mode;
   _adpRefreshEdgeToggleBar();
   if (_adpCurrentSeg !== 'analysis') _adpRefreshUnifiedPreview();
+
+  // Step8-3：トグルバーは outerHTML 差し替えでボタンDOMごと作り直されるため、
+  // クリックで得たfocusが失われる。新しいアクティブボタンへfocus()を呼び直すことで
+  // 辺ハイライト（デフォルト非表示・フォーカス時のみ表示）の継続表示を保つ。
+  const activeChip = document.querySelector('#planting-result .plt-edgetoggle-chip-active');
+  if (activeChip) activeChip.focus();
 }
 
 /** 辺選択トグルバーだけを部分更新する（Step7-3）。 */
@@ -7666,12 +7698,380 @@ function _adpRefreshAllCardsAfterGeometryChange() {
  * 常に同じ並び順で1つに集約する。空状態（分析側：作物未選択／実務側：作物0件）でも
  * 4部品すべてを統一して表示する（圃場の形・辺選択トグルの効果を空状態でも確認できるようにする）。
  * 並び順：占有率legend → 辺選択トグル → （実務側のみ）統合畝プレビュー → 圃場マージン設定
+ *
+ * 【Step8-1（畝断面図の統合とプレビュー内入力欄コンパクト化 仕様書）】
+ * 実務側（isAnalysis=false）のみパネルA/B構造に移行する。分析側は_bandPolygonを持たず
+ * 断面図・パネル分割の対象外のため、従来どおりの並びを維持する（変更なし）。
  */
 function _adpBuildUnifiedFieldPanel(isAnalysis) {
-  return _adpBuildRatioLegendRow(isAnalysis)
-    + _adpBuildEdgeToggleBar()
-    + (isAnalysis ? '' : _adpBuildUnifiedRidgePreviewSVG())
-    + _adpBuildHouseMarginSection();
+  if (isAnalysis) {
+    // 分析側：Step8対象外。既存の並び・ロジックを変更しない。
+    return _adpBuildRatioLegendRow(true)
+      + _adpBuildEdgeToggleBar()
+      + _adpBuildHouseMarginSection();
+  }
+  // 実務側：Step8-1 パネルA（圃場平面図）／パネルB（畝断面図）構造
+  return _adpBuildFieldPanelA() + _adpBuildFieldPanelB();
+}
+
+/**
+ * Step8-1：パネルA（圃場平面図）。
+ * 中身はStep7-5までの既存4部品のうち平面図系3つ（legend／辺選択トグル／平面SVG）＋
+ * 圃場マージン設定アコーディオンをそのまま移設したもの（ロジック・DOM構造は変更なし、
+ * 外側にパネル用のラッパーを追加しただけ）。
+ * 圃場マージン設定アコーディオンはStep8-6で断面図側（パネルB）へ統合・デッドコード化予定だが、
+ * Step8-1時点ではまだ廃止しない。
+ */
+function _adpBuildFieldPanelA() {
+  return `
+    <div class="plt-panel plt-panel-a" data-panel="a">
+      <div class="plt-panel-title">🌾 圃場平面図</div>
+      ${_adpBuildRatioLegendRow(false)}
+      ${_adpBuildEdgeToggleBar()}
+      ${_adpBuildUnifiedRidgePreviewSVG()}
+      ${_adpBuildHouseMarginSection()}
+    </div>`;
+}
+
+/**
+ * Step8-4a：パネルB（畝断面図）の外枠＋作物タブ。
+ * 断面図SVG本体・入力チップはStep8-4b／Step8-2で実装予定のため、
+ * 現時点ではタブ切替と選択中作物名の表示までを実装し、本体はプレースホルダーとする。
+ */
+function _adpBuildFieldPanelB() {
+  return `
+    <div class="plt-panel plt-panel-b" data-panel="b">
+      <div class="plt-panel-title">📐 畝断面図</div>
+      <div class="plt-crosssection-body" data-crosssection-body>
+        ${_adpBuildRidgeCrossSectionPanel()}
+      </div>
+    </div>`;
+}
+
+/**
+ * Step8-4a/b：パネルBの中身（作物タブ＋断面図本体）を生成する。
+ * タブ行は作物が2件以上ある場合のみ表示する（1件のみの場合はタブを出さず、
+ * 断面図タイトルとして作物名を表示する）。
+ * 選択中作物IDは _adpResolveCrossSectionActiveCropId() で毎回検証・補正してから使う。
+ * 断面SVG本体は _adpBuildRidgeCrossSectionSVG() が生成する（Step8-4b）。
+ */
+function _adpBuildRidgeCrossSectionPanel() {
+  const crops = _adpPracticecrops || [];
+  const activeCropId = _adpResolveCrossSectionActiveCropId();
+
+  if (!crops.length) {
+    return `<div class="plt-cross-section-placeholder">作物が未選択です</div>`;
+  }
+
+  const tabsHTML = _adpBuildRidgeCrossSectionTabs();
+  const activeIdx = crops.findIndex(c => c.cropId === activeCropId);
+  const activeEntry = activeIdx >= 0 ? crops[activeIdx] : crops[0];
+  const activeName = _adpCropIdToName(activeEntry.cropId);
+  const colorClass = `plt-cropcolor-${Math.max(activeIdx, 0) % 8}`;
+
+  // Step8-6：畝上幅・畝間の入力チップはパネルB直下へ一本化する（9.2）。
+  // 畝幅未設定（プレースホルダー表示中）でもここから直接詳細モードに入れるよう、
+  // 断面図SVGのhasData有無に関わらず design があれば常に生成する。
+  const chipsHTML = _adpBuildCrossSectionInputChips(activeEntry.cropId, activeEntry.plantingDesign);
+
+  const sectionResult = _adpBuildRidgeCrossSectionSVG(activeEntry, colorClass);
+  if (!sectionResult.hasData) {
+    return `
+      ${tabsHTML}
+      <div class="plt-cross-section-title">${activeName}</div>
+      <div class="plt-cross-section-placeholder" data-crosssection-placeholder>
+        畝幅が未設定のため断面図を表示できません（畝上幅／畝幅を入力してください）
+      </div>
+      ${chipsHTML}`;
+  }
+
+  return `
+    ${tabsHTML}
+    <div class="plt-cross-section-title">${activeName}</div>
+    ${sectionResult.svg}
+    ${chipsHTML}`;
+}
+
+/**
+ * Step8-6（9.2）：パネルB直下に表示する畝上幅・畝間の入力チップHTMLを生成する。
+ * 従来 _adpBuildDetailWidthSection がカード側常設フォームとして担っていた実務側(practice)入力を
+ * こちらへ移設し、常にパネルBのアクティブ作物1件分だけを表示する「単一ソース・単一入口」にする。
+ * 見た目パターン（plt-input/plt-label/plt-unit等）・保存ロジック（_adpUpdatePlantingField／
+ * _adpRefreshDetailPitchDisplay）は既存のものをそのまま流用し、配置とスペーシングのみ
+ * パネルB用に詰める（plt-detailwidth-row--panelb 修飾クラスでCSS側だけ調整）。
+ * フォーカス時のハイライト連動（4.1章）もここに一本化する（旧・カード側常設フォームからは撤去済み）。
+ * @param {string} cropId
+ * @param {object} design - plantingDesign（未設定でも呼び出し可＝畝幅未入力時のプレースホルダー状態でも表示するため）
+ * @returns {string}
+ */
+function _adpBuildCrossSectionInputChips(cropId, design) {
+  if (!design) return '';
+  const seg = 'practice';
+  const key = `${seg}:${cropId}`;
+  const pitchCm = PlantingLogic.effectivePitchCm(design);
+  const topProvisional  = PlantingLogic.isProvisional(design, 'ridgeTopWidth');
+  const pathProvisional = PlantingLogic.isProvisional(design, 'pathWidth');
+  const isProvisionalDetail = topProvisional || pathProvisional;
+
+  const hintHTML = isProvisionalDetail
+    ? `<div class="plt-detailwidth-hint">💡 汎用値を仮設定しています。作物に合わせて調整してください。</div>`
+    : '';
+
+  const topHighlightHTML = `
+              onfocus="_adpHighlightPreviewTarget('.plt-crosssection-ridge-mid[data-cross-crop=\\'${cropId}\\']', true)"
+              onblur="_adpHighlightPreviewTarget('.plt-crosssection-ridge-mid[data-cross-crop=\\'${cropId}\\']', false)"`;
+  const pathHighlightHTML = `
+              onfocus="_adpHighlightPreviewTarget('.plt-crosssection-valley-highlight[data-cross-crop=\\'${cropId}\\']', true)"
+              onblur="_adpHighlightPreviewTarget('.plt-crosssection-valley-highlight[data-cross-crop=\\'${cropId}\\']', false)"`;
+
+  return `
+    <div class="plt-detailwidth-row plt-detailwidth-row--panelb" data-detailwidth-key="${key}">
+      <div class="plt-detailwidth-heading">畝上幅・畝間</div>
+      ${hintHTML}
+      <div class="plt-input-grid">
+        <div class="plt-input-item" data-field="ridgeTopWidth">
+          <label class="plt-label">畝上幅${topProvisional ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+          <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.ridgeTopWidth ?? ''}" placeholder="例: 60"
+            oninput="_adpUpdatePlantingField('${cropId}','ridgeTopWidth',this.value,'${seg}');_adpRefreshDetailPitchDisplay('${seg}','${cropId}')"${topHighlightHTML}><span class="plt-unit">cm</span></div>
+        </div>
+        <div class="plt-input-item" data-field="pathWidth">
+          <label class="plt-label">畝間${pathProvisional ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+          <div class="plt-input-wrap"><input type="number" class="plt-input" min="0" value="${design.pathWidth ?? ''}" placeholder="例: 30"
+            oninput="_adpUpdatePlantingField('${cropId}','pathWidth',this.value,'${seg}');_adpRefreshDetailPitchDisplay('${seg}','${cropId}')"${pathHighlightHTML}><span class="plt-unit">cm</span></div>
+        </div>
+      </div>
+      <div class="plt-detailwidth-pitch">
+        実効ピッチ：<span class="plt-detailwidth-pitch-val">${pitchCm ?? '—'}</span> cm
+      </div>
+      <button type="button" class="plt-detailwidth-clear" onclick="_adpClearDetailWidth('${seg}','${cropId}')">畝幅入力に戻す（クリア）</button>
+    </div>`;
+}
+
+/**
+ * 畝断面図SVG本体を生成する（山型シルエット3本・谷2本、表示専用）。
+ * 数値の編集はパネルB直下の入力チップ（_adpBuildCrossSectionInputChips）に一本化されており、
+ * SVG側は表示とハイライト連動（.plt-crosssection-ridge-mid／.plt-crosssection-valley-highlight）のみを担う
+ * （旧・タップ編集ポップオーバーはStep8-6で撤去済み）。
+ *
+ * 表示値の決定ルール（Step8-4a確認済み）：
+ *   - 畝上幅：design.ridgeTopWidth ?? design.rowWidth ?? effectivePitchCm(design)
+ *   - 畝間　：design.pathWidth ?? 0（通常モードでは畝間データが無いため0＝谷が潰れて見える）
+ *
+ * 幾何の方針（Step8-4b確認済み）：
+ *   - 横方向は実寸比例（畝上幅・畝間のcm値をそのままスケールして配置＝寸法として正確）。
+ *   - 山の裾（斜面）は畝間側にだけ食い込ませる。頂上幅（畝上幅）は一切削らず実寸のまま描画し、
+ *     畝間の一部を斜面用に振り分け、残りを谷底の平坦部として残す（SLOPE_RATIO定数で按分）。
+ *   - 山の高さはcm値と無関係の固定比率（SVG全体高さに対する固定割合）で描画する（模式的表現）。
+ *   - 畝間=0（通常モード）の場合は斜面・谷底ともに0になり、山同士が直接隣接する
+ *     矩形の連続として描画される（畝間データが無い以上、自然な結果として許容する）。
+ *
+ * @param {object} entry - _adpPracticecrops の1要素（{cropId, ratio, plantingDesign}）
+ * @param {string} colorClass - 平面図・タブと共通の plt-cropcolor-N クラス名
+ * @returns {{svg: string, hasData: boolean}}
+ */
+function _adpBuildRidgeCrossSectionSVG(entry, colorClass) {
+  const empty = { svg: '', hasData: false };
+  const design = entry?.plantingDesign;
+  if (!design) return empty;
+  const cropId = entry?.cropId || '';
+
+  const topCm = Number(design.ridgeTopWidth ?? design.rowWidth ?? PlantingLogic.effectivePitchCm(design));
+  if (!(topCm > 0)) return empty;
+  const pathCm = Number(design.pathWidth ?? 0) || 0;
+
+  // 斜面は畝間側にのみ食い込ませる：畝間の半分（片側25%ずつ）を斜面用に、残りを谷底の平坦部に充てる。
+  const SLOPE_RATIO = 0.5; // 畝間のうち斜面に使う割合（左右合計）
+  const slopeCm = pathCm * SLOPE_RATIO / 2; // 片側の斜面幅
+  const flatValleyCm = Math.max(0, pathCm - slopeCm * 2);
+
+  // 山3本・谷2本ぶんの水平距離（cm）。外側（左端・右端）にも同じ斜面幅ぶんの余白を確保し、
+  // 端の山も地面から立ち上がって見えるようにする。
+  const totalCm = topCm * 3 + pathCm * 2 + slopeCm * 2;
+
+  const VIEW_W = 340, VIEW_H = 170;
+  const PAD_X  = 14;
+  const BASE_Y = 138;  // 地面のベースラインY座標
+  const PEAK_Y = 46;   // 山頂Y座標（固定比率：cm値に関係なく常に同じ高さで描画）
+
+  const scale = (VIEW_W - PAD_X * 2) / totalCm;
+  const cmToPx = (cm) => PAD_X + cm * scale;
+
+  // --- 各山の頂点をcm単位で左から順に計算 ---
+  let cursor = 0; // 現在位置（cm、左端からの距離）
+  const mountains = []; // {baseL, topL, topR, baseR}（すべてcm）
+  for (let i = 0; i < 3; i++) {
+    const baseL = cursor;                  // 左裾の付け根（地面）
+    const topL  = baseL + slopeCm;         // 左肩（山頂の左端）
+    const topR  = topL + topCm;            // 右肩（山頂の右端）
+    const baseR = topR + slopeCm;          // 右裾の付け根（地面）
+    mountains.push({ baseL, topL, topR, baseR });
+    cursor = baseR + flatValleyCm;         // 次の山の左裾開始位置（谷底ぶん進める）
+  }
+
+  // --- 地面のベースライン（全幅） ---
+  const baseX1 = cmToPx(0), baseX2 = cmToPx(totalCm);
+  let svg = `<line x1="${baseX1.toFixed(1)}" y1="${BASE_Y}" x2="${baseX2.toFixed(1)}" y2="${BASE_Y}" class="plt-crosssection-baseline" />`;
+
+  // --- 各山を台形ポリゴンとして描画 ---
+  // Step8-5：中央（2本目）の山にのみ plt-crosssection-ridge-mid クラス＋data-cross-crop属性を
+  // 付与し、畝上幅入力チップのfocus時にこの1本だけをハイライト対象にできるようにする。
+  mountains.forEach((m, idx) => {
+    const pts = [
+      [cmToPx(m.baseL), BASE_Y],
+      [cmToPx(m.topL),  PEAK_Y],
+      [cmToPx(m.topR),  PEAK_Y],
+      [cmToPx(m.baseR), BASE_Y],
+    ].map(p => p.map(v => v.toFixed(1)).join(',')).join(' ');
+    const isMid = idx === 1;
+    const midClass = isMid ? ' plt-crosssection-ridge-mid' : '';
+    const midAttr  = isMid ? ` data-cross-crop="${cropId}"` : '';
+    svg += `<polygon points="${pts}" class="plt-crosssection-ridge ${colorClass}${midClass}"${midAttr} />`;
+  });
+
+  // --- 寸法ラベル位置計算（Step8-6：タップ編集は撤去済み。表示専用。数値の編集は
+  //     パネルB直下の入力チップ _adpBuildCrossSectionInputChips に一本化した） ---
+  // 畝上幅：中央の山（2本目）の頂上に表示。畝間：1本目と2本目の間の谷に表示。
+  const midMountain = mountains[1];
+  const topLabelX = (cmToPx(midMountain.topL) + cmToPx(midMountain.topR)) / 2;
+  const valleyL = mountains[0].baseR, valleyR = mountains[1].baseL;
+  const valleyLabelX = (cmToPx(valleyL) + cmToPx(valleyR)) / 2;
+
+  // Step8-5：畝間ハイライト用の可視マーカー（通常モードでは谷が潰れて見た目に区間が無いため、
+  // 中心を基準に最低幅（左右12pxぶん＝計24px）を確保した帯を用意しておく。デフォルト非表示、
+  // 入力チップfocus時に .plt-highlight-blink が付与されて明滅表示される）。
+  const MIN_HIT_HALF_PX = 12;
+  const valleyCenterPx = (cmToPx(valleyL) + cmToPx(valleyR)) / 2;
+  const valleyHitX1 = Math.min(cmToPx(valleyL), valleyCenterPx - MIN_HIT_HALF_PX);
+  const valleyHitX2 = Math.max(cmToPx(valleyR), valleyCenterPx + MIN_HIT_HALF_PX);
+  svg += `<rect x="${valleyHitX1.toFixed(1)}" y="${PEAK_Y.toFixed(1)}" width="${(valleyHitX2 - valleyHitX1).toFixed(1)}" height="${(BASE_Y - PEAK_Y).toFixed(1)}" class="plt-crosssection-valley-highlight" data-cross-crop="${cropId}" />`;
+
+  svg += `<text x="${topLabelX.toFixed(1)}" y="${PEAK_Y - 8}" class="plt-crosssection-label plt-crosssection-label-top" text-anchor="middle">畝上幅 ${topCm}cm</text>`;
+  svg += `<text x="${valleyLabelX.toFixed(1)}" y="${BASE_Y - 8}" class="plt-crosssection-label plt-crosssection-label-path" text-anchor="middle">畝間 ${pathCm}cm</text>`;
+
+  return {
+    svg: `<div class="plt-crosssection-wrap"><svg viewBox="0 0 ${VIEW_W} ${VIEW_H}" class="plt-crosssection-svg">${svg}</svg></div>`,
+    hasData: true,
+  };
+}
+
+/**
+ * Step8-4a：作物タブ行のHTML生成。
+ * 作物が1件のみの場合は空文字を返し、タブ行自体を表示しない。
+ * 各タブは平面図の凡例・帯色と同じ plt-cropcolor-N を反映し、同一作物であることが
+ * 視覚的に一致するようにする（作物色との混同を避けたい寸法線の配色とは別軸）。
+ */
+function _adpBuildRidgeCrossSectionTabs() {
+  const crops = _adpPracticecrops || [];
+  if (crops.length < 2) return '';
+
+  const activeCropId = _adpResolveCrossSectionActiveCropId();
+
+  const chips = crops.map((entry, idx) => {
+    const colorClass = `plt-cropcolor-${idx % 8}`;
+    const isActive = entry.cropId === activeCropId;
+    const name = _adpCropIdToName(entry.cropId);
+    return `<button type="button" class="plt-crosstab-chip ${colorClass} ${isActive ? 'plt-crosstab-chip-active' : ''}"
+      onclick="_adpSetCrossSectionActiveCrop('${entry.cropId}')">${name}</button>`;
+  }).join('');
+
+  return `<div class="plt-crosstab-bar">${chips}</div>`;
+}
+
+/**
+ * Step8-4a：パネルBで選択中の作物IDを検証・補正して返す。
+ * - 現在値が有効（crops内に存在）ならそのまま使う。
+ * - 無効／未設定の場合：畝計算(ridgeSegments)が既にある最初の作物を優先し、
+ *   該当が無ければ配列の先頭（idx=0）にフォールバックする
+ *   （「選択したのに断面データが無い」状態を避けるため）。
+ * @returns {string|null} 有効なcropId、または作物が0件ならnull
+ */
+function _adpResolveCrossSectionActiveCropId() {
+  const crops = _adpPracticecrops || [];
+  if (!crops.length) {
+    _adpCrossSectionActiveCropId = null;
+    return null;
+  }
+
+  const stillValid = crops.some(c => c.cropId === _adpCrossSectionActiveCropId);
+  if (stillValid) return _adpCrossSectionActiveCropId;
+
+  const withRidges = crops.find(c => Array.isArray(c?.plantingDesign?.ridgeSegments) && c.plantingDesign.ridgeSegments.length > 0);
+  _adpCrossSectionActiveCropId = (withRidges || crops[0]).cropId;
+  return _adpCrossSectionActiveCropId;
+}
+
+/**
+ * Step8-4a：作物タブタップ時のハンドラ。
+ * stateを更新し、パネルB（タブ＋断面図本体）のみを部分再描画する
+ * （全体再描画 _adpRenderPlantingPane() は呼ばない）。
+ * @param {string} cropId
+ */
+function _adpSetCrossSectionActiveCrop(cropId) {
+  if (_adpCrossSectionActiveCropId === cropId) return;
+  _adpCrossSectionActiveCropId = cropId;
+  _adpRefreshRidgeCrossSectionPanel();
+}
+
+/**
+ * Step8-4a：パネルBの中身（タブ＋断面図本体）だけを部分再描画する。
+ * Step8-6追加対応（10.4）：断面図入力チップ自身にフォーカスがある状態で呼ばれた場合、
+ * 再描画（innerHTML差し替え）でフォーカス・カーソル位置が失われるため、対象フィールドと
+ * 選択範囲を保存しておき、再描画後に同じ入力欄へフォーカス・カーソル位置を復元する。
+ * 呼び出し元（チップ自身のoninput／畝幅フォーカスによるタブ自動切替／クリア／平面図側
+ * ポップオーバー確定）はすべてこの関数を経由するため、修正箇所はここ1関数のみで済む。
+ */
+function _adpRefreshRidgeCrossSectionPanel() {
+  const body = document.querySelector('#planting-result [data-crosssection-body]');
+  if (!body) return;
+
+  const active = document.activeElement;
+  let focusField = null, selStart = null, selEnd = null;
+  if (active && active.tagName === 'INPUT' && body.contains(active)) {
+    focusField = active.closest('[data-field]')?.dataset.field || null;
+    selStart = active.selectionStart;
+    selEnd = active.selectionEnd;
+  }
+
+  body.innerHTML = _adpBuildRidgeCrossSectionPanel();
+
+  if (focusField) {
+    const restored = body.querySelector(`.plt-input-item[data-field="${focusField}"] input`);
+    if (restored) {
+      restored.focus();
+      if (selStart != null && selEnd != null) {
+        try { restored.setSelectionRange(selStart, selEnd); } catch (_) { /* type=numberではブラウザにより非対応の場合があるため無視 */ }
+      }
+    }
+  }
+}
+
+/**
+ * Step8-4c：カード側の常時表示入力欄（畝幅／畝上幅・畝間）や平面図側の寸法線ポップオーバーなど、
+ * 断面図タップ編集以外の経路で rowWidth/ridgeTopWidth/pathWidth が変更された際に呼ぶ。
+ * 変更されたcropIdが現在パネルBに表示中（アクティブ）の作物と一致する場合のみ断面図を再描画する
+ * （無関係な作物の編集のたびに毎回断面図を再描画しないための最適化）。
+ */
+function _adpRefreshCrossSectionIfActive(cropId) {
+  if (_adpResolveCrossSectionActiveCropId() === cropId) {
+    _adpRefreshRidgeCrossSectionPanel();
+  }
+}
+
+/**
+ * Step8-6（7.4-12・9.2）：カード側「畝幅」入力（rowWidth・通常モードのフォールバック値）に
+ * フォーカスした際に呼ぶ。畝上幅・畝間チップはパネルB直下＝常に選択中の1作物専用になったため、
+ * フォーカスされた作物がパネルBの現在アクティブ作物と異なる場合はタブを自動切替して
+ * パネルBを部分再描画したうえで、中央の山（.plt-crosssection-ridge-mid）をハイライトする。
+ * onblur側は本関数を呼ばず、_adpHighlightPreviewTarget(...,false) でハイライトのみ解除する
+ * （タブ切替は片方向でよく、フォーカスが外れても選択中作物は保持する）。
+ * @param {string} cropId
+ */
+function _adpFocusCrossSectionForCrop(cropId) {
+  if (_adpResolveCrossSectionActiveCropId() !== cropId) {
+    _adpCrossSectionActiveCropId = cropId;
+    _adpRefreshRidgeCrossSectionPanel();
+  }
+  _adpHighlightPreviewTarget(`.plt-crosssection-ridge-mid[data-cross-crop='${cropId}']`, true);
 }
 
 function _adpRenderPlantingPane() {
@@ -7781,7 +8181,11 @@ function _adpGetDesignFor(seg, cropId) {
 /**
  * 畝上幅・畝間の入力欄HTMLを生成（常時表示フォームの一部・Step4でトグル廃止）。
  * 入力欄2つ＋実効ピッチ表示＋クリアボタンを常に表示する。
- * @param {string} seg - 'practice' | 'analysis'
+ *
+ * Step8-6：実務側（practice）はパネルB直下の入力チップ（_adpBuildCrossSectionInputChips）へ
+ * 移設したため、この関数は分析側（seg === 'analysis'）専用として残す。分析側はパネルB自体を
+ * 持たないため、断面図ハイライト連動のfocus/blur配線はここでは付けない（撤去済み）。
+ * @param {string} seg - 'analysis'（実務側からは呼ばれなくなった）
  * @param {string} cropId
  * @param {object} design - plantingDesign
  */
@@ -7852,7 +8256,11 @@ function _adpClearDetailWidth(seg, cropId) {
   const resultEl = card.querySelector('.plt-result');
   if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
 
-  if (seg !== 'analysis') _adpRefreshUnifiedPreview();
+  if (seg !== 'analysis') {
+    _adpRefreshUnifiedPreview();
+    // Step8-4c：詳細幅クリア（rowWidthベースへ復帰）も断面図に同期する
+    _adpRefreshCrossSectionIfActive(cropId);
+  }
 }
 
 /**
@@ -7894,7 +8302,11 @@ function _adpRefreshDetailPitchDisplay(seg, cropId) {
     const resultEl = card.querySelector('.plt-result');
     if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
 
-    if (seg !== 'analysis') _adpRefreshUnifiedPreview();
+    if (seg !== 'analysis') {
+      _adpRefreshUnifiedPreview();
+      // Step8-4c：カード側の畝上幅・畝間入力欄からの変更を断面図にも即時反映する
+      _adpRefreshCrossSectionIfActive(cropId);
+    }
   }, 300);
 }
 
@@ -8032,17 +8444,24 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
   const ridgeDirBtnHTML = _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir);
 
   // 畝幅：Step4でSVG直下に単独表示（他の入力項目とは分離）
+  // Step8-6（7.4-12）：畝幅（rowWidthベースの通常モード）は断面図の畝上幅フォールバック値に
+  // 使われるため、フォーカス時にパネルBを当該作物へ自動切替＋中央の山をハイライトする
+  // （パネルBを持たない分析側では配線しない）。
+  const rowWidthFocusHTML = !isAnalysis ? `
+              onfocus="_adpFocusCrossSectionForCrop('${cropId}')"
+              onblur="_adpHighlightPreviewTarget('.plt-crosssection-ridge-mid[data-cross-crop=\\'${cropId}\\']', false)"` : '';
   const rowWidthHTML = `
     <div class="plt-rowwidth-row">
       <div class="plt-input-item" data-field="rowWidth">
         <label class="plt-label">畝幅${PlantingLogic.isProvisional(design, 'rowWidth') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
         <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowWidth ?? ''}" placeholder="例: 90"
-          oninput="_adpUpdatePlantingField('${cropId}','rowWidth',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
+          oninput="_adpUpdatePlantingField('${cropId}','rowWidth',this.value,'${seg}')"${rowWidthFocusHTML}><span class="plt-unit">cm</span></div>
       </div>
     </div>`;
 
-  // 畝上幅・畝間（詳細）セクション：Step4で常時表示化
-  const detailWidthHTML = _adpBuildDetailWidthSection(seg, cropId, design);
+  // 畝上幅・畝間（詳細）セクション：Step8-6でpractice側はパネルB直下（入力チップ）へ移設したため、
+  // カード内アコーディオンには含めない。分析側（isAnalysis）はパネルBを持たないため現状維持。
+  const detailWidthHTML = isAnalysis ? _adpBuildDetailWidthSection(seg, cropId, design) : '';
 
   return `
     <div class="plt-card" data-crop-id="${cropId}">
@@ -8219,6 +8638,8 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
     if (field === 'rowWidth') {
       _adpRefreshRidgeDirRow(card, cropId, seg, design);
       _adpRefreshUnifiedPreview();
+      // Step8-4c：rowWidthは断面図の畝上幅フォールバック値（通常モード）に使われるため同期する
+      _adpRefreshCrossSectionIfActive(cropId);
     }
   }, 300);
 }
@@ -8871,6 +9292,9 @@ function _adpConfirmRidgeDimPopover(popEl) {
     if (inputEl) inputEl.value = num;
   }
 
+  // Step8-4c：平面図側の寸法線ポップオーバーからの編集も断面図に即時反映する
+  _adpRefreshCrossSectionIfActive(cropId);
+
   popEl.remove();
 }
 
@@ -8970,14 +9394,6 @@ function _adpBuildRidgeBarListSVG(design) {
 const HRV_GRADES    = ['A品', 'B品', 'C品', '規格外'];
 const HRV_UNITS     = ['kg', '個', '箱', '束', '袋'];
 const HRV_PRICE_UNITS = ['円/kg', '円/個', '円/箱', '円/束', '円/袋'];
-
-/**
- * 収穫記録の初期値を生成する。
- * _adpPracticecrops の各要素に harvestRecords が存在しない場合に使う。
- */
-function _adpInitHarvestRecords() {
-  return [];
-}
 
 /**
  * 収穫ペインを描画する。

@@ -838,12 +838,6 @@ function vmDelete(id) {
   vmSave(vmLoad().filter(m => m.id !== id));
 }
 
-// ─── 登録語キャッシュを強制リセット（cropDB遅延ロード後に呼ぶ） ───
-function vmResetAllowedWordsCache() {
-  _vmAllowedWords = null;
-  _vmCropDbLoaded = false;
-}
-
 // ─────────────────────────────────────────
 //  Web Speech API
 //  continuous=true + 自前5秒無音タイマーで余裕を確保
