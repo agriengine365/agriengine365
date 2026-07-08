@@ -7929,10 +7929,38 @@ function _adpCommitRidgeRatio(seg, cropId, value) {
  */
 function _adpBuildRidgeInputGridHTML(cropId, design) {
   const seg = 'practice';
+  const mode = design.ridgeInputMode === 'count' ? 'count' : 'pitch';
   const hasAutoCalc = Array.isArray(design.ridgeSegments) && design.ridgeSegments.length > 0;
   const calc = PlantingLogic.calcPlanting(design);
 
-  const rowsHTML = hasAutoCalc ? `
+  // ── 畝配置の入力方式トグル（ピッチ指定 ⇔ 畝数指定）──
+  // ピッチ指定：ピッチを入力し、敷地に何本詰め込めるかを自動計算（従来方式）
+  // 畝数指定：畝数を入力し、敷地幅を均等N分割してピッチを逆算（新設・偶奇問わず狙った本数を作れる）
+  const modeToggleHTML = `
+    <div class="plt-ridgemode-toggle" data-ridgemode-key="${cropId}">
+      <button type="button" class="plt-ridgemode-btn ${mode === 'pitch' ? 'plt-ridgemode-btn-active' : ''}"
+        onclick="_adpSetRidgeInputMode('${cropId}','pitch','${seg}')">📏 ピッチ指定</button>
+      <button type="button" class="plt-ridgemode-btn ${mode === 'count' ? 'plt-ridgemode-btn-active' : ''}"
+        onclick="_adpSetRidgeInputMode('${cropId}','count','${seg}')">🔢 畝数指定</button>
+    </div>`;
+
+  let rowsHTML, pitchHTML;
+  if (mode === 'count') {
+    // 畝数指定モード：畝数が入力、ピッチは逆算された自動値（読み取り専用表示）
+    rowsHTML = `
+        <div class="plt-input-item" data-field="targetRowCount">
+          <label class="plt-label">畝数</label>
+          <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" step="1" value="${design.targetRowCount ?? ''}" placeholder="例: 2"
+            oninput="_adpUpdatePlantingField('${cropId}','targetRowCount',this.value,'${seg}')"><span class="plt-unit">畝</span></div>
+        </div>`;
+    pitchHTML = `
+        <div class="plt-input-item plt-input-auto">
+          <label class="plt-label">ピッチ <span class="plt-auto-badge">🔢 逆算</span></label>
+          <div class="plt-auto-val">${design.rowWidth ?? '—'} cm</div>
+        </div>`;
+  } else {
+    // ピッチ指定モード（従来）：畝数は自動計算済みなら読み取り専用、未計算なら手入力フォールバック
+    rowsHTML = hasAutoCalc ? `
         <div class="plt-input-item plt-input-auto">
           <label class="plt-label">畝数 <span class="plt-auto-badge">🗺️ 自動</span></label>
           <div class="plt-auto-val">${calc?.rows ?? '—'} 畝</div>
@@ -7942,6 +7970,13 @@ function _adpBuildRidgeInputGridHTML(cropId, design) {
           <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rows ?? ''}" placeholder="例: 10"
             oninput="_adpUpdatePlantingField('${cropId}','rows',this.value,'${seg}')"><span class="plt-unit">畝</span></div>
         </div>`;
+    pitchHTML = `
+        <div class="plt-input-item" data-field="rowWidth">
+          <label class="plt-label">ピッチ${PlantingLogic.isProvisional(design, 'rowWidth') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+          <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowWidth ?? ''}" placeholder="例: 90"
+            oninput="_adpUpdatePlantingField('${cropId}','rowWidth',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
+        </div>`;
+  }
 
   const rowLengthHTML = hasAutoCalc ? `
         <div class="plt-input-item plt-input-auto">
@@ -7952,13 +7987,6 @@ function _adpBuildRidgeInputGridHTML(cropId, design) {
           <label class="plt-label">畝長</label>
           <div class="plt-input-wrap"><input type="number" class="plt-input" min="0.1" step="0.1" value="${design.rowLength ?? ''}" placeholder="例: 20"
             oninput="_adpUpdatePlantingField('${cropId}','rowLength',this.value,'${seg}')"><span class="plt-unit">m</span></div>
-        </div>`;
-
-  const pitchHTML = `
-        <div class="plt-input-item" data-field="rowWidth">
-          <label class="plt-label">ピッチ${PlantingLogic.isProvisional(design, 'rowWidth') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
-          <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowWidth ?? ''}" placeholder="例: 90"
-            oninput="_adpUpdatePlantingField('${cropId}','rowWidth',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
         </div>`;
 
   const linesPerRowHTML = `
@@ -7989,11 +8017,18 @@ function _adpBuildRidgeInputGridHTML(cropId, design) {
             oninput="_adpUpdatePlantingField('${cropId}','missingRate',this.value,'${seg}')"><span class="plt-unit">%</span></div>
         </div>`;
 
+  // 畝数指定モードで、敷地形状の都合により目標畝数どおりに配置できなかった場合の説明表示
+  const mismatch = design._rowCountMismatch;
+  const mismatchHTML = (mode === 'count' && mismatch) ? `
+      <div class="plt-rowcount-mismatch">⚠️ 指定した${mismatch.target}畝は敷地の形状上そのままでは作れませんでした。実際は${mismatch.actual}畝で配置しています。</div>` : '';
+
   return `
     <div class="plt-ridge-inputgrid">
+      ${modeToggleHTML}
       <div class="plt-input-grid plt-input-grid-4col">
         ${rowsHTML}${rowLengthHTML}${pitchHTML}${linesPerRowHTML}${plantSpacingHTML}${rowSpacingHTML}${missingRateHTML}
       </div>
+      ${mismatchHTML}
     </div>`;
 }
 
@@ -8326,6 +8361,53 @@ function _adpBuildRidgeDirRowHTML(cropId, seg, design, hasAutoCalc, hasRidgeDir)
 function _adpGetDesignFor(seg, cropId) {
   if (seg === 'analysis') return _adpAnalysisPlantingDesign || null;
   return _adpPracticecrops.find(c => c.cropId === cropId)?.plantingDesign || null;
+}
+
+/**
+ * 畝配置の入力方式（'pitch'：ピッチ指定→畝数自動 / 'count'：畝数指定→ピッチ自動）を切り替える。
+ * 'count'へ初めて切り替える際、既存のridgeSegments本数があればそれを目標畝数の初期値として
+ * 引き継ぐ（切替直後に空欄で計算不能になるのを避けるため）。
+ * 切替後は即座に全帯再計算・保存・関連UI再描画まで行う（デバウンス不要な単発操作のため）。
+ * @param {string} cropId
+ * @param {'pitch'|'count'} mode
+ * @param {string} seg - 'practice'（現状は実務側のみUIを持つ）
+ */
+function _adpSetRidgeInputMode(cropId, mode, seg) {
+  if (mode !== 'pitch' && mode !== 'count') return;
+  const design = _adpGetDesignFor(seg, cropId);
+  if (!design || design.ridgeInputMode === mode) return;
+
+  design.ridgeInputMode = mode;
+  if (mode === 'count' && !(design.targetRowCount > 0)) {
+    design.targetRowCount = Array.isArray(design.ridgeSegments) && design.ridgeSegments.length > 0
+      ? design.ridgeSegments.length : 1;
+  }
+
+  if (seg === 'analysis') {
+    if (!_adpAnalysisPlantingDesign) return;
+    PlantingLogic.recalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, PlantingLogic.effectivePitchCm(_adpAnalysisPlantingDesign), _adpArea, _adpHouseMargin);
+  } else {
+    PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin);
+    const calcForSave = PlantingLogic.calcPlanting(design);
+    design.purchase = calcForSave ? calcForSave.purchase : null;
+    _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
+  }
+
+  _adpRefreshRidgeInputBlock();
+  _adpRefreshUnifiedPreview();
+
+  const card = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
+  if (card) {
+    _adpRefreshRidgeDirRow(card, cropId, seg, design);
+    const calc = PlantingLogic.calcPlanting(design);
+    const warn = PlantingLogic.areaWarn(design._bandAreaSqm ?? null, calc?.rowAreaSqm ?? null);
+    const resultEl = card.querySelector('.plt-result');
+    const warnContainer = card.querySelector('.plt-warn-wrap');
+    if (resultEl) resultEl.innerHTML = _adpBuildPlantingResultHTML(calc, null, cropId);
+    if (warnContainer) warnContainer.innerHTML = warn
+      ? `<div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と帯面積（${warn.bandAreaSqm}㎡）が${warn.diffPct}%乖離しています</div>`
+      : '';
+  }
 }
 
 /**
@@ -8733,9 +8815,10 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
     const design = _adpPracticecrops[idx].plantingDesign;
     if (!design) return;
 
-    // rowWidth・ridgeRatioPctが変わった場合、エリア共通の畝方向が設定済みなら全帯を再計算
-    // （境界ギャップは隣接畝のridgeRatioPctにも依存するため、ratio変更時も再計算が必要）
-    if (field === 'rowWidth' || field === 'ridgeRatioPct') {
+    // rowWidth・ridgeRatioPct・targetRowCountが変わった場合、エリア共通の畝方向が設定済みなら
+    // 全帯を再計算（境界ギャップは隣接畝のridgeRatioPctにも依存するため、ratio変更時も再計算が必要。
+    // targetRowCountは畝数指定方式でのピッチ逆算のトリガー）
+    if (field === 'rowWidth' || field === 'ridgeRatioPct' || field === 'targetRowCount') {
       PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin);
     }
 
@@ -8756,12 +8839,13 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
       ? `<div class="plt-warn">⚠️ 畝面積（${warn.rowAreaSqm}㎡）と帯面積（${warn.bandAreaSqm}㎡）が${warn.diffPct}%乖離しています</div>`
       : '';
 
-    // rowWidth・ridgeRatioPct変更時はridgeSegmentsが再計算され得るため、
+    // rowWidth・ridgeRatioPct・targetRowCount変更時はridgeSegmentsが再計算され得るため、
     // プレビューボタン／ステータス行（plt-ridgedir-row）・統合プレビュー（Step4）も再描画してズレを防ぐ
-    if (field === 'rowWidth' || field === 'ridgeRatioPct') {
+    if (field === 'rowWidth' || field === 'ridgeRatioPct' || field === 'targetRowCount') {
       _adpRefreshRidgeDirRow(card, cropId, seg, design);
       _adpRefreshUnifiedPreview();
-      // Step8-7：rowWidth・ridgeRatioPctは断面図・拡大詳細図の畝上幅／畝間に使われるため同期する
+      // Step8-7：rowWidth・ridgeRatioPct・targetRowCountは断面図・拡大詳細図・入力グリッドの
+      // 畝上幅／畝間／ピッチ表示に使われるため同期する
       _adpRefreshCrossSectionIfActive(cropId);
     }
   }, 300);

@@ -11649,6 +11649,50 @@ html.draw-dialog-active .bottom-nav {
   gap: 8px 10px;
 }
 
+/* 畝配置の入力方式トグル（📏ピッチ指定 ⇔ 🔢畝数指定）。
+   見た目は表示トグル（.plt-viewtoggle）を踏襲しつつ、意味の違いが伝わるよう
+   アクティブ色は畝上比率スライダーと同じvioletに寄せている（緑=表示切替、紫=入力方式切替）。 */
+.plt-ridgemode-toggle {
+  display: flex;
+  gap: 4px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+  margin-bottom: 8px;
+}
+.plt-ridgemode-btn {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-align: center;
+  transition: background .15s, color .15s;
+}
+.plt-ridgemode-btn-active {
+  background: color-mix(in srgb, var(--violet) 18%, transparent);
+  color: var(--violet);
+}
+
+/* 畝数指定モードで、敷地形状の都合により目標畝数どおりに配置できなかった場合の説明表示。
+   既存の警告トーン（.plt-detailwidth-hint系のamber配色）を踏襲。 */
+.plt-rowcount-mismatch {
+  font-size: 11px;
+  color: var(--text2);
+  background: rgba(251,191,36,0.10);
+  border: 1px solid rgba(251,191,36,0.25);
+  border-radius: 6px;
+  padding: 6px 8px;
+  line-height: 1.5;
+  margin-top: 8px;
+}
+
 /* 畝上比率スライダー（実務側：新ブロック直下／分析側：.plt-detailwidth-row内、共通クラス）。
    ラベルを1行占有させ、スライダー＋数値を次の行に並べる（狭い画面幅でも詰まらないように）。
    accent-colorは寸法線の配色（畝上幅=violet／畝間=blue）のうち主役側に合わせてvioletを採用。 */

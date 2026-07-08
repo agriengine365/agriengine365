@@ -237,6 +237,77 @@ const RidgeGeometry = (() => {
    *   ridgeSegments[].p1 / p2 は畝セグメントの始点・終点（緯度経度）。
    *   実形状プレビュー描画用（後方互換：length は従来どおり必ず存在する）。
    */
+  /**
+   * calcRidges / calcRidgesByCount 共通の下準備：
+   * 重心原点でのローカル座標変換・畝方向ベクトル／法線・投影範囲(projMin/projMax)・
+   * スキャン線分長(scanLen) をまとめて算出する。
+   * @returns {object|null} 準備データ（不正入力時はnull）
+   */
+  function _prepareRidgeScan(polygonLatLngs, dirP1, dirP2, holesLatLngs) {
+    if (!polygonLatLngs || polygonLatLngs.length < 3) return null;
+    if (!dirP1 || !dirP2) return null;
+
+    const origin = _centroid(polygonLatLngs);
+    const poly   = polygonLatLngs.map(p => _toLocal(p, origin));
+    const lp1    = _toLocal(dirP1, origin);
+    const lp2    = _toLocal(dirP2, origin);
+    const holes  = Array.isArray(holesLatLngs)
+      ? holesLatLngs.map(hole => hole.map(p => _toLocal(p, origin)))
+      : [];
+    const rings  = [poly, ...holes];
+
+    const ridgeDir  = _normalize({ x: lp2.x - lp1.x, y: lp2.y - lp1.y });
+    const normalDir = { x: -ridgeDir.y, y: ridgeDir.x };
+
+    const projections = poly.map(p => _dot(p, normalDir));
+    const projMin = Math.min(...projections);
+    const projMax = Math.max(...projections);
+
+    const xs = poly.map(p => p.x);
+    const ys = poly.map(p => p.y);
+    const spanX = Math.max(...xs) - Math.min(...xs);
+    const spanY = Math.max(...ys) - Math.min(...ys);
+    const diag  = Math.sqrt(spanX * spanX + spanY * spanY);
+    const scanLen = diag * 2 + 10;
+
+    return { origin, poly, holes, rings, ridgeDir, normalDir, projMin, projMax, scanLen };
+  }
+
+  /**
+   * 指定オフセット群それぞれについて、畝方向にスキャン線を通してポリゴン（穴含む）との
+   * 交差セグメントを求め、実座標付きの畝セグメント配列にまとめる（calcRidges本体の
+   * 5〜346行目に相当していた処理を共通化）。
+   */
+  function _scanOffsetsForSegments(offsets, ctx) {
+    const { origin, ridgeDir, normalDir, scanLen, rings } = ctx;
+    const allSegments = [];
+
+    offsets.forEach(offset => {
+      const baseOrigin = { x: normalDir.x * offset, y: normalDir.y * offset };
+      const lineOrigin = {
+        x: baseOrigin.x - ridgeDir.x * (scanLen / 2),
+        y: baseOrigin.y - ridgeDir.y * (scanLen / 2),
+      };
+      const lineDir = { x: ridgeDir.x * scanLen, y: ridgeDir.y * scanLen };
+
+      const tValues = _linePolyIntersectionsMulti(lineOrigin, lineDir, rings)
+        .map(t => t * scanLen);
+      const segs = _validSegments(tValues);
+
+      segs.forEach(seg => {
+        const p1Local = { x: lineOrigin.x + ridgeDir.x * seg.tStart, y: lineOrigin.y + ridgeDir.y * seg.tStart };
+        const p2Local = { x: lineOrigin.x + ridgeDir.x * seg.tEnd,   y: lineOrigin.y + ridgeDir.y * seg.tEnd };
+        allSegments.push({
+          length: Math.round(seg.length * 100) / 100,
+          p1: _fromLocal(p1Local, origin),
+          p2: _fromLocal(p2Local, origin),
+        });
+      });
+    });
+
+    return allSegments;
+  }
+
   function calcRidges(polygonLatLngs, dirP1, dirP2, rowWidth, holesLatLngs) {
     if (!polygonLatLngs || polygonLatLngs.length < 3) {
       return { rows: 0, rowLength: 0, ridgeSegments: [], totalArea: 0 };
@@ -248,36 +319,9 @@ const RidgeGeometry = (() => {
       return { rows: 0, rowLength: 0, ridgeSegments: [], totalArea: 0 };
     }
 
-    // 1. 重心を原点としてローカル座標へ変換
-    const origin = _centroid(polygonLatLngs);
-    const poly   = polygonLatLngs.map(p => _toLocal(p, origin));
-    const lp1    = _toLocal(dirP1, origin);
-    const lp2    = _toLocal(dirP2, origin);
-    const holes  = Array.isArray(holesLatLngs)
-      ? holesLatLngs.map(hole => hole.map(p => _toLocal(p, origin)))
-      : [];
-    const rings  = [poly, ...holes];
-
-    // 2. 畝方向ベクトルと法線（投影方向）
-    const ridgeDir  = _normalize({ x: lp2.x - lp1.x, y: lp2.y - lp1.y });
-    const normalDir = { x: -ridgeDir.y, y: ridgeDir.x }; // 90°回転
-
-    // 3. ポリゴン全頂点を法線方向へ投影し、走査範囲を決定（穴は範囲に含めない＝外周のみ基準）
-    const projections = poly.map(p => _dot(p, normalDir));
-    const projMin = Math.min(...projections);
-    const projMax = Math.max(...projections);
-
-    // 3b. 畝方向（ridgeDir）側の走査に使う線分の長さを決定。
-    //     _linePolyIntersectionsMulti は有限長の線分として交差判定するため、
-    //     ridgeDir（単位ベクトル＝長さ1）をそのまま渡すと畝方向1mしか
-    //     判定できず、実際の圃場（数十m規模）では交点がほぼ見つからない。
-    //     ポリゴンの対角線長を基準に、確実に圃場全体をまたぐ長さを用意する。
-    const xs = poly.map(p => p.x);
-    const ys = poly.map(p => p.y);
-    const spanX = Math.max(...xs) - Math.min(...xs);
-    const spanY = Math.max(...ys) - Math.min(...ys);
-    const diag  = Math.sqrt(spanX * spanX + spanY * spanY);
-    const scanLen = diag * 2 + 10; // 余裕を持たせる（対角線の2倍＋10m）
+    const prep = _prepareRidgeScan(polygonLatLngs, dirP1, dirP2, holesLatLngs);
+    if (!prep) return { rows: 0, rowLength: 0, ridgeSegments: [], totalArea: 0 };
+    const { origin, ridgeDir, normalDir, projMin, projMax, scanLen, rings } = prep;
 
     // 4. オフセット位置の一覧を「帯の中心」基準・両側展開で生成する。
     //    【圃場マージン再設計】従来は projMin + 半畝幅 から畝幅ずつ進む片側走査だったが、
@@ -302,48 +346,7 @@ const RidgeGeometry = (() => {
       offsets.sort((a, b) => a - b);
     }
 
-    const allSegments = [];
-
-    offsets.forEach(offset => {
-      // オフセット線上の基準点（法線方向にoffsetだけ進んだ点）
-      const baseOrigin = {
-        x: normalDir.x * offset,
-        y: normalDir.y * offset,
-      };
-
-      // 畝方向へ scanLen 分の有限線分を、基準点を中心に前後に伸ばして構築する
-      const lineOrigin = {
-        x: baseOrigin.x - ridgeDir.x * (scanLen / 2),
-        y: baseOrigin.y - ridgeDir.y * (scanLen / 2),
-      };
-      const lineDir = {
-        x: ridgeDir.x * scanLen,
-        y: ridgeDir.y * scanLen,
-      };
-
-      // ポリゴン（外周＋穴）との交差 t 値（0〜1、lineOriginからの比率）を収集し、
-      // 実距離 [m] に変換する
-      const tValues = _linePolyIntersectionsMulti(lineOrigin, lineDir, rings)
-        .map(t => t * scanLen);
-      const segs    = _validSegments(tValues);
-
-      segs.forEach(seg => {
-        // セグメントの実座標（緯度経度）を復元（実形状プレビュー用）
-        const p1Local = {
-          x: lineOrigin.x + ridgeDir.x * seg.tStart,
-          y: lineOrigin.y + ridgeDir.y * seg.tStart,
-        };
-        const p2Local = {
-          x: lineOrigin.x + ridgeDir.x * seg.tEnd,
-          y: lineOrigin.y + ridgeDir.y * seg.tEnd,
-        };
-        allSegments.push({
-          length: Math.round(seg.length * 100) / 100,
-          p1: _fromLocal(p1Local, origin),
-          p2: _fromLocal(p2Local, origin),
-        });
-      });
-    });
+    const allSegments = _scanOffsetsForSegments(offsets, { origin, ridgeDir, normalDir, scanLen, rings });
 
     // 5. 集計
     const rows      = allSegments.length;
@@ -356,6 +359,62 @@ const RidgeGeometry = (() => {
       rowLength,
       ridgeSegments: allSegments,
       totalArea,
+    };
+  }
+
+  /**
+   * 畝数指定方式：ピッチではなく「目標畝数」から、敷地の実効幅（畝方向に垂直な投影幅）を
+   * 均等N分割し、各ストライプの中心に畝を1本ずつ置く。calcRidges（ピッチ起点・中心対称
+   * 展開）とは配置方式が異なる別系統の関数であり、既存のcalcRidgesの挙動には一切影響しない。
+   *
+   * 均等分割のため、奇数・偶数を問わずどんな畝数でも構造的に配置できる
+   * （calcRidgesの中心対称展開は奇数畝しか生成できないという制約を持つが、
+   * この関数はその制約を持たない）。
+   *
+   * ただし、いびつな形状の圃場（凹み・穴など）では、均等分割した一部のストライプが
+   * 実際の境界と交差しない／極端に短くなるケースがあり、その場合は
+   * 返り値の rows が targetRows を下回る（matched: false）。呼び出し側で
+   * 「指定畝数を実現できなかった」ことを検知してユーザーに説明する想定。
+   *
+   * @param {{lat:number,lng:number}[]} polygonLatLngs
+   * @param {{lat:number,lng:number}} dirP1
+   * @param {{lat:number,lng:number}} dirP2
+   * @param {number} targetRows - 目標畝数（1以上の整数）
+   * @param {{lat:number,lng:number}[][]} [holesLatLngs]
+   * @returns {{rows:number, rowLength:number, ridgeSegments:Array, totalArea:number,
+   *            pitchM:number, targetRows:number, matched:boolean}}
+   */
+  function calcRidgesByCount(polygonLatLngs, dirP1, dirP2, targetRows, holesLatLngs) {
+    const n = Math.round(Number(targetRows));
+    const empty = { rows: 0, rowLength: 0, ridgeSegments: [], totalArea: 0, pitchM: 0, targetRows: n || 0, matched: false };
+    if (!(n >= 1)) return empty;
+
+    const prep = _prepareRidgeScan(polygonLatLngs, dirP1, dirP2, holesLatLngs);
+    if (!prep) return empty;
+    const { origin, ridgeDir, normalDir, projMin, projMax, scanLen, rings } = prep;
+
+    const bandWidth = projMax - projMin;
+    if (!(bandWidth > 0)) return empty;
+
+    const stripWidth = bandWidth / n;
+    const offsets = [];
+    for (let i = 0; i < n; i++) offsets.push(projMin + stripWidth * (i + 0.5));
+
+    const allSegments = _scanOffsetsForSegments(offsets, { origin, ridgeDir, normalDir, scanLen, rings });
+
+    const rows      = allSegments.length;
+    const totalLen  = allSegments.reduce((s, seg) => s + seg.length, 0);
+    const rowLength = rows > 0 ? Math.round((totalLen / rows) * 10) / 10 : 0;
+    const totalArea = Math.round(totalLen * stripWidth * 10) / 10;
+
+    return {
+      rows,
+      rowLength,
+      ridgeSegments: allSegments,
+      totalArea,
+      pitchM: Math.round(stripWidth * 1000) / 1000,
+      targetRows: n,
+      matched: rows === n,
     };
   }
 
@@ -969,6 +1028,7 @@ const RidgeGeometry = (() => {
   // ────────────────────────────────────────
   return {
     calcRidges,
+    calcRidgesByCount,
     totalPlants,
     splitPolygonByRatio,
     computeHouseGeometry,

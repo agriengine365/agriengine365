@@ -16,6 +16,8 @@
 //    PlantingLogic.getEffectiveFieldGeometry(area, houseMargin)
 //    PlantingLogic.recalcAllBands(practicecrops, area, houseMargin)
 //    PlantingLogic.recalcAnalysisRidgeSegments(design, pitchCm, area, houseMargin)
+//      ↑ 両関数とも design.ridgeInputMode==='count' なら内部で自動的に
+//        畝数指定方式（calcRidgesByCount逆算）に切り替わる（呼び出し側の変更不要）
 //    PlantingLogic.calcPlanting(design)
 //    PlantingLogic.areaWarn(bandAreaSqm, rowAreaSqm)
 // ═══════════════════════════════════════════
@@ -57,6 +59,9 @@ const PlantingLogic = (() => {
       ridgeSegments:  null,   // [{ length, p1:{lat,lng}, p2:{lat,lng} }] | null（地図自動計算結果キャッシュ）
       // ── 畝上比率（Step8-7：ridgeTopWidth/pathWidthの2値入力を廃止し1本化）──
       ridgeRatioPct:  null,   // ピッチ(rowWidth)に対する畝上幅の配分[%, 0-100]。未設定はnull（暫定値は50）
+      // ── 畝配置の入力方式（ピッチ指定 or 畝数指定）──
+      ridgeInputMode: 'pitch', // 'pitch'（ピッチ入力→畝数自動）| 'count'（畝数入力→ピッチ自動）
+      targetRowCount: null,    // ridgeInputMode==='count'時の目標畝数。それ以外はnull
       // ── 作物比率連動・帯状分割（仕様書セクション1）── recalcAllBands が書き込むキャッシュ
       _bandPolygon:   null,   // このデザインが担当する帯ポリゴン [{lat,lng},...] | null（未割当 or 未計算）
       _bandAreaSqm:   null,   // 帯の実面積 [m²] | null
@@ -103,6 +108,11 @@ const PlantingLogic = (() => {
     if (design.ridgeRatioPct == null) {
       design.ridgeRatioPct = 50;
       if (!design.provisionalFields.includes('ridgeRatioPct')) design.provisionalFields.push('ridgeRatioPct');
+    }
+
+    // 畝配置の入力方式：未設定（旧データ）は 'pitch'（従来どおりピッチ指定）にフォールバック。
+    if (design.ridgeInputMode !== 'pitch' && design.ridgeInputMode !== 'count') {
+      design.ridgeInputMode = 'pitch';
     }
   }
 
@@ -421,18 +431,29 @@ const PlantingLogic = (() => {
         design._bandPolygon = null;
         design._bandAreaSqm = 0;
         design.ridgeSegments = null;
+        design._rowCountMismatch = null;
         return;
       }
 
       design._bandPolygon = band.polygon;
       design._bandAreaSqm = band.areaSqm;
 
-      const pitchCm = effectivePitchCm(design);
-      if (pitchCm != null && pitchCm > 0) {
-        const gResult = RidgeGeometry.calcRidges(band.polygon, dir.p1, dir.p2, pitchCm / 100, holes);
+      if (design.ridgeInputMode === 'count' && design.targetRowCount > 0) {
+        // 畝数指定方式：目標畝数から敷地幅を均等分割し、逆算したピッチをrowWidthへ書き戻す。
+        // calcRidges（ピッチ起点・中心対称展開）とは別系統のcalcRidgesByCountを使う。
+        const gResult = RidgeGeometry.calcRidgesByCount(band.polygon, dir.p1, dir.p2, design.targetRowCount, holes);
         design.ridgeSegments = gResult.rows > 0 ? gResult.ridgeSegments : null;
+        design.rowWidth = gResult.pitchM > 0 ? Math.round(gResult.pitchM * 100 * 10) / 10 : design.rowWidth;
+        design._rowCountMismatch = gResult.matched ? null : { target: gResult.targetRows, actual: gResult.rows };
       } else {
-        design.ridgeSegments = null;
+        design._rowCountMismatch = null;
+        const pitchCm = effectivePitchCm(design);
+        if (pitchCm != null && pitchCm > 0) {
+          const gResult = RidgeGeometry.calcRidges(band.polygon, dir.p1, dir.p2, pitchCm / 100, holes);
+          design.ridgeSegments = gResult.rows > 0 ? gResult.ridgeSegments : null;
+        } else {
+          design.ridgeSegments = null;
+        }
       }
 
       const calcForSave = calcPlanting(design);
@@ -445,18 +466,34 @@ const PlantingLogic = (() => {
   /**
    * 分析側（単一作物・圃場全体基準）の畝セグメントを、エリア共通の畝方向で再計算する。
    * 実務側の帯（バンド）分割とは異なり、圃場ポリゴン全体を対象にする。
+   * design.ridgeInputMode==='count' の場合は pitchCm 引数を無視し、
+   * design.targetRowCount から calcRidgesByCount で逆算する（畝数指定方式）。
    * @param {object} design - _adpAnalysisPlantingDesign 相当
-   * @param {number|null} pitchCm - effectivePitchCm(design) の結果
+   * @param {number|null} pitchCm - effectivePitchCm(design) の結果（pitchモード時のみ使用）
    * @param {object} area - _adpArea 相当のエリアオブジェクト
    * @param {object|null} houseMargin - _adpHouseMargin 相当のハウスマージン設定
    */
   function recalcAnalysisRidgeSegments(design, pitchCm, area, houseMargin) {
     if (!design) return;
     const dir = area?.meta?.ridgeBaseDirection;
-    if (!dir?.p1 || !dir?.p2 || typeof RidgeGeometry === 'undefined' || !(pitchCm > 0)) {
+    if (!dir?.p1 || !dir?.p2 || typeof RidgeGeometry === 'undefined') {
       design.ridgeSegments = null;
+      design._rowCountMismatch = null;
       return;
     }
+
+    if (design.ridgeInputMode === 'count' && design.targetRowCount > 0) {
+      const geometry = getEffectiveFieldGeometry(area, houseMargin);
+      if (!geometry) { design.ridgeSegments = null; design._rowCountMismatch = null; return; }
+      const gResult = RidgeGeometry.calcRidgesByCount(geometry.polygon, dir.p1, dir.p2, design.targetRowCount, geometry.holes);
+      design.ridgeSegments = gResult.rows > 0 ? gResult.ridgeSegments : null;
+      design.rowWidth = gResult.pitchM > 0 ? Math.round(gResult.pitchM * 100 * 10) / 10 : design.rowWidth;
+      design._rowCountMismatch = gResult.matched ? null : { target: gResult.targetRows, actual: gResult.rows };
+      return;
+    }
+
+    design._rowCountMismatch = null;
+    if (!(pitchCm > 0)) { design.ridgeSegments = null; return; }
     const geometry = getEffectiveFieldGeometry(area, houseMargin);
     if (!geometry) { design.ridgeSegments = null; return; }
     const gResult = RidgeGeometry.calcRidges(geometry.polygon, dir.p1, dir.p2, pitchCm / 100, geometry.holes);
