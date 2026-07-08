@@ -542,6 +542,12 @@ let _adpCrossSectionActiveCropId = null;
 // パネル再描画ではリセットされる想定のため保存はしない。
 let _adpCrossSectionViewMode = 'zoom';
 
+// Step8-7後半（畝断面図UX再設計・4タブ構成）：
+// 実務側・栽植設計ペインのメインタブ（自動設計／調整／描画／作物詳細）。
+// 'auto'（自動設計・デフォルト）／'adjust'（調整）／'draw'（描画）／'crops'（作物詳細）。
+// パネル再描画ではリセットされる想定のため保存はしない（他の開閉状態と同じ扱い）。
+let _adpPlantingUITab = 'auto';
+
 // ─── エリア選択時プリフェッチ（AMeDAS + 天気予報を並列取得） ───
 // openAreaDetailPanel より先に呼ぶことでパネル表示時にキャッシュ済み状態にする
 function _adpPrefetch(area) {
@@ -7747,10 +7753,9 @@ function _adpRefreshAllCardsAfterGeometryChange() {
  * 4部品すべてを統一して表示する（圃場の形・辺選択トグルの効果を空状態でも確認できるようにする）。
  * 並び順：占有率legend → 辺選択トグル → （実務側のみ）統合畝プレビュー → 圃場マージン設定
  *
- * 【Step8-7（畝断面図まわり入力UX再設計 仕様書）】
- * 実務側（isAnalysis=false）は本仕様書の新ブロック（ヘッダー＝作物タブ＋表示トグル／
- * 拡大詳細図⇔全体（パネルA）／断面図／畝上比率スライダー／入力グリッド）に一本化する。
- * 分析側は_bandPolygonを持たず本仕様書の対象外のため、従来どおりの並びを維持する（変更なし）。
+ * 【Step8-7（畝断面図まわり入力UX再設計 仕様書）／Step8-7後半（4タブ構成）】
+ * 実務側（isAnalysis=false）は「自動設計／調整／描画／作物詳細」の4タブ（_adpBuildPlantingMainTabsPanel）
+ * に一本化する。分析側は_bandPolygonを持たず本仕様書の対象外のため、従来どおりの並びを維持する（変更なし）。
  */
 function _adpBuildUnifiedFieldPanel(isAnalysis) {
   if (isAnalysis) {
@@ -7759,9 +7764,9 @@ function _adpBuildUnifiedFieldPanel(isAnalysis) {
       + _adpBuildEdgeToggleBar()
       + _adpBuildHouseMarginSection();
   }
-  // 実務側：Step8-7 新ブロック（ヘッダー行／拡大詳細図⇔全体トグル／断面図／畝上比率／入力グリッド）
+  // 実務側：占有率legend（変更なし）＋ 4タブ構成本体
   return _adpBuildRatioLegendRow(false)
-    + _adpBuildRidgeInputBlock();
+    + _adpBuildPlantingMainTabsPanel();
 }
 
 /**
@@ -7781,23 +7786,72 @@ function _adpBuildFieldPanelA() {
 }
 
 /**
- * Step8-7：新ブロックの外枠。中身（ヘッダー・トグル切替表示部・断面図・比率スライダー・
- * 入力グリッド）は _adpRefreshRidgeInputBlock() から innerHTML 差し替えで部分更新するため、
- * 外枠（data-ridgeblock）自体は _adpRenderPlantingPane() のフル再描画時のみ生成する。
+ * Step8-7後半（畝断面図UX再設計・4タブ構成）：
+ * 実務側・栽植設計ペインのメインタブ定義（表示順＝タブ順）。
  */
-function _adpBuildRidgeInputBlock() {
+const ADP_PLANTING_MAIN_TABS = [
+  { key: 'auto',   label: '🤖 自動設計' },
+  { key: 'adjust', label: '🔧 調整' },
+  { key: 'draw',   label: '📐 描画' },
+  { key: 'crops',  label: '🌾 作物詳細' },
+];
+
+/**
+ * Step8-7後半：4タブ（自動設計／調整／描画／作物詳細）の外枠。
+ * タブ本体（data-maintabs-body）は _adpSwitchPlantingUITab() / _adpRefreshRidgeInputBlock()
+ * から innerHTML 差し替えで部分更新するため、外枠自体は _adpRenderPlantingPane() の
+ * フル再描画時のみ生成する。
+ */
+function _adpBuildPlantingMainTabsPanel() {
+  const tabsHTML = ADP_PLANTING_MAIN_TABS.map(t => `
+    <button type="button" class="plt-maintabs-btn ${_adpPlantingUITab === t.key ? 'plt-maintabs-btn-active' : ''}"
+      data-tab-key="${t.key}" onclick="_adpSwitchPlantingUITab('${t.key}')">${t.label}</button>`).join('');
+
   return `
-    <div class="plt-panel plt-ridgeblock" data-panel="ridgeblock" data-ridgeblock>
-      ${_adpBuildRidgeInputBlockInner()}
+    <div class="plt-panel plt-maintabs" data-panel="maintabs">
+      <div class="plt-maintabs-bar" role="tablist">${tabsHTML}</div>
+      <div class="plt-maintabs-body" data-maintabs-body>${_adpBuildPlantingTabBody(_adpPlantingUITab)}</div>
     </div>`;
 }
 
 /**
- * Step8-7：新ブロックの中身。作物0件の場合はプレースホルダーのみを返す。
- * 並び順（仕様書3節）：ヘッダー行（タブ＋トグル）→ 拡大詳細図/全体 → 断面図 →
- * 畝上比率スライダー → 入力グリッド。
+ * Step8-7後半：現在選択中のメインタブの中身だけを差し替える。
+ * タブボタンのactive表示も同時に更新する（フル再描画は行わない）。
  */
-function _adpBuildRidgeInputBlockInner() {
+function _adpSwitchPlantingUITab(tab) {
+  if (!ADP_PLANTING_MAIN_TABS.some(t => t.key === tab)) return;
+  _adpPlantingUITab = tab;
+
+  document.querySelectorAll('#planting-result .plt-maintabs-btn').forEach(btn => {
+    btn.classList.toggle('plt-maintabs-btn-active', btn.dataset.tabKey === tab);
+  });
+  const body = document.querySelector('#planting-result [data-maintabs-body]');
+  if (body) body.innerHTML = _adpBuildPlantingTabBody(tab);
+}
+
+/**
+ * Step8-7後半：タブキーに応じた中身のHTMLを返す（新規ロジックは追加せず、
+ * 既存の各生成関数を機械的に振り分けるだけ）。
+ * - auto  ：既存の自動設計パネルをそのまま独立タブとして表示
+ * - adjust：数値入力のみ（作物タブ＋畝上比率スライダー＋入力グリッド。SVG等の表示専用要素は持たない）
+ * - draw  ：表示専用（作物タブ＋拡大詳細/全体トグル＋平面図/断面図。数値入力は持たない）
+ * - crops ：作物ごとに既存の計算結果カードをアコーディオンで並べるだけ
+ */
+function _adpBuildPlantingTabBody(tab) {
+  switch (tab) {
+    case 'adjust': return _adpBuildAdjustTabInner();
+    case 'draw':   return _adpBuildDrawTabInner();
+    case 'crops':  return _adpBuildCropsDetailTabInner();
+    case 'auto':
+    default:       return _adpBuildAutoDesignPanel();
+  }
+}
+
+/**
+ * Step8-7後半：「調整」タブの中身。数値入力のみ（畝上比率スライダー＋入力グリッド）。
+ * 表示専用のSVG（平面図・断面図）は「描画」タブ側が担当するため、ここには含めない。
+ */
+function _adpBuildAdjustTabInner() {
   const crops = _adpPracticecrops || [];
   if (!crops.length) {
     return `<div class="plt-cross-section-placeholder">作物が未選択です</div>`;
@@ -7807,15 +7861,41 @@ function _adpBuildRidgeInputBlockInner() {
   const activeIdx = crops.findIndex(c => c.cropId === activeCropId);
   const activeEntry = activeIdx >= 0 ? crops[activeIdx] : crops[0];
   const design = activeEntry.plantingDesign;
-  const activeName = _adpCropIdToName(activeEntry.cropId);
-  const colorClass = `plt-cropcolor-${Math.max(activeIdx, 0) % 8}`;
   const cropId = activeEntry.cropId;
 
+  return `
+    ${_adpBuildRidgeCrossSectionTabs()}
+    ${design ? _adpBuildRidgeRatioSliderHTML(cropId, design) : ''}
+    ${design ? _adpBuildRidgeInputGridHTML(cropId, design) : `<div class="plt-cross-section-placeholder">畝データが未計算です</div>`}`;
+}
+
+/**
+ * Step8-7後半：「描画」タブの中身。表示専用（作物タブ＋拡大詳細図⇔全体トグル＋
+ * 平面図（パネルA）／断面図SVG）。数値入力は一切持たない。
+ * 平面図側の寸法線タップ（_adpNavigateToRidgeInput）はそのまま残す（「調整」タブへ誘導する）。
+ */
+function _adpBuildDrawTabInner() {
+  const crops = _adpPracticecrops || [];
   const headerHTML = `
     <div class="plt-ridgeblock-header">
       ${_adpBuildRidgeCrossSectionTabs()}
       ${_adpBuildViewToggleHTML()}
     </div>`;
+
+  if (!crops.length) {
+    const viewHTML = _adpCrossSectionViewMode === 'full'
+      ? _adpBuildFieldPanelA()
+      : `<div class="plt-cross-section-placeholder">作物が未選択です</div>`;
+    return `
+      ${headerHTML}
+      <div class="plt-ridgeblock-view" data-ridgeblock-view>${viewHTML}</div>`;
+  }
+
+  const activeCropId = _adpResolveCrossSectionActiveCropId();
+  const activeIdx = crops.findIndex(c => c.cropId === activeCropId);
+  const activeEntry = activeIdx >= 0 ? crops[activeIdx] : crops[0];
+  const activeName = _adpCropIdToName(activeEntry.cropId);
+  const colorClass = `plt-cropcolor-${Math.max(activeIdx, 0) % 8}`;
 
   const viewHTML = _adpCrossSectionViewMode === 'full'
     ? _adpBuildFieldPanelA()
@@ -7833,9 +7913,24 @@ function _adpBuildRidgeInputBlockInner() {
   return `
     ${headerHTML}
     <div class="plt-ridgeblock-view" data-ridgeblock-view>${viewHTML}</div>
-    <div class="plt-crosssection-body" data-crosssection-body>${crossSectionHTML}</div>
-    ${design ? _adpBuildRidgeRatioSliderHTML(cropId, design) : ''}
-    ${design ? _adpBuildRidgeInputGridHTML(cropId, design) : ''}`;
+    <div class="plt-crosssection-body" data-crosssection-body>${crossSectionHTML}</div>`;
+}
+
+/**
+ * Step8-7後半：「作物詳細」タブの中身。新規の統計計算は追加せず、既存の栽植設計カード
+ * （_adpBuildPlantingCard）を作物ごとにそのままアコーディオンで並べるだけ。
+ */
+function _adpBuildCropsDetailTabInner() {
+  const crops = _adpPracticecrops || [];
+  if (!crops.length) {
+    return `<div class="empty-mini">作物を追加すると栽植設計が入力できます。</div>`;
+  }
+  return crops.map(({ cropId, ratio, plantingDesign }, idx) => {
+    const design   = plantingDesign || PlantingLogic.initDesign(cropId);
+    const cropName = _adpCropIdToName(cropId);
+    const isLast   = idx === crops.length - 1;
+    return _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast, isAnalysis: false });
+  }).join('');
 }
 
 /**
@@ -8239,13 +8334,16 @@ function _adpSetCrossSectionActiveCrop(cropId) {
 }
 
 /**
- * Step8-7：新ブロック（data-ridgeblock）の中身だけを部分再描画する。
+ * Step8-7後半：メインタブ本体（data-maintabs-body）の中身だけを部分再描画する。
+ * 「調整」「描画」タブ以外（自動設計・作物詳細）は畝の断面図・入力グリッドを持たないため
+ * 何もしない（無関係なタブ表示中に呼ばれても誤って上書きしないための安全策）。
  * 入力フィールドにフォーカスがある状態で呼ばれた場合、再描画（innerHTML差し替え）で
  * フォーカス・カーソル位置が失われるため、対象フィールドと選択範囲を保存しておき、
  * 再描画後に同じ入力欄へフォーカス・カーソル位置を復元する。
  */
 function _adpRefreshRidgeInputBlock() {
-  const blockEl = document.querySelector('#planting-result [data-ridgeblock]');
+  if (_adpPlantingUITab !== 'adjust' && _adpPlantingUITab !== 'draw') return;
+  const blockEl = document.querySelector('#planting-result [data-maintabs-body]');
   if (!blockEl) return;
 
   const active = document.activeElement;
@@ -8256,7 +8354,7 @@ function _adpRefreshRidgeInputBlock() {
     selEnd = active.selectionEnd;
   }
 
-  blockEl.innerHTML = _adpBuildRidgeInputBlockInner();
+  blockEl.innerHTML = _adpBuildPlantingTabBody(_adpPlantingUITab);
 
   if (focusField) {
     const restored = blockEl.querySelector(`.plt-input-item[data-field="${focusField}"] input`);
@@ -8282,18 +8380,18 @@ function _adpRefreshCrossSectionIfActive(cropId) {
 }
 
 /**
- * Step8-7（決定事項サマリ）：平面図の寸法線タップなど、新ブロック以外の場所から
+ * Step8-7後半：「描画」タブの平面図の寸法線タップなど、数値入力を持たない場所から
  * 「この作物の畝上比率・ピッチを編集したい」という誘導を受けた際に呼ぶ。
- * 対象作物へタブを自動切替し、新ブロックへスクロール＋畝上比率スライダーを明滅ハイライトする。
+ * 対象作物のタブを自動切替した上で「調整」タブへ切り替え、畝上比率スライダーを明滅ハイライトする。
  * @param {string} cropId
  */
 function _adpNavigateToRidgeInput(cropId) {
   if (_adpResolveCrossSectionActiveCropId() !== cropId) {
     _adpCrossSectionActiveCropId = cropId;
   }
-  _adpRefreshRidgeInputBlock();
+  _adpSwitchPlantingUITab('adjust');
 
-  const block = document.querySelector('#planting-result [data-ridgeblock]');
+  const block = document.querySelector('#planting-result [data-maintabs-body]');
   if (!block) return;
   block.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
@@ -8336,19 +8434,10 @@ function _adpRenderPlantingPane() {
     return;
   }
 
-  // ── 実務側 ──
-  if (!_adpPracticecrops.length) {
-    // 5.6.1：作物0件でも「畝方向」条件だけは案内できるよう、自動設計パネル（チェックリストのみ）を表示する
-    el.innerHTML = _adpBuildUnifiedFieldPanel(false) + _adpBuildAutoDesignPanel() + '<div class="empty-mini">作物を追加すると栽植設計が入力できます。</div>';
-    return;
-  }
-
-  el.innerHTML = _adpBuildUnifiedFieldPanel(false) + _adpBuildAutoDesignPanel() + _adpPracticecrops.map(({ cropId, ratio, plantingDesign }, idx) => {
-    const design   = plantingDesign || PlantingLogic.initDesign(cropId);
-    const cropName = _adpCropIdToName(cropId);
-    const isLast   = idx === _adpPracticecrops.length - 1;
-    return _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast, isAnalysis: false });
-  }).join('');
+  // ── 実務側（Step8-7後半：自動設計／調整／描画／作物詳細の4タブに一本化）──
+  // 作物0件時の案内（畝方向チェックリスト／プレースホルダー）は各タブ内で個別に処理するため、
+  // ここでの分岐は不要（_adpBuildUnifiedFieldPanel(false) が4タブ構成一式を返す）。
+  el.innerHTML = _adpBuildUnifiedFieldPanel(false);
 }
 
 // ═══════════════════════════════════════════
@@ -8451,11 +8540,14 @@ function _adpBuildAutoDesignPrereqHTML(hasRidgeDir, hasCrops) {
 }
 
 /**
- * 5.6.1：「📐 畝方向を設定」誘導ボタンのハンドラ。
- * ①拡大詳細⇔全体表示を「全体」に切替 → ②辺選択トグルを畝方向モードに切替 → ③該当UIへスクロール。
+ * 5.6.1（Step8-7後半：4タブ構成対応）：「📐 畝方向を設定」誘導ボタンのハンドラ。
+ * ①「描画」タブへ切替＋表示モードを「全体」に設定 → ②辺選択トグルを畝方向モードに切替 →
+ * ③該当UIへスクロール。辺選択トグル（.plt-edgetoggle-bar）は「描画」タブの「全体」表示
+ * （パネルA）内にのみ存在するため、タブ切替を先に行う必要がある。
  */
 function _adpAutoDesignGuideToRidgeDir() {
-  _adpSetCrossSectionViewMode('full');
+  _adpCrossSectionViewMode = 'full';
+  _adpSwitchPlantingUITab('draw');
   _adpSetUnifiedPreviewEdgeMode('ridgedir');
   requestAnimationFrame(() => {
     const bar = document.querySelector('#planting-result .plt-edgetoggle-bar');
@@ -9039,9 +9131,10 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
       <span class="plt-ratio-val">${ratio}%${isLast ? ' <span class="adp-pcc-auto-badge">自動</span>' : ''}</span>
     </div>`;
 
-  // 削除ボタン（実務側のみ）
+  // 削除ボタン（実務側のみ）。Step8-7後半：「作物詳細」タブでカード全体がアコーディオンの
+  // タップ対象になったため、削除ボタン自体のクリックが開閉トグルへ伝播しないようにする。
   const removeBtn = isAnalysis ? '' : `
-    <button class="adp-pcc-remove" onclick="_adpRemovePracticeCrop('${cropId}')" title="削除">✕</button>`;
+    <button class="adp-pcc-remove" onclick="event.stopPropagation();_adpRemovePracticeCrop('${cropId}')" title="削除">✕</button>`;
 
   // 不一致警告（plt-warn-wrap でラップ → 部分更新時に querySelector で確実に取得できる）
   const warnHTML = `<div class="plt-warn-wrap">${warn ? `
@@ -9082,20 +9175,27 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
 
   // ── Step8-7：実務側（isAnalysis=false）はカードの入力フォームを全廃し、
   // 一覧・管理（ヘッダー・占有率スライダー・畝方向ボタン・警告・計算結果）のみ残す。
-  // 数値入力は断面図まわりの新ブロック（_adpBuildRidgeInputBlock）に一本化済み。
+  // 数値入力は「調整」タブ（_adpBuildAdjustTabInner）に一本化済み。
+  // Step8-7後半：「作物詳細」タブへの移行に伴い、ヘッダータップで開閉するアコーディオンにする
+  // （新規の統計計算ロジックは追加せず、既存の中身をそのまま開閉できるようにするだけ）。
   if (!isAnalysis) {
     return `
-    <div class="plt-card" data-crop-id="${cropId}">
-      <div class="plt-card-header">
-        <span class="plt-crop-name">🌿 ${escHtml(cropName)}</span>
+    <div class="plt-card plt-cropdetail-card" data-crop-id="${cropId}">
+      <div class="plt-card-header" onclick="_adpToggleCropDetailCard(this.closest('.plt-cropdetail-card'))" role="button" tabindex="0" aria-expanded="false">
+        <span class="plt-crop-name-wrap">
+          <span class="plt-crop-name">🌿 ${escHtml(cropName)}</span>
+          <span class="plt-cropdetail-arrow">▼</span>
+        </span>
         ${removeBtn}
       </div>
-      ${sliderHTML}
-      ${ridgeDirBtnHTML}
-      ${warnHTML}
-      <div class="plt-result">
-        <div class="plt-result-title">計算結果</div>
-        ${calcHTML}
+      <div class="plt-cropdetail-body">
+        ${sliderHTML}
+        ${ridgeDirBtnHTML}
+        ${warnHTML}
+        <div class="plt-result">
+          <div class="plt-result-title">計算結果</div>
+          ${calcHTML}
+        </div>
       </div>
     </div>`;
   }
@@ -9200,6 +9300,19 @@ function _adpToggleDetailAccordion(btn) {
   if (!wrap) return;
   const isOpen = wrap.classList.toggle('open');
   btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+
+/**
+ * Step8-7後半（畝断面図UX再設計・4タブ構成）：
+ * 「作物詳細」タブの1作物ぶんのカード（.plt-cropdetail-card）の開閉トグル。
+ * 開閉状態はDOM上のみで保持し保存はしない（_adpToggleDetailAccordionと同じ扱い。
+ * カード再描画（作物追加・削除・占有率変更等）が起きると閉じた状態にリセットされる想定）。
+ */
+function _adpToggleCropDetailCard(cardEl) {
+  if (!cardEl) return;
+  const isOpen = cardEl.classList.toggle('open');
+  const headerEl = cardEl.querySelector('.plt-card-header');
+  if (headerEl) headerEl.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
 }
 
 /**

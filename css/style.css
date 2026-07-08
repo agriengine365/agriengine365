@@ -11103,6 +11103,73 @@ html.draw-dialog-active .bottom-nav {
 .plt-detail-accordion-body .plt-input-grid { margin-bottom: 0; }
 .plt-detail-accordion-body .plt-detailwidth-row { margin-top: 10px; }
 
+/* ═══════════════════════════════════════════
+   Step8-7後半（畝断面図UX再設計・4タブ構成 仕様書）
+   実務側・栽植設計ペインのメインタブ（自動設計／調整／描画／作物詳細）。
+   タブ本体（.plt-maintabs-body）はタブ切替のたびにinnerHTML差し替えで
+   部分更新される（_adpSwitchPlantingUITab）。
+   ═══════════════════════════════════════════ */
+.plt-maintabs-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+}
+.plt-maintabs-btn {
+  flex: 1;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  text-align: center;
+  transition: background .15s, color .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.plt-maintabs-btn-active {
+  background: var(--panel);
+  color: var(--green);
+  box-shadow: 0 1px 3px rgba(0,0,0,.35);
+}
+.plt-maintabs-body {
+  min-height: 40px;
+}
+
+/* 「作物詳細」タブ：既存の栽植設計カード（.plt-card）をそのままアコーディオン化する。
+   ヘッダー（.plt-card-header）タップで開閉。デフォルトは閉（新規追加・作物切替のたびに
+   カードごと再生成されるため、開閉状態はDOM上のみで保持し保存はしない）。 */
+.plt-cropdetail-card .plt-card-header {
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.plt-crop-name-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.plt-cropdetail-arrow {
+  font-size: 10px;
+  color: var(--text3);
+  flex-shrink: 0;
+  transition: transform .2s ease;
+}
+.plt-cropdetail-card.open .plt-cropdetail-arrow { transform: rotate(180deg); }
+.plt-cropdetail-body {
+  display: none;
+}
+.plt-cropdetail-card.open .plt-cropdetail-body {
+  display: block;
+}
+
 /* 自動計算済み：読み取り専用の畝数・畝長表示 */
 .plt-input-auto {
   background: color-mix(in srgb, var(--green) 6%, transparent);
