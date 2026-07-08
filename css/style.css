@@ -11756,3 +11756,335 @@ html.draw-dialog-active .bottom-nav {
   font-weight: 600;
   fill: var(--text2);
 }
+
+/* ─── 自動設計（Step1・Agri_planting_auto_design_spec.MD） ─── */
+.autoad-accordion {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.autoad-accordion .accordion-header {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+#autoad-accordion.open .accordion-body { max-height: 3000px; }
+
+/* ─── 5.6.1：事前条件チェックリスト ─── */
+.autoad-prereq {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.autoad-prereq-clear {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--green) 10%, transparent);
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 600;
+}
+.autoad-prereq-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--amber) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, transparent);
+}
+.autoad-prereq-item-ok {
+  background: color-mix(in srgb, var(--green) 8%, transparent);
+  border-color: transparent;
+}
+.autoad-prereq-icon { font-size: 14px; }
+.autoad-prereq-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  margin-right: auto;
+}
+.autoad-prereq-ok-text {
+  font-size: 11px;
+  color: var(--green);
+}
+.autoad-prereq-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 18%, transparent);
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+.autoad-prereq-btn {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.autoad-prereq-btn:hover { border-color: var(--green3); color: var(--green); }
+
+.autoad-global-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.autoad-global-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text2);
+}
+
+/* ─── 5.6.2：残り〇%表示 ─── */
+.autoad-remaining {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.autoad-remaining-zero {
+  color: var(--amber);
+}
+
+.autoad-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.autoad-row {
+  display: grid;
+  grid-template-columns: 88px 1fr 1fr 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.autoad-row:last-child { border-bottom: none; }
+.autoad-row-name {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
+}
+.autoad-row-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.autoad-field-label {
+  font-size: 11px;
+  color: var(--text3);
+}
+
+.autoad-select {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 4px 6px;
+  font-size: 12px;
+  font-family: var(--sans);
+}
+.autoad-select:disabled {
+  opacity: 0.4;
+}
+
+.autoad-fixed-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+.autoad-incr-btn {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.autoad-incr-btn:hover { border-color: var(--green3); color: var(--green); }
+
+.autoad-status {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.autoad-status-ok {
+  background: color-mix(in srgb, var(--green) 12%, transparent);
+  color: var(--green);
+}
+.autoad-status-error {
+  background: color-mix(in srgb, var(--red) 12%, transparent);
+  color: var(--red);
+}
+
+.autoad-btn-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+.autoad-run-btn, .autoad-apply-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.autoad-run-btn {
+  background: var(--green2);
+  color: var(--bg);
+}
+.autoad-run-btn:hover { background: var(--green); }
+.autoad-run-btn:disabled {
+  background: var(--bg4);
+  color: var(--text3);
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.autoad-apply-btn {
+  background: var(--bg4);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.autoad-apply-btn:not(:disabled):hover { border-color: var(--green3); color: var(--green); }
+.autoad-apply-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 480px) {
+  .autoad-row {
+    grid-template-columns: 1fr;
+  }
+  .autoad-row-name { margin-bottom: 2px; }
+}
+
+/* ═══════════════════════════════════════════
+   5.4（Step2）：畝ピッチ floor()境界の確認ダイアログ
+   ═══════════════════════════════════════════ */
+.autoad-boundary-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  z-index: 10000;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+.autoad-boundary-overlay.open {
+  display: flex;
+}
+.autoad-boundary-modal {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: min(96vw, 520px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow);
+}
+.autoad-boundary-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.autoad-boundary-close {
+  background: transparent;
+  border: none;
+  color: var(--text2);
+  font-size: 16px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.autoad-boundary-close:active {
+  background: var(--bg3);
+  color: var(--text);
+}
+.autoad-boundary-body {
+  padding: 14px 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.autoad-boundary-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  line-height: 1.5;
+  cursor: pointer;
+}
+.autoad-boundary-item input[type="checkbox"] {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.autoad-boundary-item-text strong {
+  color: var(--green);
+}
+.autoad-boundary-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.autoad-boundary-cancel, .autoad-boundary-ok {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border);
+}
+.autoad-boundary-cancel {
+  background: var(--bg3);
+  color: var(--text2);
+}
+.autoad-boundary-ok {
+  background: var(--green3);
+  color: #fff;
+  border-color: var(--green3);
+}
+.autoad-boundary-ok:hover {
+  background: var(--green);
+}

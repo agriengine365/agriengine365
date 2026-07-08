@@ -14,7 +14,8 @@
 //    PlantingLogic.deriveRidgeWidths(design)
 //    PlantingLogic.getFieldPolygon(area)
 //    PlantingLogic.getEffectiveFieldGeometry(area, houseMargin)
-//    PlantingLogic.recalcAllBands(practicecrops, area, houseMargin)
+//    PlantingLogic.recalcAllBands(practicecrops, area, houseMargin, zonePriorityMode)
+//      ↑ zonePriorityMode は省略可（省略時は従来どおり 'ratio'。Step1で 'fixed' を追加）
 //    PlantingLogic.recalcAnalysisRidgeSegments(design, pitchCm, area, houseMargin)
 //      ↑ 両関数とも design.ridgeInputMode==='count' なら内部で自動的に
 //        畝数指定方式（calcRidgesByCount逆算）に切り替わる（呼び出し側の変更不要）
@@ -66,6 +67,12 @@ const PlantingLogic = (() => {
       _bandPolygon:   null,   // このデザインが担当する帯ポリゴン [{lat,lng},...] | null（未割当 or 未計算）
       _bandAreaSqm:   null,   // 帯の実面積 [m²] | null
       provisionalFields,      // 暫定自動セットされたフィールド名（例: ['rowWidth','rowSpacing']）
+      // ── 自動設計（Step1・Agri_planting_auto_design_spec.MD）── AutoDesign.run() の入力設定
+      autoDesign: {
+        fixedRatio:    false, // true時：自動設計は比率(ratio)を書き換えない
+        minRatio:      0,     // 自動設計時にこの比率[%]を下回らない（fixedRatio時は無視）
+        fixedRowCount: false, // true時：自動設計は畝数(targetRowCount)を書き換えない
+      },
     };
   }
 
@@ -113,6 +120,11 @@ const PlantingLogic = (() => {
     // 畝配置の入力方式：未設定（旧データ）は 'pitch'（従来どおりピッチ指定）にフォールバック。
     if (design.ridgeInputMode !== 'pitch' && design.ridgeInputMode !== 'count') {
       design.ridgeInputMode = 'pitch';
+    }
+
+    // 自動設計設定（Step1）：旧データ（autoDesign未導入時に保存されたもの）を救済する。
+    if (!design.autoDesign || typeof design.autoDesign !== 'object') {
+      design.autoDesign = { fixedRatio: false, minRatio: 0, fixedRowCount: false };
     }
   }
 
@@ -316,9 +328,13 @@ const PlantingLogic = (() => {
    * ゾーン分割が成立しない（入口辺未設定・矩形が極端に浅い等）場合は、
    * 従来どおり圃場全体を1つのポリゴンとして帯分割する（後方互換フォールバック）。
    *
+   * @param {'ratio'|'fixed'} [zonePriorityMode='ratio'] - 5.2 ゾーン優先度モード。
+   *   'ratio'（デフォルト）：占有率の大きい作物から矩形ゾーンへ（従来ロジック）。
+   *   'fixed'：自動設計で固定チェック済みの作物を比率に関わらず矩形ゾーンへ優先配置し、
+   *   残りは占有率順で配分する（Step1・Agri_planting_auto_design_spec.MD 5.2）。
    * @returns {Array<object|null>|null} practicecropsと同じ順・同じ長さの帯配列（不成立時はnull）
    */
-  function _recalcAllBandsCore(practicecrops, polygon, holes, dir, entranceEdgeIndex, pathWidthsM) {
+  function _recalcAllBandsCore(practicecrops, polygon, holes, dir, entranceEdgeIndex, pathWidthsM, zonePriorityMode) {
     let zoned = null;
     if (Number.isInteger(entranceEdgeIndex) && entranceEdgeIndex >= 0 &&
         typeof RidgeGeometry.computeZonedFieldGeometry === 'function') {
@@ -344,9 +360,16 @@ const PlantingLogic = (() => {
     const wholeBasisSqm = _wholeEffectiveAreaSqm(polygon, dir, holes);
 
     // 占有率が高い順に矩形ゾーンへ積み上げ、収まりきらなくなった作物以降はすべて余剰形状側へ（Q4=A）
+    // 【Step1・5.2】zonePriorityMode==='fixed' の場合は、自動設計で固定チェック済みの作物を
+    // 比率に関わらず優先（isFixedを第一キーに）し、同グループ内は従来どおり比率順とする。
     const order = practicecrops
-      .map((c, idx) => ({ idx, ratio: Number(c.ratio) || 0 }))
-      .sort((a, b) => b.ratio - a.ratio);
+      .map((c, idx) => ({
+        idx,
+        ratio: Number(c.ratio) || 0,
+        isFixed: zonePriorityMode === 'fixed' &&
+          !!(c.plantingDesign?.autoDesign?.fixedRatio || c.plantingDesign?.autoDesign?.fixedRowCount),
+      }))
+      .sort((a, b) => (b.isFixed - a.isFixed) || (b.ratio - a.ratio));
 
     const rectIdxSet = new Set();
     let cumulativeSqm = 0;
@@ -403,9 +426,10 @@ const PlantingLogic = (() => {
    * @param {Array} practicecrops - _adpPracticecrops 相当の配列（要素を直接書き換える）
    * @param {object} area - _adpArea 相当のエリアオブジェクト
    * @param {object|null} houseMargin - _adpHouseMargin 相当のハウスマージン設定
+   * @param {'ratio'|'fixed'} [zonePriorityMode='ratio'] - 5.2 ゾーン優先度モード（省略時は従来どおり比率順）
    * @returns {boolean} 再計算を実行できたか（false の場合は前提未整備でスキップ）
    */
-  function recalcAllBands(practicecrops, area, houseMargin) {
+  function recalcAllBands(practicecrops, area, houseMargin, zonePriorityMode) {
     if (!practicecrops || !practicecrops.length) return false;
     const dir = area?.meta?.ridgeBaseDirection;
     if (!dir?.p1 || !dir?.p2) return false;
@@ -418,7 +442,7 @@ const PlantingLogic = (() => {
     // 境界iと境界i+1（作物iと作物i+1の間）の隙間幅 = 両側pathWidthのうち大きい方
     const pathWidthsM = practicecrops.map(c => _boundaryPathWidthM(c.plantingDesign || {}));
 
-    const bands = _recalcAllBandsCore(practicecrops, polygon, holes, dir, entranceEdgeIndex, pathWidthsM);
+    const bands = _recalcAllBandsCore(practicecrops, polygon, holes, dir, entranceEdgeIndex, pathWidthsM, zonePriorityMode);
     if (!Array.isArray(bands) || bands.length !== practicecrops.length) return false;
 
     practicecrops.forEach((entry, idx) => {
