@@ -10,7 +10,8 @@
 //    PlantingLogic.isProvisional(design, field)
 //    PlantingLogic.applyProvisionalDefaults(design, cropId)
 //    PlantingLogic.effectivePitchCm(design)
-//    PlantingLogic.isDetailWidthMode(design)
+//    PlantingLogic.migrateLegacyWidthFields(design)
+//    PlantingLogic.deriveRidgeWidths(design)
 //    PlantingLogic.getFieldPolygon(area)
 //    PlantingLogic.getEffectiveFieldGeometry(area, houseMargin)
 //    PlantingLogic.recalcAllBands(practicecrops, area, houseMargin)
@@ -54,9 +55,8 @@ const PlantingLogic = (() => {
       // への一本化が完了したため、以後どこからも書き込まれない（後方互換のためフィールドのみ残置）。
       ridgeDirection: null,   // { p1:{lat,lng}, p2:{lat,lng} } | null（未使用・レガシー）
       ridgeSegments:  null,   // [{ length, p1:{lat,lng}, p2:{lat,lng} }] | null（地図自動計算結果キャッシュ）
-      // ── 畝の実効幅／畝間分離（仕様書セクション2）──
-      ridgeTopWidth:  null,   // 畝の実効幅（作付け部分）[cm]（詳細入力モード用）
-      pathWidth:      null,   // 畝間（通路幅）[cm]（詳細入力モード用）
+      // ── 畝上比率（Step8-7：ridgeTopWidth/pathWidthの2値入力を廃止し1本化）──
+      ridgeRatioPct:  null,   // ピッチ(rowWidth)に対する畝上幅の配分[%, 0-100]。未設定はnull（暫定値は50）
       // ── 作物比率連動・帯状分割（仕様書セクション1）── recalcAllBands が書き込むキャッシュ
       _bandPolygon:   null,   // このデザインが担当する帯ポリゴン [{lat,lng},...] | null（未割当 or 未計算）
       _bandAreaSqm:   null,   // 帯の実面積 [m²] | null
@@ -84,6 +84,9 @@ const PlantingLogic = (() => {
     if (!design) return;
     if (!Array.isArray(design.provisionalFields)) design.provisionalFields = [];
 
+    // 旧データ（ridgeTopWidth/pathWidth方式）が残っていれば新モデルへ自動変換する。
+    migrateLegacyWidthFields(design);
+
     const crop = _adpGetCropById(cropId);
     const std  = crop?.plantingStandard;
     if (std) {
@@ -95,16 +98,62 @@ const PlantingLogic = (() => {
       });
     }
 
-    // 詳細入力モード（畝上幅・畝間）の共通暫定プリセット。
-    // 一旦汎用値（畝上幅60cm・畝間30cm）で共通プリセットし、ユーザーに再設定を促す。
-    // 既存入力を上書きしないよう、両方未入力の場合のみセットする。
-    if (design.ridgeTopWidth == null && design.pathWidth == null) {
-      design.ridgeTopWidth = 60;
-      design.pathWidth = 30;
-      ['ridgeTopWidth', 'pathWidth'].forEach(field => {
-        if (!design.provisionalFields.includes(field)) design.provisionalFields.push(field);
-      });
+    // 畝上比率（ridgeRatioPct）の暫定デフォルト：未設定の場合のみ50%（均等）をセット。
+    // 既存入力（migrateLegacyWidthFieldsによる逆算値も含む）は上書きしない。
+    if (design.ridgeRatioPct == null) {
+      design.ridgeRatioPct = 50;
+      if (!design.provisionalFields.includes('ridgeRatioPct')) design.provisionalFields.push('ridgeRatioPct');
     }
+  }
+
+  /**
+   * 旧データモデル（design.ridgeTopWidth・design.pathWidth）を
+   * 新モデル（design.rowWidth・design.ridgeRatioPct）へ自動変換する（仕様書7.4）。
+   * - 両方セット済み: rowWidth = ridgeTopWidth + pathWidth,
+   *                   ridgeRatioPct = ridgeTopWidth / rowWidth * 100
+   * - rowWidthのみ: rowWidthはそのまま維持、ridgeRatioPctは触らない（呼び出し元の
+   *   applyProvisionalDefaultsが未設定なら50%をセットする）
+   * - どちらも旧フィールドが無ければ何もしない（既に新モデル、または初回生成）
+   * 変換後は旧フィールドをdeleteして以後の分岐を無くす。冪等（複数回呼んでも安全）。
+   * @param {object} design - plantingDesign（破壊的に変更する）
+   */
+  function migrateLegacyWidthFields(design) {
+    if (!design) return;
+    const hasLegacy = design.ridgeTopWidth != null || design.pathWidth != null;
+    if (!hasLegacy) return;
+
+    if (design.ridgeTopWidth != null && design.pathWidth != null) {
+      const top  = Number(design.ridgeTopWidth);
+      const path = Number(design.pathWidth);
+      if (top > 0 && path >= 0) {
+        const rowWidth = top + path;
+        design.rowWidth = rowWidth;
+        design.ridgeRatioPct = rowWidth > 0 ? Math.round((top / rowWidth) * 1000) / 10 : 50;
+      }
+    }
+    // rowWidthのみ・不正値のみの場合はrowWidthをそのまま維持し、ridgeRatioPctには触れない
+    // （未設定ならapplyProvisionalDefaults側で50%デフォルトが入る）。
+
+    delete design.ridgeTopWidth;
+    delete design.pathWidth;
+  }
+
+  /**
+   * design.rowWidth（ピッチ）と design.ridgeRatioPct（畝上比率%）から、
+   * 畝の実効幅（畝上幅）・畝間（通路幅）[cm] を派生算出する。
+   * 保存はせず、断面図描画・拡大詳細図・境界ギャップ計算など表示・計算の都度呼ぶ。
+   * @param {object} design - plantingDesign
+   * @returns {{topCm: number, pathCm: number}|null} 算出不可時（rowWidth未設定等）はnull
+   */
+  function deriveRidgeWidths(design) {
+    if (!design) return null;
+    const rowWidth = Number(design.rowWidth);
+    if (!(rowWidth > 0)) return null;
+    const ratio = design.ridgeRatioPct != null ? Number(design.ridgeRatioPct) : 50;
+    const clampedRatio = Math.min(100, Math.max(0, ratio));
+    const topCm  = Math.round(rowWidth * clampedRatio / 100 * 10) / 10;
+    const pathCm = Math.round((rowWidth - topCm) * 10) / 10;
+    return { topCm, pathCm };
   }
 
   // ═══════════════════════════════════════════
@@ -114,28 +163,17 @@ const PlantingLogic = (() => {
 
   /**
    * 実効ピッチ（畝の中心間距離＝RidgeGeometry.calcRidgesに渡すrowWidth）[cm] を返す。
-   * ridgeTopWidth（畝の実効幅）・pathWidth（畝間）が両方入力されていれば
-   * その合計を優先し自動計算する（詳細入力モード）。
-   * どちらか一方でも未入力の場合は、従来通り rowWidth（直接入力）にフォールバックする。
+   * Step8-7でモデルを rowWidth（ピッチ）＋ ridgeRatioPct（畝上比率）の1組に一本化した
+   * ため、モード分岐は無くなり design.rowWidth をそのまま返すだけになる。
+   * 呼び出し前に旧データが残っていれば migrateLegacyWidthFields で変換しておくこと
+   * （念のためここでも変換を試みる）。
    * @param {object} design - plantingDesign
    * @returns {number|null} ピッチ [cm]（不正・未入力時は null）
    */
   function effectivePitchCm(design) {
     if (!design) return null;
-    const top  = design.ridgeTopWidth;
-    const path = design.pathWidth;
-    if (top != null && path != null && Number(top) > 0 && Number(path) >= 0) {
-      return Number(top) + Number(path);
-    }
+    if (design.ridgeTopWidth != null || design.pathWidth != null) migrateLegacyWidthFields(design);
     return design.rowWidth != null && Number(design.rowWidth) > 0 ? Number(design.rowWidth) : null;
-  }
-
-  /**
-   * design が「詳細入力モード」（ridgeTopWidth/pathWidthで管理）かどうかを判定。
-   * カードUIの表示切替（詳細セクションの初期展開状態）に使う。
-   */
-  function isDetailWidthMode(design) {
-    return !!(design && design.ridgeTopWidth != null && design.pathWidth != null);
   }
 
   /**
@@ -194,16 +232,16 @@ const PlantingLogic = (() => {
    * design の「畝間（pathWidth）」を、境界ギャップ計算用にメートル単位で返す。
    * 【圃場マージン再設計】作物境界には必ず1畝間分の隙間を確保する仕様のため、
    * 隣接する2作物のpathWidthのうち大きい方を境界の隙間幅として採用する。
-   * 詳細入力モード（ridgeTopWidth・pathWidthとも入力済み）の場合のみ pathWidth を
-   * 有効な値として扱い、シンプルモード（畝幅のみ入力）の作物は0として扱う
-   * （＝境界の隙間は隣接する他方のpathWidthだけで確保される）。
+   * Step8-7：rowWidth・ridgeRatioPctから deriveRidgeWidths で派生算出する
+   * （ridgeRatioPctが未設定＝比率未確定の作物は0として扱い、境界の隙間は
+   * 隣接する他方のpathWidthだけで確保される）。
    * @param {object} design - plantingDesign
-   * @returns {number} pathWidth [m]（シンプルモード・未入力時は0）
+   * @returns {number} pathWidth [m]（未設定時は0）
    */
   function _boundaryPathWidthM(design) {
-    if (!isDetailWidthMode(design)) return 0;
-    const path = Number(design.pathWidth);
-    return path > 0 ? path / 100 : 0;
+    if (!design || design.ridgeRatioPct == null) return 0;
+    const derived = deriveRidgeWidths(design);
+    return derived && derived.pathCm > 0 ? derived.pathCm / 100 : 0;
   }
 
   /**
@@ -331,7 +369,7 @@ const PlantingLogic = (() => {
    * 帯内の畝セグメント（ridgeSegments）をキャッシュする中心的な関数。
    *
    * 呼び出しタイミング：エリア再オープン時／占有率変更時／作物追加・削除時／
-   * 畝間設定（ridgeTopWidth・pathWidth・rowWidth）変更時。
+   * 畝間設定（rowWidth・ridgeRatioPct）変更時。
    *
    * 前提が揃っていない場合（エリア共通の畝方向が未設定、圃場ポリゴン未取得、
    * 実務側に作物が無い等）は何もしない（既存のUI側メッセージ表示に委ねる）。
@@ -438,9 +476,7 @@ const PlantingLogic = (() => {
 
     // ── 積算方式（ridgeSegments あり）──
     if (Array.isArray(d.ridgeSegments) && d.ridgeSegments.length > 0) {
-      // ①バグ修正：畝面積の算出には、実際にridgeSegments生成に使われた実効ピッチ
-      // （詳細入力モード時は畝上幅＋畝間、それ以外はrowWidth）を使う。
-      // 生のrowWidthをそのまま使うと詳細入力モード時に乖離・null化の原因になる。
+      // 畝面積の算出には、実際にridgeSegments生成に使われた実効ピッチ（＝rowWidth）を使う。
       const pitchCm = effectivePitchCm(d);
       if (!pitchCm || !linesPerRow || !plantSpacing) return null;
       if (typeof RidgeGeometry === 'undefined') return null;
@@ -459,7 +495,7 @@ const PlantingLogic = (() => {
       return { seedlings, purchase, rowAreaSqm, density, totalLine, rows, rowLength, autoCalc: true };
     }
 
-    // ── 手動入力方式（後方互換・詳細入力モード非対応のためrowWidthを直接使用）──
+    // ── 手動入力方式（後方互換・ridgeSegments未生成時のフォールバック）──
     const rows      = Number(d.rows);
     const rowLength = Number(d.rowLength);
     const rowWidth  = Number(d.rowWidth);
@@ -499,7 +535,8 @@ const PlantingLogic = (() => {
     isProvisional,
     applyProvisionalDefaults,
     effectivePitchCm,
-    isDetailWidthMode,
+    migrateLegacyWidthFields,
+    deriveRidgeWidths,
     getFieldPolygon,
     getEffectiveFieldGeometry,
     recalcAllBands,

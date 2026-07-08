@@ -7496,70 +7496,6 @@ html.draw-dialog-active .bottom-nav {
   line-height: 1.5;
 }
 
-/* 数値編集ポップオーバー */
-.plt-dimpopover {
-  position: absolute;
-  width: 172px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  padding: 10px;
-  z-index: 20;
-}
-.plt-dimpopover-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text2);
-  margin-bottom: 6px;
-}
-.plt-dimpopover-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.plt-dimpopover-input {
-  flex: 1;
-  min-width: 0;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  font-size: 14px;
-  padding: 6px 8px;
-}
-.plt-dimpopover-unit {
-  font-size: 11px;
-  color: var(--text3);
-}
-.plt-dimpopover-actions {
-  display: flex;
-  gap: 6px;
-}
-.plt-dimpopover-btn {
-  flex: 1;
-  padding: 6px 0;
-  border-radius: 6px;
-  font-size: 11.5px;
-  font-weight: 600;
-  border: 1px solid var(--border);
-  background: var(--bg3);
-  color: var(--text2);
-  cursor: pointer;
-}
-.plt-dimpopover-cancel:active {
-  border-color: var(--text3);
-}
-.plt-dimpopover-confirm {
-  background: var(--green3);
-  border-color: var(--green3);
-  color: #fff;
-}
-.plt-dimpopover-confirm:active {
-  background: var(--green2);
-}
-
 /* 固定／暫定の凡例（Step5-4：全カード常設表示。既存.plt-badge-provisionalの配色を流用） */
 .plt-provisional-legend {
   display: flex;
@@ -11615,4 +11551,164 @@ html.draw-dialog-active .bottom-nav {
 }
 .plt-highlight-blink {
   animation: plt-blink-pulse 0.5s ease-in-out 3;
+}
+
+/* ═══════════════════════════════════════════
+   Step8-7（畝断面図まわり入力UX再設計 仕様書）
+   新ブロック（ヘッダー＝作物タブ＋表示トグル／拡大詳細図⇔全体／断面図／
+   畝上比率スライダー／入力グリッド）の外枠・chrome部分。
+   既存の .plt-panel をベースに、内部だけStep8-7独自の構成にする。
+   ═══════════════════════════════════════════ */
+.plt-ridgeblock {
+  /* .plt-panel の背景・枠線・角丸・余白をそのまま流用し、内部だけ差し替える */
+}
+.plt-ridgeblock-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.plt-ridgeblock-header .plt-crosstab-bar {
+  margin-bottom: 0;
+  flex: 1;
+  min-width: 0;
+}
+.plt-ridgeblock-view {
+  margin-bottom: 10px;
+}
+/* 「全体」表示時、中に差し込まれる既存パネルA自体の余白・枠線は不要
+   （新ブロックの外枠が既に囲んでいるため二重枠を避ける） */
+.plt-ridgeblock-view .plt-panel-a {
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+/* 表示トグル（「🔍 拡大詳細」⇔「🗺️ 全体」）。見た目のトーンは
+   辺選択トグルバー（.plt-edgetoggle-chip）と統一している。 */
+.plt-viewtoggle {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 2px;
+}
+.plt-viewtoggle-btn {
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+.plt-viewtoggle-btn-active {
+  background: color-mix(in srgb, var(--green2) 18%, transparent);
+  color: var(--green);
+}
+
+/* 断面図まわり（タイトル＋SVGをまとめて包むコンテナ）。
+   Step8-7で新ブロック直下の1要素として部分更新（innerHTML差し替え）できるよう
+   data-crosssection-body で参照する。見た目自体は特別な装飾を持たず、
+   直下の .plt-cross-section-title / .plt-crosssection-wrap の余白調整のみ担う。 */
+.plt-crosssection-body {
+  margin-bottom: 10px;
+}
+
+/* 断面図：中央の山の頂上ラベル（畝上幅）。既存 .plt-crosssection-label をベースに
+   位置調整のみ行う想定だが、現状は特別な上書きは無く基底スタイルをそのまま使う。 */
+.plt-crosssection-label-top {
+  fill: var(--text);
+}
+
+/* 断面図：畝数が3本を超える場合の「他◯畝 同条件」注記（下部中央・小さめ・控えめな色） */
+.plt-crosssection-label-omitted {
+  font-size: 9px;
+  font-weight: 500;
+  fill: var(--text3);
+}
+
+/* 入力グリッド（畝数・畝長・ピッチ・条数・株間・条間・欠株率）。
+   4列は幅が狭いスマートフォンで詰まりすぎるため、実際は2列固定とし、
+   .plt-input-item-wide（既存）で欠株率など幅広項目を1行占有させる運用とする。 */
+.plt-ridge-inputgrid {
+  margin-top: 4px;
+}
+.plt-input-grid-4col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 10px;
+}
+
+/* 畝上比率スライダー（実務側：新ブロック直下／分析側：.plt-detailwidth-row内、共通クラス）。
+   ラベルを1行占有させ、スライダー＋数値を次の行に並べる（狭い画面幅でも詰まらないように）。
+   accent-colorは寸法線の配色（畝上幅=violet／畝間=blue）のうち主役側に合わせてvioletを採用。 */
+.plt-ridgeratio-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 8px 0;
+}
+.plt-ridgeratio-row .plt-label {
+  flex: 0 0 100%;
+}
+.plt-ridgeratio-slider {
+  flex: 1;
+  min-width: 100px;
+  accent-color: var(--violet);
+  cursor: pointer;
+}
+.plt-ridgeratio-val {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text2);
+  white-space: nowrap;
+}
+
+/* 拡大詳細図（選択中の畝を上から見た模式図）。畝上幅の帯＋左右の畝間を
+   色分けした矩形と、畝上幅／畝長の寸法線・ラベルで構成する（_adpBuildRidgeZoomDetailSVG）。 */
+.plt-zoomview-wrap {
+  position: relative;
+  width: 100%;
+  background: color-mix(in srgb, var(--text2) 4%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+}
+.plt-zoomview-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+/* 畝間（通路）部分：畝上幅の帯と区別できるよう薄いグレーで塗る */
+.plt-zoomview-path {
+  fill: color-mix(in srgb, var(--text2) 12%, transparent);
+}
+/* 畝上幅の帯：断面図の山ポリゴン（.plt-crosssection-ridge）と同じ配色ルールを踏襲し、
+   作物色（--cc、plt-cropcolor-N経由）で塗る */
+.plt-zoomview-ridge {
+  fill: var(--cc);
+  fill-opacity: 0.55;
+  stroke: var(--cc);
+  stroke-width: 1.2;
+}
+/* 寸法線（畝上幅・畝長） */
+.plt-zoomview-dim {
+  stroke: var(--text2);
+  stroke-width: 1.25;
+}
+.plt-zoomview-label {
+  font-size: 10px;
+  font-weight: 600;
+  fill: var(--text2);
 }
