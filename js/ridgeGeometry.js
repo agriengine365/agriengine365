@@ -675,6 +675,24 @@ const RidgeGeometry = (() => {
   }
 
   /**
+   * Step8-7後半：畝方向の常識的自動判定用。
+   * 圃場ポリゴンの中で最も長い辺のインデックスを返す（畝方向未設定時、この辺と平行な
+   * 方向を畝方向として自動採用するために使用。getPolygonEdges を再利用するだけの薄いラッパー）。
+   *
+   * @param {Array<{lat:number,lng:number}>} polygonLatLngs
+   * @returns {number} 最長辺のインデックス（辺が存在しない場合は -1）
+   */
+  function getLongestEdgeIndex(polygonLatLngs) {
+    const edges = getPolygonEdges(polygonLatLngs);
+    if (!edges.length) return -1;
+    let best = edges[0];
+    for (let i = 1; i < edges.length; i++) {
+      if (edges[i].lengthM > best.lengthM) best = edges[i];
+    }
+    return best.index;
+  }
+
+  /**
    * 【Step7-6：圃場マージン計算方式の刷新】
    * 旧実装は全辺を一律オフセットし隣接辺同士の交点（マイター結合）で角を作り直していたため、
    * 入口辺が鋭角に隣接する非矩形圃場でマイタースパイク（交点が本来の辺から大きく飛び出す）が発生し、
@@ -1034,6 +1052,7 @@ const RidgeGeometry = (() => {
     computeHouseGeometry,
     computeZonedFieldGeometry,
     getPolygonEdges,
+    getLongestEdgeIndex,
     toLocalCoords,
     toLocalPoint,
   };

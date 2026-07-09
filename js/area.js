@@ -864,6 +864,11 @@ function _adpEnsureView() {
       <button class="adp-subtab" data-subtab="match"     onclick="_adpSwitchSubTab('match')">📊 適合度</button>
     </div>
 
+    <!-- サブサブタブバー：栽植設計（planting）サブタブ選択時のみ表示。
+         adp-subtabsの直下＝一段深い階層として、adp-subtabと同一デザイン言語（アンダーライン式）で統一。
+         中身はADP_PLANTING_MAIN_TABS定義から動的生成（_adpBuildPlantingSubsubtabsBar）。 -->
+    <div class="adp-subsubtabs" id="adp-subsubtabs-planting" style="display:none;"></div>
+
     <!-- コンテンツ領域 -->
     <div class="adp-view-body">
 
@@ -1310,6 +1315,20 @@ function _adpSwitchSubTab(name) {
   document.querySelectorAll('.adp-subtab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.subtab === name);
   });
+
+  // サブサブタブバー（🤖自動設計/🔧調整/📐描画/🌾作物詳細）：
+  // 栽植設計（planting）サブタブが選択されている時だけ表示する。
+  // 表示時は現在の _adpPlantingUITab を反映して内容を同期する。
+  const subsubtabsBar = document.getElementById('adp-subsubtabs-planting');
+  if (subsubtabsBar) {
+    if (name === 'planting') {
+      subsubtabsBar.style.display = '';
+      subsubtabsBar.innerHTML = _adpBuildPlantingSubsubtabsBar();
+    } else {
+      subsubtabsBar.style.display = 'none';
+    }
+  }
+
   // ペイン（スワイプアニメーション中はdisplay操作をスキップ）
   if (!_adpSwipeAnimating) {
     ADP_SUBTAB_KEYS.forEach(p => {
@@ -5246,8 +5265,6 @@ function _adpPreviewPracticeRatio(cropId, newRatio) {
     .slice(0, lastIdx)
     .reduce((s, c, i) => s + (i === idx ? newRatio : (c.ratio || 0)), 0);
   const autoRatio  = Math.max(0, 100 - sumOthers);
-  const total      = sumOthers + autoRatio;
-  const over       = total > 100;
   const lastCropId = _adpPracticecrops[lastIdx].cropId;
 
   // 自分自身の%表示（栽植パネル）
@@ -5263,18 +5280,6 @@ function _adpPreviewPracticeRatio(cropId, newRatio) {
   if (ownBadgeEl) ownBadgeEl.textContent = `${newRatio}%`;
   const autoBadgeEl = document.querySelector(`#adp-practice-crops-list .adp-practice-crop-card[data-crop-id="${lastCropId}"] .adp-pcc-ratio-badge`);
   if (autoBadgeEl) autoBadgeEl.textContent = `${autoRatio}%`;
-
-  // 占有率合計バー（100%超えたら赤、など）
-  const totalLabelEl = document.querySelector('#planting-result .plt-ratio-bar-labels span:last-child');
-  if (totalLabelEl) {
-    totalLabelEl.textContent = `${total}%`;
-    totalLabelEl.style.color = over ? 'var(--red)' : 'var(--text2)';
-  }
-  const barFillEl = document.querySelector('#planting-result .plt-ratio-bar-fill');
-  if (barFillEl) {
-    barFillEl.style.width = `${Math.min(total, 100)}%`;
-    barFillEl.style.background = over ? 'var(--red)' : total === 100 ? 'var(--green)' : 'var(--green2)';
-  }
 }
 
 function _adpUpdatePracticeRatio(cropId, newRatio) {
@@ -5314,10 +5319,6 @@ function _adpRemovePracticeCrop(cropId) {
   _adpSavePracticecrops(areaId);
   _adpRenderPracticecrops();
   _adpRefreshPracticeTabs();
-}
-
-function _adpPracticeTotalRatio() {
-  return _adpPracticecrops.reduce((s, c) => s + (c.ratio || 0), 0);
 }
 
 function _adpRefreshPracticeTabs() {
@@ -7321,7 +7322,7 @@ function _adpSaveHouseMargin(areaId) {
  * （旧 _adpStartAreaRidgeDir のコールバック内ロジックを踏襲）
  * @param {number} edgeIndex - 選択する辺のインデックス（polygon[edgeIndex] → polygon[edgeIndex+1]）
  */
-function _adpSelectRidgeDirEdge(edgeIndex) {
+function _adpSelectRidgeDirEdge(edgeIndex, silent) {
   if (!_adpArea) return;
   const polygon = PlantingLogic.getFieldPolygon(_adpArea);
   if (!polygon || !Number.isInteger(edgeIndex) || edgeIndex < 0 || edgeIndex >= polygon.length) return;
@@ -7350,8 +7351,10 @@ function _adpSelectRidgeDirEdge(edgeIndex) {
     PlantingLogic.recalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, pitchCm, _adpArea, _adpHouseMargin);
   }
 
-  _adpRenderPlantingPane();
-  showToast(`辺${edgeIndex + 1}を畝方向に設定しました`, 'green');
+  if (!silent) {
+    _adpRenderPlantingPane();
+    showToast(`辺${edgeIndex + 1}を畝方向に設定しました`, 'green');
+  }
 }
 
 /**
@@ -7369,6 +7372,32 @@ function _adpRotateRidgeDirEdge() {
   const baseIndex = (dir && Number.isInteger(dir.edgeIndex)) ? dir.edgeIndex : -1;
   const nextIndex = _adpNextEdgeIndex(baseIndex, edges.length);
   _adpSelectRidgeDirEdge(nextIndex);
+}
+
+/**
+ * Step8-7後半（v4仕様5.）：畝方向・常識的自動判定。
+ * meta.ridgeBaseDirection が未設定の場合のみ、圃場ポリゴンの最長辺と平行な方向を
+ * 畝方向として自動的に確定する（RidgeGeometry.getLongestEdgeIndex を使用）。
+ * 完全自動設計ボタン・個別設定ルートの「自動設計」実行の両方から、AutoDesign.run() の
+ * 直前に必ず呼び出す（AutoDesign.run は ridgeBaseDirection 未設定だとNO_RIDGE_DIRECTIONで失敗するため）。
+ * 既に設定済みの場合は何もしない（ユーザーが手動で選んだ辺を上書きしない）。
+ * silent=trueでトースト表示・再描画を抑制するため、呼び出し元の一連の処理の最後で
+ * まとめて1回だけ再描画すればよい。
+ * @returns {boolean} 自動判定を実行したか（すでに設定済み／判定不能ならfalse）
+ */
+function _adpEnsureRidgeDirAutoDetected() {
+  if (!_adpArea) return false;
+  if (_adpArea.meta?.ridgeBaseDirection) return false; // 既に設定済みなら何もしない
+  if (typeof RidgeGeometry === 'undefined' || typeof RidgeGeometry.getLongestEdgeIndex !== 'function') return false;
+
+  const polygon = PlantingLogic.getFieldPolygon(_adpArea);
+  if (!polygon || polygon.length < 3) return false;
+
+  const longestIndex = RidgeGeometry.getLongestEdgeIndex(polygon);
+  if (longestIndex < 0) return false;
+
+  _adpSelectRidgeDirEdge(longestIndex, true); // silent：トースト・再描画は呼び出し元でまとめて行う
+  return true;
 }
 
 // ═══════════════════════════════════════════
@@ -7797,33 +7826,41 @@ const ADP_PLANTING_MAIN_TABS = [
 ];
 
 /**
- * Step8-7後半：4タブ（自動設計／調整／描画／作物詳細）の外枠。
- * タブ本体（data-maintabs-body）は _adpSwitchPlantingUITab() / _adpRefreshRidgeInputBlock()
- * から innerHTML 差し替えで部分更新するため、外枠自体は _adpRenderPlantingPane() の
- * フル再描画時のみ生成する。
+ * Step8-7後半（サブサブタブ化）：本体（data-maintabs-body）のみを生成する。
+ * タブバー自体は adp-subtabs 直下の外部バー（#adp-subsubtabs-planting、
+ * _adpBuildPlantingSubsubtabsBarが生成）に一本化したため、ここでは持たない。
+ * 本体は _adpSwitchPlantingUITab() / _adpRefreshRidgeInputBlock() から
+ * innerHTML 差し替えで部分更新するため、_adpRenderPlantingPane() のフル再描画時のみ生成する。
  */
 function _adpBuildPlantingMainTabsPanel() {
-  const tabsHTML = ADP_PLANTING_MAIN_TABS.map(t => `
-    <button type="button" class="plt-maintabs-btn ${_adpPlantingUITab === t.key ? 'plt-maintabs-btn-active' : ''}"
-      data-tab-key="${t.key}" onclick="_adpSwitchPlantingUITab('${t.key}')">${t.label}</button>`).join('');
-
   return `
     <div class="plt-panel plt-maintabs" data-panel="maintabs">
-      <div class="plt-maintabs-bar" role="tablist">${tabsHTML}</div>
       <div class="plt-maintabs-body" data-maintabs-body>${_adpBuildPlantingTabBody(_adpPlantingUITab)}</div>
     </div>`;
 }
 
 /**
+ * サブサブタブ化：adp-subtabs直下の外部バー（#adp-subsubtabs-planting）の中身を生成する。
+ * adp-subtabと同一デザイン言語（.adp-subsubtabs/.adp-subsubtab、activeクラスで下線表示）。
+ * 栽植設計サブタブへの切替時（_adpSwitchSubTab）にのみ描画され、以後のタブ切替は
+ * _adpSwitchPlantingUITab側でactiveクラスのみ更新する（バー自体の再生成はしない）。
+ */
+function _adpBuildPlantingSubsubtabsBar() {
+  return ADP_PLANTING_MAIN_TABS.map(t => `
+    <button type="button" class="adp-subsubtab ${_adpPlantingUITab === t.key ? 'active' : ''}"
+      data-tab-key="${t.key}" onclick="_adpSwitchPlantingUITab('${t.key}')">${t.label}</button>`).join('');
+}
+
+/**
  * Step8-7後半：現在選択中のメインタブの中身だけを差し替える。
- * タブボタンのactive表示も同時に更新する（フル再描画は行わない）。
+ * タブボタンのactive表示（外部サブサブタブバー側）も同時に更新する（フル再描画は行わない）。
  */
 function _adpSwitchPlantingUITab(tab) {
   if (!ADP_PLANTING_MAIN_TABS.some(t => t.key === tab)) return;
   _adpPlantingUITab = tab;
 
-  document.querySelectorAll('#planting-result .plt-maintabs-btn').forEach(btn => {
-    btn.classList.toggle('plt-maintabs-btn-active', btn.dataset.tabKey === tab);
+  document.querySelectorAll('#adp-subsubtabs-planting .adp-subsubtab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tabKey === tab);
   });
   const body = document.querySelector('#planting-result [data-maintabs-body]');
   if (body) body.innerHTML = _adpBuildPlantingTabBody(tab);
@@ -7982,14 +8019,14 @@ function _adpBuildRidgeZoomDetailSVG(entry, colorClass) {
   const pathCm = derived.pathCm;
   const halfPathCm = pathCm / 2;
 
-  const VIEW_W = 300, VIEW_H = 200;
+  const VIEW_W = 300, VIEW_H = 150;
   const totalCm = topCm + pathCm;
   const scale = Math.min(220 / Math.max(totalCm, 1), 6); // px/cm、最大6倍
   const bandWpx = topCm * scale, halfPathWpx = halfPathCm * scale;
   const cx = VIEW_W / 2;
   const bandX1 = cx - bandWpx / 2, bandX2 = cx + bandWpx / 2;
   const outerX1 = bandX1 - halfPathWpx, outerX2 = bandX2 + halfPathWpx;
-  const topY = 34, botY = 166;
+  const topY = 26, botY = 124;
 
   let svg = '';
   svg += `<rect x="${outerX1.toFixed(1)}" y="${topY}" width="${(bandX1 - outerX1).toFixed(1)}" height="${botY - topY}" class="plt-zoomview-path" />`;
@@ -8453,14 +8490,42 @@ function _adpRenderPlantingPane() {
  * ただし現在選択中の値（selected）は、動的上限の再計算により一時的にmaxAllowedを超えて
  * いても選択肢から消さない（プルダウンの表示が壊れる＝選択不能状態になるのを防ぐ安全策）。
  */
-function _adpAutoRatioOptionsHTML(selected, maxAllowed) {
+/**
+ * v4仕様4.：比率／最低比率の入力UIを、5%刻みプルダウンから「タップ編集チップ＋±10%ステッパー」に刷新。
+ * チップ本体（number input）は直接タップして数値入力も可能（キーボード入力に対応）。
+ * @param {string} cropId
+ * @param {'ratio'|'minRatio'} field
+ * @param {number} value
+ * @param {number} maxAllowed - 動的上限（_adpAutoDesignComputeLimits().max）
+ * @param {boolean} disabled
+ */
+function _adpAutoRatioChipHTML(cropId, field, value, maxAllowed, disabled) {
   const upper = (typeof maxAllowed === 'number' && isFinite(maxAllowed)) ? maxAllowed : 100;
-  let html = '';
-  for (let v = 0; v <= 100; v += 5) {
-    if (v > upper && v !== selected) continue;
-    html += `<option value="${v}"${v === selected ? ' selected' : ''}>${v}%</option>`;
-  }
-  return html;
+  const v = Math.max(0, Math.min(upper, Number(value) || 0));
+  return `
+    <div class="autoad-chip-group">
+      <button type="button" class="autoad-stepper-btn" ${disabled ? 'disabled' : ''}
+        onclick="_adpAutoDesignStepRatio('${cropId}','${field}',-10,${upper})">−10%</button>
+      <div class="autoad-chip-inputwrap">
+        <input type="number" class="autoad-chip-input" inputmode="numeric" min="0" max="${upper}" step="10"
+          value="${v}" ${disabled ? 'disabled' : ''}
+          onchange="_adpAutoDesignSetCropField('${cropId}','${field}', this.value)">
+        <span class="autoad-chip-unit">%</span>
+      </div>
+      <button type="button" class="autoad-stepper-btn" ${disabled ? 'disabled' : ''}
+        onclick="_adpAutoDesignStepRatio('${cropId}','${field}',10,${upper})">+10%</button>
+    </div>`;
+}
+
+/** 比率／最低比率チップの±10%ステッパーボタンのハンドラ（0〜動的上限でクランプ）。 */
+function _adpAutoDesignStepRatio(cropId, field, delta, maxAllowed) {
+  const crop = _adpPracticecrops.find(c => c.cropId === cropId);
+  if (!crop) return;
+  const autoSet = crop.plantingDesign?.autoDesign || {};
+  const current = field === 'ratio' ? (Number(crop.ratio) || 0) : (Number(autoSet.minRatio) || 0);
+  const upper = (typeof maxAllowed === 'number' && isFinite(maxAllowed)) ? maxAllowed : 100;
+  const next = Math.max(0, Math.min(upper, current + delta));
+  _adpAutoDesignSetCropField(cropId, field, next);
 }
 
 /**
@@ -8501,42 +8566,42 @@ function _adpAutoDesignComputeRemaining() {
 }
 
 /**
- * 5.6.1：事前条件（畝方向設定済み・作物1件以上）の充足状況を返す。
+ * 5.6.1：事前条件（作物1件以上）の充足状況を返す。
+ * v4仕様5.：畝方向は未設定でも自動計算（最長辺）して確定に含められるため、
+ * ブロッカーではなくなった（allOkはhasCropsのみで判定）。hasRidgeDirは表示文言の
+ * 出し分け（「設定済み」／「自動判定」）にのみ使用する。
  */
 function _adpAutoDesignPrereqStatus() {
   const hasRidgeDir = !!_adpArea?.meta?.ridgeBaseDirection;
   const hasCrops = _adpPracticecrops.length > 0;
-  return { hasRidgeDir, hasCrops, allOk: hasRidgeDir && hasCrops };
+  return { hasRidgeDir, hasCrops, allOk: hasCrops };
 }
 
 /**
- * 5.6.1：事前条件チェックリストHTML。
- * 全条件クリア時は1行サマリーのみ（常に非展開）。未クリアの条件がある場合のみ、
- * 条件ごとに「未設定」バッジ＋誘導ボタンを表示する。
+ * 5.6.1：事前条件表示HTML。
+ * 作物0件時のみブロッカーとして誘導ボタン付きで表示。作物が1件以上あれば
+ * 畝方向の有無に関わらず1行サマリー表示とし、畝方向は「設定済み」または「自動判定」の
+ * 文言で状態を伝える（未設定でも自動計算されるためブロックしない）。
+ * 誘導ボタン（畝方向を手動で変えたい人向け）はサマリー行に残す。
  */
 function _adpBuildAutoDesignPrereqHTML(hasRidgeDir, hasCrops) {
-  if (hasRidgeDir && hasCrops) {
-    return `<div class="autoad-prereq autoad-prereq-clear">✓ 事前条件クリア（畝方向・作物登録）</div>`;
+  if (!hasCrops) {
+    return `
+      <div class="autoad-prereq">
+        <div class="autoad-prereq-item">
+          <span class="autoad-prereq-icon">🌱</span>
+          <span class="autoad-prereq-label">作物</span>
+          <span class="autoad-prereq-badge">未設定</span>
+          <button type="button" class="autoad-prereq-btn" onclick="_adpOpenCropSelectSheet('practice')">＋作物を追加</button>
+        </div>
+      </div>`;
   }
-  const ridgeItem = `
-    <div class="autoad-prereq-item${hasRidgeDir ? ' autoad-prereq-item-ok' : ''}">
-      <span class="autoad-prereq-icon">📐</span>
-      <span class="autoad-prereq-label">畝方向</span>
-      ${hasRidgeDir
-        ? `<span class="autoad-prereq-ok-text">設定済み</span>`
-        : `<span class="autoad-prereq-badge">未設定</span>
-           <button type="button" class="autoad-prereq-btn" onclick="_adpAutoDesignGuideToRidgeDir()">📐 畝方向を設定</button>`}
+  const ridgeText = hasRidgeDir ? '設定済み' : '自動判定';
+  return `
+    <div class="autoad-prereq autoad-prereq-clear">
+      <span>✓ 畝方向：${ridgeText}／作物${_adpPracticecrops.length}件登録済み</span>
+      <button type="button" class="autoad-prereq-btn autoad-prereq-btn-inline" onclick="_adpAutoDesignGuideToRidgeDir()">📐 畝方向を変更</button>
     </div>`;
-  const cropItem = `
-    <div class="autoad-prereq-item${hasCrops ? ' autoad-prereq-item-ok' : ''}">
-      <span class="autoad-prereq-icon">🌱</span>
-      <span class="autoad-prereq-label">作物</span>
-      ${hasCrops
-        ? `<span class="autoad-prereq-ok-text">${_adpPracticecrops.length}件登録済み</span>`
-        : `<span class="autoad-prereq-badge">未設定</span>
-           <button type="button" class="autoad-prereq-btn" onclick="_adpOpenCropSelectSheet('practice')">＋作物を追加</button>`}
-    </div>`;
-  return `<div class="autoad-prereq">${ridgeItem}${cropItem}</div>`;
 }
 
 /**
@@ -8556,21 +8621,26 @@ function _adpAutoDesignGuideToRidgeDir() {
 }
 
 /**
- * 畝数プルダウン用オプションHTML（1〜9本）を生成する。増分ボタンで9本超も選択可能にするため、
- * 現在値が9を超える場合はその値も選択肢に加える。
+ * v4仕様4.：畝数の入力UI。+1／+10ステッパーはそのまま活かしつつ、プルダウン部分だけ
+ * タップ編集チップ（number input）に置き換える（本数入力の一貫性を比率チップと揃える）。
  */
-function _adpAutoRowCountOptionsHTML(selected) {
-  const n = Number(selected) || 0;
-  const maxOpt = Math.max(9, n);
-  let html = '';
-  for (let v = 1; v <= maxOpt; v++) {
-    html += `<option value="${v}"${v === n ? ' selected' : ''}>${v}本</option>`;
-  }
-  return html;
+function _adpAutoRowCountChipHTML(cropId, value, disabled) {
+  const n = Math.max(1, Number(value) || 0);
+  return `
+    <div class="autoad-chip-group">
+      <div class="autoad-chip-inputwrap">
+        <input type="number" class="autoad-chip-input" inputmode="numeric" min="1" step="1"
+          value="${n}" ${disabled ? 'disabled' : ''}
+          onchange="_adpAutoDesignSetCropField('${cropId}','targetRowCount', this.value)">
+        <span class="autoad-chip-unit">本</span>
+      </div>
+      <button type="button" class="autoad-incr-btn" ${disabled ? 'disabled' : ''} onclick="_adpAutoDesignIncrRowCount('${cropId}', 1)">+1</button>
+      <button type="button" class="autoad-incr-btn" ${disabled ? 'disabled' : ''} onclick="_adpAutoDesignIncrRowCount('${cropId}', 10)">+10</button>
+    </div>`;
 }
 
 /**
- * 自動設計の設定パネル（アコーディオン形式）を生成する。
+ * 自動設計の設定パネルを生成する（v4仕様4.：アコーディオン撤去・直接展開）。
  * プレビュー結果（_adpAutoDesignPreview）がある場合はプレビュー値を、無ければ実データ
  * （_adpPracticecrops の現在値）を表示する。
  */
@@ -8581,6 +8651,7 @@ function _adpBuildAutoDesignPanel() {
   const preview = _adpAutoDesignPreview;
   const previewMap = preview?.results ? Object.fromEntries(preview.results.map(r => [r.cropId, r])) : null;
   const remaining = _adpAutoDesignComputeRemaining();
+  const allocatedPct = Math.max(0, Math.min(100, 100 - remaining));
 
   const rowsHTML = !hasCrops ? '' : _adpPracticecrops.map(({ cropId, ratio, plantingDesign }) => {
     const design      = plantingDesign || {};
@@ -8589,36 +8660,27 @@ function _adpBuildAutoDesignPanel() {
     const pv          = previewMap ? previewMap[cropId] : null;
     const shownRatio  = pv ? pv.ratio : (Number(ratio) || 0);
     const shownRows   = pv ? pv.targetRowCount : (Number(design.targetRowCount) || 0);
-    // 5.6.2：この作物の比率／最低比率プルダウンの動的上限（自分以外の固定比率合計・最低比率合計から算出）
+    // 5.6.2：この作物の比率／最低比率チップの動的上限（自分以外の固定比率合計・最低比率合計から算出）
     const limits      = _adpAutoDesignComputeLimits(cropId);
 
     return `
       <div class="autoad-row" data-crop-id="${cropId}">
         <div class="autoad-row-name">${cropName}</div>
         <div class="autoad-row-field">
-          <select class="autoad-select" ${autoSet.fixedRatio ? '' : 'disabled'}
-            onchange="_adpAutoDesignSetCropField('${cropId}','ratio', this.value)">
-            ${_adpAutoRatioOptionsHTML(shownRatio, limits.max)}
-          </select>
+          <span class="autoad-field-label">比率</span>
+          ${_adpAutoRatioChipHTML(cropId, 'ratio', shownRatio, limits.max, !autoSet.fixedRatio)}
           <label class="autoad-fixed-label">
             <input type="checkbox" ${autoSet.fixedRatio ? 'checked' : ''}
               onchange="_adpAutoDesignSetCropField('${cropId}','fixedRatio', this.checked)"> 固定
           </label>
         </div>
         <div class="autoad-row-field">
-          <select class="autoad-select" ${autoSet.fixedRatio ? 'disabled' : ''}
-            onchange="_adpAutoDesignSetCropField('${cropId}','minRatio', this.value)">
-            ${_adpAutoRatioOptionsHTML(autoSet.minRatio, limits.max)}
-          </select>
           <span class="autoad-field-label">最低比率</span>
+          ${_adpAutoRatioChipHTML(cropId, 'minRatio', autoSet.minRatio, limits.max, autoSet.fixedRatio)}
         </div>
         <div class="autoad-row-field">
-          <select class="autoad-select" ${autoSet.fixedRowCount ? '' : 'disabled'}
-            onchange="_adpAutoDesignSetCropField('${cropId}','targetRowCount', this.value)">
-            ${_adpAutoRowCountOptionsHTML(shownRows)}
-          </select>
-          <button type="button" class="autoad-incr-btn" onclick="_adpAutoDesignIncrRowCount('${cropId}', 1)">+1</button>
-          <button type="button" class="autoad-incr-btn" onclick="_adpAutoDesignIncrRowCount('${cropId}', 10)">+10</button>
+          <span class="autoad-field-label">畝数</span>
+          ${_adpAutoRowCountChipHTML(cropId, shownRows, !autoSet.fixedRowCount)}
           <label class="autoad-fixed-label">
             <input type="checkbox" ${autoSet.fixedRowCount ? 'checked' : ''}
               onchange="_adpAutoDesignSetCropField('${cropId}','fixedRowCount', this.checked)"> 固定
@@ -8633,7 +8695,7 @@ function _adpBuildAutoDesignPanel() {
         : `<div class="autoad-status autoad-status-error">⚠ ${preview.message}</div>`)
     : '';
 
-  // 5.6.1：作物0件時は設定行・比率プルダウン等を表示せず、チェックリストのみ表示する
+  // 5.6.1：作物0件時は設定行・比率チップ等を表示せず、チェックリストのみ表示する
   const bodyHTML = !hasCrops ? '' : `
         <div class="autoad-global-row">
           <label class="autoad-global-field">
@@ -8651,25 +8713,33 @@ function _adpBuildAutoDesignPanel() {
               <option value="profit"${_adpAutoDesignSettings.objective === 'profit' ? ' selected' : ''}>利益(円)最大化（肥料費差引）</option>
             </select>
           </label>
-          <div class="autoad-remaining${remaining <= 0 ? ' autoad-remaining-zero' : ''}">残り ${remaining}%</div>
+        </div>
+        <!-- 占有ゲージ整理②：共通legend行から撤去した合計バーの代わりに、ここで「残り%」を視覚化 -->
+        <div class="autoad-remaining${remaining < 0 ? ' autoad-remaining-zero' : ''}">
+          <div class="autoad-remaining-labels">
+            <span>残り</span>
+            <span class="autoad-remaining-pct">${remaining}%</span>
+          </div>
+          <div class="plt-ratio-bar-track">
+            <div class="plt-ratio-bar-fill" style="width:${allocatedPct}%;background:${remaining < 0 ? 'var(--red)' : remaining === 0 ? 'var(--green)' : 'var(--green2)'}"></div>
+          </div>
         </div>
         <div class="autoad-rows">${rowsHTML}</div>
         ${statusHTML}`;
 
   return `
-    <div class="accordion autoad-accordion" id="autoad-accordion">
-      <div class="accordion-header" onclick="_adpAutoDesignAccordionToggle(this)">
-        <span>⚙️ 自動設計設定</span>
-        <span class="acc-icon">▾</span>
+    <div class="autoad-panel" id="autoad-panel">
+      <button type="button" class="autoad-full-btn" ${hasCrops ? '' : 'disabled'} onclick="_adpAutoDesignFullAuto()">
+        🪄 完全自動設計（タップで即確定）
+      </button>
+      <div class="autoad-full-help">畝方向が未設定でも自動計算して確定します。個別に比率・畝数を指定したい場合は下の設定を調整してください。</div>
+      ${prereqHTML}
+      ${bodyHTML}
+      <div class="autoad-btn-row">
+        <button type="button" class="autoad-run-btn" ${allOk ? '' : 'disabled'} onclick="_adpAutoDesignRun()">🔍 プレビュー</button>
+        <button type="button" class="autoad-apply-btn" ${preview?.ok ? '' : 'disabled'} onclick="_adpAutoDesignApply()">✓ 適用</button>
       </div>
-      <div class="accordion-body">
-        ${prereqHTML}
-        ${bodyHTML}
-        <div class="autoad-btn-row">
-          <button type="button" class="autoad-run-btn" ${allOk ? '' : 'disabled'} onclick="_adpAutoDesignRun()">🪄 自動設計</button>
-          <button type="button" class="autoad-apply-btn" ${preview?.ok ? '' : 'disabled'} onclick="_adpAutoDesignApply()">✓ 適用</button>
-        </div>
-      </div>
+      <div class="autoad-help-text">「プレビュー」はまだ反映されません。内容を確認してから「適用」を押すと確定します。</div>
     </div>`;
 }
 
@@ -8721,29 +8791,17 @@ function _adpAutoDesignSetGlobalOption(key, value) {
 }
 
 /**
- * 「⚙️ 自動設計設定」アコーディオンの開閉トグル。
- * 5.5（Step3）：開→閉に切り替わったタイミングで自動設計プレビューが残っていれば、
- * 「適用」相当の確定処理を自動実行する（境界確認ダイアログが必要な場合はそのまま表示される）。
- */
-function _adpAutoDesignAccordionToggle(headerEl) {
-  const acc = headerEl.parentElement;
-  const wasOpen = acc.classList.contains('open');
-  acc.classList.toggle('open');
-  const nowOpen = acc.classList.contains('open');
-  if (wasOpen && !nowOpen && _adpAutoDesignPreview?.ok) {
-    _adpAutoDesignApply();
-  }
-}
-
-/**
- * 「自動設計」ボタン：AutoDesign.run() を実行し、結果をプレビューとして
- * 設定パネルのプルダウンに反映する（この時点では practicecrops へ書き込まない）。
+ * 「プレビュー」ボタン：AutoDesign.run() を実行し、結果をプレビューとして
+ * 設定パネルのチップに反映する（この時点では practicecrops へ書き込まない）。
+ * v4仕様5.：畝方向が未設定の場合は実行前に自動判定して確定する（未設定のままではAutoDesign.runが
+ * NO_RIDGE_DIRECTIONで失敗するため）。
  */
 function _adpAutoDesignRun() {
   if (typeof AutoDesign === 'undefined') return;
   // 5.6.1：UI上はボタン自体を非活性化して押せない状態にしているが、フェイルセーフとして
-  // 事前条件（畝方向設定済み・作物1件以上）を関数側でも確認する
+  // 事前条件（作物1件以上）を関数側でも確認する
   if (!_adpAutoDesignPrereqStatus().allOk) return;
+  _adpEnsureRidgeDirAutoDetected();
   const result = AutoDesign.run({
     practicecrops: _adpPracticecrops,
     area: _adpArea,
@@ -8753,6 +8811,43 @@ function _adpAutoDesignRun() {
   });
   _adpAutoDesignPreview = result;
   _adpRenderPlantingPane();
+}
+
+/**
+ * v4仕様4.：「🪄 完全自動設計」ボタン（パネル最上部）。タップ一回でAutoDesign.run()の結果を
+ * プレビューを経由せず即座に確定する。畝方向が未設定でも自動計算（最長辺）して確定に含める。
+ * 畝ピッチ境界ギリギリの作物（nearBoundary）がある場合は、安全のため通常の「適用」と同様に
+ * 確認ダイアログを一度だけ挟む（対象0件なら即時確定）。
+ */
+function _adpAutoDesignFullAuto() {
+  if (typeof AutoDesign === 'undefined') return;
+  if (!_adpAutoDesignPrereqStatus().allOk) return; // 作物0件ならフェイルセーフで何もしない
+
+  _adpEnsureRidgeDirAutoDetected(); // 畝方向未設定でも自動計算して確定に含める
+
+  const result = AutoDesign.run({
+    practicecrops: _adpPracticecrops,
+    area: _adpArea,
+    houseMargin: _adpHouseMargin,
+    zonePriorityMode: _adpAutoDesignSettings.zonePriorityMode,
+    objective: _adpAutoDesignSettings.objective,
+  });
+  _adpAutoDesignPreview = result;
+
+  if (!result.ok) {
+    _adpRenderPlantingPane();
+    showToast(`⚠ ${result.message}`, 'red');
+    return;
+  }
+
+  const boundaryCrops = result.results.filter(r => r.nearBoundary);
+  if (boundaryCrops.length > 0) {
+    _adpRenderPlantingPane();
+    _adpShowBoundaryConfirmModal(boundaryCrops);
+    return;
+  }
+  _adpAutoDesignCommit([]);
+  showToast('🪄 完全自動設計を確定しました', 'green');
 }
 
 /**
@@ -9093,21 +9188,10 @@ function _adpBuildRatioLegendRow(isAnalysis) {
     return `<div class="plt-ratiolegend-row plt-ratiolegend-row-analysis">${legendHTML}</div>`;
   }
 
-  const total = _adpPracticeTotalRatio();
-  const over  = total > 100;
-
-  const ratioBarHTML = _adpPracticecrops.length >= 2 ? `
-    <div class="plt-ratio-bar-wrap">
-      <div class="plt-ratio-bar-labels">
-        <span>占有率合計</span>
-        <span style="color:${over ? 'var(--red)' : 'var(--text2)'}">${total}%</span>
-      </div>
-      <div class="plt-ratio-bar-track">
-        <div class="plt-ratio-bar-fill" style="width:${Math.min(total,100)}%;background:${over ? 'var(--red)' : total===100 ? 'var(--green)' : 'var(--green2)'}"></div>
-      </div>
-    </div>` : '';
-
-  return `<div class="plt-ratiolegend-row">${ratioBarHTML}${legendHTML}</div>`;
+  // 占有ゲージ整理：共通legend行の合計バーは撤去し、凡例テキストのみ残す。
+  // 占有率の合計比率は「🤖自動設計」タブ内の残り%バー（_adpBuildAutoDesignPanel）側で
+  // 視覚的に確認できるため、ここでは重複表示しない。
+  return `<div class="plt-ratiolegend-row">${legendHTML}</div>`;
 }
 
 function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false, isAnalysis = false }) {
