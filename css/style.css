@@ -221,22 +221,16 @@ body {
   transform: translateY(0);
 }
 
-/* ページヘッダー */
+/* ページヘッダー（back+titleの行とタブ行を縦積みにするラッパー） */
 .fs-header {
+  display: flex;
+  flex-direction: column;
   flex-shrink: 0;
   background: rgba(14,26,18,0.95);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   padding-top: env(safe-area-inset-top, 0px);
-}
-
-.fs-header-top {
-  display: flex;
-  align-items: center;
-  height: 48px;
-  padding: 0 12px;
-  gap: 10px;
 }
 
 .fs-back-btn {
@@ -262,24 +256,7 @@ body {
   flex: 1;
 }
 
-/* fs-header内のtop行 */
-.fs-header {
-  display: flex;
-  flex-direction: column;
-}
-/* back＋titleを横並びにするwrapper */
-.fs-header > .fs-back-btn,
-.fs-header > .fs-title {
-  /* 直接子は縦積みになるのでflexboxで1行に収める */
-}
-
-/* header内を横並びにするためflex-rowラッパーとして再定義 */
-.fs-header {
-  display: flex;
-  flex-direction: column;
-}
-
-/* back・titleは最初の行 */
+/* back・titleは最初の行（.fs-header-row／横並びは.fs-header本体側でdisplay:flex;flex-direction:column;を指定済み） */
 .fs-header-row {
   display: flex;
   align-items: center;

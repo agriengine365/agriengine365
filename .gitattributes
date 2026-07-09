@@ -1,0 +1,12 @@
+# 改行コードをLFに統一する（Windows上のエディタ設定に関わらず、
+# コミット・pushされる内容は常にLFになる）。
+* text=auto eol=lf
+
+# バイナリ扱いにするもの（誤ってLF変換されないように）
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary

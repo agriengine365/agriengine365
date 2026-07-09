@@ -62,7 +62,11 @@ async function commitSaveArea({ name, memo, soilType }) {
       amRainDays50:    currentAreaData.climate?.rainDays50  ?? null,
       amSnowDays:      currentAreaData.climate?.snowDays    ?? null,
       soilType:        soilType || null,
-      ridgeBaseDirection: currentAreaData.ridgeBaseDirection || null,
+      // ridgeBaseDirection（畝方向）はエリア作成ウィザードの時点ではまだ決まらない。
+      // 圃場ポリゴン確定後、栽植設計タブを開いてから _adpSelectRidgeDirEdge() /
+      // _adpEnsureRidgeDirAutoDetected() 経由で meta.ridgeBaseDirection に設定・保存される
+      // （_adpSaveRidgeBaseDirection() 参照）。ここでは常にnullで初期化するだけでよい。
+      ridgeBaseDirection: null,
     },
     createdAt: new Date().toISOString(),
     profitOverrides: {},

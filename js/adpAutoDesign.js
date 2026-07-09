@@ -170,23 +170,32 @@ const AutoDesign = (() => {
 
     // 5.4：畝ピッチfloor()境界判定用に、直近（最終）イテレーションで使われた
     // 帯幅[m]・標準ピッチ[cm]を作物インデックスごとに記録する（畝数固定の作物は対象外）。
+    // ※ 常に「その時点の working[i].ratio に対応する」値だけを持たせるため、band不正／
+    //   rowWidth不明の場合は古い値を残さず必ずクリアする（過去イテレーションの値が
+    //   別の比率のときの結果と誤って混ざるのを防ぐ）。
     const lastBandWidthM = {};
     const lastRowWidthCm = {};
 
-    for (let iter = 0; iter < maxIterations; iter++) {
-      iterations = iter + 1;
-
-      // ── 手順2 前半：現在の比率で帯を再計算し、帯幅を取得 ──
+    /**
+     * 現在の working[].ratio で帯を再計算し、各作物の targetRowCount と
+     * lastBandWidthM/lastRowWidthCm を更新する（手順2前半に相当）。
+     * ループ内の毎イテレーションに加え、収束後の最終比率でも呼び出すことで、
+     * results に含まれる targetRowCount/nearBoundary が最終的な ratio と
+     * 必ず対応するようにする。
+     * @returns {boolean} 帯の再計算に成功したか
+     */
+    function _recalcTargetRowCounts() {
       if (!PlantingLogic.recalcAllBands(working, area, houseMargin, zonePriorityMode)) {
-        return { ok: false, errorType: ERR.GEOMETRY_FAILED, message: ERR_MESSAGES[ERR.GEOMETRY_FAILED] };
+        return false;
       }
-
       working.forEach((w, i) => {
         if (settingsList[i].fixedRowCount) return; // 畝数固定の作物はスキップ
         const design = w.plantingDesign;
         const band   = design._bandPolygon;
         if (!Array.isArray(band) || band.length < 3) {
           design.targetRowCount = 0;
+          lastBandWidthM[i] = null;
+          lastRowWidthCm[i] = 0;
           return;
         }
         const crop = _adpGetCropById(w.cropId);
@@ -194,6 +203,8 @@ const AutoDesign = (() => {
         const rowWidthCm = Number(std?.rowWidth) || Number(design.rowWidth) || 0;
         if (!(rowWidthCm > 0)) {
           design.targetRowCount = 0;
+          lastBandWidthM[i] = null;
+          lastRowWidthCm[i] = 0;
           return;
         }
         // 帯幅を「畝1本ぶん(n=1)」としてcalcRidgesByCountに通し、pitchM(=帯幅)を取得する
@@ -204,6 +215,16 @@ const AutoDesign = (() => {
         lastBandWidthM[i] = bandWidthM;
         lastRowWidthCm[i] = rowWidthCm;
       });
+      return true;
+    }
+
+    for (let iter = 0; iter < maxIterations; iter++) {
+      iterations = iter + 1;
+
+      // ── 手順2 前半：現在の比率で帯を再計算し、帯幅を取得 ──
+      if (!_recalcTargetRowCounts()) {
+        return { ok: false, errorType: ERR.GEOMETRY_FAILED, message: ERR_MESSAGES[ERR.GEOMETRY_FAILED] };
+      }
 
       // ── 手順2後半・手順3：更新された畝数で帯・畝セグメントを再計算し、期待収量密度を算出 ──
       if (!PlantingLogic.recalcAllBands(working, area, houseMargin, zonePriorityMode)) {
@@ -264,6 +285,14 @@ const AutoDesign = (() => {
       // 一致させつつ5%刻みに丸める
       const scaled = _roundToStepSummingTo(rawRatios, remainingPool, RATIO_STEP);
       nonFixedRatioIdx.forEach((i, k) => { working[i].ratio = scaled[k]; });
+    }
+
+    // ループ内で収束判定して break した場合、working[].ratio は「次のイテレーション用に
+    // 更新済みの最終値」だが、targetRowCount/lastBandWidthM 側はその1つ前の比率のまま
+    // になっている（1周期分のズレ）。5%刻み丸め後の最終比率で結果の整合性を取るため、
+    // ここでもう一度だけ帯・畝数を再計算しておく。
+    if (!_recalcTargetRowCounts()) {
+      return { ok: false, errorType: ERR.GEOMETRY_FAILED, message: ERR_MESSAGES[ERR.GEOMETRY_FAILED] };
     }
 
     // 畝数が未確定（0）のまま残った場合は最低1本に補正しない（0=未割当として扱う。UI側で警告表示想定）
