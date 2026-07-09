@@ -11790,7 +11790,12 @@ html.draw-dialog-active .bottom-nav {
   font-size: 11px;
   font-weight: 600;
   color: var(--text2);
-  white-space: nowrap;
+  /* 修正：スライダーと同じ行に詰めるとnowrapのせいで画面幅からはみ出すため、
+     ラベルと同様に必ず自分の行を占有させ、それでも収まらない場合は折り返す */
+  flex: 1 0 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 /* 拡大詳細図（選択中の畝を上から見た模式図）。畝上幅の帯＋左右の畝間を
