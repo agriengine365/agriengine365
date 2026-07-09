@@ -7842,13 +7842,19 @@ function _adpBuildPlantingMainTabsPanel() {
 /**
  * サブサブタブ化：adp-subtabs直下の外部バー（#adp-subsubtabs-planting）の中身を生成する。
  * adp-subtabと同一デザイン言語（.adp-subsubtabs/.adp-subsubtab、activeクラスで下線表示）。
+ * 改善⑤：8個並ぶadp-subtabsの下にさらに1段ネストするため、今どの階層にいるか
+ * 見失いやすいという指摘への対処として、先頭に固定の文脈ラベル（🌱栽植設計）を置く。
+ * タブボタン側だけを横スクロール対象（.adp-subsubtabs-scroll）にし、ラベルは常時表示する。
  * 栽植設計サブタブへの切替時（_adpSwitchSubTab）にのみ描画され、以後のタブ切替は
  * _adpSwitchPlantingUITab側でactiveクラスのみ更新する（バー自体の再生成はしない）。
  */
 function _adpBuildPlantingSubsubtabsBar() {
-  return ADP_PLANTING_MAIN_TABS.map(t => `
+  const tabsHTML = ADP_PLANTING_MAIN_TABS.map(t => `
     <button type="button" class="adp-subsubtab ${_adpPlantingUITab === t.key ? 'active' : ''}"
       data-tab-key="${t.key}" onclick="_adpSwitchPlantingUITab('${t.key}')">${t.label}</button>`).join('');
+  return `
+    <span class="adp-subsubtabs-label">🌱 栽植設計</span>
+    <div class="adp-subsubtabs-scroll">${tabsHTML}</div>`;
 }
 
 /**

@@ -2467,20 +2467,39 @@ html.draw-dialog-active #draw-scope {
 }
 .adp-subtab:hover:not(.active) { color: var(--text2); }
 
-/* ── サブサブタブバー（Step8-7後半：畝断面図UX再設計 v4仕様1.）
+/* ── サブサブタブバー（Step8-7後半：畝断面図UX再設計 v4仕様1./追加改善⑤）
    栽植設計サブタブ選択時のみ、adp-subtabsバー直下に表示する専用バー。
    #adp-subsubtabs-planting のdisplay切替はJS側（_adpSwitchSubTab）が担当する。
    見た目はadp-subtabsと同じアンダーライン式だが、背景を--panelにして
-   「サブタブの一段下＝入れ子」であることを視覚的に示す。 ── */
+   「サブタブの一段下＝入れ子」であることを視覚的に示す。
+   改善⑤：adp-subtabsが8個で横スクロールする構造の下にさらに1段ネストするため、
+   今どの階層にいるか見失いやすいという指摘への対処として、先頭に「🌱栽植設計」の
+   固定ラベル（パンくず）を常時表示する。タブボタン側だけを.adp-subsubtabs-scrollで
+   横スクロール対象にし、ラベルはスクロールしても隠れないようにする。 ── */
 .adp-subsubtabs {
   display: flex;
+  align-items: center;
   flex-shrink: 0;
-  overflow-x: auto;
-  scrollbar-width: none;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
-.adp-subsubtabs::-webkit-scrollbar { display: none; }
+.adp-subsubtabs-label {
+  flex-shrink: 0;
+  padding: 8px 8px 8px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text3);
+  white-space: nowrap;
+  border-right: 1px solid var(--border);
+}
+.adp-subsubtabs-scroll {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.adp-subsubtabs-scroll::-webkit-scrollbar { display: none; }
 .adp-subsubtab {
   flex: 1 0 auto;
   padding: 8px 4px;
