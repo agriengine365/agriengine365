@@ -7908,6 +7908,9 @@ function _adpBuildAdjustTabInner() {
 
   return `
     ${_adpBuildRidgeCrossSectionTabs()}
+    <div class="plt-quicklink-row">
+      <button type="button" class="plt-quicklink-btn" onclick="_adpSwitchPlantingUITab('draw')">📐 断面図で確認</button>
+    </div>
     ${design ? _adpBuildRidgeRatioSliderHTML(cropId, design) : ''}
     ${design ? _adpBuildRidgeInputGridHTML(cropId, design) : `<div class="plt-cross-section-placeholder">畝データが未計算です</div>`}`;
 }
@@ -7940,6 +7943,11 @@ function _adpBuildDrawTabInner() {
   const activeName = _adpCropIdToName(activeEntry.cropId);
   const colorClass = `plt-cropcolor-${Math.max(activeIdx, 0) % 8}`;
 
+  const quicklinkHTML = `
+    <div class="plt-quicklink-row">
+      <button type="button" class="plt-quicklink-btn" onclick="_adpSwitchPlantingUITab('adjust')">🔧 数値を調整</button>
+    </div>`;
+
   const viewHTML = _adpCrossSectionViewMode === 'full'
     ? _adpBuildFieldPanelA()
     : _adpBuildRidgeZoomDetailSVG(activeEntry, colorClass);
@@ -7955,6 +7963,7 @@ function _adpBuildDrawTabInner() {
 
   return `
     ${headerHTML}
+    ${quicklinkHTML}
     <div class="plt-ridgeblock-view" data-ridgeblock-view>${viewHTML}</div>
     <div class="plt-crosssection-body" data-crosssection-body>${crossSectionHTML}</div>`;
 }
@@ -8513,7 +8522,7 @@ function _adpAutoRatioChipHTML(cropId, field, value, maxAllowed, disabled) {
       <button type="button" class="autoad-stepper-btn" ${disabled ? 'disabled' : ''}
         onclick="_adpAutoDesignStepRatio('${cropId}','${field}',-10,${upper})">−10%</button>
       <div class="autoad-chip-inputwrap">
-        <input type="number" class="autoad-chip-input" inputmode="numeric" min="0" max="${upper}" step="10"
+        <input type="number" class="autoad-chip-input" inputmode="numeric" min="0" max="${upper}" step="1"
           value="${v}" ${disabled ? 'disabled' : ''}
           onchange="_adpAutoDesignSetCropField('${cropId}','${field}', this.value)">
         <span class="autoad-chip-unit">%</span>
@@ -8766,11 +8775,16 @@ function _adpAutoDesignSetCropField(cropId, field, rawValue) {
   if (field === 'fixedRatio' || field === 'fixedRowCount') {
     crop.plantingDesign.autoDesign[field] = !!rawValue;
   } else if (field === 'minRatio') {
-    crop.plantingDesign.autoDesign.minRatio = Number(rawValue) || 0;
+    // 改善③：直接入力（キーボード）時もステッパーと同じ動的上限でクランプする
+    // （従来は上限チェックが抜けており、100%超の値を入力できてしまっていた）。
+    const limits = _adpAutoDesignComputeLimits(cropId);
+    crop.plantingDesign.autoDesign.minRatio = Math.max(0, Math.min(limits.max, Number(rawValue) || 0));
   } else if (field === 'ratio') {
     // 固定チェック済み作物の「固定時の比率」。他作物の比率とは自動連動しない
     // （自動設計専用の値。実務側の通常の占有率スライダーとは別系統として扱う）。
-    crop.ratio = Number(rawValue) || 0;
+    // 改善③：直接入力時もステッパーと同じ動的上限でクランプする。
+    const limits = _adpAutoDesignComputeLimits(cropId);
+    crop.ratio = Math.max(0, Math.min(limits.max, Number(rawValue) || 0));
   } else if (field === 'targetRowCount') {
     crop.plantingDesign.targetRowCount = Number(rawValue) || 0;
   }
@@ -8824,10 +8838,16 @@ function _adpAutoDesignRun() {
  * プレビューを経由せず即座に確定する。畝方向が未設定でも自動計算（最長辺）して確定に含める。
  * 畝ピッチ境界ギリギリの作物（nearBoundary）がある場合は、安全のため通常の「適用」と同様に
  * 確認ダイアログを一度だけ挟む（対象0件なら即時確定）。
+ * 改善①：即時確定＝既存の作物設定（比率・畝数等）を無条件で上書きする操作のため、
+ * 境界確認が不要な通常ケースでもshowConfirmDialogでワンクッション挟み、誤タップによる
+ * 意図しない上書きを防ぐ（高齢者ユーザーも想定した誤操作対策）。
  */
-function _adpAutoDesignFullAuto() {
+async function _adpAutoDesignFullAuto() {
   if (typeof AutoDesign === 'undefined') return;
   if (!_adpAutoDesignPrereqStatus().allOk) return; // 作物0件ならフェイルセーフで何もしない
+
+  const ok = await showConfirmDialog('現在の比率・畝数の設定を自動計算した内容で上書きします。よろしいですか？', '確定する', 'キャンセル', false);
+  if (!ok) return;
 
   _adpEnsureRidgeDirAutoDetected(); // 畝方向未設定でも自動計算して確定に含める
 

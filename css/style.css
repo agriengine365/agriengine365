@@ -11524,6 +11524,24 @@ html.draw-dialog-active .bottom-nav {
   border-radius: 8px;
 }
 
+/* 改善④：「調整」⇔「描画」タブの往復コストを下げるクイックジャンプリンク。
+   選択中の作物はタブ間で共有されるため、切替後も同じ作物のまま表示される。 */
+.plt-quicklink-row {
+  margin-bottom: 6px;
+}
+.plt-quicklink-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text2);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.plt-quicklink-btn:hover { border-color: var(--green3); color: var(--green); }
+
 /* ═══════════════════════════════════════════
    Step8-4a（畝断面図の統合とプレビュー内入力欄コンパクト化 仕様書）
    パネルB（畝断面図）の作物タブ行。見た目のトーンは辺選択トグルバー
@@ -12024,8 +12042,8 @@ html.draw-dialog-active .bottom-nav {
 }
 .autoad-stepper-btn {
   flex-shrink: 0;
-  width: 32px;
-  height: 24px;
+  width: 40px;
+  height: 34px;
   border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--bg3);
@@ -12049,15 +12067,20 @@ html.draw-dialog-active .bottom-nav {
   width: 32px;
   background: transparent;
   border: none;
+  border-bottom: 1px solid var(--border);
   color: var(--text);
   font-size: 13px;
   font-family: var(--mono);
   text-align: right;
   padding: 2px 0;
   min-width: 0;
+  transition: border-color .15s;
 }
-.autoad-chip-input:focus { outline: none; }
-.autoad-chip-input:disabled { color: var(--text3); }
+.autoad-chip-input:focus {
+  outline: none;
+  border-color: var(--green2);
+}
+.autoad-chip-input:disabled { color: var(--text3); border-color: transparent; }
 .autoad-chip-input::-webkit-outer-spin-button,
 .autoad-chip-input::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -12098,6 +12121,8 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text2);
   border-radius: 6px;
   padding: 2px 6px;
+  min-width: 36px;
+  height: 34px;
   font-size: 11px;
   cursor: pointer;
 }
