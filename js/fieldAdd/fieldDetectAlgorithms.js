@@ -1,0 +1,536 @@
+// ═══════════════════════════════════════════
+//  FIELD DETECT ALGORITHMS — 圃場検出アルゴリズム（純粋関数群）
+//
+//  「圃場追加フロー刷新 仕様書」8章・9章に基づく新規ファイル。
+//  DOM/Leaflet/UIに一切依存しない純粋関数のみで構成する
+//  （imageData・mask・座標配列を受け取り、同様のデータを返すだけ）。
+//  ユニットテスト・単体console検証をこのファイル単体で行えることを狙いとする。
+//
+//  内訳：
+//   - 既存移設（ロジック無改修）: traceContourMsqr / douglasPeucker /
+//                                convexHull / minAreaRect
+//     旧 js/easyFieldDetect.js の _traceContourMsqr() 等から、
+//     ロジックを一切変更せずそのまま移設（呼び出し元での結果差異なし）。
+//   - 新規（精度改善、仕様書4章）: computeGradientMap / computeSeedColor /
+//     floodFillMaskEdgeAware / morphologyClose / scoreMaskPlausibility /
+//     autoTuneTolerance / snapNearRightAngles
+//
+//  依存：輪郭抽出（traceContourMsqr）のみ msqr（js/vendor/msqr.min.js）に依存。
+//  それ以外の関数は外部ライブラリ非依存。
+// ═══════════════════════════════════════════
+
+const FieldDetectAlgorithms = (() => {
+
+  // ═══════════════════════════════════════════
+  //  既存移設（ロジック無改修）
+  //  旧 easyFieldDetect.js の _traceContourMsqr / _douglasPeucker /
+  //  _convexHull / _minAreaRect と完全に同一ロジック。
+  // ═══════════════════════════════════════════
+
+  // ─── mask（Uint8Array）→ アルファチャンネルのみのcanvas ───
+  // msqrは「アルファが閾値を超えるピクセル＝形状の内側」として輪郭を追跡するため、
+  // 色情報は不要（RGBは0固定でよく、mask=1の画素だけalpha=255にする）。
+  function _maskToAlphaCanvas(mask, w, h) {
+    const canvas = document.createElement('canvas');
+    canvas.width  = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.createImageData(w, h);
+    const data = imgData.data;
+    for (let i = 0, n = mask.length; i < n; i++) {
+      data[i * 4 + 3] = mask[i] ? 255 : 0; // alphaのみ設定（RGBは初期値0のまま）
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return canvas;
+  }
+
+  function traceContourMsqr(mask, w, h, tolerance) {
+    if (typeof MSQR === 'undefined') {
+      console.error('[FieldDetectAlgorithms] msqrライブラリが読み込まれていません（js/vendor/msqr.min.js）。');
+      return [];
+    }
+    try {
+      const canvas = _maskToAlphaCanvas(mask, w, h);
+      const shapes = MSQR(canvas, {
+        tolerance: tolerance, // 点削減（RDP）の距離許容値（px）
+        align:     true,      // 輪郭のガタつきをならす補正
+      });
+      // MSQRは「複数形状」に対応するため、戻り値は形状(輪郭点列)の配列。
+      // maxShapes未指定（デフォルト1）なので shapes.length は 0 か 1 のいずれかで、
+      // 実際の輪郭点列は shapes[0] に入っている（shapesそのものではない）。
+      if (!shapes || shapes.length === 0) return [];
+      return shapes[0] || [];
+    } catch (e) {
+      console.error('[FieldDetectAlgorithms] msqrによる輪郭抽出でエラー:', e);
+      return [];
+    }
+  }
+
+  // ─── Douglas-Peucker 単純化 ───
+  function douglasPeucker(points, epsilon) {
+    if (points.length < 3) return points.slice();
+
+    function perpDist(p, a, b) {
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const len2 = dx * dx + dy * dy;
+      if (len2 === 0) return Math.hypot(p.x - a.x, p.y - a.y);
+      const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+      const projX = a.x + t * dx, projY = a.y + t * dy;
+      return Math.hypot(p.x - projX, p.y - projY);
+    }
+
+    function rdp(pts) {
+      if (pts.length < 3) return pts;
+      let maxDist = -1, maxIdx = 0;
+      const a = pts[0], b = pts[pts.length - 1];
+      for (let i = 1; i < pts.length - 1; i++) {
+        const d = perpDist(pts[i], a, b);
+        if (d > maxDist) { maxDist = d; maxIdx = i; }
+      }
+      if (maxDist > epsilon) {
+        const left  = rdp(pts.slice(0, maxIdx + 1));
+        const right = rdp(pts.slice(maxIdx));
+        return left.slice(0, -1).concat(right);
+      }
+      return [a, b];
+    }
+
+    const closed = points.length > 2 &&
+      points[0].x === points[points.length - 1].x &&
+      points[0].y === points[points.length - 1].y;
+    const src = closed ? points.slice(0, -1) : points;
+
+    // 閉曲線をそのまま端点2つでDPすると始点=終点になり潰れるため、
+    // 最も離れた2点で分割して両半分を単純化してから結合する。
+    let farA = 0, farB = 1, maxD = -1;
+    for (let i = 0; i < src.length; i++) {
+      for (let j = i + 1; j < src.length; j++) {
+        const dx = src[i].x - src[j].x, dy = src[i].y - src[j].y;
+        const d = dx * dx + dy * dy;
+        if (d > maxD) { maxD = d; farA = i; farB = j; }
+      }
+      // 大きな輪郭での全探索は重いため間引きサンプリング
+      if (src.length > 300 && i > 300) break;
+    }
+    if (farA > farB) { const t = farA; farA = farB; farB = t; }
+
+    const half1 = src.slice(farA, farB + 1);
+    const half2 = src.slice(farB).concat(src.slice(0, farA + 1));
+
+    const s1 = rdp(half1);
+    const s2 = rdp(half2);
+
+    const result = s1.slice(0, -1).concat(s2.slice(0, -1));
+    return result.length >= 3 ? result : src;
+  }
+
+  // ─── 凸包（Andrew's Monotone Chain） ───
+  function convexHull(points) {
+    const pts = points.slice().sort((a, b) => (a.x - b.x) || (a.y - b.y));
+    // 重複点を除去
+    const uniq = [];
+    for (const p of pts) {
+      if (uniq.length === 0 || uniq[uniq.length - 1].x !== p.x || uniq[uniq.length - 1].y !== p.y) {
+        uniq.push(p);
+      }
+    }
+    if (uniq.length < 3) return uniq;
+
+    const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+
+    const lower = [];
+    for (const p of uniq) {
+      while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
+      lower.push(p);
+    }
+    const upper = [];
+    for (let i = uniq.length - 1; i >= 0; i--) {
+      const p = uniq[i];
+      while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
+      upper.push(p);
+    }
+    lower.pop(); upper.pop();
+    return lower.concat(upper);
+  }
+
+  // ─── 最小外接矩形（Rotating Calipers） ───
+  // 凸包の各辺に沿う向きを順に試し、面積最小の矩形を採用
+  function minAreaRect(hull) {
+    if (hull.length < 3) return null;
+    let best = null;
+
+    for (let i = 0; i < hull.length; i++) {
+      const a = hull[i];
+      const b = hull[(i + 1) % hull.length];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const len = Math.hypot(dx, dy);
+      if (len === 0) continue;
+      // この辺の方向を基準に全点を回転座標系へ投影
+      const ux = dx / len, uy = dy / len; // 辺方向
+      const vx = -uy, vy = ux;            // 法線方向
+
+      let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+      for (const p of hull) {
+        const u = p.x * ux + p.y * uy;
+        const v = p.x * vx + p.y * vy;
+        if (u < minU) minU = u;
+        if (u > maxU) maxU = u;
+        if (v < minV) minV = v;
+        if (v > maxV) maxV = v;
+      }
+      const area = (maxU - minU) * (maxV - minV);
+      if (!best || area < best.area) {
+        best = { area, minU, maxU, minV, maxV, ux, uy, vx, vy };
+      }
+    }
+    if (!best) return null;
+
+    // (u,v) → (x,y) へ戻して4隅を復元
+    const corner = (u, v) => ({
+      x: u * best.ux + v * best.vx,
+      y: u * best.uy + v * best.vy,
+    });
+    return [
+      corner(best.minU, best.minV),
+      corner(best.maxU, best.minV),
+      corner(best.maxU, best.maxV),
+      corner(best.minU, best.maxV),
+    ];
+  }
+
+  // ═══════════════════════════════════════════
+  //  新規：精度改善（仕様書4章）
+  // ═══════════════════════════════════════════
+
+  // ─── 中央値ヘルパー ───
+  function _median(arr) {
+    const sorted = arr.slice().sort((a, b) => a - b);
+    const mid = sorted.length >> 1;
+    return sorted.length % 2 !== 0
+      ? sorted[mid]
+      : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
+  // ─── シード色：中央値ベース（外れ値・影の筋に頑健。旧実装のmean平均から変更） ───
+  function computeSeedColor(imageData, seedX, seedY, radius = 2) {
+    const w = imageData.width, h = imageData.height;
+    const data = imageData.data;
+    const rs = [], gs = [], bs = [];
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const x = seedX + dx, y = seedY + dy;
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const i = (y * w + x) * 4;
+        rs.push(data[i]); gs.push(data[i + 1]); bs.push(data[i + 2]);
+      }
+    }
+    if (rs.length === 0) return null;
+    return { r: _median(rs), g: _median(gs), b: _median(bs) };
+  }
+
+  // ─── 勾配マップ（Sobel、輝度ベース） ───
+  // 戻り値: Float32Array(w*h)。値が大きいほど強いエッジ（陰影境界・隣接農地境界など）。
+  function computeGradientMap(imageData) {
+    const w = imageData.width, h = imageData.height;
+    const data = imageData.data;
+
+    // グレースケール化（輝度、ITU-R BT.601相当の係数）
+    const gray = new Float32Array(w * h);
+    for (let i = 0, n = w * h; i < n; i++) {
+      const di = i * 4;
+      gray[i] = data[di] * 0.299 + data[di + 1] * 0.587 + data[di + 2] * 0.114;
+    }
+
+    // 範囲外は端のピクセルを複製して参照（クランプ）
+    const at = (x, y) => {
+      const cx = x < 0 ? 0 : (x >= w ? w - 1 : x);
+      const cy = y < 0 ? 0 : (y >= h ? h - 1 : y);
+      return gray[cy * w + cx];
+    };
+
+    const gradient = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const gx =
+          -at(x - 1, y - 1) + at(x + 1, y - 1) +
+          -2 * at(x - 1, y) + 2 * at(x + 1, y) +
+          -at(x - 1, y + 1) + at(x + 1, y + 1);
+        const gy =
+          -at(x - 1, y - 1) - 2 * at(x, y - 1) - at(x + 1, y - 1) +
+          at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1);
+        gradient[y * w + x] = Math.sqrt(gx * gx + gy * gy);
+      }
+    }
+    return gradient;
+  }
+
+  // ─── Flood Fill（エッジ考慮版）：色距離 AND 勾配が閾値以下、の条件で領域拡張 ───
+  // シード色は中央値ベース（computeSeedColor）。
+  // gradientMapを渡すことで、陰影の変化があっても「強いエッジを跨がない」制約が働き、
+  // 隣接農地との色類似による誤拡張を抑える。
+  // 戻り値: Uint8Array（1=領域内）または null（範囲異常・シード無効時）
+  function floodFillMaskEdgeAware(imageData, gradientMap, seedX, seedY, colorTolerance, edgeThreshold) {
+    const w = imageData.width, h = imageData.height;
+    const data = imageData.data;
+
+    const seedColor = computeSeedColor(imageData, seedX, seedY, 2);
+    if (!seedColor) return null;
+    const tol2 = colorTolerance * colorTolerance;
+
+    const mask = new Uint8Array(w * h);
+    const startIdx = seedY * w + seedX;
+    if (startIdx < 0 || startIdx >= mask.length) return null;
+    mask[startIdx] = 1;
+    const stack = [startIdx];
+
+    let count = 0;
+    const maxCount = Math.floor(w * h * 0.65); // 全体の65%超過は誤検出扱い（旧実装踏襲）
+
+    while (stack.length) {
+      const idx = stack.pop();
+      count++;
+      if (count > maxCount) return null;
+
+      const x = idx % w, y = (idx / w) | 0;
+      const neighbors = [
+        [x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1],
+      ];
+      for (const [nx, ny] of neighbors) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const nIdx = ny * w + nx;
+        if (mask[nIdx]) continue;
+
+        // エッジ判定：強い勾配（隣接農地の境界線・畦道の影など）を跨ぐ拡張は行わない
+        if (gradientMap && gradientMap[nIdx] > edgeThreshold) continue;
+
+        const di = nIdx * 4;
+        const dr = data[di] - seedColor.r, dg = data[di + 1] - seedColor.g, db = data[di + 2] - seedColor.b;
+        const dist2 = dr * dr + dg * dg + db * db;
+        if (dist2 <= tol2) {
+          mask[nIdx] = 1;
+          stack.push(nIdx);
+        }
+      }
+    }
+
+    if (count < 25) return null; // 小さすぎる（誤検出扱い、旧実装踏襲）
+    return mask;
+  }
+
+  // ─── モルフォロジー・クロージング（3x3膨張→収縮）：ノイズ・小さな穴を除去 ───
+  // 境界はクランプ（端のピクセルを複製）して扱うため、canvas端に接する領域が
+  // 不当に浸食されることはない。
+  function _clamp(x, lo, hi) { return x < lo ? lo : (x > hi ? hi : x); }
+
+  function _getClamped(mask, w, h, x, y) {
+    const cx = _clamp(x, 0, w - 1);
+    const cy = _clamp(y, 0, h - 1);
+    return mask[cy * w + cx];
+  }
+
+  function _dilateOnce(mask, w, h) {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let hit = 0;
+        for (let dy = -1; dy <= 1 && !hit; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (_getClamped(mask, w, h, x + dx, y + dy)) { hit = 1; break; }
+          }
+        }
+        out[y * w + x] = hit;
+      }
+    }
+    return out;
+  }
+
+  function _erodeOnce(mask, w, h) {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let allSet = 1;
+        for (let dy = -1; dy <= 1 && allSet; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (!_getClamped(mask, w, h, x + dx, y + dy)) { allSet = 0; break; }
+          }
+        }
+        out[y * w + x] = allSet;
+      }
+    }
+    return out;
+  }
+
+  function morphologyClose(mask, w, h, iterations = 1) {
+    let cur = mask;
+    for (let i = 0; i < iterations; i++) {
+      cur = _dilateOnce(cur, w, h);
+      cur = _erodeOnce(cur, w, h);
+    }
+    return cur;
+  }
+
+  // ─── 妥当性スコア（0〜1）：充填率0.7 + 凸性0.3（仕様書4章・確定配分） ───
+  function _trapezoidScore(v, x0, x1, x2, x3) {
+    if (v <= x0 || v >= x3) return 0;
+    if (v < x1) return (v - x0) / (x1 - x0);
+    if (v <= x2) return 1;
+    return (x3 - v) / (x3 - x2);
+  }
+
+  function _sampledForegroundPoints(mask, w, h, stride) {
+    const pts = [];
+    for (let y = 0; y < h; y += stride) {
+      for (let x = 0; x < w; x += stride) {
+        if (mask[y * w + x]) pts.push({ x, y });
+      }
+    }
+    return pts;
+  }
+
+  function _polygonArea(points) {
+    if (points.length < 3) return 0;
+    let sum = 0;
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i], b = points[(i + 1) % points.length];
+      sum += a.x * b.y - b.x * a.y;
+    }
+    return Math.abs(sum) / 2;
+  }
+
+  function scoreMaskPlausibility(mask, w, h) {
+    let count = 0;
+    for (let i = 0, n = mask.length; i < n; i++) if (mask[i]) count++;
+    const total = w * h;
+    const fillRatio = total > 0 ? count / total : 0;
+
+    // fillScore：充填率が妥当レンジ(目安0.05〜0.6)で満点、
+    // maxCountガード(0.65)に近づくにつれ自然に減点される台形関数
+    const fillScore = _trapezoidScore(fillRatio, 0.02, 0.05, 0.6, 0.7);
+
+    // convexityScore：サンプリングした前景点の凸包面積比。
+    // 0.3未満（棒状に伸びた明らかな誤検出）のみ大きくペナルティ。
+    // 6章の方針（矩形化廃止・いびつな形を尊重）に合わせ、通常のいびつな畑は減点しない。
+    let convexityScore = 1;
+    const points = _sampledForegroundPoints(mask, w, h, 3);
+    if (points.length >= 3) {
+      const hull = convexHull(points);
+      const hullArea = _polygonArea(hull);
+      if (hullArea > 0) {
+        const ratio = Math.min(1, count / hullArea);
+        convexityScore = ratio < 0.3 ? (ratio / 0.3) * 0.5 : 1;
+      }
+    }
+
+    return fillScore * 0.7 + convexityScore * 0.3;
+  }
+
+  // ─── 1フレーム分だけイベントループへ制御を返す ───
+  // ブラウザではrequestAnimationFrame、それが無い環境（Node等でのテスト実行時）は
+  // setTimeout(0)にフォールバックする。
+  function _yieldFrame() {
+    return new Promise(resolve => {
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(() => resolve());
+      } else {
+        setTimeout(resolve, 0);
+      }
+    });
+  }
+
+  // ─── 自動チューニング：複数のtoleranceを内部で試し、最良のmask/toleranceを選択 ───
+  // 戻り値: { mask, tolerance, score } | null（全候補失敗） | 'cancelled'（途中キャンセル）
+  // candidatesは呼び出し側（easyFieldDetect.js）で決定する
+  // （仕様書確定値: [6, 15, 30, 50, 70]、スライダー実運用レンジ6〜70をフルカバー）。
+  //
+  // 非同期化：候補を1つ処理するごとに_yieldFrame()でイベントループへ制御を返す。
+  // 同期のままだと検出中キャンセルボタンのクリックイベント自体がループ終了まで
+  // 処理されず、キャンセルが実質効かないため（呼び出し側でcancelToken.cancelled=true
+  // をセットしてもここでチェックする機会が来ない）。
+  async function autoTuneTolerance(imageData, gradientMap, seedX, seedY, candidates, edgeThreshold, cancelToken) {
+    const w = imageData.width, h = imageData.height;
+    let best = null;
+
+    for (const tolerance of candidates) {
+      if (cancelToken && cancelToken.cancelled) return 'cancelled';
+
+      const rawMask = floodFillMaskEdgeAware(imageData, gradientMap, seedX, seedY, tolerance, edgeThreshold);
+
+      if (rawMask) {
+        const closedMask = morphologyClose(rawMask, w, h, 1);
+        const score = scoreMaskPlausibility(closedMask, w, h);
+
+        if (!best || score > best.score) {
+          best = { mask: closedMask, tolerance, score };
+        }
+      }
+
+      if (cancelToken && cancelToken.cancelled) return 'cancelled';
+      await _yieldFrame();
+    }
+
+    if (cancelToken && cancelToken.cancelled) return 'cancelled';
+    return best; // 全候補が失敗した場合は null
+  }
+
+  // ─── 直角に近い頂点だけをピタッと合わせる（軽微な角度補正、形状全体は差し替えない） ───
+  // 6章決定：完全な矩形化（形状差し替え）は廃止。90度に近い頂点のみ局所補正する。
+  // 各頂点について、隣接2辺のなす角が90度±angleToleranceDeg以内なら、
+  // 次の頂点をそのぶんだけ回転させてちょうど90度に合わせる（他の頂点は動かさない）。
+  function snapNearRightAngles(points, angleToleranceDeg = 5) {
+    const n = points.length;
+    if (n < 3) return points.map(p => ({ x: p.x, y: p.y }));
+
+    const result = points.map(p => ({ x: p.x, y: p.y }));
+
+    for (let i = 0; i < n; i++) {
+      const prev = result[(i - 1 + n) % n];
+      const curr = result[i];
+      const nextIdx = (i + 1) % n;
+      const next = result[nextIdx];
+
+      const v1x = prev.x - curr.x, v1y = prev.y - curr.y;
+      const v2x = next.x - curr.x, v2y = next.y - curr.y;
+      const len1 = Math.hypot(v1x, v1y), len2 = Math.hypot(v2x, v2y);
+      if (len1 === 0 || len2 === 0) continue;
+
+      const dot = (v1x * v2x + v1y * v2y) / (len1 * len2);
+      const angleDeg = Math.acos(_clamp(dot, -1, 1)) * 180 / Math.PI;
+      const diff = angleDeg - 90;
+      if (Math.abs(diff) > angleToleranceDeg || Math.abs(diff) < 0.01) continue;
+
+      // v1の向きを基準に、v2を「ちょうど90度」の位置まで回転補正する
+      const baseAngle = Math.atan2(v1y, v1x);
+      const v2Angle = Math.atan2(v2y, v2x);
+      let currentDiffRad = v2Angle - baseAngle;
+      while (currentDiffRad > Math.PI) currentDiffRad -= 2 * Math.PI;
+      while (currentDiffRad < -Math.PI) currentDiffRad += 2 * Math.PI;
+
+      const targetDiffRad = (currentDiffRad >= 0 ? 1 : -1) * (Math.PI / 2);
+      const rotate = targetDiffRad - currentDiffRad;
+      const cos = Math.cos(rotate), sin = Math.sin(rotate);
+      const newV2x = v2x * cos - v2y * sin;
+      const newV2y = v2x * sin + v2y * cos;
+
+      result[nextIdx] = { x: curr.x + newV2x, y: curr.y + newV2y };
+    }
+
+    return result;
+  }
+
+  // ─── 公開API ───
+  return {
+    // 既存移設（ロジック無改修）
+    traceContourMsqr,
+    douglasPeucker,
+    convexHull,
+    minAreaRect,
+    // 新規（精度改善）
+    computeGradientMap,
+    computeSeedColor,
+    floodFillMaskEdgeAware,
+    morphologyClose,
+    scoreMaskPlausibility,
+    autoTuneTolerance,
+    snapNearRightAngles,
+  };
+})();

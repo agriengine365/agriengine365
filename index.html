@@ -91,10 +91,15 @@
   <!-- EFD-2: 地図を動かして対象地点をスコープ中央に合わせる -->
   <div class="draw-phase" id="efd-phase-tap" hidden>
     <p class="map-draw-dialog-hint" id="efd-tap-hint">地図を動かして、検出したい圃場の中央にスコープを合わせてください</p>
-    <div class="map-draw-dialog-actions efd-actions-three">
+    <!-- 待機中：既存3ボタン -->
+    <div class="map-draw-dialog-actions efd-actions-three" id="efd-tap-actions-idle">
       <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="EasyFieldDetect.cancel()">キャンセル</button>
       <button type="button" class="map-draw-btn map-draw-btn-confirm" id="efd-detect-btn" onclick="EasyFieldDetect.detect()">この地点で検出</button>
       <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="EasyFieldDetect.fallbackManual()">手動描画へ</button>
+    </div>
+    <!-- 検出中：専用キャンセルボタンのみ表示（既存3ボタンは隠す） -->
+    <div class="map-draw-dialog-actions efd-actions-single" id="efd-tap-actions-detecting" hidden>
+      <button type="button" class="map-draw-btn map-draw-btn-cancel" id="efd-cancel-detect-btn" onclick="EasyFieldDetect.cancelDetect()">検出中...（キャンセル）</button>
     </div>
   </div>
 
@@ -320,6 +325,7 @@
 <script src="js/map.js"></script>
 <script src="js/ridgeGeometry.js"></script>
 <script src="js/vendor/msqr.min.js"></script>
+<script src="js/fieldAdd/fieldDetectAlgorithms.js"></script>
 <script src="js/polygonDraw.js"></script>
 <script src="js/easyFieldDetect.js"></script>
 <script src="js/areaEnv.js"></script>
