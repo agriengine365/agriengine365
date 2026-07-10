@@ -11187,12 +11187,6 @@ html.draw-dialog-active .bottom-nav {
   vertical-align: middle;
 }
 
-/* 畝方向フェーズ：スコープの色を黄色に変更 */
-.draw-dialog-active #draw-phase-ridgedir ~ * .scope-dot,
-#draw-scope.active:has(~ #map-draw-dialog #draw-phase-ridgedir:not([hidden])) .scope-dot {
-  background: #f59e0b;
-}
-
 /* ═══════════════════════════════════════════
    収量見込み — 収穫カードヘッダー・栽植設計カード
    ═══════════════════════════════════════════ */

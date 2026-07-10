@@ -291,8 +291,13 @@ function _updateWizardSummary() {
 }
 
 // ─── キャンセル ───
+// バグ修正: 従来はダイアログを閉じるだけで、地図上に確定済みのポリゴンや
+// currentPolygon が残ったままになっていた。ここで明示的にクリアする。
 function cancelWizard() {
   hideWizard();
+  if (typeof drawnItems !== 'undefined' && drawnItems) drawnItems.clearLayers();
+  if (typeof currentPolygon !== 'undefined') currentPolygon = null;
+  if (typeof resetStats === 'function') resetStats();
   showToast('保存をキャンセルしました');
 }
 
@@ -327,6 +332,40 @@ function addAnotherArea() {
 function goToAreas() {
   hideWizard();
   openPage('areas');
+}
+
+// ─── このエリアのページへ移動（保存直後のエリアの分析パネルを開く） ───
+// area.js の commitSaveArea() が保存完了時に currentSavedAreaId をセットしている
+// ことを利用し、その1件だけを取得して selectArea() に渡す
+// （selectArea は地図表示＋openAreaDetailPanel を内部で行う）。
+async function goToAreaPage() {
+  hideWizard();
+
+  if (typeof currentSavedAreaId === 'undefined' || !currentSavedAreaId) {
+    openPage('areas');
+    return;
+  }
+
+  let area = null;
+  try {
+    if (typeof db !== 'undefined' && db) {
+      const doc = await db.collection('areas').doc(currentSavedAreaId).get();
+      if (doc.exists) area = { id: doc.id, ...doc.data() };
+    } else {
+      const stored = JSON.parse(localStorage.getItem(CONFIG.AREAS_KEY) || '[]');
+      area = stored.find(a => a.id === currentSavedAreaId) || null;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  if (!area || typeof selectArea !== 'function') {
+    // 取得失敗時は一覧にフォールバック
+    openPage('areas');
+    return;
+  }
+
+  selectArea(area);
 }
 
 // ─── 初期化 ───
