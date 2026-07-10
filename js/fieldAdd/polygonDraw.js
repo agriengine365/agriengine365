@@ -1,6 +1,13 @@
 // ═══════════════════════════════════════════
 //  POLYGON DRAW — スコープ（画面中央）方式
 //  地図をドラッグして中央スコープに合わせ、「確定」で頂点追加
+//
+//  Step4（圃場追加フロー刷新 仕様書）で以下を変更：
+//  - js/ から js/fieldAdd/ へ移設（描画ロジック自体は無改修）
+//  - complete()：従来は頂点確定後に直接ポリゴンを地図へ確定し
+//    onDrawPolygonComplete()へ渡していたが、確認・微調整画面
+//    （js/fieldAdd/fieldConfirmAdjust.js）へ引き渡すだけに変更。
+//    実際の保存フローへの接続はFieldConfirmAdjust.confirm()側で行う。
 // ═══════════════════════════════════════════
 
 // ─── aria-hidden 適用前にフォーカスを外す共通ヘルパー ───
@@ -243,21 +250,10 @@ const PolygonDraw = (() => {
       return;
     }
 
-    const latlngs = confirmed.map(ll => [ll.lat, ll.lng]);
-    const poly = L.polygon(latlngs, {
-      color:       CONFIG.DRAW_COLOR,
-      weight:      2,
-      fillOpacity: 0.15,
-      interactive: true,
-    });
-
-    drawnItems.clearLayers();
-    drawnItems.addLayer(poly);
-    currentPolygon = poly;
+    const latlngs = confirmed.slice(); // L.LatLng[]（Step4：確認・微調整画面へそのまま渡す）
 
     stop();
-    showDrawToast('圃場の形を確定しました', 'green');
-    onDrawPolygonComplete(poly);
+    FieldConfirmAdjust.open(latlngs, { source: 'manual' });
   }
 
   // ─── リセット ───

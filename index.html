@@ -103,21 +103,28 @@
     </div>
   </div>
 
-  <!-- EFD-3: 検出結果プレビュー・微調整 -->
-  <div class="draw-phase" id="efd-phase-preview" hidden>
-    <p class="map-draw-dialog-hint" id="efd-preview-hint">検出結果です。頂点をドラッグして微調整できます</p>
-    <div class="efd-sensitivity-row">
-      <span class="efd-sensitivity-label">検出感度</span>
-      <input type="range" id="efd-sensitivity-slider" class="efd-sensitivity-slider"
+  <!-- ═══ 確認・微調整（手動・自動 共通、js/fieldAdd/fieldConfirmAdjust.js）═══ -->
+  <!-- 手動描画の「完了」直後（Step4で接続予定）、および自動検出の「検出」成功直後は
+       いずれもこの同一フェーズに入る（仕様書5章）。旧EFD-3（efd-phase-preview）は撤去済み。 -->
+  <div class="draw-phase" id="field-confirm-phase" hidden>
+    <p class="map-draw-dialog-hint" id="fca-hint">頂点をドラッグして移動、長押しで削除。辺の中間点をタップすると頂点を追加できます</p>
+    <div class="efd-sensitivity-row" id="fca-sensitivity-row" hidden>
+      <span class="efd-sensitivity-label">検出感度（微調整）</span>
+      <input type="range" id="fca-sensitivity-slider" class="efd-sensitivity-slider"
              min="6" max="70" value="28" step="1"
-             oninput="EasyFieldDetect.onSensitivityChange(this.value)">
-      <span class="efd-sensitivity-val" id="efd-sensitivity-val">28</span>
+             oninput="FieldConfirmAdjust.onSensitivityChange(this.value)">
+      <span class="efd-sensitivity-val" id="fca-sensitivity-val">28</span>
     </div>
-    <div class="efd-preview-status" id="efd-preview-status"></div>
-    <div class="map-draw-dialog-actions efd-actions-three">
-      <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="EasyFieldDetect.backToTap()">← やり直す</button>
-      <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="EasyFieldDetect.fallbackManual()">手動描画へ</button>
-      <button type="button" class="map-draw-btn map-draw-btn-confirm" onclick="EasyFieldDetect.confirm()">この形で確定</button>
+    <div class="efd-preview-status" id="fca-area-status"></div>
+    <!-- 自動検出時：3ボタン（やり直す／手動に切替／確定） -->
+    <div class="map-draw-dialog-actions efd-actions-three" id="fca-actions-auto" hidden>
+      <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="FieldConfirmAdjust.retry()">← やり直す</button>
+      <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="FieldConfirmAdjust.switchToManual()">手動に切替</button>
+      <button type="button" class="map-draw-btn map-draw-btn-confirm" onclick="FieldConfirmAdjust.confirm()">この形で確定</button>
+    </div>
+    <!-- 手動描画時：主ボタンのみ（幅いっぱい） -->
+    <div class="map-draw-dialog-actions efd-actions-single" id="fca-actions-manual" hidden>
+      <button type="button" class="map-draw-btn map-draw-btn-confirm" onclick="FieldConfirmAdjust.confirm()">この形で確定</button>
     </div>
   </div>
 
@@ -326,8 +333,9 @@
 <script src="js/ridgeGeometry.js"></script>
 <script src="js/vendor/msqr.min.js"></script>
 <script src="js/fieldAdd/fieldDetectAlgorithms.js"></script>
-<script src="js/polygonDraw.js"></script>
-<script src="js/easyFieldDetect.js"></script>
+<script src="js/fieldAdd/fieldConfirmAdjust.js"></script>
+<script src="js/fieldAdd/polygonDraw.js"></script>
+<script src="js/fieldAdd/easyFieldDetect.js"></script>
 <script src="js/areaEnv.js"></script>
 <script src="js/adpPlantingLogic.js"></script>
 <script src="js/adpAutoDesign.js"></script>

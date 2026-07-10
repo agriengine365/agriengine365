@@ -22,6 +22,16 @@
 //    キャッシュを再利用し、floodFillMaskEdgeAware()のみ150ms debounceで再実行する
 //    （autoTuneToleranceの全候補再試行はしない）
 //
+//  Step3（確認・微調整画面の統合）で以下を変更：
+//  - プレビューレイヤーの所有権・確認画面（旧efd-phase-preview）を
+//    js/fieldAdd/fieldConfirmAdjust.js（FieldConfirmAdjust）へ完全移管。
+//    検出成功時・感度スライダー再検出成功時は _buildAndShowPreviewFromMask() から
+//    FieldConfirmAdjust.open(latlngs, {source:'auto', sensitivityValue}) を呼ぶだけになる
+//  - confirm() / 旧efd-phase-preview関連のDOM操作（_showPreviewLayer 等）は削除。
+//    「この形で確定」「やり直す」「手動に切替」はFieldConfirmAdjust側に統合済み
+//  - onSensitivityChange()の150ms debounceはこのファイルに残す（仕様書5.3の
+//    デバウンス責務の置き場所。FieldConfirmAdjust.onSensitivityChange()から呼ばれる）
+//
 //  6章決定：完全な矩形化（形状差し替え）は廃止。EFD-1の形状選択UI自体は
 //  Step5（入口統合）まで温存するが、選択結果（shapeMode）は検出ロジックの
 //  分岐には使わない。矩形フィットの代わりに、直角に近い頂点だけをピタッと
@@ -63,7 +73,6 @@ const EasyFieldDetect = (() => {
     seedX:        0,
     seedY:        0,
     sensitivity:  DEFAULT_SENSITIVITY, // 現在のtolerance値（自動チューニング結果 or 手動調整値）
-    previewLayer: null,   // L.Polygon（Editable編集対象）
     detecting:    false,
     cancelToken:  null,   // { cancelled: boolean }。detect()実行中のみセットされる
     sensitivityDebounceTimer: null,
@@ -78,7 +87,6 @@ const EasyFieldDetect = (() => {
     'draw-phase-wizard',
     'efd-phase-shape',
     'efd-phase-tap',
-    'efd-phase-preview',
   ];
 
   function _showPhase(targetId) {
@@ -160,7 +168,7 @@ const EasyFieldDetect = (() => {
       PolygonDraw.cancel();
     }
     if (state.cancelToken) state.cancelToken.cancelled = true;
-    _cleanupPreviewLayer();
+    if (typeof FieldConfirmAdjust !== 'undefined') FieldConfirmAdjust.close();
     _clearSensitivityDebounce();
     state.shapeMode    = null;
     state.tapLatLng    = null;
@@ -194,7 +202,6 @@ const EasyFieldDetect = (() => {
   }
 
   function backToTap() {
-    _cleanupPreviewLayer();
     _clearSensitivityDebounce();
     // 「やり直す」＝新しい地点での再検出を前提とするため、キャッシュ済みの
     // ラスタライズ結果・勾配マップは破棄する（古い地点のデータの使い回しを防ぐ）。
@@ -212,7 +219,6 @@ const EasyFieldDetect = (() => {
   function cancel() {
     if (state.cancelToken) state.cancelToken.cancelled = true;
     _clearSensitivityDebounce();
-    _cleanupPreviewLayer();
     _setScopeVisible(false);
     _hideAllPhases();
     _closeDialog();
@@ -223,7 +229,6 @@ const EasyFieldDetect = (() => {
   function fallbackManual() {
     if (state.cancelToken) state.cancelToken.cancelled = true;
     _clearSensitivityDebounce();
-    _cleanupPreviewLayer();
     _setScopeVisible(false);
     _hideAllPhases();
     _closeDialog();
@@ -330,7 +335,6 @@ const EasyFieldDetect = (() => {
       }
 
       state.sensitivity = result.tolerance;
-      _syncSensitivitySlider(result.tolerance);
 
       _buildAndShowPreviewFromMask(result.mask, canvas.width, canvas.height);
 
@@ -359,13 +363,14 @@ const EasyFieldDetect = (() => {
   }
 
   // ─── 感度スライダー変更時：キャッシュ済みimageData/gradientMapを使い回して再検出 ───
-  // 5.3節：150ms debounce。autoTuneToleranceは再実行せず、
-  // floodFillMaskEdgeAware（単一tolerance）→輪郭抽出のみ再実行する。
+  // 5.3節：150ms debounce（このファイルが責務を持つ。呼び出し元の
+  // FieldConfirmAdjust.onSensitivityChange()側では二重にデバウンスしない）。
+  // autoTuneToleranceは再実行せず、floodFillMaskEdgeAware（単一tolerance）→
+  // 輪郭抽出のみ再実行する。表示値の同期はFieldConfirmAdjust側が担当するため
+  // ここではDOMを直接触らず、内部状態(state.sensitivity)の更新のみ行う。
   function onSensitivityChange(value) {
     const val = Number(value) || DEFAULT_SENSITIVITY;
     state.sensitivity = val;
-    const valEl = document.getElementById('efd-sensitivity-val');
-    if (valEl) valEl.textContent = String(val);
 
     if (!state.imageData || !state.gradientMap) return;
 
@@ -381,30 +386,27 @@ const EasyFieldDetect = (() => {
 
     const rawMask = FieldDetectAlgorithms.floodFillMaskEdgeAware(imageData, gradientMap, seedX, seedY, tolerance, EDGE_THRESHOLD);
     if (!rawMask) {
-      _setPreviewStatus('検出範囲が小さすぎるか大きすぎます。検出感度を調整してください。', true);
+      // 確認・微調整画面は既に開いたまま（直前の有効な形を維持）。
+      // スライダー操作中に毎回showDrawToastだと煩わしいため短めのtoastに留める。
+      showToast('検出範囲が小さすぎるか大きすぎます。感度を調整してください。', 'amber');
       return;
     }
     const closedMask = FieldDetectAlgorithms.morphologyClose(rawMask, w, h, 1);
     _buildAndShowPreviewFromMask(closedMask, w, h);
   }
 
-  function _syncSensitivitySlider(value) {
-    const slider = document.getElementById('efd-sensitivity-slider');
-    const valEl  = document.getElementById('efd-sensitivity-val');
-    if (slider) slider.value = value;
-    if (valEl)  valEl.textContent = String(value);
-  }
-
-  // ─── mask → 輪郭抽出 → 単純化 → 軽微な角度補正 → プレビュー表示 ───
+  // ─── mask → 輪郭抽出 → 単純化 → 軽微な角度補正 → FieldConfirmAdjustへ引き渡し ───
   // 6章決定：矩形化（形状差し替え）は廃止済みのため、shapeModeによる分岐はしない。
   // 直角に近い頂点だけをFieldDetectAlgorithms.snapNearRightAngles()で補正する。
+  // Step3：プレビュー表示・確認画面フェーズの所有権はFieldConfirmAdjustに移管済み。
+  // 初回検出成功時／感度スライダー再検出成功時のいずれもここに集約される。
   function _buildAndShowPreviewFromMask(mask, w, h) {
     const diag = Math.sqrt(w * w + h * h);
     // msqr内蔵の点削減（RDP）許容値
     const msqrTolerance = Math.max(1.5, diag * 0.0015);
     const contour = FieldDetectAlgorithms.traceContourMsqr(mask, w, h, msqrTolerance);
     if (contour.length < 3) {
-      _setPreviewStatus('輪郭を検出できませんでした。感度を調整してください。', true);
+      _onDetectFailure('輪郭を検出できませんでした。感度を調整してください。');
       return;
     }
 
@@ -422,7 +424,7 @@ const EasyFieldDetect = (() => {
     const snapped = FieldDetectAlgorithms.snapNearRightAngles(simplified, RIGHT_ANGLE_TOLERANCE_DEG);
 
     if (!snapped || snapped.length < 3) {
-      _setPreviewStatus('有効な形になりませんでした。感度を調整するか、手動描画をご利用ください。', true);
+      _onDetectFailure('有効な形になりませんでした。感度を調整するか、手動描画をご利用ください。');
       return;
     }
 
@@ -430,87 +432,8 @@ const EasyFieldDetect = (() => {
     const scale = state.rasterScale || 1;
     const latlngs = snapped.map(p => map.containerPointToLatLng(L.point(p.x / scale, p.y / scale)));
 
-    _showPreviewLayer(latlngs);
     _setScopeVisible(false);
-    _showPhase('efd-phase-preview');
-
-    // 面積の目安を表示（map.js のcalcPolygonAreaを再利用）
-    try {
-      const areaSqm = calcPolygonArea(latlngs);
-      const ha = (areaSqm / 10000).toFixed(3);
-      _setPreviewStatus(`検出面積の目安: 約 ${ha} ha（${latlngs.length}頂点）`, false);
-    } catch (e) {
-      _setPreviewStatus(`頂点数: ${latlngs.length}`, false);
-    }
-  }
-
-  function _setPreviewStatus(text, isWarning) {
-    const el = document.getElementById('efd-preview-status');
-    if (!el) return;
-    el.textContent = text;
-    el.classList.toggle('efd-preview-status-warn', !!isWarning);
-  }
-
-  // ─── プレビューレイヤー生成／更新（Leaflet.Editableで頂点編集可能に） ───
-  function _showPreviewLayer(latlngs) {
-    _cleanupPreviewLayer();
-
-    const poly = L.polygon(latlngs, {
-      color:       (typeof CONFIG !== 'undefined' && CONFIG.DRAW_COLOR) || '#4ade80',
-      weight:      2,
-      fillOpacity: 0.15,
-      interactive: true,
-    }).addTo(map);
-
-    if (typeof L.Editable !== 'undefined') {
-      if (!map.editTools) map.editTools = new L.Editable(map);
-      poly.enableEdit();
-    } else {
-      console.warn('[EasyFieldDetect] Leaflet.Editableが読み込まれていません。頂点の手動微調整はできません。');
-    }
-
-    state.previewLayer = poly;
-  }
-
-  function _cleanupPreviewLayer() {
-    if (state.previewLayer) {
-      try {
-        if (state.previewLayer.editEnabled && state.previewLayer.editEnabled()) {
-          state.previewLayer.disableEdit();
-        }
-      } catch (e) { /* noop */ }
-      map.removeLayer(state.previewLayer);
-      state.previewLayer = null;
-    }
-  }
-
-  // ─── 確定：既存の保存フロー（onDrawPolygonComplete）に接続 ───
-  function confirm() {
-    if (!state.previewLayer) return;
-
-    const rawLatLngs = state.previewLayer.getLatLngs()[0];
-    if (!rawLatLngs || rawLatLngs.length < 3) {
-      showDrawToast('頂点が足りません（3点以上必要）', 'amber');
-      return;
-    }
-
-    const poly = L.polygon(rawLatLngs.map(ll => [ll.lat, ll.lng]), {
-      color:       (typeof CONFIG !== 'undefined' && CONFIG.DRAW_COLOR) || '#4ade80',
-      weight:      2,
-      fillOpacity: 0.15,
-      interactive: true,
-    });
-
-    _cleanupPreviewLayer();
-    _setScopeVisible(false);
-    _hideAllPhases();
-
-    drawnItems.clearLayers();
-    drawnItems.addLayer(poly);
-    currentPolygon = poly;
-
-    showDrawToast('圃場の形を確定しました', 'green');
-    onDrawPolygonComplete(poly); // map.js: 統計計算 → showWizard()
+    FieldConfirmAdjust.open(latlngs, { source: 'auto', sensitivityValue: state.sensitivity });
   }
 
   // ═══════════════════════════════════════════
@@ -574,7 +497,6 @@ const EasyFieldDetect = (() => {
     ensureMinZoomForDetect,
     onSensitivityChange,
     backToTap,
-    confirm,
     cancel,
     fallbackManual,
   };
