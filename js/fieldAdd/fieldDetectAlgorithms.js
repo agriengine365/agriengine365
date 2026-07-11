@@ -478,6 +478,36 @@ const FieldDetectAlgorithms = (() => {
     });
   }
 
+  // ─── シード点中心性ファクター（検出感度改善セッションで追加） ───
+  // 「タップした場所と違う範囲・違う圃場が検出される」対策。
+  // scoreMaskPlausibility()（仕様書4章・充填率0.7＋凸性0.3の確定配分）自体は
+  // 変更せず、autoTuneToleranceの候補比較時にだけ、シード点(タップ位置)が
+  // マスクの重心からどれだけ離れているかを掛け算のペナルティとして加味する。
+  // タップ位置は必ずシード連結成分内（floodFillの起点）なので通常は重心付近に
+  // なるはずで、大きくズレる＝隣接する別の圃場側へリークして採用された可能性が高い。
+  // 戻り値は0〜1（1=シード点が重心にほぼ一致、0に近いほど大きくズレている）。
+  function _seedLocalityFactor(mask, w, h, seedX, seedY, stride = 3) {
+    let count = 0, sumX = 0, sumY = 0;
+    for (let y = 0; y < h; y += stride) {
+      for (let x = 0; x < w; x += stride) {
+        if (mask[y * w + x]) { count++; sumX += x; sumY += y; }
+      }
+    }
+    if (count === 0) return 0;
+
+    const cx = sumX / count, cy = sumY / count;
+    const dist = Math.hypot(seedX - cx, seedY - cy);
+
+    // サンプリング間引き分を補正した実面積相当から等価半径を算出
+    const area = count * stride * stride;
+    const equivRadius = Math.sqrt(area / Math.PI);
+    if (equivRadius < 1e-6) return 1;
+
+    // 半径の1.5倍離れるまでは緩やかに減点、それ以上ズレていたら別領域とみなし0近くまで落とす
+    const ratio = dist / (equivRadius * 1.5);
+    return _clamp(1 - ratio, 0, 1);
+  }
+
   // ─── 自動チューニング：複数のtoleranceを内部で試し、最良のmask/toleranceを選択 ───
   // 戻り値: { mask, tolerance, score } | null（全候補失敗） | 'cancelled'（途中キャンセル）
   // candidatesは呼び出し側（easyFieldDetect.js）で決定する
@@ -487,6 +517,9 @@ const FieldDetectAlgorithms = (() => {
   // 同期のままだと検出中キャンセルボタンのクリックイベント自体がループ終了まで
   // 処理されず、キャンセルが実質効かないため（呼び出し側でcancelToken.cancelled=true
   // をセットしてもここでチェックする機会が来ない）。
+  //
+  // 検出感度改善セッション：候補選定の比較にのみ_seedLocalityFactor()を掛けた
+  // combinedScoreを使う（scoreMaskPlausibility自体の返り値・配分は不変のまま）。
   async function autoTuneTolerance(imageData, gradientMap, seedX, seedY, candidates, edgeThreshold, cancelToken) {
     const w = imageData.width, h = imageData.height;
     let best = null;
@@ -499,9 +532,11 @@ const FieldDetectAlgorithms = (() => {
       if (rawMask) {
         const closedMask = morphologyClose(rawMask, w, h, 1);
         const score = scoreMaskPlausibility(closedMask, w, h);
+        const localityFactor = _seedLocalityFactor(closedMask, w, h, seedX, seedY);
+        const combinedScore = score * (0.7 + 0.3 * localityFactor);
 
-        if (!best || score > best.score) {
-          best = { mask: closedMask, tolerance, score };
+        if (!best || combinedScore > best.combinedScore) {
+          best = { mask: closedMask, tolerance, score, combinedScore };
         }
       }
 

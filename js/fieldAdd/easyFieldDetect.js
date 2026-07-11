@@ -82,9 +82,12 @@ const EasyFieldDetect = (() => {
   const TOLERANCE_CANDIDATES   = [6, 15, 30, 50, 70]; // スライダー実運用レンジ6〜70をフルカバー
   // 検出精度改善セッション：固定edgeThreshold=60を廃止し、勾配ヒストグラムの
   // パーセンタイル基準で動的算出する方式に変更（computeAdaptiveEdgeThreshold）。
-  const EDGE_THRESHOLD_PERCENTILE = 80; // この値より強い勾配は「境界」とみなし領域拡張を止める
+  // 検出感度改善セッション：80→90に緩和。畝・作物の筋など圃場内部の軽い陰影の
+  // 勾配で領域拡張が止まってしまい、実際の圃場より小さく検出される（過小検出）
+  // 症状が出ていたため、「境界」とみなす勾配の強さの基準を引き上げた。
+  const EDGE_THRESHOLD_PERCENTILE = 90; // この値より強い勾配は「境界」とみなし領域拡張を止める
   const EDGE_THRESHOLD_MIN     = 20;   // 動的算出値のクランプ下限
-  const EDGE_THRESHOLD_MAX     = 140;  // 動的算出値のクランプ上限
+  const EDGE_THRESHOLD_MAX     = 140;  // 動的算出値のクランプ上限（隣接圃場との強い境界は従来通り越えない）
   const TILE_WAIT_TIMEOUT_MS   = 1500; // タイル読み込み待ちの基本タイムアウト
   const TILE_WAIT_EXTRA_MS     = 1000; // 基本タイムアウト超過時の延長待機
   const SENSITIVITY_DEBOUNCE_MS = 150; // 感度スライダーのデバウンス（仕様書5.3）
@@ -443,8 +446,16 @@ const EasyFieldDetect = (() => {
     const { imageData, gradientMap, seedX, seedY, edgeThreshold } = state;
     const w = imageData.width, h = imageData.height;
 
+    // 検出感度改善セッション：スライダー(tolerance)をデフォルト(28)より上げた分だけ
+    // edgeThresholdも比例して緩和する。従来は検出時に算出したstate.edgeThresholdが
+    // 固定の壁として働き、スライダーを上げても「先にこの壁に当たって止まる」ため
+    // 見た目の検出範囲がほとんど変化しない問題があった。EDGE_THRESHOLD_MAXで
+    // クランプするため、隣接圃場との強い境界線を越えて誤リークすることはない。
+    const sensitivityDelta = Math.max(0, tolerance - DEFAULT_SENSITIVITY);
+    const effectiveEdgeThreshold = Math.min(EDGE_THRESHOLD_MAX, edgeThreshold + sensitivityDelta * 0.8);
+
     // 検出精度改善セッション：固定EDGE_THRESHOLD→detect()時に算出したstate.edgeThresholdを使い回す
-    const rawMask = FieldDetectAlgorithms.floodFillMaskEdgeAware(imageData, gradientMap, seedX, seedY, tolerance, edgeThreshold);
+    const rawMask = FieldDetectAlgorithms.floodFillMaskEdgeAware(imageData, gradientMap, seedX, seedY, tolerance, effectiveEdgeThreshold);
     if (!rawMask) {
       // 確認・微調整画面は既に開いたまま（直前の有効な形を維持）。
       // スライダー操作中に毎回showDrawToastだと煩わしいため短めのtoastに留める。
