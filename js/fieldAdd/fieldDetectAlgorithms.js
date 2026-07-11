@@ -808,6 +808,198 @@ const FieldDetectAlgorithms = (() => {
     };
   }
 
+  // ═══════════════════════════════════════════
+  //  新規：境界プローブ改善セッションで追加
+  //  - simplifyPolygonToTarget：頂点数をmaxVertices以下へ絞り込む（RDP強化＋
+  //    直線頂点の削除＋直角スナップのハイブリッド）。「畑・田んぼは基本四角形
+  //    〜穏やかな多角形」という前提のもと、輪郭のガタつき由来の過剰な頂点を
+  //    まとめて間引く。凹形状（L字圃場等）は局所処理のため維持される。
+  //  - scoreBoundaryConfidence：マスク輪郭の外側にプローブ点を配置し、
+  //    採用予定のtoleranceより厳しい感度でもなお元マスクへ「被る」（＝逆流
+  //    してくる）かどうかを見て、隣接圃場との境界が色的に本当に存在するかを
+  //    検証する。detect()側の複数tolerance候補（TOLERANCE_CANDIDATES）の
+  //    比較スコアに、この信頼度を掛け算で加味する。
+  // ═══════════════════════════════════════════
+
+  // ─── 内角が180°±angleToleranceDeg（ほぼ直線）の頂点を削除 ───
+  // simplifyPolygonToTarget専用の内部ヘルパー。snapNearRightAngles（既存・
+  // 90度近辺だけを補正）とは別物で、こちらは「直線に近い頂点そのものを消す」。
+  function _collapseStraightVertices(points, angleToleranceDeg) {
+    const n = points.length;
+    if (n <= 3) return points.slice();
+
+    const result = [];
+    for (let i = 0; i < n; i++) {
+      const prev = points[(i - 1 + n) % n];
+      const curr = points[i];
+      const next = points[(i + 1) % n];
+      const v1x = prev.x - curr.x, v1y = prev.y - curr.y;
+      const v2x = next.x - curr.x, v2y = next.y - curr.y;
+      const len1 = Math.hypot(v1x, v1y), len2 = Math.hypot(v2x, v2y);
+      if (len1 === 0 || len2 === 0) continue; // 重複点は削除
+
+      const dot = (v1x * v2x + v1y * v2y) / (len1 * len2);
+      const angleDeg = Math.acos(_clamp(dot, -1, 1)) * 180 / Math.PI;
+      if (Math.abs(180 - angleDeg) <= angleToleranceDeg) continue; // ほぼ直線→削除
+
+      result.push(curr);
+    }
+    return result.length >= 3 ? result : points.slice();
+  }
+
+  // ─── 頂点数の絞り込み（1回の呼び出しでmaxVertices以下まで一気に落とす） ───
+  // ① douglasPeuckerのイプシロンを段階的に引き上げて頂点数を落とす
+  // ② 隣接辺がほぼ直線（180°±angleToleranceDeg）の頂点を削除
+  // ③ ②で届かなければもう一段厳しいepsで再試行
+  // ④ 90°±angleToleranceDegの頂点をちょうど90°へスナップ（形状全体は差し替えない）
+  function simplifyPolygonToTarget(points, maxVertices = 10, angleToleranceDeg = 15) {
+    if (!points || points.length <= 3) return points ? points.slice() : [];
+    if (points.length <= maxVertices) {
+      // 既に条件を満たしていても、直線頂点の掃除と直角スナップだけは軽く適用しておく
+      return snapNearRightAngles(_collapseStraightVertices(points, angleToleranceDeg), angleToleranceDeg);
+    }
+
+    const xs = points.map(p => p.x), ys = points.map(p => p.y);
+    const diag = Math.max(1, Math.hypot(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)));
+
+    let eps = Math.max(1, diag * 0.004);
+    let reduced = douglasPeucker(points, eps);
+    let guard = 0;
+    while (reduced.length > maxVertices && guard < 12) {
+      eps *= 1.35;
+      reduced = douglasPeucker(points, eps);
+      guard++;
+    }
+    if (reduced.length < 3) reduced = points.slice();
+
+    reduced = _collapseStraightVertices(reduced, angleToleranceDeg);
+
+    if (reduced.length > maxVertices) {
+      // 直線統合だけでは届かなかった場合の保険：もう一段厳しいepsで再試行
+      const retryEps = eps * 1.5;
+      const retry = douglasPeucker(points, retryEps);
+      if (retry.length >= 3) {
+        const retryCollapsed = _collapseStraightVertices(retry, angleToleranceDeg);
+        if (retryCollapsed.length < reduced.length) reduced = retryCollapsed;
+      }
+    }
+
+    return snapNearRightAngles(reduced, angleToleranceDeg);
+  }
+
+  // ─── マスク輪郭外側のプローブ点を算出（重心からの光線探索） ───
+  // 重心から各角度方向へ1px刻みでマスクの外形を探し、外周を抜けた直後の
+  // 位置からさらにoutwardMarginPxだけ外側へ出た点をプローブとする。
+  // その方向でマスクに一度も当たらなかった場合はスキップ（判定不能のため除外）。
+  function _findBoundaryProbePoints(mask, w, h, probeCount, outwardMarginPx) {
+    let count = 0, sumX = 0, sumY = 0;
+    const stride = 3;
+    for (let y = 0; y < h; y += stride) {
+      for (let x = 0; x < w; x += stride) {
+        if (mask[y * w + x]) { count++; sumX += x; sumY += y; }
+      }
+    }
+    if (count === 0) return [];
+    const cx = sumX / count, cy = sumY / count;
+
+    const maxRay = Math.max(w, h) * 1.5;
+    const probes = [];
+    for (let i = 0; i < probeCount; i++) {
+      const angle = (2 * Math.PI * i) / probeCount;
+      const dx = Math.cos(angle), dy = Math.sin(angle);
+
+      let lastInside = null;
+      let px = cx, py = cy;
+      for (let step = 0; step < maxRay; step++) {
+        const xi = Math.round(px), yi = Math.round(py);
+        if (xi < 0 || yi < 0 || xi >= w || yi >= h) break;
+        if (mask[yi * w + xi]) {
+          lastInside = { x: xi, y: yi };
+        } else if (lastInside) {
+          break; // マスクの外周を抜けた
+        }
+        px += dx; py += dy;
+      }
+      if (!lastInside) continue;
+
+      const probeX = Math.round(lastInside.x + dx * outwardMarginPx);
+      const probeY = Math.round(lastInside.y + dy * outwardMarginPx);
+      if (probeX < 0 || probeY < 0 || probeX >= w || probeY >= h) continue;
+      if (mask[probeY * w + probeX]) continue; // マージン不足でまだマスク内→無効
+
+      probes.push({ x: probeX, y: probeY });
+    }
+    return probes;
+  }
+
+  // ─── プローブ点からのローカルflood fillが元マスクへ到達するか（＝境界が弱いか） ───
+  // windowRadiusPxの正方形範囲内だけを探索する軽量版（フル画像は対象にしない）。
+  // 元マスクの画素に到達した時点で即trueを返す（フェイルファスト）。
+  function _localFloodFillTouchesMask(imageData, w, h, mask, seedX, seedY, tolerance, windowRadiusPx) {
+    const data = imageData.data;
+    const seedColor = computeSeedColor(imageData, seedX, seedY, 1);
+    if (!seedColor) return false; // 判定不能（境界不利とはみなさない）
+
+    const tol2 = tolerance * tolerance;
+    const minX = Math.max(0, seedX - windowRadiusPx), maxX = Math.min(w - 1, seedX + windowRadiusPx);
+    const minY = Math.max(0, seedY - windowRadiusPx), maxY = Math.min(h - 1, seedY + windowRadiusPx);
+
+    const startIdx = seedY * w + seedX;
+    if (mask[startIdx]) return true; // プローブ自体が既にマスク内＝即被り
+
+    const visited = new Set([startIdx]);
+    const stack = [startIdx];
+
+    while (stack.length) {
+      const idx = stack.pop();
+      const x = idx % w, y = (idx / w) | 0;
+      const neighbors = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]];
+      for (const [nx, ny] of neighbors) {
+        if (nx < minX || nx > maxX || ny < minY || ny > maxY) continue;
+        const nIdx = ny * w + nx;
+        if (visited.has(nIdx)) continue;
+        visited.add(nIdx);
+        if (mask[nIdx]) return true; // 元マスクへ到達＝被った
+
+        const di = nIdx * 4;
+        const dr = data[di] - seedColor.r, dg = data[di + 1] - seedColor.g, db = data[di + 2] - seedColor.b;
+        if (dr * dr + dg * dg + db * db <= tol2) stack.push(nIdx);
+      }
+    }
+    return false; // 窓内で完結＝被らなかった（境界は強い）
+  }
+
+  // ─── 境界プローブ信頼度スコア（0〜1、1=8点すべて境界が強い） ───
+  // options.probeCount: プローブ点数（既定8）
+  // options.windowRadiusPx: 各プローブのローカル探索半径（既定20px）
+  // options.outwardMarginPx: マスク外周からプローブをどれだけ外側へ離すか（既定2px）
+  // options.strictTolerances: 厳しい方から順に試す感度の配列
+  //   （既定 [6, toleranceUsedの半分]。フェイルファスト：先に被ったらそのプローブは
+  //   即「弱い」判定にし、以降の緩い感度は試さない）
+  function scoreBoundaryConfidence(imageData, mask, w, h, toleranceUsed, options = {}) {
+    const probeCount        = options.probeCount        || 8;
+    const windowRadiusPx    = options.windowRadiusPx    || 20;
+    const outwardMarginPx   = options.outwardMarginPx   || 2;
+    const strictTolerances  = options.strictTolerances  || [6, Math.max(3, toleranceUsed / 2)];
+
+    const probes = _findBoundaryProbePoints(mask, w, h, probeCount, outwardMarginPx);
+    if (probes.length === 0) return 1; // プローブを配置できず判定不能→ペナルティなし
+
+    let weakCount = 0;
+    for (const p of probes) {
+      let weak = false;
+      for (const tol of strictTolerances) {
+        if (_localFloodFillTouchesMask(imageData, w, h, mask, p.x, p.y, tol, windowRadiusPx)) {
+          weak = true;
+          break; // フェイルファスト：これ以上緩い感度は試さない
+        }
+      }
+      if (weak) weakCount++;
+    }
+
+    return 1 - (weakCount / probes.length);
+  }
+
   // ─── マスクがcanvas端に接しているか判定（検出感度改善セッション：クロップ拡張用に追加） ───
   // ハウス/加温・露地とも、解析対象は「タップ地点中心のcropSizeM四方」に限られるため、
   // 実際の対象がcrop範囲より大きい場合、maskはcrop端で機械的に打ち切られる。
@@ -849,5 +1041,8 @@ const FieldDetectAlgorithms = (() => {
     snapHouseDimensions,
     // 新規（検出感度改善セッション：クロップ拡張の判定用）
     maskTouchesBoundary,
+    // 新規（境界プローブ改善セッション）
+    simplifyPolygonToTarget,
+    scoreBoundaryConfidence,
   };
 })();

@@ -99,6 +99,33 @@
 //    FieldDetectAlgorithms.traceContourMsqr() 経由で呼ぶ。
 // ═══════════════════════════════════════════
 
+//  境界プローブ改善セッションで以下を変更（「圃場は基本四角形〜穏やかな多角形の
+//  はずなのに頂点が30〜40個も出る」「検出結果が隣の圃場まで被ってしまう」との
+//  フィードバックを受けての改修）：
+//  - 検出感度改善セッション（第2弾）で廃止した複数tolerance候補の自動チューニングを、
+//    TOLERANCE_CANDIDATES（5候補）として再導入。ただし今回は単に妥当性スコア
+//    （充填率+凸性）だけで選ぶのではなく、新設の境界プローブ信頼度スコア
+//    （FieldDetectAlgorithms.scoreBoundaryConfidence）を掛け算した combinedScore で
+//    最良候補を選ぶ。境界プローブはマスク輪郭のすぐ外側にプローブ点を置き、
+//    採用予定のtoleranceより厳しい感度でもなお元マスクへ被ってくるかを確認する
+//    軽量なローカル探索（フル画像のflood fillは増やさない）ため、「昔の方式が
+//    重い／検出しにくかった」という過去の指摘とは別の設計になっている。
+//  - _detectAtCropSize()を非同期化し、5候補のループ内でcancelToken確認と
+//    _yieldFrame()を行うようにした（自動チューニング復活に伴い、キャンセルボタンが
+//    このループ内でも効くようにするため）。
+//  - detect()内の呼び出し元も await に変更。採用したtolerance値
+//    （attemptResult.adoptedTolerance）を state.sensitivity に反映し、確認画面の
+//    感度スライダーが実際に採用された値から始まるようにした（従来は固定の
+//    DEFAULT_SENSITIVITYを表示していた）。
+//  - _buildAndShowPreviewFromMask()の「複雑な形」パス（state.shapeMode!=='rect'）に、
+//    douglasPeucker→mergeNearbyVertices→snapNearRightAnglesの既存パイプラインの後段として
+//    FieldDetectAlgorithms.simplifyPolygonToTarget()を常に1回自動適用し、頂点数を
+//    SIMPLIFY_MAX_VERTICES（10）以下へ絞り込むようにした。矩形モード（'rect'）は
+//    元々4頂点固定のため対象外。
+//  - 手動での追加絞り込み用に、確認・微調整画面（fieldConfirmAdjust.js）側に
+//    「単純化」ボタンを新設（そちらはFieldConfirmAdjust.simplifyVertices()参照）。
+// ═══════════════════════════════════════════
+
 //  座標ズレ・頂点密集 修正セッションで以下を変更（「地図をパン/ズームしてから
 //  感度スライダーで再検出すると座標がズレる」「頂点が3個以上不自然に固まる」
 //  というフィードバックを受けての改修）：
@@ -150,7 +177,15 @@ const EasyFieldDetect = (() => {
   const TILE_WAIT_EXTRA_MS     = 1000; // 基本タイムアウト超過時の延長待機
   const SENSITIVITY_DEBOUNCE_MS = 150; // 感度スライダーのデバウンス（仕様書5.3）
   const RIGHT_ANGLE_TOLERANCE_DEG = 5; // snapNearRightAnglesの角度許容値
-  const DEFAULT_SENSITIVITY    = 28;   // 手動調整時の初期表示・フォールバック値
+  const DEFAULT_SENSITIVITY    = 28;   // 感度スライダー再検出時・自動チューニング全滅時のフォールバック値
+  // 境界プローブ改善セッション：複数tolerance候補の自動チューニングを再導入（5候補）。
+  // detect()の_detectAtCropSize()内でこの全候補を試し、妥当性スコア×境界プローブ
+  // 信頼度が最良の1つを採用する。感度スライダーでの再検出（_reRunFromCache）は
+  // 従来通りユーザー指定の単一値のみを使い、ここには含めない。
+  const TOLERANCE_CANDIDATES   = [6, 15, 30, 50, 70];
+  const BOUNDARY_PROBE_COUNT   = 8;    // 境界プローブの点数
+  const SIMPLIFY_MAX_VERTICES  = 10;   // 自動絞り込みの目標頂点数上限
+  const SIMPLIFY_ANGLE_TOLERANCE_DEG = 15; // 直線統合・直角スナップの角度許容値
 
   // ─── 内部状態 ───
   const state = {
@@ -415,8 +450,9 @@ const EasyFieldDetect = (() => {
         if (state.cancelToken.cancelled) { _onDetectCancelled(); return; }
 
         const cropSizeM = baseCropSizeM * Math.pow(CROP_GROW_FACTOR, attempt);
-        const r = _detectAtCropSize(cropSizeM);
+        const r = await _detectAtCropSize(cropSizeM, state.cancelToken);
 
+        if (r.error === 'cancelled') { _onDetectCancelled(); return; }
         if (r.error === 'cors') {
           _onDetectFailure('タイル画像を解析できませんでした（ブラウザのセキュリティ制限）。ページを再読み込みしてから、もう一度お試しください。');
           return;
@@ -455,7 +491,9 @@ const EasyFieldDetect = (() => {
       state.mercPerPxY  = mercPerPxY;
       state.seedX       = seedX;
       state.seedY       = seedY;
-      state.sensitivity = DEFAULT_SENSITIVITY;
+      // 境界プローブ改善セッション：複数候補から選ばれた実際のtolerance値を反映し、
+      // 確認画面の感度スライダーがその値から始まるようにする（従来は固定値表示だった）。
+      state.sensitivity = attemptResult.adoptedTolerance != null ? attemptResult.adoptedTolerance : DEFAULT_SENSITIVITY;
 
       _buildAndShowPreviewFromMask(mask, canvas.width, canvas.height);
 
@@ -536,12 +574,19 @@ const EasyFieldDetect = (() => {
   }
 
   // ─── 指定cropSizeMで1回分の検出を行うヘルパー（検出感度改善セッション第3弾で追加） ───
-  // ラスタライズ→シード座標算出→単純な色距離flood fill→後処理→crop端接触判定まで。
-  // detect()のクロップ拡張ループから呼ばれる。
+  // ラスタライズ→シード座標算出→複数tolerance候補での検出→最良候補の選択→
+  // 後処理→crop端接触判定まで。detect()のクロップ拡張ループから呼ばれる。
+  //
+  // 境界プローブ改善セッション：TOLERANCE_CANDIDATES（5候補）それぞれで
+  // flood fill→後処理まで行い、妥当性スコア（scoreMaskPlausibility）×境界プローブ
+  // 信頼度（scoreBoundaryConfidence）が最良の候補を採用するよう変更。非同期化し、
+  // 候補ループの合間でcancelToken確認・_yieldFrame()を行う。
+  //
   // 戻り値：
-  //   成功時: { canvas, scale, originContainerPt, imageData, gradientMap, seedX, seedY, mask, touchesBoundary }
-  //   失敗時: { error: 'cors' | 'outOfView' | 'notFound' }
-  function _detectAtCropSize(cropSizeM) {
+  //   成功時: { canvas, scale, originContainerPt, imageData, gradientMap, seedX, seedY,
+  //             mask, adoptedTolerance, touchesBoundary }
+  //   失敗時: { error: 'cors' | 'outOfView' | 'notFound' | 'cancelled' }
+  async function _detectAtCropSize(cropSizeM, cancelToken) {
     const { canvas, scale, originContainerPt, originLatLng, mercPerPxX, mercPerPxY } = _rasterizeCropToCanvas(state.tapLatLng, cropSizeM, CROP_RASTER_TARGET_PX);
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
@@ -566,20 +611,42 @@ const EasyFieldDetect = (() => {
     // 矩形モード時のsnapRectEdgesToGradient()（辺を実際の勾配へ再フィット）で
     // 引き続き使用するため、算出自体は残す。
 
-    // 検出感度改善セッション（第2弾）：エッジ考慮flood fill・複数tolerance自動チューニングを
-    // 廃止し、単純な色距離flood fill＋固定の初期感度値のみによる単一検出へ戻した
-    // （隣接圃場への誤拡張リスクは承知の上でシンプルさを優先）。旧autoTuneTolerance実装はgit履歴を参照。
-    const rawMask = FieldDetectAlgorithms.floodFillMaskEdgeAware(
-      imageData, null, seedX, seedY, DEFAULT_SENSITIVITY, null
-    );
-    if (!rawMask) return { error: 'notFound' };
+    // 検出感度改善セッション（第2弾）でエッジ考慮flood fillは廃止済みのため、
+    // 各候補ともgradientMap/edgeThresholdはnullで渡す（色距離のみの判定）。
+    let best = null;
+    for (const tolerance of TOLERANCE_CANDIDATES) {
+      if (cancelToken && cancelToken.cancelled) return { error: 'cancelled' };
 
-    const closedMask = FieldDetectAlgorithms.morphologyClose(rawMask, canvas.width, canvas.height, 1);
-    // 採用したmaskにopen→close→シード連結成分抽出を適用（エッジ考慮を外した分の保険として維持）
-    const processedMask = _postProcessMask(closedMask, canvas.width, canvas.height, seedX, seedY);
-    const touchesBoundary = FieldDetectAlgorithms.maskTouchesBoundary(processedMask, canvas.width, canvas.height);
+      const rawMask = FieldDetectAlgorithms.floodFillMaskEdgeAware(imageData, null, seedX, seedY, tolerance, null);
+      if (rawMask) {
+        const closedMask = FieldDetectAlgorithms.morphologyClose(rawMask, canvas.width, canvas.height, 1);
+        const processedMask = _postProcessMask(closedMask, canvas.width, canvas.height, seedX, seedY);
 
-    return { canvas, scale, originContainerPt, originLatLng, mercPerPxX, mercPerPxY, imageData, gradientMap, seedX, seedY, mask: processedMask, touchesBoundary };
+        const plausibility = FieldDetectAlgorithms.scoreMaskPlausibility(processedMask, canvas.width, canvas.height);
+        const boundaryConfidence = FieldDetectAlgorithms.scoreBoundaryConfidence(
+          imageData, processedMask, canvas.width, canvas.height, tolerance,
+          { probeCount: BOUNDARY_PROBE_COUNT }
+        );
+        const combinedScore = plausibility * boundaryConfidence;
+
+        if (!best || combinedScore > best.combinedScore) {
+          best = { mask: processedMask, tolerance, combinedScore };
+        }
+      }
+
+      if (cancelToken && cancelToken.cancelled) return { error: 'cancelled' };
+      await _yieldFrame();
+    }
+
+    if (!best) return { error: 'notFound' };
+
+    const touchesBoundary = FieldDetectAlgorithms.maskTouchesBoundary(best.mask, canvas.width, canvas.height);
+
+    return {
+      canvas, scale, originContainerPt, originLatLng, mercPerPxX, mercPerPxY,
+      imageData, gradientMap, seedX, seedY,
+      mask: best.mask, adoptedTolerance: best.tolerance, touchesBoundary,
+    };
   }
 
   // ─── mask → 輪郭抽出 → 単純化・矩形フィット → FieldConfirmAdjustへ引き渡し ───
@@ -639,6 +706,15 @@ const EasyFieldDetect = (() => {
       simplified = FieldDetectAlgorithms.mergeNearbyVertices(simplified, mergeMinDistPx);
 
       snapped = FieldDetectAlgorithms.snapNearRightAngles(simplified, RIGHT_ANGLE_TOLERANCE_DEG);
+      if (!snapped || snapped.length < 3) {
+        _onDetectFailure('有効な形になりませんでした。感度を調整するか、手動描画をご利用ください。');
+        return;
+      }
+
+      // 境界プローブ改善セッション：畑・田んぼは基本四角形〜穏やかな多角形という前提のもと、
+      // 頂点数をSIMPLIFY_MAX_VERTICES以下へ自動で絞り込む（常に1回適用。既に条件を
+      // 満たしている場合は直線頂点の掃除・直角スナップのみの軽い処理になる）。
+      snapped = FieldDetectAlgorithms.simplifyPolygonToTarget(snapped, SIMPLIFY_MAX_VERTICES, SIMPLIFY_ANGLE_TOLERANCE_DEG);
       if (!snapped || snapped.length < 3) {
         _onDetectFailure('有効な形になりませんでした。感度を調整するか、手動描画をご利用ください。');
         return;

@@ -11591,6 +11591,18 @@ html.draw-dialog-active .bottom-nav {
   color: var(--amber);
 }
 
+/* 境界プローブ改善セッション：確認・微調整画面の「単純化」ボタン
+   （検出直後の自動絞り込みとは別に、手動編集後にもう一声絞り込みたい時用）。
+   既存の.map-draw-btn/.map-draw-btn-subをベースに、感度スライダー直下で
+   横幅いっぱいの控えめなサブボタンとして配置する。 */
+.fca-simplify-btn {
+  width: 100%;
+  margin-top: 6px;
+  margin-bottom: 4px;
+  min-height: 36px;
+  font-size: 11px;
+}
+
 /* ═══════════════════════════════════════════
    Step5: FIELD ADD CONTROLLER — 地図を合わせる（入口統合、仕様書3.1/3.2）
    ボトムナビ「圃場追加」タップ後、最初に表示される共通画面

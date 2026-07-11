@@ -99,6 +99,12 @@ const FieldConfirmAdjust = (() => {
     const row = document.getElementById('fca-rect-lock-row');
     if (row) row.hidden = !(state.isRectMode && state.rectLocked);
 
+    // 境界プローブ改善セッション：矩形拘束中（isRectMode && rectLocked）は
+    // 常に4頂点固定で単純化する意味がないため、単純化ボタンも同じ条件で隠す。
+    // 拘束解除後（自由編集に切り替わった後）は表示する。
+    const simplifyBtn = document.getElementById('fca-simplify-btn');
+    if (simplifyBtn) simplifyBtn.hidden = state.isRectMode && state.rectLocked;
+
     const hintEl = document.getElementById('fca-hint');
     if (hintEl) {
       hintEl.textContent = (state.isRectMode && state.rectLocked)
@@ -251,6 +257,47 @@ const FieldConfirmAdjust = (() => {
     } else if (typeof PolygonDraw !== 'undefined') {
       PolygonDraw.start();
     }
+  }
+
+  // ═══════════════════════════════════════════
+  //  「単純化」手動ボタン（境界プローブ改善セッションで追加）
+  //  easyFieldDetect.js側の自動絞り込み（検出直後に1回だけ適用）とは別に、
+  //  この画面で手動編集（頂点追加・移動）した後にもう一声絞り込みたい場合の
+  //  明示的トリガー。矩形拘束中（isRectMode && rectLocked）はボタン自体を
+  //  非表示にしている（_updateRectLockUI参照）ため、ここでも防御的に弾く。
+  // ═══════════════════════════════════════════
+
+  function simplifyVertices() {
+    if (!state.previewLayer) return;
+    if (state.isRectMode && state.rectLocked) return;
+
+    const latlngs = state.previewLayer.getLatLngs()[0];
+    if (!latlngs || latlngs.length <= 3) {
+      showToast('これ以上単純化できません（最低3点）', 'amber');
+      return;
+    }
+
+    // 現在のズームでpixel座標へ投影→単純化→pixelからlatlngへ復元
+    // （_applyRectConstraint等と同じ map.project/unproject の作法に合わせる）
+    const zoom = map.getZoom();
+    const pts = latlngs.map(ll => map.project(ll, zoom));
+    const simplifiedPts = FieldDetectAlgorithms.simplifyPolygonToTarget(pts, 10, 15);
+    if (!simplifiedPts || simplifiedPts.length < 3) {
+      showToast('単純化に失敗しました', 'amber');
+      return;
+    }
+    if (simplifiedPts.length >= latlngs.length) {
+      showToast('これ以上単純化できませんでした', 'amber');
+      return;
+    }
+
+    const newLatLngs = simplifiedPts.map(p => map.unproject(L.point(p.x, p.y), zoom));
+
+    _cleanupPreviewLayer();
+    _buildPreviewLayer(newLatLngs);
+    _updateRectLockUI();
+    updateLiveAreaDisplay();
+    showDrawToast(`頂点を${simplifiedPts.length}個に単純化しました`, 'green');
   }
 
   // ═══════════════════════════════════════════
@@ -503,5 +550,6 @@ const FieldConfirmAdjust = (() => {
     retry,
     switchToManual,
     unlockRect,
+    simplifyVertices,
   };
 })();
