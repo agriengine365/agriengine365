@@ -21,6 +21,17 @@
 //    バグがあった（他フェーズがdraw-phase-drawingをhidden=trueにしたまま
 //    残っていたため）。FieldAddControllerによるフェーズ一元管理により解消。
 //  - cancel()の挙動は変更なし（B案：即終了。「地図を合わせる」へは戻さない）。
+//
+//  Step6（キャンセル時のシート遷移修正）で以下を変更：
+//  - stop()末尾にあった setSheet('half')（＝エリア一覧/シート半開き表示への
+//    遷移）を削除。stop()はcancel()とcomplete()の両方から呼ばれる共通処理
+//    だったため、キャンセルしただけなのに毎回エリア一覧へ飛んでしまう
+//    バグがあった。
+//  - setSheet('half')はcomplete()側（stop()呼び出し直後・
+//    FieldConfirmAdjust.open()の直前）に移動。これにより、
+//    ・cancel() → ダイアログを閉じるだけ（シート状態は変更しない）
+//    ・complete() → 従来通りシートを半開きにしてから確認・微調整画面へ
+//    という意図した挙動に分離された。
 // ═══════════════════════════════════════════
 
 // ─── aria-hidden 適用前にフォーカスを外す共通ヘルパー ───
@@ -225,7 +236,6 @@ const PolygonDraw = (() => {
     setScopeVisible(false);
     setControlsVisible(false);
     updateControls();
-    if (typeof setSheet === 'function') setSheet('half');
   }
 
   // ─── 頂点確定（スコープ中心を追加） ───
@@ -273,6 +283,7 @@ const PolygonDraw = (() => {
     const latlngs = confirmed.slice(); // L.LatLng[]（Step4：確認・微調整画面へそのまま渡す）
 
     stop();
+    if (typeof setSheet === 'function') setSheet('half');
     FieldConfirmAdjust.open(latlngs, { source: 'manual' });
   }
 
