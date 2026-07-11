@@ -8656,7 +8656,16 @@ function _adpRenderPlantingPane() {
   // ── 実務側（Step8-7後半：自動設計／調整／描画／作物詳細の4タブに一本化）──
   // 作物0件時の案内（畝方向チェックリスト／プレースホルダー）は各タブ内で個別に処理するため、
   // ここでの分岐は不要（_adpBuildUnifiedFieldPanel(false) が4タブ構成一式を返す）。
+  // UX見直し（2026-07 ②対応）：占有率変更・作物追加削除・自動設計適用など、この全体再描画
+  // （innerHTML差し替え）を経由する操作は _adpRefreshRidgeInputBlock を通らないため、
+  // 従来は差分フラッシュの対象外だった（他作物操作で自分の帯が動いても無音だった）。
+  // ここでも同じcapture→差し替え→injectを行うことで、経路によらず一貫して差分フラッシュが効くようにする。
+  // 平面図が存在しない状態（調整タブのみ表示中・初回描画等）からの遷移や、位置に実質変化が
+  // 無い場合は _adpCaptureRidgeGhostLines / _adpInjectRidgeGhostLines 側の判定により
+  // 自動的に無反応となるため、呼び出し側で個別に経路を区別する必要はない。
+  const ghostLines = _adpCaptureRidgeGhostLines(el);
   el.innerHTML = _adpBuildUnifiedFieldPanel(false);
+  if (ghostLines.ridge.length || ghostLines.dim.length) _adpInjectRidgeGhostLines(el, ghostLines);
 }
 
 // ═══════════════════════════════════════════

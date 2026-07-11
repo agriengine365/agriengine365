@@ -33,12 +33,28 @@ const PlantingLogic = (() => {
    * 判定結果を保持する読み取り専用の内部状態。ゾーン判定バッジ表示のためだけに
    * 追加したもので、帯分割の計算結果そのもの（bands）には影響しない。
    * getLastZoneInfo() 経由でのみ参照させ、直接の書き換えは想定しない。
+   *
+   * ⚠️ 設計上の注意（2026-07）：これはモジュール内シングルトンであり、
+   * 「直前に _recalcAllBandsCore が呼ばれた1エリア分」の結果しか保持できない。
+   * 現状のUI構造（エリア詳細パネルは常に1つだけ開く前提）では、呼び出し側
+   * （area.js側）が常に「今開いているエリア」のために recalcAllBands を呼び、
+   * その直後に getLastZoneInfo() で結果を読む、という単純な逐次アクセスしか
+   * 発生しないため実害はない。
+   * ただし将来、複数エリアを同時に開く／エリアを跨いで並行に再計算するような
+   * 改修が入ると、あるエリアの計算結果を別のエリア用に取り違えて表示する
+   * バグの温床になる。そのような改修に着手する際は、_lastZoneInfo を
+   * エリアID等をキーにしたMapに置き換え、recalcAllBands / getLastZoneInfo の
+   * 両方にエリア識別子を引数として渡すよう拡張すること
+   * （呼び出し箇所は area.js 内の recalcAllBands 呼び出し全箇所・
+   * getLastZoneInfo 呼び出し箇所を要確認）。
    */
   let _lastZoneInfo = { valid: false, leftoverAreaSqm: 0, rectAreaSqm: 0 };
 
   /**
    * 直近の recalcAllBands 呼び出し時点でのゾーン分割判定結果を返す。
    * valid:true かつ leftoverAreaSqm>0 のとき「余剰形状ゾーン」が実際に成立している。
+   * ⚠️ グローバル1件だけを保持するシングルトン参照（詳細は _lastZoneInfo 宣言部のコメント参照）。
+   * 必ず「対象エリアの recalcAllBands を呼んだ直後」に呼ぶこと。
    * @returns {{valid: boolean, leftoverAreaSqm: number, rectAreaSqm: number}}
    */
   function getLastZoneInfo() {
@@ -379,6 +395,8 @@ const PlantingLogic = (() => {
 
     // UX見直し（2026-07）：このコアが呼ばれるたびに最新のゾーン判定結果を記録する
     // （フォールバックしてzoned===nullの場合＝余剰形状ゾーンは不成立、として明示的に記録）。
+    // ⚠️ _lastZoneInfo はエリアを区別しないグローバル1件保持（詳細は宣言部コメント参照）。
+    // このコアが呼ばれるたびに直前の結果を無条件に上書きする。
     _lastZoneInfo = zoned
       ? { valid: true, leftoverAreaSqm: zoned.leftoverAreaSqm, rectAreaSqm: zoned.rectAreaSqm }
       : { valid: false, leftoverAreaSqm: 0, rectAreaSqm: 0 };
