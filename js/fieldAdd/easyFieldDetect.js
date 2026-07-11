@@ -309,13 +309,18 @@ const EasyFieldDetect = (() => {
   }
 
   // ─── キャンセル（B案：即終了。「地図を合わせる」へは戻さない） ───
+  // 動線改善セッション：以前はここで setSheet('half') を呼んでいたが、
+  // BottomSheet廃止に伴いsetSheet('half')は「エリア一覧などのフルスクリーン
+  // ページを強制的に開く」処理に変わっており（ui.js参照）、キャンセルしただけ
+  // なのにエリア一覧へ強制的に飛ばされる不具合の原因になっていた。
+  // closeDialog()で地図画面へ静かに戻るだけで十分なため削除
+  //（保存ウィザードのcancelWizard()と同じ「戻る」の作法に統一）。
   function cancel() {
     if (state.cancelToken) state.cancelToken.cancelled = true;
     _clearSensitivityDebounce();
     _setScopeVisible(false);
     FieldAddController.hideAllPhases();
     FieldAddController.closeDialog();
-    if (typeof setSheet === 'function') setSheet('half');
     showToast('かんたん追加をキャンセルしました');
   }
 

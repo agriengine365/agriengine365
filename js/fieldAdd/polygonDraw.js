@@ -28,10 +28,17 @@
 //    だったため、キャンセルしただけなのに毎回エリア一覧へ飛んでしまう
 //    バグがあった。
 //  - setSheet('half')はcomplete()側（stop()呼び出し直後・
-//    FieldConfirmAdjust.open()の直前）に移動。これにより、
-//    ・cancel() → ダイアログを閉じるだけ（シート状態は変更しない）
-//    ・complete() → 従来通りシートを半開きにしてから確認・微調整画面へ
-//    という意図した挙動に分離された。
+//    FieldConfirmAdjust.open()の直前）に一旦移動。
+//
+//  動線改善セッションで以下を変更：
+//  - Step6でcomplete()側に残っていたsetSheet('half')を完全に削除。
+//    BottomSheet廃止（ui.js）に伴いsetSheet('half')は「エリア一覧などの
+//    フルスクリーンページを強制的に開く」処理へ変わっており、直後に呼ばれる
+//    FieldConfirmAdjust.open()内部のFieldAddController.openDialog()が
+//    closePage()（エリア一覧を閉じる処理）を実行するため、一瞬エリア一覧が
+//    開いてすぐ閉じるチラつきの原因になっていた。setSheet呼び出し自体が
+//    不要（そもそもFieldConfirmAdjust.open()が確認・微調整画面を開くので、
+//    その前段でシート状態を触る必要がない）と判断し削除した。
 // ═══════════════════════════════════════════
 
 // ─── aria-hidden 適用前にフォーカスを外す共通ヘルパー ───
@@ -283,7 +290,6 @@ const PolygonDraw = (() => {
     const latlngs = confirmed.slice(); // L.LatLng[]（Step4：確認・微調整画面へそのまま渡す）
 
     stop();
-    if (typeof setSheet === 'function') setSheet('half');
     FieldConfirmAdjust.open(latlngs, { source: 'manual' });
   }
 
