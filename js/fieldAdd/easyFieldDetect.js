@@ -99,6 +99,29 @@
 //    FieldDetectAlgorithms.traceContourMsqr() 経由で呼ぶ。
 // ═══════════════════════════════════════════
 
+//  座標ズレ・頂点密集 修正セッションで以下を変更（「地図をパン/ズームしてから
+//  感度スライダーで再検出すると座標がズレる」「頂点が3個以上不自然に固まる」
+//  というフィードバックを受けての改修）：
+//  - 座標ズレの原因：検出結果pxの最終lat/lng変換（_buildAndShowPreviewFromMask・
+//    _applyHouseSnap）が、ラスタライズ時点のcontainer座標(state.rasterOriginPt)を
+//    「今の地図ビュー」でmap.containerPointToLatLng()にかける実装になっており、
+//    感度スライダー再検出（_reRunFromCache）はキャッシュ済みimageDataを使い回す
+//    ため、その間に地図がパン/ズームされていると同じpx座標が別の実世界地点を
+//    指してしまっていた。
+//  - 修正：_rasterizeCropToCanvas()でクロップ北西角の実LatLngとWeb Mercator投影上の
+//    px単価(mercPerPxX/Y)をラスタライズ時点で確定して保持し、以降の最終変換は
+//    L.CRS.EPSG3857.project/unprojectのみで行う（map.containerPointToLatLng()等、
+//    現在の地図表示状態に依存する変換を一切使わない）。state.rasterScale／
+//    state.rasterOriginPtは廃止し、state.rasterOriginLatLng／mercPerPxX／
+//    mercPerPxYに置き換えた。
+//  - 頂点密集の原因：douglasPeucker→snapNearRightAnglesの単純化パイプラインに、
+//    近接頂点を統合する処理が存在しなかった。
+//  - 修正：FieldDetectAlgorithms.mergeNearbyVertices()を新設し、douglasPeucker直後
+//    （'complex'形状モードのみ。'rect'は常に4隅のため対象外）に適用。近接クラスタは
+//    重心へ潰すのではなく、各点の「角らしさ」（隣接2辺のなす角の180度からの乖離）が
+//    最も高い1点だけを残す方式。
+// ═══════════════════════════════════════════
+
 const EasyFieldDetect = (() => {
 
   // ─── 定数（仕様書4章・確定値） ───
@@ -137,8 +160,9 @@ const EasyFieldDetect = (() => {
     canvas:       null,   // ラスタライズ済みcanvas（感度変更時の再利用用）
     imageData:    null,   // canvasから取得したImageData（同上）
     gradientMap:  null,   // computeGradientMap()の結果（同上）
-    rasterScale:  1,      // クロップ→解析解像度への拡大率（座標変換に使用）
-    rasterOriginPt: null, // L.Point。クロップ原点のcontainer座標（座標変換に使用。検出精度改善セッションで追加）
+    rasterOriginLatLng: null, // L.LatLng。クロップ北西角の実緯度経度（座標復元の基準点。地図ビューに非依存。座標ズレ修正で追加）
+    mercPerPxX:   1,      // Web Mercator投影上で解析px1個が東方向に相当する距離（座標変換に使用）
+    mercPerPxY:   1,      // Web Mercator投影上で解析px1個が南方向に相当する距離（座標変換に使用）
     seedX:        0,
     seedY:        0,
     sensitivity:  DEFAULT_SENSITIVITY, // 現在のtolerance値（自動チューニング結果 or 手動調整値）
@@ -211,8 +235,9 @@ const EasyFieldDetect = (() => {
     state.canvas       = null;
     state.imageData    = null;
     state.gradientMap  = null;
-    state.rasterScale  = 1;
-    state.rasterOriginPt = null;
+    state.rasterOriginLatLng = null;
+    state.mercPerPxX   = 1;
+    state.mercPerPxY   = 1;
     state.sensitivity  = DEFAULT_SENSITIVITY;
     state.detecting    = false;
     state.cancelToken  = null;
@@ -273,8 +298,9 @@ const EasyFieldDetect = (() => {
     state.canvas       = null;
     state.imageData    = null;
     state.gradientMap  = null;
-    state.rasterScale  = 1;
-    state.rasterOriginPt = null;
+    state.rasterOriginLatLng = null;
+    state.mercPerPxX   = 1;
+    state.mercPerPxY   = 1;
     state.sensitivity  = DEFAULT_SENSITIVITY;
     FieldAddController.showPhase('efd-phase-tap');
     _setDetectingUI(false);
@@ -414,13 +440,14 @@ const EasyFieldDetect = (() => {
         showDrawToast('対象が広いため、検出範囲の端で打ち切られている可能性があります。頂点を手動で調整してください。', 'amber');
       }
 
-      const { canvas, scale, originContainerPt, imageData, gradientMap, seedX, seedY, mask } = attemptResult;
+      const { canvas, originLatLng, mercPerPxX, mercPerPxY, imageData, gradientMap, seedX, seedY, mask } = attemptResult;
 
       state.canvas      = canvas;
       state.imageData   = imageData;
       state.gradientMap = gradientMap;
-      state.rasterScale = scale;
-      state.rasterOriginPt = originContainerPt;
+      state.rasterOriginLatLng = originLatLng;
+      state.mercPerPxX  = mercPerPxX;
+      state.mercPerPxY  = mercPerPxY;
       state.seedX       = seedX;
       state.seedY       = seedY;
       state.sensitivity = DEFAULT_SENSITIVITY;
@@ -510,7 +537,7 @@ const EasyFieldDetect = (() => {
   //   成功時: { canvas, scale, originContainerPt, imageData, gradientMap, seedX, seedY, mask, touchesBoundary }
   //   失敗時: { error: 'cors' | 'outOfView' | 'notFound' }
   function _detectAtCropSize(cropSizeM) {
-    const { canvas, scale, originContainerPt } = _rasterizeCropToCanvas(state.tapLatLng, cropSizeM, CROP_RASTER_TARGET_PX);
+    const { canvas, scale, originContainerPt, originLatLng, mercPerPxX, mercPerPxY } = _rasterizeCropToCanvas(state.tapLatLng, cropSizeM, CROP_RASTER_TARGET_PX);
     const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
     let imageData;
@@ -547,7 +574,7 @@ const EasyFieldDetect = (() => {
     const processedMask = _postProcessMask(closedMask, canvas.width, canvas.height, seedX, seedY);
     const touchesBoundary = FieldDetectAlgorithms.maskTouchesBoundary(processedMask, canvas.width, canvas.height);
 
-    return { canvas, scale, originContainerPt, imageData, gradientMap, seedX, seedY, mask: processedMask, touchesBoundary };
+    return { canvas, scale, originContainerPt, originLatLng, mercPerPxX, mercPerPxY, imageData, gradientMap, seedX, seedY, mask: processedMask, touchesBoundary };
   }
 
   // ─── mask → 輪郭抽出 → 単純化・矩形フィット → FieldConfirmAdjustへ引き渡し ───
@@ -601,6 +628,11 @@ const EasyFieldDetect = (() => {
       }
       if (simplified.length < 3) simplified = FieldDetectAlgorithms.convexHull(contour);
 
+      // 頂点密集バグ対策：douglasPeuckerだけでは輪郭のガタつき由来で数px以内に
+      // 3点以上固まって残ることがあるため、近接クラスタを「最も角らしい」1点に統合する。
+      const mergeMinDistPx = Math.max(4, diag * 0.006);
+      simplified = FieldDetectAlgorithms.mergeNearbyVertices(simplified, mergeMinDistPx);
+
       snapped = FieldDetectAlgorithms.snapNearRightAngles(simplified, RIGHT_ANGLE_TOLERANCE_DEG);
       if (!snapped || snapped.length < 3) {
         _onDetectFailure('有効な形になりませんでした。感度を調整するか、手動描画をご利用ください。');
@@ -608,12 +640,16 @@ const EasyFieldDetect = (() => {
       }
     }
 
-    // クロップ解析解像度→container座標（クロップ原点＋拡大率を戻す）→地図座標へ変換
-    const scale  = state.rasterScale || 1;
-    const origin = state.rasterOriginPt || L.point(0, 0);
-    const latlngs = snapped.map(p => map.containerPointToLatLng(
-      L.point(origin.x + p.x / scale, origin.y + p.y / scale)
-    ));
+    // 座標ズレ修正：解析px座標 → 実緯度経度への変換は、地図の「今のビュー」に一切
+    // 依存しないWeb Mercator投影ベースで行う（map.containerPointToLatLng()は使わない）。
+    // state.rasterOriginLatLng・mercPerPxX/Yは検出（ラスタライズ）時点で確定した値のため、
+    // この後に地図をパン/ズームしても結果はズレない。
+    const CRS = map.options.crs || L.CRS.EPSG3857;
+    const originProj = CRS.project(state.rasterOriginLatLng);
+    const latlngs = snapped.map(p => CRS.unproject(L.point(
+      originProj.x + p.x * state.mercPerPxX,
+      originProj.y - p.y * state.mercPerPxY
+    )));
 
     _setScopeVisible(false);
     FieldConfirmAdjust.open(latlngs, {
@@ -632,9 +668,12 @@ const EasyFieldDetect = (() => {
   // fieldDetectAlgorithms.js側はDOM/Leaflet非依存の純粋関数のみに留める）。
   // 戻り値: { corners: [新4隅(pixel座標)], widthM, depthM, widthSnapped } | null
   function _applyHouseSnap(pixelCorners) {
-    const scale  = state.rasterScale || 1;
-    const origin = state.rasterOriginPt || L.point(0, 0);
-    const toLatLng = (p) => map.containerPointToLatLng(L.point(origin.x + p.x / scale, origin.y + p.y / scale));
+    const CRS = map.options.crs || L.CRS.EPSG3857;
+    const originProj = CRS.project(state.rasterOriginLatLng);
+    const toLatLng = (p) => CRS.unproject(L.point(
+      originProj.x + p.x * state.mercPerPxX,
+      originProj.y - p.y * state.mercPerPxY
+    ));
 
     const p0 = pixelCorners[0], p1 = pixelCorners[1], p2 = pixelCorners[2];
     const ll0 = toLatLng(p0), ll1 = toLatLng(p1), ll2 = toLatLng(p2);
@@ -700,8 +739,10 @@ const EasyFieldDetect = (() => {
     const mapRect = mapContainer.getBoundingClientRect();
 
     const bounds = centerLatLng.toBounds(cropSizeM);
-    const nwPt = map.latLngToContainerPoint(bounds.getNorthWest());
-    const sePt = map.latLngToContainerPoint(bounds.getSouthEast());
+    const nwLatLng = bounds.getNorthWest();
+    const seLatLng = bounds.getSouthEast();
+    const nwPt = map.latLngToContainerPoint(nwLatLng);
+    const sePt = map.latLngToContainerPoint(seLatLng);
 
     const cropWpx = Math.max(1, sePt.x - nwPt.x);
     const cropHpx = Math.max(1, sePt.y - nwPt.y);
@@ -738,7 +779,20 @@ const EasyFieldDetect = (() => {
       }
     });
 
-    return { canvas, scale, originContainerPt: nwPt };
+    // 座標ズレ修正：解析px→実緯度経度の最終変換を「現在の地図ビュー」に依存させない
+    // ようにするため、クロップ北西角の実LatLng、およびWeb Mercator投影上での
+    // 解析px1個あたりの距離を、ここ（ラスタライズ時点）で確定して返す。
+    // 呼び出し元（_buildAndShowPreviewFromMask・_applyHouseSnap）は、
+    // map.containerPointToLatLng()等「今の地図表示状態」に依存する変換を一切使わず、
+    // これらの値だけから直接座標を復元する。これにより、検出後に地図をパン/ズーム
+    // してから感度スライダーで再検出しても、結果の実世界座標がズレなくなる。
+    const CRS = map.options.crs || L.CRS.EPSG3857;
+    const nwProj = CRS.project(nwLatLng);
+    const seProj = CRS.project(seLatLng);
+    const mercPerPxX = (seProj.x - nwProj.x) / w; // 東方向、解析px1個あたりの投影距離
+    const mercPerPxY = (nwProj.y - seProj.y) / h; // 南方向、解析px1個あたりの投影距離
+
+    return { canvas, scale, originContainerPt: nwPt, originLatLng: nwLatLng, mercPerPxX, mercPerPxY };
   }
 
   // ─── 公開API（Step5：start → beginDetectFlow にリネーム） ───

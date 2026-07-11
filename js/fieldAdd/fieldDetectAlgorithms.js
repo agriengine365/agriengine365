@@ -598,6 +598,67 @@ const FieldDetectAlgorithms = (() => {
     return result;
   }
 
+  // ─── 近接頂点の統合：一定距離以内に固まった頂点群を、最も「角らしい」1点に統合 ───
+  // 頂点密集バグ対策で新規追加。douglasPeucker→snapNearRightAnglesを経ても、
+  // 輪郭のガタつき由来で数px以内に3点以上残ってしまうことがある（ユーザー報告：
+  // 3個以上の頂点密集はほぼ異常）。単純にクラスタの重心へ統合すると実際の角の
+  // 位置がぼやけてしまうため、各点の「角らしさ」（隣接2辺のなす角の、180度＝
+  // 直線からの乖離）をスコアとして先に計算しておき、近接クラスタごとに最もスコアの
+  // 高い1点だけを残す（＝一番「有力」な頂点を残し、他は間引く）方式にしている。
+  //
+  // points: 環状の頂点列（始点=終点の重複なし）
+  // minDistPx: これ未満の間隔で隣接する頂点は同一クラスタとみなす
+  function mergeNearbyVertices(points, minDistPx) {
+    const n = points.length;
+    if (n <= 3) return points.slice(); // これ以上減らせない
+
+    const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+    const closeToNext = points.map((p, i) => dist(p, points[(i + 1) % n]) < minDistPx);
+
+    // 全周が近接＝スケール異常など想定外のケース。安全側に倒して何もしない。
+    if (closeToNext.every(Boolean)) return points.slice();
+    // 近接ペアが1つも無ければ統合不要。
+    if (closeToNext.every(v => !v)) return points.slice();
+
+    function sharpness(pts, i) {
+      const m = pts.length;
+      const prev = pts[(i - 1 + m) % m];
+      const curr = pts[i];
+      const next = pts[(i + 1) % m];
+      const v1x = prev.x - curr.x, v1y = prev.y - curr.y;
+      const v2x = next.x - curr.x, v2y = next.y - curr.y;
+      const len1 = Math.hypot(v1x, v1y), len2 = Math.hypot(v2x, v2y);
+      if (len1 === 0 || len2 === 0) return 0;
+      const dot = (v1x * v2x + v1y * v2y) / (len1 * len2);
+      const angleDeg = Math.acos(_clamp(dot, -1, 1)) * 180 / Math.PI;
+      return Math.abs(180 - angleDeg); // 大きいほど「角らしい」
+    }
+
+    // クラスタが配列の先頭/末尾をまたがないよう、近接していない辺の直後を
+    // 先頭にして回転させる（環状判定を線形走査に単純化するため）。
+    let start = 0;
+    for (let i = 0; i < n; i++) {
+      if (!closeToNext[(i - 1 + n) % n]) { start = i; break; }
+    }
+    const rotated = points.slice(start).concat(points.slice(0, start));
+
+    const result = [];
+    let i = 0;
+    while (i < n) {
+      let bestIdx = i, bestScore = sharpness(rotated, i);
+      let j = i;
+      while (j < n - 1 && dist(rotated[j], rotated[j + 1]) < minDistPx) {
+        j++;
+        const s = sharpness(rotated, j);
+        if (s > bestScore) { bestScore = s; bestIdx = j; }
+      }
+      result.push(rotated[bestIdx]);
+      i = j + 1;
+    }
+
+    return result.length >= 3 ? result : points.slice();
+  }
+
   // ═══════════════════════════════════════════
   //  新規：検出精度改善（クロップ高解像度化に伴う追加分）
   //  - computeAdaptiveEdgeThreshold：floodFillMaskEdgeAwareのedgeThresholdを、
@@ -777,6 +838,7 @@ const FieldDetectAlgorithms = (() => {
     scoreMaskPlausibility,
     autoTuneTolerance,
     snapNearRightAngles,
+    mergeNearbyVertices,
     // 新規（検出精度改善セッション：クロップ高解像度化に伴う追加分）
     morphologyOpen,
     keepSeedComponentMask,
