@@ -58,6 +58,22 @@
 //    局所的に再フィット（ハウス規格スナップより前段）。
 //  - ensureMinZoomForDetect()を警告のみ→検出ブロックに変更。
 //
+//  検出感度改善セッション（第2弾）で以下を変更（「昔の仕様の方が検出しやすかった」
+//  とのフィードバックを受けての改修）：
+//  - エッジ考慮flood-fill（勾配で隣接農地への誤拡張を防ぐ仕組み）を廃止し、
+//    単純な色距離のみのflood-fillに戻した（floodFillMaskEdgeAware自体は
+//    js/fieldAdd/fieldDetectAlgorithms.js に残っているが、gradientMap/
+//    edgeThresholdにnullを渡すことで色距離判定のみで動作させている）。
+//    隣接圃場への誤拡張リスクは承知の上でシンプルさ・検出範囲の広さを優先する判断。
+//  - 自動チューニング（複数tolerance候補から最良のものを自動選択する仕組み）を廃止し、
+//    固定の初期感度値(DEFAULT_SENSITIVITY)のみによる単一検出に戻した。
+//    旧TOLERANCE_CANDIDATES／autoTuneTolerance呼び出しはgit履歴を参照。
+//  - computeAdaptiveEdgeThreshold呼び出し・EDGE_THRESHOLD_*定数・state.edgeThresholdは
+//    上記に伴い削除。ただしgradientMap自体は矩形モードのsnapRectEdgesToGradient()で
+//    引き続き使うため算出は残す。
+//  - _postProcessMask()（open→close→シード連結成分抽出）はエッジ考慮を外した分の
+//    誤拡張対策として維持。
+//
 //  技術メモ：
 //  - map.js側でタイルレイヤーに crossOrigin:true を指定しているため、
 //    地理院タイル（Originヘッダー送信時のみCORS許可される仕様）を
@@ -79,15 +95,13 @@ const EasyFieldDetect = (() => {
   const CROP_SIZE_M_HOUSE      = 20;   // クロップ一辺の実距離[m]：ハウス/加温（対象が小さいため狭く高精細に）
   const CROP_SIZE_M_FIELD      = 50;   // クロップ一辺の実距離[m]：露地
   const CROP_RASTER_TARGET_PX  = 1000; // クロップ後の解析用キャンバス解像度
-  const TOLERANCE_CANDIDATES   = [6, 15, 30, 50, 70]; // スライダー実運用レンジ6〜70をフルカバー
-  // 検出精度改善セッション：固定edgeThreshold=60を廃止し、勾配ヒストグラムの
-  // パーセンタイル基準で動的算出する方式に変更（computeAdaptiveEdgeThreshold）。
-  // 検出感度改善セッション：80→90に緩和。畝・作物の筋など圃場内部の軽い陰影の
-  // 勾配で領域拡張が止まってしまい、実際の圃場より小さく検出される（過小検出）
-  // 症状が出ていたため、「境界」とみなす勾配の強さの基準を引き上げた。
-  const EDGE_THRESHOLD_PERCENTILE = 90; // この値より強い勾配は「境界」とみなし領域拡張を止める
-  const EDGE_THRESHOLD_MIN     = 20;   // 動的算出値のクランプ下限
-  const EDGE_THRESHOLD_MAX     = 140;  // 動的算出値のクランプ上限（隣接圃場との強い境界は従来通り越えない）
+  // 検出感度改善セッション（第2弾）：自動チューニング（複数tolerance候補から自動選択）
+  // を廃止したため、TOLERANCE_CANDIDATESは不要になった（旧値はgit履歴を参照）。
+  // 検出感度改善セッション（第2弾）：エッジ考慮flood fill（隣接農地への誤拡張を
+  // 勾配で防ぐ仕組み）を仕様変更前の単純な色距離flood fillへ戻すことにしたため、
+  // computeAdaptiveEdgeThreshold関連の定数は不要になった（隣接圃場への誤拡張
+  // リスクは承知の上でシンプルさを優先する、という判断）。
+  // 旧EDGE_THRESHOLD_PERCENTILE/MIN/MAXの値はgit履歴を参照。
   const TILE_WAIT_TIMEOUT_MS   = 1500; // タイル読み込み待ちの基本タイムアウト
   const TILE_WAIT_EXTRA_MS     = 1000; // 基本タイムアウト超過時の延長待機
   const SENSITIVITY_DEBOUNCE_MS = 150; // 感度スライダーのデバウンス（仕様書5.3）
@@ -104,7 +118,6 @@ const EasyFieldDetect = (() => {
     gradientMap:  null,   // computeGradientMap()の結果（同上）
     rasterScale:  1,      // クロップ→解析解像度への拡大率（座標変換に使用）
     rasterOriginPt: null, // L.Point。クロップ原点のcontainer座標（座標変換に使用。検出精度改善セッションで追加）
-    edgeThreshold: null,  // computeAdaptiveEdgeThreshold()の結果（同上。感度スライダー再検出でも使い回す）
     seedX:        0,
     seedY:        0,
     sensitivity:  DEFAULT_SENSITIVITY, // 現在のtolerance値（自動チューニング結果 or 手動調整値）
@@ -179,7 +192,6 @@ const EasyFieldDetect = (() => {
     state.gradientMap  = null;
     state.rasterScale  = 1;
     state.rasterOriginPt = null;
-    state.edgeThreshold  = null;
     state.sensitivity  = DEFAULT_SENSITIVITY;
     state.detecting    = false;
     state.cancelToken  = null;
@@ -242,7 +254,6 @@ const EasyFieldDetect = (() => {
     state.gradientMap  = null;
     state.rasterScale  = 1;
     state.rasterOriginPt = null;
-    state.edgeThreshold  = null;
     state.sensitivity  = DEFAULT_SENSITIVITY;
     FieldAddController.showPhase('efd-phase-tap');
     _setDetectingUI(false);
@@ -365,38 +376,41 @@ const EasyFieldDetect = (() => {
       }
 
       const gradientMap = FieldDetectAlgorithms.computeGradientMap(imageData);
-      // 検出精度改善セッション：固定edgeThreshold=60 → 勾配ヒストグラムのパーセンタイル基準で動的算出。
-      // 感度スライダーでの再検出（_reRunFromCache）でも同じ値を使い回す。
-      const edgeThreshold = FieldDetectAlgorithms.computeAdaptiveEdgeThreshold(
-        gradientMap, EDGE_THRESHOLD_PERCENTILE, EDGE_THRESHOLD_MIN, EDGE_THRESHOLD_MAX
-      );
+      // gradientMapはflood fillの誤拡張防止（エッジ考慮）には使わなくなったが、
+      // 矩形モード時のsnapRectEdgesToGradient()（辺を実際の勾配へ再フィット）で
+      // 引き続き使用するため、算出自体は残す。
 
       state.canvas      = canvas;
       state.imageData   = imageData;
       state.gradientMap = gradientMap;
       state.rasterScale = scale;
       state.rasterOriginPt = originContainerPt;
-      state.edgeThreshold  = edgeThreshold;
       state.seedX       = seedX;
       state.seedY       = seedY;
 
       if (state.cancelToken.cancelled) { _onDetectCancelled(); return; }
 
-      const result = await FieldDetectAlgorithms.autoTuneTolerance(
-        imageData, gradientMap, seedX, seedY, TOLERANCE_CANDIDATES, edgeThreshold, state.cancelToken
+      // 検出感度改善セッション（第2弾）：エッジ考慮flood fill・複数tolerance自動
+      // チューニングを廃止し、単純な色距離flood fill＋固定の初期感度値のみによる
+      // 単一検出へ戻した（隣接圃場への誤拡張リスクは承知の上でシンプルさを優先）。
+      // 旧autoTuneTolerance実装はgit履歴を参照。
+      const tolerance = DEFAULT_SENSITIVITY;
+      const rawMask = FieldDetectAlgorithms.floodFillMaskEdgeAware(
+        imageData, null, seedX, seedY, tolerance, null
       );
 
-      if (result === 'cancelled' || state.cancelToken.cancelled) { _onDetectCancelled(); return; }
+      if (state.cancelToken.cancelled) { _onDetectCancelled(); return; }
 
-      if (!result) {
+      if (!rawMask) {
         _onDetectFailure('検出範囲を特定できませんでした。地図を動かして別の地点でお試しください。');
         return;
       }
 
-      state.sensitivity = result.tolerance;
+      state.sensitivity = tolerance;
 
-      // 検出精度改善セッション：採用したmaskにopen→close→シード連結成分抽出を適用
-      const processedMask = _postProcessMask(result.mask, canvas.width, canvas.height, seedX, seedY);
+      const closedMask = FieldDetectAlgorithms.morphologyClose(rawMask, canvas.width, canvas.height, 1);
+      // 採用したmaskにopen→close→シード連結成分抽出を適用（エッジ考慮を外した分の保険として維持）
+      const processedMask = _postProcessMask(closedMask, canvas.width, canvas.height, seedX, seedY);
 
       _buildAndShowPreviewFromMask(processedMask, canvas.width, canvas.height);
 
@@ -443,26 +457,21 @@ const EasyFieldDetect = (() => {
   }
 
   function _reRunFromCache(tolerance) {
-    const { imageData, gradientMap, seedX, seedY, edgeThreshold } = state;
+    const { imageData, seedX, seedY } = state;
     const w = imageData.width, h = imageData.height;
 
-    // 検出感度改善セッション：スライダー(tolerance)をデフォルト(28)より上げた分だけ
-    // edgeThresholdも比例して緩和する。従来は検出時に算出したstate.edgeThresholdが
-    // 固定の壁として働き、スライダーを上げても「先にこの壁に当たって止まる」ため
-    // 見た目の検出範囲がほとんど変化しない問題があった。EDGE_THRESHOLD_MAXで
-    // クランプするため、隣接圃場との強い境界線を越えて誤リークすることはない。
-    const sensitivityDelta = Math.max(0, tolerance - DEFAULT_SENSITIVITY);
-    const effectiveEdgeThreshold = Math.min(EDGE_THRESHOLD_MAX, edgeThreshold + sensitivityDelta * 0.8);
-
-    // 検出精度改善セッション：固定EDGE_THRESHOLD→detect()時に算出したstate.edgeThresholdを使い回す
-    const rawMask = FieldDetectAlgorithms.floodFillMaskEdgeAware(imageData, gradientMap, seedX, seedY, tolerance, effectiveEdgeThreshold);
+    // 検出感度改善セッション（第2弾）：エッジ考慮を廃止し単純な色距離flood fillに
+    // 戻したため、gradientMap/edgeThresholdは渡さない（隣接圃場への誤拡張リスクは
+    // 承知の上でシンプルさ・スライダーの効きを優先）。
+    const rawMask = FieldDetectAlgorithms.floodFillMaskEdgeAware(imageData, null, seedX, seedY, tolerance, null);
     if (!rawMask) {
       // 確認・微調整画面は既に開いたまま（直前の有効な形を維持）。
       // スライダー操作中に毎回showDrawToastだと煩わしいため短めのtoastに留める。
       showToast('検出範囲が小さすぎるか大きすぎます。感度を調整してください。', 'amber');
       return;
     }
-    const processedMask = _postProcessMask(rawMask, w, h, seedX, seedY);
+    const closedMask = FieldDetectAlgorithms.morphologyClose(rawMask, w, h, 1);
+    const processedMask = _postProcessMask(closedMask, w, h, seedX, seedY);
     _buildAndShowPreviewFromMask(processedMask, w, h);
   }
 
