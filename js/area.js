@@ -552,7 +552,7 @@ let _adpCrossSectionActiveCropId = null;
 // 新ブロックのヘッダートグル「拡大詳細」⇔「全体」の表示モード。
 // 'zoom'（拡大詳細図・デフォルト）／'full'（既存パネルA＝圃場全体表示）。
 // パネル再描画ではリセットされる想定のため保存はしない。
-let _adpCrossSectionViewMode = 'zoom';
+let _adpCrossSectionViewMode = 'full';
 
 // Step8-7後半（畝断面図UX再設計・4タブ構成）：
 // 実務側・栽植設計ペインのメインタブ（自動設計／調整／描画／作物詳細）。
@@ -7930,7 +7930,8 @@ function _adpBuildAdjustTabInner() {
 /**
  * Step8-7後半：「描画」タブの中身。表示専用（作物タブ＋拡大詳細図⇔全体トグル＋
  * 平面図（パネルA）／断面図SVG）。数値入力は一切持たない。
- * 平面図側の寸法線タップ（_adpNavigateToRidgeInput）はそのまま残す（「調整」タブへ誘導する）。
+ * 平面図側の寸法線タップは一文説明のポップオーバー表示（_adpShowDimlineExplain）に変更済み。
+ * 「調整」タブへの誘導（_adpNavigateToRidgeInput）はポップオーバー内の「編集する」ボタン経由。
  */
 function _adpBuildDrawTabInner() {
   const crops = _adpPracticecrops || [];
@@ -7998,17 +7999,19 @@ function _adpBuildCropsDetailTabInner() {
 }
 
 /**
- * Step8-7：ヘッダー行右側の表示トグル（「拡大詳細」⇔「全体」）HTML。
- * デフォルトは「拡大詳細」（_adpCrossSectionViewMode初期値 'zoom'）。
+ * Step8-7：ヘッダー行右側の表示トグル（「全体」⇔「拡大詳細」）HTML。
+ * デフォルトは「全体」（_adpCrossSectionViewMode初期値 'full'）。
+ * UX見直し（2026-07）：全体平面図に数値を集約表示する方針のため、
+ * 選択肢の並びも「全体→拡大詳細」に変更した。
  */
 function _adpBuildViewToggleHTML() {
   const mode = _adpCrossSectionViewMode;
   return `
     <div class="plt-viewtoggle" role="group">
-      <button type="button" class="plt-viewtoggle-btn ${mode === 'zoom' ? 'plt-viewtoggle-btn-active' : ''}"
-        onclick="_adpSetCrossSectionViewMode('zoom')">🔍 拡大詳細</button>
       <button type="button" class="plt-viewtoggle-btn ${mode === 'full' ? 'plt-viewtoggle-btn-active' : ''}"
         onclick="_adpSetCrossSectionViewMode('full')">🗺️ 全体</button>
+      <button type="button" class="plt-viewtoggle-btn ${mode === 'zoom' ? 'plt-viewtoggle-btn-active' : ''}"
+        onclick="_adpSetCrossSectionViewMode('zoom')">🔍 拡大詳細</button>
     </div>`;
 }
 
@@ -8398,12 +8401,76 @@ function _adpSetCrossSectionActiveCrop(cropId) {
 }
 
 /**
+ * UX見直し（2026-07）：差分フラッシュ用ヘルパー。
+ * 「描画」タブの平面図（#unified-ridge-preview）に現在表示中の畝ライン
+ * （.plt-shapesvg-cropridge）の座標・色クラスを、再描画で失われる前に捕捉する。
+ * 「調整」タブ表示中など平面図が存在しない場合は空配列を返す（＝差分フラッシュなし）。
+ * @param {Element} blockEl - #planting-result [data-maintabs-body] 相当のコンテナ
+ * @returns {Array<{x1:number,y1:number,x2:number,y2:number,colorClass:string}>}
+ */
+function _adpCaptureRidgeGhostLines(blockEl) {
+  if (!blockEl) return [];
+  const svg = blockEl.querySelector('#unified-ridge-preview svg.plt-shapesvg');
+  if (!svg) return [];
+  return Array.from(svg.querySelectorAll('.plt-shapesvg-cropridge')).map(line => {
+    const colorClass = Array.from(line.classList).find(c => c.startsWith('plt-cropcolor-')) || 'plt-cropcolor-0';
+    return {
+      x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
+      x2: parseFloat(line.getAttribute('x2')), y2: parseFloat(line.getAttribute('y2')),
+      colorClass,
+    };
+  }).filter(l => Number.isFinite(l.x1) && Number.isFinite(l.y1) && Number.isFinite(l.x2) && Number.isFinite(l.y2));
+}
+
+/**
+ * 再描画後の平面図に、再描画前の畝位置を点線の残像（.plt-diffghost）として一瞬重ね、
+ * CSSアニメーション（plt-diffghost-fade）でフェードアウトさせる。
+ * 座標が完全一致するライン（＝実質変化なし）は残像を出さない。
+ * アニメーション終了後は要素を確実に除去する（CSSだけに任せず、要素残留を防ぐ）。
+ * @param {Element} blockEl
+ * @param {Array<{x1:number,y1:number,x2:number,y2:number,colorClass:string}>} oldLines
+ */
+function _adpInjectRidgeGhostLines(blockEl, oldLines) {
+  if (!blockEl || !Array.isArray(oldLines) || !oldLines.length) return;
+  const svg = blockEl.querySelector('#unified-ridge-preview svg.plt-shapesvg');
+  if (!svg) return;
+
+  const newLines = Array.from(svg.querySelectorAll('.plt-shapesvg-cropridge')).map(line => ({
+    x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
+    x2: parseFloat(line.getAttribute('x2')), y2: parseFloat(line.getAttribute('y2')),
+  }));
+  const changed = oldLines.some((old, i) => {
+    const cur = newLines[i];
+    return !cur || Math.abs(old.x1 - cur.x1) > 0.5 || Math.abs(old.y1 - cur.y1) > 0.5 ||
+      Math.abs(old.x2 - cur.x2) > 0.5 || Math.abs(old.y2 - cur.y2) > 0.5;
+  });
+  if (!changed) return; // 実質変化なしなら残像は出さない（無駄な明滅を避ける）
+
+  const ns = 'http://www.w3.org/2000/svg';
+  const g = document.createElementNS(ns, 'g');
+  g.setAttribute('class', 'plt-diffghost');
+  oldLines.forEach(l => {
+    const el = document.createElementNS(ns, 'line');
+    el.setAttribute('x1', l.x1); el.setAttribute('y1', l.y1);
+    el.setAttribute('x2', l.x2); el.setAttribute('y2', l.y2);
+    el.setAttribute('class', `plt-diffghost-line ${l.colorClass}`);
+    g.appendChild(el);
+  });
+  svg.appendChild(g);
+  setTimeout(() => g.remove(), 900);
+}
+
+
+/**
  * Step8-7後半：メインタブ本体（data-maintabs-body）の中身だけを部分再描画する。
  * 「調整」「描画」タブ以外（自動設計・作物詳細）は畝の断面図・入力グリッドを持たないため
  * 何もしない（無関係なタブ表示中に呼ばれても誤って上書きしないための安全策）。
  * 入力フィールドにフォーカスがある状態で呼ばれた場合、再描画（innerHTML差し替え）で
  * フォーカス・カーソル位置が失われるため、対象フィールドと選択範囲を保存しておき、
  * 再描画後に同じ入力欄へフォーカス・カーソル位置を復元する。
+ * UX見直し（2026-07）：「描画」タブの平面図が対象の場合、再描画前後の畝位置を比較し、
+ * 変化があれば旧位置を点線残像として一瞬重ねる差分フラッシュを行う
+ * （_adpCaptureRidgeGhostLines / _adpInjectRidgeGhostLines）。
  */
 function _adpRefreshRidgeInputBlock() {
   if (_adpPlantingUITab !== 'adjust' && _adpPlantingUITab !== 'draw') return;
@@ -8418,7 +8485,11 @@ function _adpRefreshRidgeInputBlock() {
     selEnd = active.selectionEnd;
   }
 
+  const ghostLines = _adpCaptureRidgeGhostLines(blockEl);
+
   blockEl.innerHTML = _adpBuildPlantingTabBody(_adpPlantingUITab);
+
+  if (ghostLines.length) _adpInjectRidgeGhostLines(blockEl, ghostLines);
 
   if (focusField) {
     const restored = blockEl.querySelector(`.plt-input-item[data-field="${focusField}"] input`);
@@ -8464,6 +8535,46 @@ function _adpNavigateToRidgeInput(cropId) {
     target.classList.add('plt-highlight-blink');
     setTimeout(() => target.classList.remove('plt-highlight-blink'), 1500);
   }
+}
+
+/**
+ * UX見直し（2026-07）：平面図の寸法線タップ挙動を「調整タブへ直接遷移」から
+ * 「その場で一文説明をポップオーバー表示」に変更。調整タブへの遷移は
+ * ポップオーバー内の「編集する」ボタン（_adpNavigateToRidgeInput呼び出し）に分離した。
+ * 説明文は各寸法線側で data-explain 属性として埋め込み済みのものをそのまま表示する。
+ * @param {SVGElement} el - クリックされた寸法線/ラベル要素（data-explain属性を持つ）
+ * @param {string} [cropId] - 「編集する」ボタンから_adpNavigateToRidgeInputへ渡す対象作物ID。
+ *   省略時（圃場マージン系の説明など、特定作物に紐づかない場合）は編集ボタンを表示しない。
+ */
+function _adpShowDimlineExplain(el, cropId) {
+  const wrap = el && el.closest ? el.closest('.plt-shapesvg-wrap') : document.getElementById('unified-ridge-preview');
+  if (!wrap) return;
+  const text = (el && el.dataset && el.dataset.explain) || '';
+  if (!text) return;
+
+  let pop = wrap.querySelector('.plt-dimline-explain');
+  if (!pop) {
+    pop = document.createElement('div');
+    pop.className = 'plt-dimline-explain';
+    wrap.appendChild(pop);
+  }
+
+  const editBtnHTML = cropId
+    ? `<button type="button" class="plt-dimline-explain-editbtn" onclick="_adpCloseDimlineExplain();_adpNavigateToRidgeInput('${cropId}')">編集する</button>`
+    : '';
+
+  pop.innerHTML = `
+    <div class="plt-dimline-explain-text">${text}</div>
+    <div class="plt-dimline-explain-actions">
+      ${editBtnHTML}
+      <button type="button" class="plt-dimline-explain-closebtn" onclick="_adpCloseDimlineExplain()" aria-label="閉じる">✕</button>
+    </div>`;
+  pop.classList.add('open');
+}
+
+/** 表示中の寸法線説明ポップオーバーをすべて閉じる。 */
+function _adpCloseDimlineExplain() {
+  document.querySelectorAll('.plt-dimline-explain.open').forEach(p => p.classList.remove('open'));
 }
 
 function _adpRenderPlantingPane() {
@@ -9749,14 +9860,25 @@ function _adpBuildUnifiedRidgePreviewSVG() {
       const labelLocal = { x: cx + (cx / dirLen) * 1.8, y: cy + (cy / dirLen) * 1.8 };
       const labelSvg = toSvg(labelLocal);
 
+      // UX見直し（2026-07）：入口/反対側の帯もタップで一文説明を表示する（作物に紐づかないため編集ボタンは出さない＝cropId省略）。
+      const escAttrHole = (s) => String(s).replace(/"/g, '&quot;');
+      const holeExplainAttr = (text) => `data-explain="${escAttrHole(text)}" onclick="_adpShowDimlineExplain(this)"`;
+
       if (kind === 'entrance') {
-        svgBody += `<polygon points="${ptsStr(holeSvgPts)}" class="plt-shapesvg-entrance" />`;
-        labelDescriptors.push({ x: labelSvg.x, y: labelSvg.y, text: `🚪入口 奥行き${entranceDepthM}m`, cssClass: 'plt-shapesvg-entrance-label' });
+        const entranceAttr = holeExplainAttr(`入口奥行き${entranceDepthM}mの分、この辺からの利用可能幅が圧縮されています。`);
+        svgBody += `<polygon points="${ptsStr(holeSvgPts)}" class="plt-shapesvg-entrance" ${entranceAttr} />`;
+        labelDescriptors.push({ x: labelSvg.x, y: labelSvg.y, text: `🚪入口 奥行き${entranceDepthM}m`, cssClass: 'plt-shapesvg-entrance-label', onclick: entranceAttr });
         hasEntrance = true;
         entranceDepthLabel = `${entranceDepthM}m`;
       } else if (kind === 'opposite') {
-        svgBody += `<polygon points="${ptsStr(holeSvgPts)}" class="plt-shapesvg-opposite" />`;
-        labelDescriptors.push({ x: labelSvg.x, y: labelSvg.y, text: `🔄反対側 奥行き${oppositeDepthM}m`, cssClass: 'plt-shapesvg-opposite-label' });
+        const isFallback = (hm.oppositeDepthM === undefined || hm.oppositeDepthM === null || hm.oppositeDepthM === '');
+        const oppositeAttr = holeExplainAttr(
+          isFallback
+            ? `反対側奥行き${oppositeDepthM}mは「入口と同じ値を使う」設定により、入口奥行きと同じ値を使用しています。`
+            : `反対側奥行き${oppositeDepthM}mの分、この辺からの利用可能幅が圧縮されています。`
+        );
+        svgBody += `<polygon points="${ptsStr(holeSvgPts)}" class="plt-shapesvg-opposite" ${oppositeAttr} />`;
+        labelDescriptors.push({ x: labelSvg.x, y: labelSvg.y, text: `🔄反対側 奥行き${oppositeDepthM}m`, cssClass: 'plt-shapesvg-opposite-label', onclick: oppositeAttr });
         hasOpposite = true;
         oppositeDepthLabel = `${oppositeDepthM}m`;
       }
@@ -9787,7 +9909,7 @@ function _adpBuildUnifiedRidgePreviewSVG() {
       svgBody += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" class="plt-shapesvg-cropridge ${colorClass}"><title>${cropName} 畝${i + 1}${lenLabel}</title></line>`;
     });
 
-    // 畝幅寸法線オーバーレイ（Step5-2：タップで数値ポップオーバー編集）を作物ごとに重ねる
+    // 畝幅寸法線オーバーレイ（UX見直し・2026-07：タップでその場に一文説明を表示）を作物ごとに重ねる
     const dimResult = _adpBuildRidgeDimensionSVG(entry.cropId, entry.plantingDesign || null, toLocal, toSvg, fieldLocalPts);
     if (dimResult.hasDim) {
       svgBody += dimResult.svg;
@@ -9813,15 +9935,26 @@ function _adpBuildUnifiedRidgePreviewSVG() {
     legendItems.push(`<span class="plt-shapesvg-legend-item"><i class="plt-shapesvg-swatch plt-shapesvg-swatch-opposite"></i>🔄 反対側（奥行き${oppositeDepthLabel}）</span>`);
   }
   if (anyDim) {
-    legendItems.push(`<span class="plt-shapesvg-legend-item"><i class="plt-shapesvg-swatch plt-shapesvg-swatch-dim"></i>📏 畝幅寸法線（タップで編集）</span>`);
+    legendItems.push(`<span class="plt-shapesvg-legend-item"><i class="plt-shapesvg-swatch plt-shapesvg-swatch-dim"></i>📏 畝幅寸法線（タップで説明）</span>`);
   }
 
   const dimNoteHTML = anyDimSchematic
     ? `<div class="plt-dimline-schematic-note">📏 寸法線は模式図です（畝上幅・畝間の内訳は実際のポリゴン形状には反映されません）。</div>`
     : '';
 
+  // UX見直し（2026-07）：ゾーン判定バッジ。矩形ゾーンは従来どおり無表示（正常時は静かに）、
+  // 余剰形状ゾーンが成立している場合のみ警告として表示し、タップで一文説明を出す。
+  const zoneInfo = (typeof PlantingLogic.getLastZoneInfo === 'function') ? PlantingLogic.getLastZoneInfo() : { valid: false };
+  const escAttrZone = (s) => String(s).replace(/"/g, '&quot;');
+  const zoneBadgeHTML = (zoneInfo.valid && zoneInfo.leftoverAreaSqm > 0.5)
+    ? `<button type="button" class="plt-zonebadge plt-zonebadge-surplus"
+        data-explain="${escAttrZone(`この圃場は入口辺と畝方向から作れる矩形（${zoneInfo.rectAreaSqm}m²）に収まりきらないため、残り${zoneInfo.leftoverAreaSqm}m²を余剰形状ゾーンとして別枠で計算しています。占有率の高い作物から矩形側に優先配置されます。`)}"
+        onclick="_adpShowDimlineExplain(this)">⚠️ 余剰形状ゾーンあり</button>`
+    : '';
+
   return `
     <div class="plt-shapesvg-wrap" id="unified-ridge-preview">
+      ${zoneBadgeHTML}
       <svg viewBox="0 0 ${VIEW} ${VIEW}" class="plt-shapesvg" xmlns="http://www.w3.org/2000/svg">
         ${svgBody}
       </svg>
@@ -9897,8 +10030,10 @@ function _adpRefreshUnifiedPreview() {
  * - design.ridgeRatioPctから派生したpathCmが0以下：ピッチ全体を1本
  * - pathCmが正の値：ピッチをridgeRatioPctで按分した畝上幅／畝間の2区間（模式図・色分け）
  * - 畝が1列のみの場合：エリア共通の畝方向（法線）を使い、破線で模式的に延長表示
- * 編集UIは持たず表示のみ。各線本体（当たり判定込み）・数値ラベルのタップは
- * _adpNavigateToRidgeInput で断面図まわりの新ブロック（入力群）へスクロール＋ハイライト誘導する。
+ * 直接編集UIは持たない。各線本体（当たり判定込み）・数値ラベルのタップは
+ * _adpShowDimlineExplain でその場に一文説明をポップオーバー表示し、
+ * ポップオーバー内の「編集する」ボタンから _adpNavigateToRidgeInput で
+ * 断面図まわりの新ブロック（入力群）へスクロール＋ハイライト誘導する。
  *
  * @param {string} cropId
  * @param {object|null} design - plantingDesign（実務側のみ対象）
@@ -10068,39 +10203,48 @@ function _adpBuildRidgeDimensionSVG(cropId, design, toLocal, toSvg, fieldLocalPt
   let svg = '<g class="plt-dimline-group">';
   const labels = []; // Step6：<text>は直接埋め込まず記述子として集約し、呼び出し元で一括衝突解決する
 
-  // Step8-7：平面図の寸法線は編集不可・表示専用。タップ時は数値ポップオーバーではなく
-  // 断面図まわりの新ブロック（入力群）へスクロール＋ハイライト誘導する（_adpNavigateToRidgeInput）。
-  const onclickNav = `onclick="_adpNavigateToRidgeInput('${cropId}')"`;
+  // UX見直し（2026-07）：平面図の寸法線タップは、まずその場で一文説明を表示する
+  // （_adpShowDimlineExplain）。「調整」タブへの遷移は説明ポップオーバー内の
+  // 「編集する」ボタン（_adpNavigateToRidgeInput）に分離した。
+  const escAttr = (s) => String(s).replace(/"/g, '&quot;');
+  function explainAttr(text) {
+    return `data-explain="${escAttr(text)}" onclick="_adpShowDimlineExplain(this,'${cropId}')"`;
+  }
 
   if (!isDetail) {
     // pathCmが0以下（畝間なし）の場合はピッチ全体を1本表示
     const curVal = design.rowWidth ?? pitchCm;
-    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline-hit" ${onclickNav} />`;
-    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline plt-dimline-single"${dashAttr} ${onclickNav} />`;
+    const singleAttr = explainAttr(`畝幅 ${curVal}cm がこの畝のピッチ全体です（畝間の内訳なし）。`);
+    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline-hit" ${singleAttr} />`;
+    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline plt-dimline-single"${dashAttr} ${singleAttr} />`;
     svg += tickLine(svgA, 'plt-dimline-tick-single');
     svg += tickLine(svgB, 'plt-dimline-tick-single');
     const mid = midOf(svgA, svgB);
-    labels.push({ x: mid.x, y: mid.y - 6, text: `畝幅 ${curVal}cm`, cssClass: 'plt-dimline-label', onclick: onclickNav });
+    labels.push({ x: mid.x, y: mid.y - 6, text: `畝幅 ${curVal}cm`, cssClass: 'plt-dimline-label', onclick: singleAttr });
   } else {
     // 畝上幅／畝間の按分2区間（ridgeRatioPctから派生。実際のポリゴンには内訳が無いため模式図）
     const topCm  = derived.topCm;
     const pathCm = derived.pathCm;
-    const topRatio = (design.ridgeRatioPct ?? 50) / 100;
+    const ratioPct = design.ridgeRatioPct ?? 50;
+    const topRatio = ratioPct / 100;
     const C = { x: A.x + normalDir.x * pitchM * topRatio, y: A.y + normalDir.y * pitchM * topRatio };
     const svgC = toSvg(C);
 
-    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgC.x.toFixed(1)}" y2="${svgC.y.toFixed(1)}" class="plt-dimline-hit" ${onclickNav} />`;
-    svg += `<line x1="${svgC.x.toFixed(1)}" y1="${svgC.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline-hit" ${onclickNav} />`;
-    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgC.x.toFixed(1)}" y2="${svgC.y.toFixed(1)}" class="plt-dimline plt-dimline-top"${dashAttr} ${onclickNav} />`;
-    svg += `<line x1="${svgC.x.toFixed(1)}" y1="${svgC.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline plt-dimline-path"${dashAttr} ${onclickNav} />`;
+    const topAttr  = explainAttr(`畝上幅 ${topCm}cm は、畝比率${ratioPct}%（畝間 ${pathCm}cmとの按分）から算出されています。`);
+    const pathAttr = explainAttr(`畝間 ${pathCm}cm は、畝比率${ratioPct}%（畝上幅 ${topCm}cmとの按分）から算出されています。`);
+
+    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgC.x.toFixed(1)}" y2="${svgC.y.toFixed(1)}" class="plt-dimline-hit" ${topAttr} />`;
+    svg += `<line x1="${svgC.x.toFixed(1)}" y1="${svgC.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline-hit" ${pathAttr} />`;
+    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgC.x.toFixed(1)}" y2="${svgC.y.toFixed(1)}" class="plt-dimline plt-dimline-top"${dashAttr} ${topAttr} />`;
+    svg += `<line x1="${svgC.x.toFixed(1)}" y1="${svgC.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline plt-dimline-path"${dashAttr} ${pathAttr} />`;
     svg += tickLine(svgA, 'plt-dimline-tick-top');
     svg += tickLine(svgC, 'plt-dimline-tick-path');
     svg += tickLine(svgB, 'plt-dimline-tick-path');
 
     const midTop  = midOf(svgA, svgC);
     const midPath = midOf(svgC, svgB);
-    labels.push({ x: midTop.x, y: midTop.y - 6, text: `畝上幅 ${topCm}cm`, cssClass: 'plt-dimline-label', onclick: onclickNav });
-    labels.push({ x: midPath.x, y: midPath.y - 6, text: `畝間 ${pathCm}cm`, cssClass: 'plt-dimline-label plt-dimline-label-path', onclick: onclickNav });
+    labels.push({ x: midTop.x, y: midTop.y - 6, text: `畝上幅 ${topCm}cm`, cssClass: 'plt-dimline-label', onclick: topAttr });
+    labels.push({ x: midPath.x, y: midPath.y - 6, text: `畝間 ${pathCm}cm`, cssClass: 'plt-dimline-label plt-dimline-label-path', onclick: pathAttr });
   }
 
   svg += '</g>';

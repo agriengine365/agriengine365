@@ -7459,11 +7459,13 @@ html.draw-dialog-active .bottom-nav {
   border: 1px solid var(--cc);
 }
 
-/* ハウス：入口ノッチ（オレンジ系＝amber） */
+/* ハウス：入口ノッチ（オレンジ系＝amber）
+   UX見直し（2026-07）：タップで一文説明を表示するためcursor:pointerを追加 */
 .plt-shapesvg-entrance {
   fill: rgba(251, 191, 36, 0.12);
   stroke: var(--amber);
   stroke-width: 2;
+  cursor: pointer;
 }
 .plt-shapesvg-entrance-label {
   font-family: var(--mono);
@@ -7472,12 +7474,14 @@ html.draw-dialog-active .bottom-nav {
   paint-order: stroke;
   stroke: #fff; /* Step6：作物帯(色付き)に重なっても読めるよう白フチに変更（旧: var(--bg2)） */
   stroke-width: 3px;
+  cursor: pointer;
 }
 /* 圃場マージン：反対側（Uターンスペース）帯（青） */
 .plt-shapesvg-opposite {
   fill: rgba(96, 165, 250, 0.12);
   stroke: var(--blue);
   stroke-width: 2;
+  cursor: pointer;
 }
 .plt-shapesvg-opposite-label {
   font-family: var(--mono);
@@ -7486,6 +7490,7 @@ html.draw-dialog-active .bottom-nav {
   paint-order: stroke;
   stroke: #fff; /* Step6：作物帯(色付き)に重なっても読めるよう白フチに変更（旧: var(--bg2)） */
   stroke-width: 3px;
+  cursor: pointer;
 }
 
 /* SVG下の補足コメント（外膜マージンの説明など） */
@@ -7494,6 +7499,46 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text3);
   margin-top: 8px;
   line-height: 1.5;
+}
+
+/* UX見直し（2026-07）：余剰形状ゾーン成立時のみ表示する警告バッジ。
+   矩形ゾーンのみ（正常系）のときは何も表示しない＝静かなデフォルトを維持する。 */
+.plt-zonebadge {
+  display: block;
+  width: 100%;
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  margin-bottom: 8px;
+  cursor: pointer;
+}
+.plt-zonebadge-surplus {
+  background: color-mix(in srgb, var(--amber) 14%, transparent);
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+/* UX見直し（2026-07）：差分フラッシュ。再描画直前の畝位置を点線残像として一瞬重ね、
+   0.9秒でフェードアウトさせる（JS側でも同じ900msでDOMから確実に除去する）。
+   色は元の畝と同じ plt-cropcolor-* を流用し、彩度を落とした点線として表示する。 */
+.plt-diffghost {
+  pointer-events: none;
+}
+.plt-diffghost-line {
+  fill: none;
+  stroke: var(--cc, currentColor);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+  stroke-linecap: round;
+  opacity: 0.7;
+  animation: plt-diffghost-fade 0.9s ease-out forwards;
+}
+@keyframes plt-diffghost-fade {
+  0%   { opacity: 0.7; }
+  100% { opacity: 0; }
 }
 
 /* ═══════════════════════════════════════════
@@ -7556,6 +7601,55 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text3);
   margin-top: 4px;
   line-height: 1.5;
+}
+
+/* UX見直し（2026-07）：寸法線タップ時の一文説明ポップオーバー。
+   .plt-shapesvg-wrap（position:relative）の下部に貼り付くシート状に表示する。
+   個々の寸法線の画面座標を計算しないため、SVG内の位置に関わらず安定して表示できる。 */
+.plt-dimline-explain {
+  display: none;
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  z-index: 5;
+}
+.plt-dimline-explain.open {
+  display: block;
+}
+.plt-dimline-explain-text {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.plt-dimline-explain-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.plt-dimline-explain-editbtn {
+  font-size: 11.5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--violet);
+  background: transparent;
+  color: var(--violet);
+  cursor: pointer;
+}
+.plt-dimline-explain-closebtn {
+  font-size: 11.5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
 }
 
 /* 固定／暫定の凡例（Step5-4：全カード常設表示。既存.plt-badge-provisionalの配色を流用） */
@@ -11750,7 +11844,8 @@ html.draw-dialog-active .bottom-nav {
   margin-bottom: 0;
 }
 
-/* 表示トグル（「🔍 拡大詳細」⇔「🗺️ 全体」）。見た目のトーンは
+/* 表示トグル（「🗺️ 全体」⇔「🔍 拡大詳細」。UX見直し・2026-07でデフォルト＝全体に変更し、
+   並び順もそれに合わせて入れ替えた）。見た目のトーンは
    辺選択トグルバー（.plt-edgetoggle-chip）と統一している。 */
 .plt-viewtoggle {
   display: flex;

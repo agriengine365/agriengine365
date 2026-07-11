@@ -16,6 +16,9 @@
 //    PlantingLogic.getEffectiveFieldGeometry(area, houseMargin)
 //    PlantingLogic.recalcAllBands(practicecrops, area, houseMargin, zonePriorityMode)
 //      ↑ zonePriorityMode は省略可（省略時は従来どおり 'ratio'。Step1で 'fixed' を追加）
+//    PlantingLogic.getLastZoneInfo()
+//      ↑ UX見直し（2026-07）：直近のrecalcAllBands呼び出しで矩形/余剰形状ゾーン分割が
+//        成立したかどうかをUI側（ゾーン判定バッジ表示）から参照するための読み取り専用API。
 //    PlantingLogic.recalcAnalysisRidgeSegments(design, pitchCm, area, houseMargin)
 //      ↑ 両関数とも design.ridgeInputMode==='count' なら内部で自動的に
 //        畝数指定方式（calcRidgesByCount逆算）に切り替わる（呼び出し側の変更不要）
@@ -24,6 +27,24 @@
 // ═══════════════════════════════════════════
 
 const PlantingLogic = (() => {
+
+  /**
+   * UX見直し（2026-07）：_recalcAllBandsCore で計算した矩形／余剰形状ゾーン分割の
+   * 判定結果を保持する読み取り専用の内部状態。ゾーン判定バッジ表示のためだけに
+   * 追加したもので、帯分割の計算結果そのもの（bands）には影響しない。
+   * getLastZoneInfo() 経由でのみ参照させ、直接の書き換えは想定しない。
+   */
+  let _lastZoneInfo = { valid: false, leftoverAreaSqm: 0, rectAreaSqm: 0 };
+
+  /**
+   * 直近の recalcAllBands 呼び出し時点でのゾーン分割判定結果を返す。
+   * valid:true かつ leftoverAreaSqm>0 のとき「余剰形状ゾーン」が実際に成立している。
+   * @returns {{valid: boolean, leftoverAreaSqm: number, rectAreaSqm: number}}
+   */
+  function getLastZoneInfo() {
+    return { ..._lastZoneInfo };
+  }
+
 
   /**
    * cropDB の plantingStandard から初期値を生成する。
@@ -356,6 +377,12 @@ const PlantingLogic = (() => {
       }
     }
 
+    // UX見直し（2026-07）：このコアが呼ばれるたびに最新のゾーン判定結果を記録する
+    // （フォールバックしてzoned===nullの場合＝余剰形状ゾーンは不成立、として明示的に記録）。
+    _lastZoneInfo = zoned
+      ? { valid: true, leftoverAreaSqm: zoned.leftoverAreaSqm, rectAreaSqm: zoned.rectAreaSqm }
+      : { valid: false, leftoverAreaSqm: 0, rectAreaSqm: 0 };
+
     if (!zoned) {
       // ── 従来ロジック：圃場全体を1つのポリゴンとして帯分割 ──
       const ratios = practicecrops.map(c => Number(c.ratio) || 0);
@@ -612,6 +639,7 @@ const PlantingLogic = (() => {
     getFieldPolygon,
     getEffectiveFieldGeometry,
     recalcAllBands,
+    getLastZoneInfo,
     recalcAnalysisRidgeSegments,
     calcPlanting,
     areaWarn,
