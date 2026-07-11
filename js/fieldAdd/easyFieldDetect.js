@@ -74,6 +74,19 @@
 //  - _postProcessMask()（open→close→シード連結成分抽出）はエッジ考慮を外した分の
 //    誤拡張対策として維持。
 //
+//  検出感度改善セッション（第3弾）で以下を変更（「ハウスが実際は25mあるのに20m/21mで
+//  打ち切られる」「北海道の圃場は100m超えも普通」とのフィードバックを受けての改修）：
+//  - クロップ範囲（CROP_SIZE_M_HOUSE/FIELD）を固定値のまま使うのをやめ、
+//    _detectAtCropSize()の結果がcrop端に接していたら（=対象がcrop範囲より大きく
+//    はみ出している可能性が高い）、detect()内のループでcropSizeMを2倍ずつ最大5段階
+//    まで広げて再検出するように変更（ハウス20→40→80→160→320m、露地50→100→200→
+//    400→800m）。対象が小さいうちは従来通り初期値の高解像度のまま検出でき、
+//    大きい対象の時だけ自動的に範囲が広がる（その分解像度は粗くなるが実用上問題ない）。
+//  - FieldDetectAlgorithms.maskTouchesBoundary()を新設し、上記の判定に使用。
+//  - 感度スライダー変更時（_reRunFromCache）にもcrop端接触チェックを追加し、
+//    達した場合はトーストで案内する（自動での再クロップは行わない。頻繁な
+//    スライダー操作のたびに毎回ラスタライズし直すのはコスト高のため）。
+//
 //  技術メモ：
 //  - map.js側でタイルレイヤーに crossOrigin:true を指定しているため、
 //    地理院タイル（Originヘッダー送信時のみCORS許可される仕様）を
@@ -92,9 +105,17 @@ const EasyFieldDetect = (() => {
   const MIN_DETECT_ZOOM        = 17;   // 地理院タイルmaxNativeZoom=18を踏まえた暫定値。要現地調整
   // 検出精度改善セッション：旧RASTER_MAX_DIMENSION(480px・画面全体を縮小)を廃止し、
   // タップ地点周辺だけを高解像度でクロップする方式に変更（_rasterizeCropToCanvas参照）。
-  const CROP_SIZE_M_HOUSE      = 20;   // クロップ一辺の実距離[m]：ハウス/加温（対象が小さいため狭く高精細に）
-  const CROP_SIZE_M_FIELD      = 50;   // クロップ一辺の実距離[m]：露地
+  const CROP_SIZE_M_HOUSE      = 20;   // クロップ一辺の実距離[m]：ハウス/加温の初期値（対象が小さいため狭く高精細に）
+  const CROP_SIZE_M_FIELD      = 50;   // クロップ一辺の実距離[m]：露地の初期値
   const CROP_RASTER_TARGET_PX  = 1000; // クロップ後の解析用キャンバス解像度
+  // 検出感度改善セッション（第3弾）：「ハウスが実際は25mあるのに20m/21mで打ち切られる」
+  // 「北海道の圃場は100mを超えることも普通」という指摘を受け、クロップ範囲を固定値
+  // から段階拡張式に変更。初期値（上記）で検出したmaskがcrop端に接していたら
+  // （＝crop範囲内に収まりきっていない可能性が高い）、cropSizeMを2倍にして再検出する。
+  // 小さいハウス・圃場は従来通り初期値の高解像度のまま検出でき、大きい対象の時だけ
+  // 自動的に範囲を広げる（その分解像度は粗くなるが、対象自体が大きいため実用上問題ない）。
+  const CROP_GROW_FACTOR        = 2; // 1段階ごとにcropSizeMを何倍に広げるか
+  const CROP_GROW_MAX_ATTEMPTS  = 5; // 初期値を含め最大5段階（ハウス20→40→80→160→320m、露地50→100→200→400→800m）
   // 検出感度改善セッション（第2弾）：自動チューニング（複数tolerance候補から自動選択）
   // を廃止したため、TOLERANCE_CANDIDATESは不要になった（旧値はgit履歴を参照）。
   // 検出感度改善セッション（第2弾）：エッジ考慮flood fill（隣接農地への誤拡張を
@@ -353,32 +374,47 @@ const EasyFieldDetect = (() => {
 
       // 検出精度改善セッション：画面全体480px縮小ではなく、タップ地点周辺のみを
       // 高解像度でクロップして解析する（ハウス/加温は対象が小さいため狭い範囲で高精細に）。
-      const cropSizeM = state.cultivationHint ? CROP_SIZE_M_HOUSE : CROP_SIZE_M_FIELD;
-      const { canvas, scale, originContainerPt } = _rasterizeCropToCanvas(state.tapLatLng, cropSizeM, CROP_RASTER_TARGET_PX);
-      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      // 検出感度改善セッション（第3弾）：対象が初期クロップより大きい場合、maskがcrop端に
+      // 接する（=はみ出している可能性が高い）ので、その時だけcropSizeMを段階的に広げて
+      // 再検出する（_detectAtCropSize参照）。
+      const baseCropSizeM = state.cultivationHint ? CROP_SIZE_M_HOUSE : CROP_SIZE_M_FIELD;
 
-      let imageData;
-      try {
-        imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      } catch (secErr) {
-        console.warn('[EasyFieldDetect] getImageData失敗（CORS制限の可能性）:', secErr);
-        _onDetectFailure('タイル画像を解析できませんでした（ブラウザのセキュリティ制限）。ページを再読み込みしてから、もう一度お試しください。');
+      let attemptResult = null;
+      for (let attempt = 0; attempt < CROP_GROW_MAX_ATTEMPTS; attempt++) {
+        if (state.cancelToken.cancelled) { _onDetectCancelled(); return; }
+
+        const cropSizeM = baseCropSizeM * Math.pow(CROP_GROW_FACTOR, attempt);
+        const r = _detectAtCropSize(cropSizeM);
+
+        if (r.error === 'cors') {
+          _onDetectFailure('タイル画像を解析できませんでした（ブラウザのセキュリティ制限）。ページを再読み込みしてから、もう一度お試しください。');
+          return;
+        }
+        if (r.error === 'outOfView') {
+          _onDetectFailure('検出地点が画面外です。地図を動かしてやり直してください。');
+          return;
+        }
+
+        if (r.mask) {
+          attemptResult = r;
+          if (!r.touchesBoundary) break; // crop範囲内に収まった＝これ以上広げる必要なし
+        }
+        // notFound、またはmaskがcrop端に接している場合は、次のループでcropSizeMを広げて再試行
+      }
+
+      if (state.cancelToken.cancelled) { _onDetectCancelled(); return; }
+
+      if (!attemptResult) {
+        _onDetectFailure('検出範囲を特定できませんでした。地図を動かして別の地点でお試しください。');
         return;
       }
 
-      // シード座標：container座標 → クロップ原点基準へシフト → 解析解像度へ拡大
-      const seedContainerPt = map.latLngToContainerPoint(state.tapLatLng);
-      const seedX = Math.round((seedContainerPt.x - originContainerPt.x) * scale);
-      const seedY = Math.round((seedContainerPt.y - originContainerPt.y) * scale);
-      if (seedX < 0 || seedY < 0 || seedX >= canvas.width || seedY >= canvas.height) {
-        _onDetectFailure('検出地点が画面外です。地図を動かしてやり直してください。');
-        return;
+      if (attemptResult.touchesBoundary) {
+        // 最大段階まで広げてもなお対象がクロップ範囲に収まりきらなかった場合の保険
+        showDrawToast('対象が広いため、検出範囲の端で打ち切られている可能性があります。頂点を手動で調整してください。', 'amber');
       }
 
-      const gradientMap = FieldDetectAlgorithms.computeGradientMap(imageData);
-      // gradientMapはflood fillの誤拡張防止（エッジ考慮）には使わなくなったが、
-      // 矩形モード時のsnapRectEdgesToGradient()（辺を実際の勾配へ再フィット）で
-      // 引き続き使用するため、算出自体は残す。
+      const { canvas, scale, originContainerPt, imageData, gradientMap, seedX, seedY, mask } = attemptResult;
 
       state.canvas      = canvas;
       state.imageData   = imageData;
@@ -387,32 +423,9 @@ const EasyFieldDetect = (() => {
       state.rasterOriginPt = originContainerPt;
       state.seedX       = seedX;
       state.seedY       = seedY;
+      state.sensitivity = DEFAULT_SENSITIVITY;
 
-      if (state.cancelToken.cancelled) { _onDetectCancelled(); return; }
-
-      // 検出感度改善セッション（第2弾）：エッジ考慮flood fill・複数tolerance自動
-      // チューニングを廃止し、単純な色距離flood fill＋固定の初期感度値のみによる
-      // 単一検出へ戻した（隣接圃場への誤拡張リスクは承知の上でシンプルさを優先）。
-      // 旧autoTuneTolerance実装はgit履歴を参照。
-      const tolerance = DEFAULT_SENSITIVITY;
-      const rawMask = FieldDetectAlgorithms.floodFillMaskEdgeAware(
-        imageData, null, seedX, seedY, tolerance, null
-      );
-
-      if (state.cancelToken.cancelled) { _onDetectCancelled(); return; }
-
-      if (!rawMask) {
-        _onDetectFailure('検出範囲を特定できませんでした。地図を動かして別の地点でお試しください。');
-        return;
-      }
-
-      state.sensitivity = tolerance;
-
-      const closedMask = FieldDetectAlgorithms.morphologyClose(rawMask, canvas.width, canvas.height, 1);
-      // 採用したmaskにopen→close→シード連結成分抽出を適用（エッジ考慮を外した分の保険として維持）
-      const processedMask = _postProcessMask(closedMask, canvas.width, canvas.height, seedX, seedY);
-
-      _buildAndShowPreviewFromMask(processedMask, canvas.width, canvas.height);
+      _buildAndShowPreviewFromMask(mask, canvas.width, canvas.height);
 
     } catch (e) {
       console.error('[EasyFieldDetect] 検出エラー:', e);
@@ -472,6 +485,11 @@ const EasyFieldDetect = (() => {
     }
     const closedMask = FieldDetectAlgorithms.morphologyClose(rawMask, w, h, 1);
     const processedMask = _postProcessMask(closedMask, w, h, seedX, seedY);
+
+    if (FieldDetectAlgorithms.maskTouchesBoundary(processedMask, w, h)) {
+      showToast('検出範囲の端に達しています。感度を下げるか、地図を動かして再検出してください。', 'amber');
+    }
+
     _buildAndShowPreviewFromMask(processedMask, w, h);
   }
 
@@ -483,6 +501,53 @@ const EasyFieldDetect = (() => {
     m = FieldDetectAlgorithms.morphologyClose(m, w, h, 1);
     m = FieldDetectAlgorithms.keepSeedComponentMask(m, w, h, seedX, seedY);
     return m;
+  }
+
+  // ─── 指定cropSizeMで1回分の検出を行うヘルパー（検出感度改善セッション第3弾で追加） ───
+  // ラスタライズ→シード座標算出→単純な色距離flood fill→後処理→crop端接触判定まで。
+  // detect()のクロップ拡張ループから呼ばれる。
+  // 戻り値：
+  //   成功時: { canvas, scale, originContainerPt, imageData, gradientMap, seedX, seedY, mask, touchesBoundary }
+  //   失敗時: { error: 'cors' | 'outOfView' | 'notFound' }
+  function _detectAtCropSize(cropSizeM) {
+    const { canvas, scale, originContainerPt } = _rasterizeCropToCanvas(state.tapLatLng, cropSizeM, CROP_RASTER_TARGET_PX);
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+    let imageData;
+    try {
+      imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    } catch (secErr) {
+      console.warn('[EasyFieldDetect] getImageData失敗（CORS制限の可能性）:', secErr);
+      return { error: 'cors' };
+    }
+
+    // シード座標：container座標 → クロップ原点基準へシフト → 解析解像度へ拡大
+    const seedContainerPt = map.latLngToContainerPoint(state.tapLatLng);
+    const seedX = Math.round((seedContainerPt.x - originContainerPt.x) * scale);
+    const seedY = Math.round((seedContainerPt.y - originContainerPt.y) * scale);
+    if (seedX < 0 || seedY < 0 || seedX >= canvas.width || seedY >= canvas.height) {
+      return { error: 'outOfView' };
+    }
+
+    const gradientMap = FieldDetectAlgorithms.computeGradientMap(imageData);
+    // gradientMapはflood fillの誤拡張防止（エッジ考慮）には使わなくなったが、
+    // 矩形モード時のsnapRectEdgesToGradient()（辺を実際の勾配へ再フィット）で
+    // 引き続き使用するため、算出自体は残す。
+
+    // 検出感度改善セッション（第2弾）：エッジ考慮flood fill・複数tolerance自動チューニングを
+    // 廃止し、単純な色距離flood fill＋固定の初期感度値のみによる単一検出へ戻した
+    // （隣接圃場への誤拡張リスクは承知の上でシンプルさを優先）。旧autoTuneTolerance実装はgit履歴を参照。
+    const rawMask = FieldDetectAlgorithms.floodFillMaskEdgeAware(
+      imageData, null, seedX, seedY, DEFAULT_SENSITIVITY, null
+    );
+    if (!rawMask) return { error: 'notFound' };
+
+    const closedMask = FieldDetectAlgorithms.morphologyClose(rawMask, canvas.width, canvas.height, 1);
+    // 採用したmaskにopen→close→シード連結成分抽出を適用（エッジ考慮を外した分の保険として維持）
+    const processedMask = _postProcessMask(closedMask, canvas.width, canvas.height, seedX, seedY);
+    const touchesBoundary = FieldDetectAlgorithms.maskTouchesBoundary(processedMask, canvas.width, canvas.height);
+
+    return { canvas, scale, originContainerPt, imageData, gradientMap, seedX, seedY, mask: processedMask, touchesBoundary };
   }
 
   // ─── mask → 輪郭抽出 → 単純化・矩形フィット → FieldConfirmAdjustへ引き渡し ───

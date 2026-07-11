@@ -747,6 +747,21 @@ const FieldDetectAlgorithms = (() => {
     };
   }
 
+  // ─── マスクがcanvas端に接しているか判定（検出感度改善セッション：クロップ拡張用に追加） ───
+  // ハウス/加温・露地とも、解析対象は「タップ地点中心のcropSizeM四方」に限られるため、
+  // 実際の対象がcrop範囲より大きい場合、maskはcrop端で機械的に打ち切られる。
+  // 端（最外周1px）に前景ピクセルが存在する＝crop範囲内に収まりきっていない可能性が高い、
+  // という判定に使う（呼び出し側でcropSizeMを広げて再検出するかどうかの判断材料）。
+  function maskTouchesBoundary(mask, w, h) {
+    for (let x = 0; x < w; x++) {
+      if (mask[x] || mask[(h - 1) * w + x]) return true;
+    }
+    for (let y = 0; y < h; y++) {
+      if (mask[y * w] || mask[y * w + (w - 1)]) return true;
+    }
+    return false;
+  }
+
   // ─── 公開API ───
   return {
     // 既存移設（ロジック無改修）
@@ -770,5 +785,7 @@ const FieldDetectAlgorithms = (() => {
     // 新規（ハウス規格スナップ）
     HOUSE_STANDARD_WIDTHS_M,
     snapHouseDimensions,
+    // 新規（検出感度改善セッション：クロップ拡張の判定用）
+    maskTouchesBoundary,
   };
 })();
