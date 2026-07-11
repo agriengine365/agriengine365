@@ -14,6 +14,9 @@
 //   - 新規（精度改善、仕様書4章）: computeGradientMap / computeSeedColor /
 //     floodFillMaskEdgeAware / morphologyClose / scoreMaskPlausibility /
 //     autoTuneTolerance / snapNearRightAngles
+//   - 新規（検出精度改善セッション、クロップ高解像度化に伴う追加）:
+//     morphologyOpen / keepSeedComponentMask / computeAdaptiveEdgeThreshold /
+//     snapRectEdgesToGradient
 //
 //  依存：輪郭抽出（traceContourMsqr）のみ msqr（js/vendor/msqr.min.js）に依存。
 //  それ以外の関数は外部ライブラリ非依存。
@@ -369,6 +372,44 @@ const FieldDetectAlgorithms = (() => {
     return cur;
   }
 
+  // ─── モルフォロジー・オープニング（3x3収縮→膨張）：隣接農地へのリーク橋を切断 ───
+  // 検出精度改善セッションで追加。closeの前段に挟むことで、色類似による
+  // 細い「橋」（隣接畑・畦道への漏れ）を切断してから、closeで小さな穴を埋める。
+  function morphologyOpen(mask, w, h, iterations = 1) {
+    let cur = mask;
+    for (let i = 0; i < iterations; i++) {
+      cur = _erodeOnce(cur, w, h);
+      cur = _dilateOnce(cur, w, h);
+    }
+    return cur;
+  }
+
+  // ─── シード連結成分のみ抽出（4連結。floodFillMaskEdgeAwareと同じ隣接定義） ───
+  // open/close適用後、万一シードと繋がっていない別成分（分離した葉・再結合した
+  // 別ブロブ等）が紛れ込んでいた場合に、シードを含む一塊だけへ絞り込む保険。
+  function keepSeedComponentMask(mask, w, h, seedX, seedY) {
+    const startIdx = seedY * w + seedX;
+    if (startIdx < 0 || startIdx >= mask.length || !mask[startIdx]) return mask;
+
+    const out = new Uint8Array(w * h);
+    const stack = [startIdx];
+    out[startIdx] = 1;
+
+    while (stack.length) {
+      const idx = stack.pop();
+      const x = idx % w, y = (idx / w) | 0;
+      const neighbors = [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]];
+      for (const [nx, ny] of neighbors) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const nIdx = ny * w + nx;
+        if (out[nIdx] || !mask[nIdx]) continue;
+        out[nIdx] = 1;
+        stack.push(nIdx);
+      }
+    }
+    return out;
+  }
+
   // ─── 妥当性スコア（0〜1）：充填率0.7 + 凸性0.3（仕様書4章・確定配分） ───
   function _trapezoidScore(v, x0, x1, x2, x3) {
     if (v <= x0 || v >= x3) return 0;
@@ -518,6 +559,120 @@ const FieldDetectAlgorithms = (() => {
   }
 
   // ═══════════════════════════════════════════
+  //  新規：検出精度改善（クロップ高解像度化に伴う追加分）
+  //  - computeAdaptiveEdgeThreshold：floodFillMaskEdgeAwareのedgeThresholdを、
+  //    固定値ではなく解析範囲の勾配ヒストグラムからパーセンタイル基準で動的算出。
+  //    タイルの撮影条件（天候・季節・影の濃さ）によるコントラスト差に対応する。
+  //  - snapRectEdgesToGradient：矩形モードでminAreaRect()が返した4隅を、
+  //    色ベースのマスク外形だけでなく実際の勾配（エッジ）に局所的に再フィット
+  //    させる。色の滲みやリークで丸まった／ズレた角を、実エッジ位置へ寄せる。
+  // ═══════════════════════════════════════════
+
+  // ─── 適応的edge threshold：勾配ヒストグラムのパーセンタイル値 ───
+  // ヒストグラム方式（O(n)）を採用し、大きなcrop画像でもソート(O(n log n))より軽くする。
+  function computeAdaptiveEdgeThreshold(gradientMap, percentile = 80, minVal = 20, maxVal = 140) {
+    const n = gradientMap ? gradientMap.length : 0;
+    if (n === 0) return minVal;
+
+    let maxG = 0;
+    for (let i = 0; i < n; i++) if (gradientMap[i] > maxG) maxG = gradientMap[i];
+    if (maxG <= 0) return minVal;
+
+    const BINS = 256;
+    const hist = new Uint32Array(BINS);
+    const binScale = BINS / (maxG + 1e-6);
+    for (let i = 0; i < n; i++) {
+      let b = (gradientMap[i] * binScale) | 0;
+      if (b >= BINS) b = BINS - 1;
+      hist[b]++;
+    }
+
+    const target = Math.floor(n * (percentile / 100));
+    let cum = 0, bin = 0;
+    for (; bin < BINS; bin++) {
+      cum += hist[bin];
+      if (cum >= target) break;
+    }
+    const value = (bin + 0.5) / binScale;
+    return _clamp(value, minVal, maxVal);
+  }
+
+  // ─── 矩形の4辺を勾配マップへ局所的にスナップ ───
+  // corners: minAreaRect()が返す4隅（[p0,p1,p2,p3]、隣接順）。
+  // 各辺を10〜90%区間でsampleCount点サンプリングし、法線方向±searchRadiusPxの
+  // 範囲で勾配が最大になるオフセットを探索、全サンプルの中央値（外れ値に頑健）
+  // だけ辺を平行移動してから、隣接する辺同士を再交差させて新しい4隅を得る。
+  // 勾配が見つからない（全域0など）場合はその辺は動かさない。
+  function snapRectEdgesToGradient(corners, gradientMap, w, h, options = {}) {
+    if (!corners || corners.length !== 4 || !gradientMap) return corners;
+    const sampleCount    = options.sampleCount    || 15;
+    const searchRadiusPx = options.searchRadiusPx || 6;
+
+    const _at = (x, y) => {
+      const xi = Math.round(x), yi = Math.round(y);
+      if (xi < 0 || yi < 0 || xi >= w || yi >= h) return -1;
+      return gradientMap[yi * w + xi];
+    };
+
+    function _refineEdge(a, b) {
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 1e-6) return { a, b };
+      const ux = dx / len, uy = dy / len;
+      const nx = -uy, ny = ux; // 法線方向（符号は探索が±両方向のため任意）
+
+      const offsets = [];
+      for (let i = 0; i < sampleCount; i++) {
+        const t = 0.1 + (0.8 * i) / Math.max(1, sampleCount - 1);
+        const px = a.x + ux * len * t, py = a.y + uy * len * t;
+
+        let bestOffset = 0, bestVal = -1;
+        for (let s = -searchRadiusPx; s <= searchRadiusPx; s++) {
+          const g = _at(px + nx * s, py + ny * s);
+          if (g > bestVal) { bestVal = g; bestOffset = s; }
+        }
+        if (bestVal > 0) offsets.push(bestOffset);
+      }
+
+      if (offsets.length === 0) return { a, b };
+      offsets.sort((p, q) => p - q);
+      const mid = offsets.length >> 1;
+      const median = offsets.length % 2 !== 0 ? offsets[mid] : (offsets[mid - 1] + offsets[mid]) / 2;
+
+      return {
+        a: { x: a.x + nx * median, y: a.y + ny * median },
+        b: { x: b.x + nx * median, y: b.y + ny * median },
+      };
+    }
+
+    const edges = [
+      _refineEdge(corners[0], corners[1]),
+      _refineEdge(corners[1], corners[2]),
+      _refineEdge(corners[2], corners[3]),
+      _refineEdge(corners[3], corners[0]),
+    ];
+
+    // 隣接2辺（直線）の交点を新しい頂点にする（平行でほぼ交わらない場合は元の頂点を維持）
+    function _lineIntersect(p1, p2, p3, p4) {
+      const d1x = p2.x - p1.x, d1y = p2.y - p1.y;
+      const d2x = p4.x - p3.x, d2y = p4.y - p3.y;
+      const denom = d1x * d2y - d1y * d2x;
+      if (Math.abs(denom) < 1e-9) return null;
+      const t = ((p3.x - p1.x) * d2y - (p3.y - p1.y) * d2x) / denom;
+      return { x: p1.x + d1x * t, y: p1.y + d1y * t };
+    }
+
+    const newCorners = [];
+    for (let i = 0; i < 4; i++) {
+      const prevEdge = edges[(i + 3) % 4];
+      const currEdge = edges[i];
+      const pt = _lineIntersect(prevEdge.a, prevEdge.b, currEdge.a, currEdge.b);
+      newCorners.push(pt || corners[i]);
+    }
+    return newCorners;
+  }
+
+  // ═══════════════════════════════════════════
   //  新規：ハウス規格スナップ（仕様書7章の再検討により追加）
   //  検出した矩形の短辺（間口）を、パイプハウスの規格幅に近ければスナップし、
   //  長辺（奥行き）はキリのいい1m単位に丸める。DOM/Leaflet非依存の純粋関数のみ
@@ -567,6 +722,11 @@ const FieldDetectAlgorithms = (() => {
     scoreMaskPlausibility,
     autoTuneTolerance,
     snapNearRightAngles,
+    // 新規（検出精度改善セッション：クロップ高解像度化に伴う追加分）
+    morphologyOpen,
+    keepSeedComponentMask,
+    computeAdaptiveEdgeThreshold,
+    snapRectEdgesToGradient,
     // 新規（ハウス規格スナップ）
     HOUSE_STANDARD_WIDTHS_M,
     snapHouseDimensions,

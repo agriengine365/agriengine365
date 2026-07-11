@@ -44,6 +44,20 @@
 //    （_buildAndShowPreviewFromMask()参照）。'complex'は従来通り
 //    snapNearRightAnglesによる軽微な角度補正のみ（実際の輪郭形状を尊重）。
 //
+//  検出精度改善セッションで以下を変更（太郎さんより「精度が悪い、四角形でぎりぎり」との
+//  フィードバックを受けての改修）：
+//  - _rasterizeMapToCanvas(画面全体480px縮小) → _rasterizeCropToCanvas(タップ地点周辺のみ
+//    高解像度クロップ)へ全面改修。cropSizeMはcultivationHintで使い分け
+//    （ハウス/加温=20m四方、露地=50m四方）、解析解像度はtargetPx=1000固定。
+//  - EDGE_THRESHOLD固定値60 → computeAdaptiveEdgeThreshold()による勾配ヒストグラム
+//    パーセンタイル基準の動的算出に変更（タイルのコントラスト差に対応）。
+//  - 採用したmaskに対し_postProcessMask()（open→close→シード連結成分抽出）を追加。
+//    隣接農地への色類似リークを橋渡し部分で切断してから閉処理する。
+//  - 矩形モード（isRect）でminAreaRect()フィット後、
+//    FieldDetectAlgorithms.snapRectEdgesToGradient()で4辺を実際の勾配（エッジ）へ
+//    局所的に再フィット（ハウス規格スナップより前段）。
+//  - ensureMinZoomForDetect()を警告のみ→検出ブロックに変更。
+//
 //  技術メモ：
 //  - map.js側でタイルレイヤーに crossOrigin:true を指定しているため、
 //    地理院タイル（Originヘッダー送信時のみCORS許可される仕様）を
@@ -60,9 +74,17 @@ const EasyFieldDetect = (() => {
 
   // ─── 定数（仕様書4章・確定値） ───
   const MIN_DETECT_ZOOM        = 17;   // 地理院タイルmaxNativeZoom=18を踏まえた暫定値。要現地調整
-  const RASTER_MAX_DIMENSION   = 480;  // 解析用キャンバスの最大解像度キャップ
+  // 検出精度改善セッション：旧RASTER_MAX_DIMENSION(480px・画面全体を縮小)を廃止し、
+  // タップ地点周辺だけを高解像度でクロップする方式に変更（_rasterizeCropToCanvas参照）。
+  const CROP_SIZE_M_HOUSE      = 20;   // クロップ一辺の実距離[m]：ハウス/加温（対象が小さいため狭く高精細に）
+  const CROP_SIZE_M_FIELD      = 50;   // クロップ一辺の実距離[m]：露地
+  const CROP_RASTER_TARGET_PX  = 1000; // クロップ後の解析用キャンバス解像度
   const TOLERANCE_CANDIDATES   = [6, 15, 30, 50, 70]; // スライダー実運用レンジ6〜70をフルカバー
-  const EDGE_THRESHOLD         = 60;   // 勾配がこれを超える画素は領域拡張を止める
+  // 検出精度改善セッション：固定edgeThreshold=60を廃止し、勾配ヒストグラムの
+  // パーセンタイル基準で動的算出する方式に変更（computeAdaptiveEdgeThreshold）。
+  const EDGE_THRESHOLD_PERCENTILE = 80; // この値より強い勾配は「境界」とみなし領域拡張を止める
+  const EDGE_THRESHOLD_MIN     = 20;   // 動的算出値のクランプ下限
+  const EDGE_THRESHOLD_MAX     = 140;  // 動的算出値のクランプ上限
   const TILE_WAIT_TIMEOUT_MS   = 1500; // タイル読み込み待ちの基本タイムアウト
   const TILE_WAIT_EXTRA_MS     = 1000; // 基本タイムアウト超過時の延長待機
   const SENSITIVITY_DEBOUNCE_MS = 150; // 感度スライダーのデバウンス（仕様書5.3）
@@ -77,7 +99,9 @@ const EasyFieldDetect = (() => {
     canvas:       null,   // ラスタライズ済みcanvas（感度変更時の再利用用）
     imageData:    null,   // canvasから取得したImageData（同上）
     gradientMap:  null,   // computeGradientMap()の結果（同上）
-    rasterScale:  1,      // ラスタライズ時のキャップによる縮小率（座標変換に使用）
+    rasterScale:  1,      // クロップ→解析解像度への拡大率（座標変換に使用）
+    rasterOriginPt: null, // L.Point。クロップ原点のcontainer座標（座標変換に使用。検出精度改善セッションで追加）
+    edgeThreshold: null,  // computeAdaptiveEdgeThreshold()の結果（同上。感度スライダー再検出でも使い回す）
     seedX:        0,
     seedY:        0,
     sensitivity:  DEFAULT_SENSITIVITY, // 現在のtolerance値（自動チューニング結果 or 手動調整値）
@@ -151,6 +175,8 @@ const EasyFieldDetect = (() => {
     state.imageData    = null;
     state.gradientMap  = null;
     state.rasterScale  = 1;
+    state.rasterOriginPt = null;
+    state.edgeThreshold  = null;
     state.sensitivity  = DEFAULT_SENSITIVITY;
     state.detecting    = false;
     state.cancelToken  = null;
@@ -212,6 +238,8 @@ const EasyFieldDetect = (() => {
     state.imageData    = null;
     state.gradientMap  = null;
     state.rasterScale  = 1;
+    state.rasterOriginPt = null;
+    state.edgeThreshold  = null;
     state.sensitivity  = DEFAULT_SENSITIVITY;
     FieldAddController.showPhase('efd-phase-tap');
     _setDetectingUI(false);
@@ -246,11 +274,16 @@ const EasyFieldDetect = (() => {
     }
   }
 
-  // ─── 低ズーム警告（非ブロッキング・テキストのみ、仕様書4章） ───
+  // ─── 低ズーム時は検出をブロック（検出精度改善セッションで警告のみ→ブロックに変更） ───
+  // クロップ高解像度化で分解能自体は上がったが、ズームが低いと1タイル画素が
+  // 表す実距離が大きくなり効果が薄れるため、detect()の入口で止める。
+  // 戻り値: true=検出続行可 / false=ズーム不足（呼び出し側でreturnする）
   function ensureMinZoomForDetect() {
     if (map.getZoom() < MIN_DETECT_ZOOM) {
-      showDrawToast('もう少し拡大すると精度が上がります', 'amber');
+      showDrawToast('もう少し拡大しないと検出できません（ズームを上げてください）', 'amber');
+      return false;
     }
+    return true;
   }
 
   // ─── タイル読み込み完了待ち（新規・バグ修正、仕様書4章） ───
@@ -282,13 +315,15 @@ const EasyFieldDetect = (() => {
   // ─── 検出実行 ───
   async function detect() {
     if (state.detecting) return;
+    // 検出精度改善セッション：ズーム不足はここでブロックして即return（旧実装は警告のみ）。
+    // state.detecting更新前にチェックすることで、ブロック時にUI状態を汚さない。
+    if (!ensureMinZoomForDetect()) return;
+
     state.detecting = true;
     state.cancelToken = { cancelled: false };
     _setDetectingUI(true);
 
     try {
-      ensureMinZoomForDetect();
-
       state.tapLatLng = _getScopeLatLng();
 
       // レイアウト確定を1フレーム待ってから処理開始（描画直後の座標ズレ対策）
@@ -302,7 +337,10 @@ const EasyFieldDetect = (() => {
         return;
       }
 
-      const { canvas, scale } = _rasterizeMapToCanvas(RASTER_MAX_DIMENSION);
+      // 検出精度改善セッション：画面全体480px縮小ではなく、タップ地点周辺のみを
+      // 高解像度でクロップして解析する（ハウス/加温は対象が小さいため狭い範囲で高精細に）。
+      const cropSizeM = state.cultivationHint ? CROP_SIZE_M_HOUSE : CROP_SIZE_M_FIELD;
+      const { canvas, scale, originContainerPt } = _rasterizeCropToCanvas(state.tapLatLng, cropSizeM, CROP_RASTER_TARGET_PX);
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
       let imageData;
@@ -314,27 +352,35 @@ const EasyFieldDetect = (() => {
         return;
       }
 
-      const seedPt = map.latLngToContainerPoint(state.tapLatLng);
-      const seedX = Math.round(seedPt.x * scale);
-      const seedY = Math.round(seedPt.y * scale);
+      // シード座標：container座標 → クロップ原点基準へシフト → 解析解像度へ拡大
+      const seedContainerPt = map.latLngToContainerPoint(state.tapLatLng);
+      const seedX = Math.round((seedContainerPt.x - originContainerPt.x) * scale);
+      const seedY = Math.round((seedContainerPt.y - originContainerPt.y) * scale);
       if (seedX < 0 || seedY < 0 || seedX >= canvas.width || seedY >= canvas.height) {
         _onDetectFailure('検出地点が画面外です。地図を動かしてやり直してください。');
         return;
       }
 
       const gradientMap = FieldDetectAlgorithms.computeGradientMap(imageData);
+      // 検出精度改善セッション：固定edgeThreshold=60 → 勾配ヒストグラムのパーセンタイル基準で動的算出。
+      // 感度スライダーでの再検出（_reRunFromCache）でも同じ値を使い回す。
+      const edgeThreshold = FieldDetectAlgorithms.computeAdaptiveEdgeThreshold(
+        gradientMap, EDGE_THRESHOLD_PERCENTILE, EDGE_THRESHOLD_MIN, EDGE_THRESHOLD_MAX
+      );
 
       state.canvas      = canvas;
       state.imageData   = imageData;
       state.gradientMap = gradientMap;
       state.rasterScale = scale;
+      state.rasterOriginPt = originContainerPt;
+      state.edgeThreshold  = edgeThreshold;
       state.seedX       = seedX;
       state.seedY       = seedY;
 
       if (state.cancelToken.cancelled) { _onDetectCancelled(); return; }
 
       const result = await FieldDetectAlgorithms.autoTuneTolerance(
-        imageData, gradientMap, seedX, seedY, TOLERANCE_CANDIDATES, EDGE_THRESHOLD, state.cancelToken
+        imageData, gradientMap, seedX, seedY, TOLERANCE_CANDIDATES, edgeThreshold, state.cancelToken
       );
 
       if (result === 'cancelled' || state.cancelToken.cancelled) { _onDetectCancelled(); return; }
@@ -346,7 +392,10 @@ const EasyFieldDetect = (() => {
 
       state.sensitivity = result.tolerance;
 
-      _buildAndShowPreviewFromMask(result.mask, canvas.width, canvas.height);
+      // 検出精度改善セッション：採用したmaskにopen→close→シード連結成分抽出を適用
+      const processedMask = _postProcessMask(result.mask, canvas.width, canvas.height, seedX, seedY);
+
+      _buildAndShowPreviewFromMask(processedMask, canvas.width, canvas.height);
 
     } catch (e) {
       console.error('[EasyFieldDetect] 検出エラー:', e);
@@ -391,18 +440,29 @@ const EasyFieldDetect = (() => {
   }
 
   function _reRunFromCache(tolerance) {
-    const { imageData, gradientMap, seedX, seedY } = state;
+    const { imageData, gradientMap, seedX, seedY, edgeThreshold } = state;
     const w = imageData.width, h = imageData.height;
 
-    const rawMask = FieldDetectAlgorithms.floodFillMaskEdgeAware(imageData, gradientMap, seedX, seedY, tolerance, EDGE_THRESHOLD);
+    // 検出精度改善セッション：固定EDGE_THRESHOLD→detect()時に算出したstate.edgeThresholdを使い回す
+    const rawMask = FieldDetectAlgorithms.floodFillMaskEdgeAware(imageData, gradientMap, seedX, seedY, tolerance, edgeThreshold);
     if (!rawMask) {
       // 確認・微調整画面は既に開いたまま（直前の有効な形を維持）。
       // スライダー操作中に毎回showDrawToastだと煩わしいため短めのtoastに留める。
       showToast('検出範囲が小さすぎるか大きすぎます。感度を調整してください。', 'amber');
       return;
     }
-    const closedMask = FieldDetectAlgorithms.morphologyClose(rawMask, w, h, 1);
-    _buildAndShowPreviewFromMask(closedMask, w, h);
+    const processedMask = _postProcessMask(rawMask, w, h, seedX, seedY);
+    _buildAndShowPreviewFromMask(processedMask, w, h);
+  }
+
+  // ─── 採用したmaskの後処理：open→close→シード連結成分のみ抽出 ───
+  // 検出精度改善セッションで追加。detect()の自動チューニング結果・
+  // _reRunFromCache()の感度スライダー再検出結果の両方から呼ばれる。
+  function _postProcessMask(mask, w, h, seedX, seedY) {
+    let m = FieldDetectAlgorithms.morphologyOpen(mask, w, h, 1);
+    m = FieldDetectAlgorithms.morphologyClose(m, w, h, 1);
+    m = FieldDetectAlgorithms.keepSeedComponentMask(m, w, h, seedX, seedY);
+    return m;
   }
 
   // ─── mask → 輪郭抽出 → 単純化・矩形フィット → FieldConfirmAdjustへ引き渡し ───
@@ -428,11 +488,16 @@ const EasyFieldDetect = (() => {
     if (state.shapeMode === 'rect') {
       // ─ 四角形選択時のみ：矩形フィット（形状全体を回転矩形へ差し替え） ─
       const hull = FieldDetectAlgorithms.convexHull(contour);
-      snapped = hull.length >= 3 ? FieldDetectAlgorithms.minAreaRect(hull) : null;
-      if (!snapped || snapped.length < 3) {
+      let rectCorners = hull.length >= 3 ? FieldDetectAlgorithms.minAreaRect(hull) : null;
+      if (!rectCorners || rectCorners.length < 3) {
         _onDetectFailure('矩形を検出できませんでした。感度を調整するか、「複雑な形」をお試しください。');
         return;
       }
+
+      // 検出精度改善セッション：色ベースのマスク外形だけでなく、実際の勾配（エッジ）に
+      // 4辺を局所的に再フィットさせる（ハウス規格スナップより前に実行し、実測値を先に整えてから丸める）
+      rectCorners = FieldDetectAlgorithms.snapRectEdgesToGradient(rectCorners, state.gradientMap, w, h);
+      snapped = rectCorners;
 
       // ハウス／加温選択時のみ：短辺(間口)を規格値に、長辺(奥行き)を1m単位に調整
       if (state.cultivationHint) {
@@ -458,9 +523,12 @@ const EasyFieldDetect = (() => {
       }
     }
 
-    // ラスタライズ時の縮小スケールを戻してから地図座標へ変換
-    const scale = state.rasterScale || 1;
-    const latlngs = snapped.map(p => map.containerPointToLatLng(L.point(p.x / scale, p.y / scale)));
+    // クロップ解析解像度→container座標（クロップ原点＋拡大率を戻す）→地図座標へ変換
+    const scale  = state.rasterScale || 1;
+    const origin = state.rasterOriginPt || L.point(0, 0);
+    const latlngs = snapped.map(p => map.containerPointToLatLng(
+      L.point(origin.x + p.x / scale, origin.y + p.y / scale)
+    ));
 
     _setScopeVisible(false);
     FieldConfirmAdjust.open(latlngs, {
@@ -479,8 +547,9 @@ const EasyFieldDetect = (() => {
   // fieldDetectAlgorithms.js側はDOM/Leaflet非依存の純粋関数のみに留める）。
   // 戻り値: { corners: [新4隅(pixel座標)], widthM, depthM, widthSnapped } | null
   function _applyHouseSnap(pixelCorners) {
-    const scale = state.rasterScale || 1;
-    const toLatLng = (p) => map.containerPointToLatLng(L.point(p.x / scale, p.y / scale));
+    const scale  = state.rasterScale || 1;
+    const origin = state.rasterOriginPt || L.point(0, 0);
+    const toLatLng = (p) => map.containerPointToLatLng(L.point(origin.x + p.x / scale, origin.y + p.y / scale));
 
     const p0 = pixelCorners[0], p1 = pixelCorners[1], p2 = pixelCorners[2];
     const ll0 = toLatLng(p0), ll1 = toLatLng(p1), ll2 = toLatLng(p2);
@@ -525,25 +594,36 @@ const EasyFieldDetect = (() => {
   }
 
   // ═══════════════════════════════════════════
-  //  ラスタライズ：現在表示中のタイル画像をcanvasへ描き写す
+  //  ラスタライズ：タップ地点周辺のみを高解像度でcanvasへ描き写す
   //  （Leaflet内部のタイル座標を再実装せず、DOM上の実描画位置＝
   //   getBoundingClientRect()を基準にすることで常に正しい位置になる）
   //
-  //  仕様書4章：解析用キャンバスの最大解像度をmaxDimensionにキャップする
-  //  （自動チューニングが複数回flood-fillを回しても実用速度を維持するため）。
-  //  戻り値のscaleは「フル解像度→キャンバス解像度」への縮小率。
-  //  シード座標・輪郭座標をlatlngに変換する際は、この逆数で元の解像度に戻す。
+  //  検出精度改善セッション：旧実装（画面全体を480pxへ縮小）を廃止し、
+  //  中心地点からcropSizeM四方だけを切り出してtargetPxへ拡大する方式に変更。
+  //  対象（ハウス間口3.6〜10m等）に対して1pxあたりの実距離を大幅に細かくし、
+  //  JPEGノイズや影による数px単位のブレの実距離換算誤差を抑える狙い。
+  //
+  //  L.LatLng.toBounds(sizeInMeters) で「中心からsizeInMeters/2ずつ」の
+  //  正方形boundsを取得し、そのNW/SEをcontainer座標へ変換してcrop範囲とする。
+  //  戻り値のoriginContainerPtはcrop左上のcontainer座標、scaleは
+  //  「cropのcontainer px→解析用canvas px」への拡大率。シード座標・輪郭座標を
+  //  container座標へ戻す際は、pixel/scale してからoriginContainerPtを足す。
   // ═══════════════════════════════════════════
 
-  function _rasterizeMapToCanvas(maxDimension = RASTER_MAX_DIMENSION) {
+  function _rasterizeCropToCanvas(centerLatLng, cropSizeM, targetPx) {
     const mapContainer = map.getContainer();
     const mapRect = mapContainer.getBoundingClientRect();
-    const fullW = Math.max(1, Math.round(mapRect.width));
-    const fullH = Math.max(1, Math.round(mapRect.height));
 
-    const scale = Math.min(1, maxDimension / Math.max(fullW, fullH));
-    const w = Math.max(1, Math.round(fullW * scale));
-    const h = Math.max(1, Math.round(fullH * scale));
+    const bounds = centerLatLng.toBounds(cropSizeM);
+    const nwPt = map.latLngToContainerPoint(bounds.getNorthWest());
+    const sePt = map.latLngToContainerPoint(bounds.getSouthEast());
+
+    const cropWpx = Math.max(1, sePt.x - nwPt.x);
+    const cropHpx = Math.max(1, sePt.y - nwPt.y);
+    const scale = targetPx / Math.max(cropWpx, cropHpx);
+
+    const w = Math.max(1, Math.round(cropWpx * scale));
+    const h = Math.max(1, Math.round(cropHpx * scale));
 
     const canvas = document.createElement('canvas');
     canvas.width  = w;
@@ -552,18 +632,19 @@ const EasyFieldDetect = (() => {
 
     // 透過タイルや未読込タイルがある場合の保険（自然な地表色に近い緑系）。
     // waitForTilesLoaded()により通常は未読込タイルは残っていないはずだが、
-    // 画面端のタイルなど取りこぼしがあった場合の保険として維持する。
+    // crop範囲が地図コンテナ端にかかる場合など取りこぼしがあった場合の保険。
     ctx.fillStyle = '#7f9a72';
     ctx.fillRect(0, 0, w, h);
 
     const tileImgs = mapContainer.querySelectorAll('.leaflet-tile-pane img.leaflet-tile-loaded');
     tileImgs.forEach(img => {
       const r = img.getBoundingClientRect();
-      const x = (r.left - mapRect.left) * scale;
-      const y = (r.top  - mapRect.top)  * scale;
+      // container基準の座標 → crop原点(nwPt)基準へシフト → scaleで拡大
+      const x = (r.left - mapRect.left - nwPt.x) * scale;
+      const y = (r.top  - mapRect.top  - nwPt.y) * scale;
       const dw = r.width  * scale;
       const dh = r.height * scale;
-      // 画面に一部でもかかっているタイルのみ描画（無駄な描画を避ける）
+      // crop範囲に一部でもかかっているタイルのみ描画（無駄な描画を避ける）
       if (x + dw < 0 || y + dh < 0 || x > w || y > h) return;
       try {
         ctx.drawImage(img, x, y, dw, dh);
@@ -572,7 +653,7 @@ const EasyFieldDetect = (() => {
       }
     });
 
-    return { canvas, scale };
+    return { canvas, scale, originContainerPt: nwPt };
   }
 
   // ─── 公開API（Step5：start → beginDetectFlow にリネーム） ───
