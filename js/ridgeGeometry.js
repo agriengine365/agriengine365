@@ -1009,6 +1009,48 @@ const RidgeGeometry = (() => {
     };
   }
 
+  /**
+   * 穴（入口帯・反対側帯など）を、指定ゾーンポリゴンに対して交差クリップする。
+   *
+   * 【背景・矩形補正拡張のバグ修正】
+   * _recalcAllBandsCore の「矩形ゾーン＋余剰形状ゾーン」分割ルートでは、圃場全体の
+   * holes（入口帯・反対側帯）をそのまま両方のゾーンの splitPolygonByRatio に渡していた。
+   * splitPolygonByRatio 内部の _bandAreaWithHoles は穴を「畝方向の範囲」ではなく
+   * 「畝と垂直な幅方向」だけでクリップして減算するため、穴が実際にはそのゾーンの
+   * 外（もう一方のゾーン側）にあっても減算対象に含まれてしまい、穴の面積が
+   * 二重に引かれたり、逆にどちらのゾーンでも正しく引かれなかったりする不整合があった。
+   *
+   * この関数で穴をゾーンポリゴンに交差クリップしてから渡すことで、各ゾーンは
+   * 「自分の範囲に実際に重なる部分の穴」だけを正しく認識できるようになり、
+   * 矩形ゾーン・余剰形状ゾーンの穴面積の合計が必ず元の穴の面積と一致する
+   * （過不足なく配分される）。
+   *
+   * 穴がゾーンと重ならない場合は結果から除外される（3点未満のクリップ結果は捨てる）。
+   * zonePolygonLatLngs は凸多角形であることを前提とする（_clipPolygonToConvex）。
+   * 矩形ゾーン（rectPolygon）は常に凸。余剰形状ゾーン（leftoverPolygon）は元の圃場が
+   * 凸であれば凸になるが、非凸圃場では厳密でない場合がある（既存のraycast方式と同じ制約）。
+   *
+   * @param {Array<Array<{lat:number,lng:number}>>} holesLatLngs — 圃場全体の穴
+   * @param {Array<{lat:number,lng:number}>} zonePolygonLatLngs — クリップ先のゾーンポリゴン
+   * @returns {Array<Array<{lat:number,lng:number}>>} ゾーンに重なる部分だけの穴
+   */
+  function clipHolesToZone(holesLatLngs, zonePolygonLatLngs) {
+    if (!Array.isArray(holesLatLngs) || !holesLatLngs.length) return [];
+    if (!Array.isArray(zonePolygonLatLngs) || zonePolygonLatLngs.length < 3) return [];
+
+    const origin    = _centroid(zonePolygonLatLngs);
+    const zoneLocal = zonePolygonLatLngs.map(p => _toLocal(p, origin));
+
+    const result = [];
+    holesLatLngs.forEach(hole => {
+      if (!Array.isArray(hole) || hole.length < 3) return;
+      const holeLocal = hole.map(p => _toLocal(p, origin));
+      const clipped   = _clipPolygonToConvex(holeLocal, zoneLocal);
+      if (clipped.length >= 3) result.push(clipped.map(p => _fromLocal(p, origin)));
+    });
+    return result;
+  }
+
   // ────────────────────────────────────────
   //  座標変換ヘルパーの公開（プレビュー描画等での再利用向け）
   // ────────────────────────────────────────
@@ -1051,6 +1093,7 @@ const RidgeGeometry = (() => {
     splitPolygonByRatio,
     computeHouseGeometry,
     computeZonedFieldGeometry,
+    clipHolesToZone,
     getPolygonEdges,
     getLongestEdgeIndex,
     toLocalCoords,

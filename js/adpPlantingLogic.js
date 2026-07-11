@@ -291,14 +291,25 @@ const PlantingLogic = (() => {
    * @param {Array<{idx:number, crop:object}>} entries — このゾーンに属する作物（元のpracticecrops内インデックス付き）
    * @param {Array<{lat:number,lng:number}>} zonePolygon
    * @param {object} dir — { p1, p2 }
-   * @param {Array<Array<{lat:number,lng:number}>>} holes — 圃場全体の穴（入口・反対側帯）
+   * @param {Array<Array<{lat:number,lng:number}>>} holes — 圃場全体の穴（入口・反対側帯）。
+   *   関数内部で zonePolygon に交差クリップしてから使用する（バグ修正・下記参照）。
    * @param {number} wholeBasisSqm — 圃場全体の実効面積（占有率の絶対基準）
    * @param {number[]} pathWidthsM — 全作物ぶんのpathWidth配列（元のpracticecrops順）
    * @param {Array<object|null>} outBands — 結果を書き込む出力先（元のpracticecrops順の配列、idxで直接代入）
    */
   function _recalcZone(entries, zonePolygon, dir, holes, wholeBasisSqm, pathWidthsM, outBands) {
     if (!entries.length) return;
-    const zoneBasisSqm = _wholeEffectiveAreaSqm(zonePolygon, dir, holes);
+
+    // 【矩形補正拡張・バグ修正】holes（入口帯・反対側帯）は圃場全体基準のため、
+    // そのままこのゾーンの面積計算・帯分割に渡すと、実際にはこのゾーンの外にある
+    // 穴まで誤って減算されてしまう（splitPolygonByRatio内部の_bandAreaWithHolesは
+    // 穴を畝方向の範囲でクリップしないため）。ゾーンポリゴンに交差クリップしてから
+    // 渡すことで、「このゾーンに実際に重なる部分の穴」だけを正しく反映する。
+    const zoneHoles = (typeof RidgeGeometry.clipHolesToZone === 'function')
+      ? RidgeGeometry.clipHolesToZone(holes, zonePolygon)
+      : holes;
+
+    const zoneBasisSqm = _wholeEffectiveAreaSqm(zonePolygon, dir, zoneHoles);
     if (!(zoneBasisSqm > 0)) return;
 
     const localRatios = entries.map(({ crop }) => {
@@ -310,7 +321,7 @@ const PlantingLogic = (() => {
 
     let zoneBands;
     try {
-      zoneBands = RidgeGeometry.splitPolygonByRatio(zonePolygon, dir.p1, dir.p2, localRatios, holes, zoneGapWidthsM);
+      zoneBands = RidgeGeometry.splitPolygonByRatio(zonePolygon, dir.p1, dir.p2, localRatios, zoneHoles, zoneGapWidthsM);
     } catch (e) {
       return;
     }
