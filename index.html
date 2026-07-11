@@ -91,6 +91,26 @@
 
   <!-- ═══ かんたん圃場追加（EasyFieldDetect）═══ -->
 
+  <!-- EFD-0: 圃場の種類選択（露地／ハウス／加温）。ハウス・加温選択時は
+       規格スナップ対象となり、形状選択（EFD-1）はスキップして直接検出へ進む。 -->
+  <div class="draw-phase" id="efd-phase-cultivation" hidden>
+    <p class="map-draw-dialog-hint">検出したい圃場の種類を選んでください</p>
+    <div class="efd-shape-grid efd-cult-grid">
+      <button type="button" class="efd-shape-btn" onclick="EasyFieldDetect.selectCultivation('openField')">
+        <span class="efd-shape-icon">🌾</span>露地
+      </button>
+      <button type="button" class="efd-shape-btn" onclick="EasyFieldDetect.selectCultivation('greenhouse')">
+        <span class="efd-shape-icon">🏠</span>ハウス
+      </button>
+      <button type="button" class="efd-shape-btn" onclick="EasyFieldDetect.selectCultivation('heatedGreenhouse')">
+        <span class="efd-shape-icon">🔥</span>加温
+      </button>
+    </div>
+    <div class="map-draw-dialog-actions efd-actions-single">
+      <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="EasyFieldDetect.cancel()">キャンセル</button>
+    </div>
+  </div>
+
   <!-- EFD-1: 形状選択 -->
   <div class="draw-phase" id="efd-phase-shape" hidden>
     <p class="map-draw-dialog-hint">検出したい圃場の形を選んでください</p>
@@ -127,6 +147,10 @@
        いずれもこの同一フェーズに入る（仕様書5章）。旧EFD-3（efd-phase-preview）は撤去済み。 -->
   <div class="draw-phase" id="field-confirm-phase" hidden>
     <p class="map-draw-dialog-hint" id="fca-hint">頂点をドラッグして移動、長押しで削除。辺の中間点をタップすると頂点を追加できます</p>
+    <div class="efd-preview-status" id="fca-house-snap-note" hidden></div>
+    <div class="fca-rect-lock-row" id="fca-rect-lock-row" hidden>
+      <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="FieldConfirmAdjust.unlockRect()">矩形の拘束を解除して自由に編集</button>
+    </div>
     <div class="efd-sensitivity-row" id="fca-sensitivity-row" hidden>
       <span class="efd-sensitivity-label">検出感度（微調整）</span>
       <input type="range" id="fca-sensitivity-slider" class="efd-sensitivity-slider"

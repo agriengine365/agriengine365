@@ -36,8 +36,13 @@ const FieldConfirmAdjust = (() => {
   const LONG_PRESS_MS = 500;
 
   const state = {
-    source:       'auto', // 'manual' | 'auto'
-    previewLayer: null,   // L.Polygon（Editable編集対象。このモジュールが所有）
+    source:          'auto', // 'manual' | 'auto'
+    previewLayer:    null,   // L.Polygon（Editable編集対象。このモジュールが所有）
+    isRectMode:      false,  // true: EFD「四角形」検出由来の矩形（4頂点）
+    rectLocked:      false,  // true: 矩形モード中、頂点編集を対角固定リサイズに拘束中
+    cultivationHint: null,   // null | 'greenhouse' | 'heatedGreenhouse'
+    houseSnapInfo:   null,   // easyFieldDetect.jsの_applyHouseSnap()結果
+    _rectDrag:       null,   // ドラッグ中の一時作業領域（{anchorIdx, prevIdx, nextIdx, prevUnit, nextUnit, anchorPt}）
   };
 
   let _editableEventsBound = false;
@@ -55,9 +60,17 @@ const FieldConfirmAdjust = (() => {
 
   // options.source: 'manual' | 'auto'
   // options.sensitivityValue: number | null（autoの場合のみスライダーへ反映）
+  // options.isRect: true の場合、頂点編集を「対角固定・リサイズ型」に拘束する
+  //（EFD「四角形」選択で検出した矩形が、自由編集で崩れてしまう問題への対応）。
+  // options.cultivationHint / options.houseSnapInfo: ハウス規格スナップの結果表示用。
   function open(polygonLatLngs, options = {}) {
     const source = options.source === 'manual' ? 'manual' : 'auto';
-    state.source = source;
+    state.source          = source;
+    state.isRectMode      = !!options.isRect;
+    state.rectLocked      = state.isRectMode;
+    state.cultivationHint = options.cultivationHint || null;
+    state.houseSnapInfo   = options.houseSnapInfo || null;
+    state._rectDrag       = null;
 
     _buildPreviewLayer(polygonLatLngs);
 
@@ -75,18 +88,54 @@ const FieldConfirmAdjust = (() => {
       _syncSlider(options.sensitivityValue);
     }
 
-    const hintEl = document.getElementById('fca-hint');
-    if (hintEl) {
-      hintEl.textContent = '頂点をドラッグして移動、長押しで削除。辺の中間点をタップすると頂点を追加できます';
-    }
+    _updateRectLockUI();
+    _updateHouseSnapNote();
 
     updateLiveAreaDisplay();
+  }
+
+  // ─── 矩形拘束状態に応じてヒント文言・「拘束を解除」ボタンの表示を切り替え ───
+  function _updateRectLockUI() {
+    const row = document.getElementById('fca-rect-lock-row');
+    if (row) row.hidden = !(state.isRectMode && state.rectLocked);
+
+    const hintEl = document.getElementById('fca-hint');
+    if (hintEl) {
+      hintEl.textContent = (state.isRectMode && state.rectLocked)
+        ? '角をドラッグしてサイズ調整（矩形を維持したまま拡大・縮小できます）'
+        : '頂点をドラッグして移動、長押しで削除。辺の中間点をタップすると頂点を追加できます';
+    }
+  }
+
+  // ─── ハウス規格スナップの結果を確認画面に一言表示 ───
+  function _updateHouseSnapNote() {
+    const noteEl = document.getElementById('fca-house-snap-note');
+    if (!noteEl) return;
+    const info = state.houseSnapInfo;
+    if (!info) { noteEl.hidden = true; return; }
+    noteEl.hidden = false;
+    noteEl.textContent = info.widthSnapped
+      ? `間口を規格値 ${info.widthM}m に調整しました（奥行き 約${info.depthM}m）`
+      : `間口 約${info.widthM.toFixed(1)}m は規格外のため未調整です（奥行き 約${info.depthM}m）`;
+  }
+
+  // ─── 「矩形の拘束を解除」ボタン：以後は自由編集（頂点追加・削除も可）に切り替える ───
+  function unlockRect() {
+    if (!state.isRectMode || !state.rectLocked) return;
+    state.rectLocked = false;
+    _updateRectLockUI();
+    showDrawToast('矩形の拘束を解除しました。自由に編集できます', 'amber');
   }
 
   // ─── 他フローからの防御的クリーンアップ（開始時の残骸処理など） ───
   function close() {
     _cleanupPreviewLayer();
     FieldAddController.hideAllPhases();
+    state.isRectMode      = false;
+    state.rectLocked      = false;
+    state.cultivationHint = null;
+    state.houseSnapInfo   = null;
+    state._rectDrag       = null;
   }
 
   // ═══════════════════════════════════════════
@@ -159,6 +208,12 @@ const FieldConfirmAdjust = (() => {
       fillOpacity: 0.15,
       interactive: true,
     });
+
+    // EFDで選択した栽培方式（ハウス/加温）をcommitSaveArea()側へ引き渡す。
+    // グローバル変数pendingCultivationModeはmain.jsで宣言・commitSaveArea()側でリセット。
+    if (typeof pendingCultivationMode !== 'undefined') {
+      pendingCultivationMode = state.cultivationHint || null;
+    }
 
     _cleanupPreviewLayer();
     FieldAddController.hideAllPhases();
@@ -257,20 +312,118 @@ const FieldConfirmAdjust = (() => {
     if (_editableEventsBound) return;
     _editableEventsBound = true;
 
-    // 中間点タップ等で新たに挿入された頂点はここで拾って長押し削除をバインドする
-    map.on('editable:vertex:new', (e) => {
+    // 中間点タップ等で新たに挿入された頂点はここで拾って長押し削除をバインドする。
+    // 矩形拘束中（isRectMode && rectLocked）に頂点が追加されると4頂点の矩形が
+    // 崩れてしまうため、確認ダイアログを出し、同意しない場合は追加を取り消す。
+    map.on('editable:vertex:new', async (e) => {
       if (e.layer !== state.previewLayer) return;
       if (e.vertex) _bindVertexLongPress(e.vertex);
+
+      if (state.isRectMode && state.rectLocked) {
+        const addedVertex = e.vertex;
+        const ok = await showConfirmDialog(
+          '頂点を追加すると、矩形の拘束が解除され自由に編集できるようになります。追加しますか？',
+          '解除して追加', 'キャンセル', true
+        );
+        if (!ok) {
+          try { if (addedVertex && typeof addedVertex.delete === 'function') addedVertex.delete(); } catch (err) { /* noop */ }
+          updateLiveAreaDisplay();
+          return;
+        }
+        state.rectLocked = false;
+        _updateRectLockUI();
+      }
       updateLiveAreaDisplay();
     });
+
+    // ─── 矩形拘束中の頂点ドラッグ：対角固定・リサイズ型に変換 ───
+    // ドラッグ開始頂点の対角（anchor）は固定したまま、隣接2頂点を
+    // 「アンカーから見た元の辺方向」への投影で再計算し、常に矩形を維持する。
+    map.on('editable:vertex:dragstart', (e) => {
+      if (e.layer !== state.previewLayer) return;
+      if (!state.isRectMode || !state.rectLocked) return;
+
+      const latlngs = state.previewLayer.getLatLngs()[0];
+      if (!latlngs || latlngs.length !== 4) { state.rectLocked = false; _updateRectLockUI(); return; }
+
+      const idx       = e.vertex.getIndex();
+      const anchorIdx = (idx + 2) % 4;
+      const prevIdx   = (idx + 3) % 4;
+      const nextIdx   = (idx + 1) % 4;
+      const zoom      = map.getZoom();
+      const project   = (ll) => map.project(ll, zoom);
+
+      const anchorPt = project(latlngs[anchorIdx]);
+      const prevPt0  = project(latlngs[prevIdx]);
+      const nextPt0  = project(latlngs[nextIdx]);
+
+      const prevVec = { x: prevPt0.x - anchorPt.x, y: prevPt0.y - anchorPt.y };
+      const prevLen = Math.hypot(prevVec.x, prevVec.y) || 1;
+      const nextVec = { x: nextPt0.x - anchorPt.x, y: nextPt0.y - anchorPt.y };
+      const nextLen = Math.hypot(nextVec.x, nextVec.y) || 1;
+
+      state._rectDrag = {
+        anchorIdx, prevIdx, nextIdx, zoom,
+        anchorPt,
+        prevUnit: { x: prevVec.x / prevLen, y: prevVec.y / prevLen },
+        nextUnit: { x: nextVec.x / nextLen, y: nextVec.y / nextLen },
+      };
+    });
+
+    map.on('editable:vertex:drag', (e) => {
+      if (e.layer !== state.previewLayer) return;
+      if (!state.isRectMode || !state.rectLocked || !state._rectDrag) return;
+      _applyRectConstraint(e.vertex);
+    });
+
     map.on('editable:vertex:dragend', (e) => {
       if (e.layer !== state.previewLayer) return;
+      if (state.isRectMode && state.rectLocked && state._rectDrag) {
+        _applyRectConstraint(e.vertex);
+      }
+      state._rectDrag = null;
       updateLiveAreaDisplay();
     });
+
     map.on('editable:vertex:deleted', (e) => {
       if (e.layer !== state.previewLayer) return;
       updateLiveAreaDisplay();
     });
+  }
+
+  // ─── ドラッグ中の頂点位置から、矩形を維持するよう他2頂点を再計算して反映 ───
+  function _applyRectConstraint(draggedVertexMarker) {
+    const rd = state._rectDrag;
+    if (!rd) return;
+
+    const project   = (ll) => map.project(ll, rd.zoom);
+    const unproject = (pt) => map.unproject(pt, rd.zoom);
+
+    const draggedPt = project(draggedVertexMarker.latlng);
+    const dx = draggedPt.x - rd.anchorPt.x;
+    const dy = draggedPt.y - rd.anchorPt.y;
+
+    const prevDot = dx * rd.prevUnit.x + dy * rd.prevUnit.y;
+    const nextDot = dx * rd.nextUnit.x + dy * rd.nextUnit.y;
+
+    const newPrevPt = { x: rd.anchorPt.x + rd.prevUnit.x * prevDot, y: rd.anchorPt.y + rd.prevUnit.y * prevDot };
+    const newNextPt = { x: rd.anchorPt.x + rd.nextUnit.x * nextDot, y: rd.anchorPt.y + rd.nextUnit.y * nextDot };
+
+    const markers = _getVertexMarkersByIndex(state.previewLayer);
+    if (markers[rd.prevIdx]) markers[rd.prevIdx].setLatLng(unproject(newPrevPt));
+    if (markers[rd.nextIdx]) markers[rd.nextIdx].setLatLng(unproject(newNextPt));
+
+    updateLiveAreaDisplay();
+  }
+
+  // ─── 頂点インデックス → VertexMarker の対応表を取得 ───
+  function _getVertexMarkersByIndex(poly) {
+    const arr = [];
+    if (!poly || !poly.editor || !poly.editor.editLayer || !L.Editable.VertexMarker) return arr;
+    poly.editor.editLayer.eachLayer(layer => {
+      if (layer instanceof L.Editable.VertexMarker) arr[layer.getIndex()] = layer;
+    });
+    return arr;
   }
 
   // ─── 頂点マーカーへの長押し（500ms）＝削除確認 バインド ───
@@ -314,7 +467,13 @@ const FieldConfirmAdjust = (() => {
       return;
     }
 
-    const ok = await showConfirmDialog('この頂点を削除しますか？', '削除する', 'キャンセル', true);
+    const rectLockedAtRequest = state.isRectMode && state.rectLocked;
+    const ok = rectLockedAtRequest
+      ? await showConfirmDialog(
+          '頂点を削除すると、矩形の拘束が解除され自由に編集できるようになります。削除しますか？',
+          '解除して削除', 'キャンセル', true
+        )
+      : await showConfirmDialog('この頂点を削除しますか？', '削除する', 'キャンセル', true);
     if (!ok) return;
 
     try {
@@ -325,6 +484,11 @@ const FieldConfirmAdjust = (() => {
       }
     } catch (e) {
       console.error('[FieldConfirmAdjust] 頂点削除に失敗:', e);
+    }
+
+    if (rectLockedAtRequest) {
+      state.rectLocked = false;
+      _updateRectLockUI();
     }
     updateLiveAreaDisplay();
   }
@@ -338,5 +502,6 @@ const FieldConfirmAdjust = (() => {
     confirm,
     retry,
     switchToManual,
+    unlockRect,
   };
 })();

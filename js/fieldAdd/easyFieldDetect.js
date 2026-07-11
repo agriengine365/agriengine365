@@ -71,6 +71,7 @@ const EasyFieldDetect = (() => {
 
   // ─── 内部状態 ───
   const state = {
+    cultivationHint: null, // null(露地) | 'greenhouse' | 'heatedGreenhouse'。EFD-0で選択。
     shapeMode:    null,   // 'rect' | 'complex'（UI遷移用のみ。検出ロジックの分岐には未使用）
     tapLatLng:    null,   // L.LatLng（検出対象地点）
     canvas:       null,   // ラスタライズ済みcanvas（感度変更時の再利用用）
@@ -143,6 +144,7 @@ const EasyFieldDetect = (() => {
     if (state.cancelToken) state.cancelToken.cancelled = true;
     if (typeof FieldConfirmAdjust !== 'undefined') FieldConfirmAdjust.close();
     _clearSensitivityDebounce();
+    state.cultivationHint = null;
     state.shapeMode    = null;
     state.tapLatLng    = null;
     state.canvas       = null;
@@ -159,8 +161,34 @@ const EasyFieldDetect = (() => {
     if (typeof resetStats === 'function') resetStats();
 
     FieldAddController.openDialog();
-    FieldAddController.showPhase('efd-phase-shape');
-    showToast('形を選んでください', '', 2400);
+    FieldAddController.showPhase('efd-phase-cultivation');
+    showToast('圃場の種類を選んでください', '', 2400);
+  }
+
+  // ─── EFD-0：圃場の種類選択（露地／ハウス／加温） ───
+  // 露地 → 従来通り「四角形／複雑な形」選択画面（efd-phase-shape）へ。
+  // ハウス／加温 → パイプハウスは構造上ほぼ矩形になるため、形状選択はスキップし
+  // 矩形固定（shapeMode='rect'）でそのまま検出画面（efd-phase-tap）へ進む。
+  // 検出後の矩形フィット結果には _applyHouseSnap() で規格スナップを適用する
+  // （_buildAndShowPreviewFromMask()参照）。
+  function selectCultivation(mode) {
+    state.cultivationHint = (mode === 'greenhouse' || mode === 'heatedGreenhouse') ? mode : null;
+
+    if (!state.cultivationHint) {
+      // 露地：従来通りの形状選択画面へ
+      FieldAddController.showPhase('efd-phase-shape');
+      updateMapDrawHint('検出したい圃場の形を選んでください');
+      showDrawToast('形を選んでください');
+      return;
+    }
+
+    // ハウス／加温：形状は矩形固定、選択画面をスキップして直接タップ検出へ
+    state.shapeMode = 'rect';
+    FieldAddController.showPhase('efd-phase-tap');
+    _setDetectingUI(false);
+    _setScopeVisible(true);
+    updateMapDrawHint('地図を動かして中央をハウスに合わせてください');
+    showDrawToast('地図をドラッグして検出したいハウスの中央にスコープを合わせ、「この地点で検出」をタップしてください');
   }
 
   function selectShape(mode) {
@@ -395,6 +423,7 @@ const EasyFieldDetect = (() => {
     }
 
     let snapped;
+    let houseSnapInfo = null;
 
     if (state.shapeMode === 'rect') {
       // ─ 四角形選択時のみ：矩形フィット（形状全体を回転矩形へ差し替え） ─
@@ -403,6 +432,12 @@ const EasyFieldDetect = (() => {
       if (!snapped || snapped.length < 3) {
         _onDetectFailure('矩形を検出できませんでした。感度を調整するか、「複雑な形」をお試しください。');
         return;
+      }
+
+      // ハウス／加温選択時のみ：短辺(間口)を規格値に、長辺(奥行き)を1m単位に調整
+      if (state.cultivationHint) {
+        houseSnapInfo = _applyHouseSnap(snapped);
+        if (houseSnapInfo) snapped = houseSnapInfo.corners;
       }
     } else {
       let eps = Math.max(2, diag * 0.003);
@@ -428,7 +463,65 @@ const EasyFieldDetect = (() => {
     const latlngs = snapped.map(p => map.containerPointToLatLng(L.point(p.x / scale, p.y / scale)));
 
     _setScopeVisible(false);
-    FieldConfirmAdjust.open(latlngs, { source: 'auto', sensitivityValue: state.sensitivity });
+    FieldConfirmAdjust.open(latlngs, {
+      source:           'auto',
+      sensitivityValue: state.sensitivity,
+      isRect:            state.shapeMode === 'rect',
+      cultivationHint:   state.cultivationHint,
+      houseSnapInfo:     houseSnapInfo,
+    });
+  }
+
+  // ─── ハウス規格スナップ：矩形の短辺(間口)を規格幅に、長辺(奥行き)を1m単位に調整 ───
+  // pixelCorners: minAreaRect()が返す4隅（ラスタキャンバスpixel座標、[p0,p1,p2,p3]の順で
+  // p0→p1がU方向の辺、p1→p2がV方向の辺）。実距離(m)の計測にはlatlng変換とLeafletの
+  // distanceTo()を使う（本ファイルはLeaflet依存が前提のため、ここで行う。
+  // fieldDetectAlgorithms.js側はDOM/Leaflet非依存の純粋関数のみに留める）。
+  // 戻り値: { corners: [新4隅(pixel座標)], widthM, depthM, widthSnapped } | null
+  function _applyHouseSnap(pixelCorners) {
+    const scale = state.rasterScale || 1;
+    const toLatLng = (p) => map.containerPointToLatLng(L.point(p.x / scale, p.y / scale));
+
+    const p0 = pixelCorners[0], p1 = pixelCorners[1], p2 = pixelCorners[2];
+    const ll0 = toLatLng(p0), ll1 = toLatLng(p1), ll2 = toLatLng(p2);
+
+    const edgeULenM = ll0.distanceTo(ll1); // p0→p1（U方向の辺）の実距離
+    const edgeVLenM = ll1.distanceTo(ll2); // p1→p2（V方向の辺）の実距離
+    if (!(edgeULenM > 0) || !(edgeVLenM > 0)) return null;
+
+    const shortIsU = edgeULenM <= edgeVLenM;
+    const dims = FieldDetectAlgorithms.snapHouseDimensions(
+      shortIsU ? edgeULenM : edgeVLenM,
+      shortIsU ? edgeVLenM : edgeULenM
+    );
+
+    const newULenM = shortIsU ? dims.width : dims.depth;
+    const newVLenM = shortIsU ? dims.depth : dims.width;
+    const scaleU = newULenM / edgeULenM;
+    const scaleV = newVLenM / edgeVLenM;
+
+    // pixel空間でp0を固定アンカーとし、U/V方向の辺の長さだけをスケールして再構成
+    const uVec = { x: p1.x - p0.x, y: p1.y - p0.y };
+    const uLenPx = Math.hypot(uVec.x, uVec.y);
+    const uUnit = { x: uVec.x / uLenPx, y: uVec.y / uLenPx };
+    const vVec = { x: p2.x - p1.x, y: p2.y - p1.y };
+    const vLenPx = Math.hypot(vVec.x, vVec.y);
+    const vUnit = { x: vVec.x / vLenPx, y: vVec.y / vLenPx };
+
+    const newULenPx = uLenPx * scaleU;
+    const newVLenPx = vLenPx * scaleV;
+
+    const newP0 = { x: p0.x, y: p0.y };
+    const newP1 = { x: newP0.x + uUnit.x * newULenPx, y: newP0.y + uUnit.y * newULenPx };
+    const newP2 = { x: newP1.x + vUnit.x * newVLenPx, y: newP1.y + vUnit.y * newVLenPx };
+    const newP3 = { x: newP0.x + vUnit.x * newVLenPx, y: newP0.y + vUnit.y * newVLenPx };
+
+    return {
+      corners:      [newP0, newP1, newP2, newP3],
+      widthM:       dims.width,
+      depthM:       dims.depth,
+      widthSnapped: dims.widthSnapped,
+    };
   }
 
   // ═══════════════════════════════════════════
@@ -485,6 +578,7 @@ const EasyFieldDetect = (() => {
   // ─── 公開API（Step5：start → beginDetectFlow にリネーム） ───
   return {
     beginDetectFlow,
+    selectCultivation,
     selectShape,
     detect,
     cancelDetect,

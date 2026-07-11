@@ -7,6 +7,10 @@ let currentPolygon    = null;
 let currentAreaData   = null;
 let selectedSoil      = null;
 let currentSavedAreaId = null;
+// EFD「圃場の種類」選択（ハウス／加温）で選ばれた値を、確定(FieldConfirmAdjust.confirm())
+// から保存(commitSaveArea())まで橋渡しするための一時変数。
+// null | 'greenhouse' | 'heatedGreenhouse'。commitSaveArea()側で使用後にnullへ戻す。
+let pendingCultivationMode = null;
 
 // ─── 描画リセット ───
 function clearDraw() {
@@ -18,6 +22,7 @@ function clearDraw() {
   currentAreaData    = null;
   currentSavedAreaId = null;
   selectedSoil       = null;
+  pendingCultivationMode = null;
   resetStats();
   showToast('描画をリセットしました');
 }

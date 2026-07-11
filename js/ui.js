@@ -297,6 +297,7 @@ function cancelWizard() {
   hideWizard();
   if (typeof drawnItems !== 'undefined' && drawnItems) drawnItems.clearLayers();
   if (typeof currentPolygon !== 'undefined') currentPolygon = null;
+  if (typeof pendingCultivationMode !== 'undefined') pendingCultivationMode = null;
   if (typeof resetStats === 'function') resetStats();
   showToast('保存をキャンセルしました');
 }

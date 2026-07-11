@@ -517,6 +517,41 @@ const FieldDetectAlgorithms = (() => {
     return result;
   }
 
+  // ═══════════════════════════════════════════
+  //  新規：ハウス規格スナップ（仕様書7章の再検討により追加）
+  //  検出した矩形の短辺（間口）を、パイプハウスの規格幅に近ければスナップし、
+  //  長辺（奥行き）はキリのいい1m単位に丸める。DOM/Leaflet非依存の純粋関数のみ
+  //  （実距離(m)を計算してlatlngへ変換する処理は呼び出し元のeasyFieldDetect.js側）。
+  //
+  //  規格値の根拠：パイプハウスメーカー各社の間口ラインナップ（3.6/4.5/5.4/6.0/
+  //  6.3/7.0/7.2/8.0/9.0/10.0m前後に集中）をWeb検索で確認（圃場追加フロー刷新
+  //  仕様書7章参照）。奥行きはパイプピッチ単位の自由設計のため規格リストは持たず、
+  //  検出ノイズをならす目的で最寄りの1m単位に丸めるだけに留める。
+  // ═══════════════════════════════════════════
+
+  const HOUSE_STANDARD_WIDTHS_M     = [3.6, 4.5, 5.4, 6.0, 6.3, 7.0, 7.2, 8.0, 9.0, 10.0];
+  const HOUSE_WIDTH_SNAP_TOLERANCE_M = 0.4; // これより離れていたら無理にスナップしない
+
+  // shortEdgeM: 検出した矩形の短辺（間口とみなす）実距離[m]
+  // longEdgeM : 検出した矩形の長辺（奥行きとみなす）実距離[m]
+  // 戻り値: { width, depth, widthSnapped, widthOriginal, depthOriginal }
+  function snapHouseDimensions(shortEdgeM, longEdgeM) {
+    let nearest = null, nearestDiff = Infinity;
+    for (const w of HOUSE_STANDARD_WIDTHS_M) {
+      const diff = Math.abs(shortEdgeM - w);
+      if (diff < nearestDiff) { nearestDiff = diff; nearest = w; }
+    }
+    const widthSnapped = nearest !== null && nearestDiff <= HOUSE_WIDTH_SNAP_TOLERANCE_M;
+
+    return {
+      width:         widthSnapped ? nearest : shortEdgeM,
+      depth:         Math.max(1, Math.round(longEdgeM)),
+      widthSnapped,
+      widthOriginal: shortEdgeM,
+      depthOriginal: longEdgeM,
+    };
+  }
+
   // ─── 公開API ───
   return {
     // 既存移設（ロジック無改修）
@@ -532,5 +567,8 @@ const FieldDetectAlgorithms = (() => {
     scoreMaskPlausibility,
     autoTuneTolerance,
     snapNearRightAngles,
+    // 新規（ハウス規格スナップ）
+    HOUSE_STANDARD_WIDTHS_M,
+    snapHouseDimensions,
   };
 })();

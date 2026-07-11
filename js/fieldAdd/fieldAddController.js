@@ -33,6 +33,7 @@ const FieldAddController = (() => {
     'field-add-scope-phase',
     'draw-phase-drawing',
     'draw-phase-wizard',
+    'efd-phase-cultivation',
     'efd-phase-shape',
     'efd-phase-tap',
     'field-confirm-phase',

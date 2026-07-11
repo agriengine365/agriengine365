@@ -32,11 +32,19 @@ async function commitSaveArea({ name, memo, soilType }) {
     if (soilType) envPayload.soilType = soilType;
   }
 
+  // EFD「圃場の種類」選択（ハウス／加温）で選ばれていれば初期値として反映。
+  // 露地の場合はキー自体を付けない（既存の a.cultivationMode || 'openField' という
+  // 参照側のフォールバックと整合させるため）。値を使ったら即リセットする
+  // （「続けて追加」等で次のエリア作成に誤って引き継がれないようにするため）。
+  const _pendingCultMode = (typeof pendingCultivationMode !== 'undefined') ? pendingCultivationMode : null;
+  if (typeof pendingCultivationMode !== 'undefined') pendingCultivationMode = null;
+
   const payload = {
     name,
     memo,
     geojson: geojsonStr,
     landProfile,
+    ...(_pendingCultMode ? { cultivationMode: _pendingCultMode } : {}),
     env: envPayload || (typeof createEmptyEnv === 'function' ? createEmptyEnv() : {}),
     meta: {
       areaSqm:         currentAreaData.areaSqm,
