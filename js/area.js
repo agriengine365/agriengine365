@@ -8854,27 +8854,42 @@ function _adpBuildAutoDesignPanel() {
     // 5.6.2：この作物の比率／最低比率チップの動的上限（自分以外の固定比率合計・最低比率合計から算出）
     const limits      = _adpAutoDesignComputeLimits(cropId);
 
+    // UX見直し（2026-07 ④）：「固定」（ユーザーが値を指定し、エンジンが一切変更しない）と
+    // 「自動計算」（エンジンが他の固定値・制約から逆算した値）を、バッジ＋行全体の左枠線色で
+    // 一目で区別できるようにする。自動計算バッジはプレビュー結果（pv）が存在する時のみ表示
+    // （まだ一度も実行していない・設定変更でプレビューが破棄された直後は「未計算」＝バッジなし）。
+    const ratioFieldClass = autoSet.fixedRatio ? 'autoad-row-field--fixed' : (pv ? 'autoad-row-field--auto' : '');
+    const ratioBadge = autoSet.fixedRatio
+      ? '<span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span>'
+      : (pv ? '<span class="autoad-value-badge autoad-value-badge-auto">🤖 自動計算</span>' : '');
+    const rowsFieldClass = autoSet.fixedRowCount ? 'autoad-row-field--fixed' : (pv ? 'autoad-row-field--auto' : '');
+    const rowsBadge = autoSet.fixedRowCount
+      ? '<span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span>'
+      : (pv ? '<span class="autoad-value-badge autoad-value-badge-auto">🤖 自動計算</span>' : '');
+
     return `
       <div class="autoad-row" data-crop-id="${cropId}">
         <div class="autoad-row-name">${cropName}</div>
-        <div class="autoad-row-field">
+        <div class="autoad-row-field ${ratioFieldClass}">
           <span class="autoad-field-label">比率</span>
           ${_adpAutoRatioChipHTML(cropId, 'ratio', shownRatio, limits.max, !autoSet.fixedRatio)}
+          ${ratioBadge}
           <label class="autoad-fixed-label">
             <input type="checkbox" ${autoSet.fixedRatio ? 'checked' : ''}
-              onchange="_adpAutoDesignSetCropField('${cropId}','fixedRatio', this.checked)"> 固定
+              onchange="_adpAutoDesignSetCropField('${cropId}','fixedRatio', this.checked)"> 固定にする
           </label>
         </div>
         <div class="autoad-row-field">
           <span class="autoad-field-label">最低比率</span>
           ${_adpAutoRatioChipHTML(cropId, 'minRatio', autoSet.minRatio, limits.max, autoSet.fixedRatio)}
         </div>
-        <div class="autoad-row-field">
+        <div class="autoad-row-field ${rowsFieldClass}">
           <span class="autoad-field-label">畝数</span>
           ${_adpAutoRowCountChipHTML(cropId, shownRows, !autoSet.fixedRowCount)}
+          ${rowsBadge}
           <label class="autoad-fixed-label">
             <input type="checkbox" ${autoSet.fixedRowCount ? 'checked' : ''}
-              onchange="_adpAutoDesignSetCropField('${cropId}','fixedRowCount', this.checked)"> 固定
+              onchange="_adpAutoDesignSetCropField('${cropId}','fixedRowCount', this.checked)"> 固定にする
           </label>
         </div>
       </div>`;
@@ -8915,15 +8930,19 @@ function _adpBuildAutoDesignPanel() {
             <div class="plt-ratio-bar-fill" style="width:${allocatedPct}%;background:${remaining < 0 ? 'var(--red)' : remaining === 0 ? 'var(--green)' : 'var(--green2)'}"></div>
           </div>
         </div>
+        <div class="autoad-badge-legend">
+          <span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span><span>＝入力した値をそのまま使用</span>
+          <span class="autoad-value-badge autoad-value-badge-auto">🤖 自動計算</span><span>＝残りから自動で算出</span>
+        </div>
         <div class="autoad-rows">${rowsHTML}</div>
         ${statusHTML}`;
 
   return `
     <div class="autoad-panel" id="autoad-panel">
       <button type="button" class="autoad-full-btn" ${hasCrops ? '' : 'disabled'} onclick="_adpAutoDesignFullAuto()">
-        🪄 完全自動設計（タップで即確定）
+        🪄 完全自動設計（タップで計算→確認）
       </button>
-      <div class="autoad-full-help">畝方向が未設定でも自動計算して確定します。個別に比率・畝数を指定したい場合は下の設定を調整してください。</div>
+      <div class="autoad-full-help">畝方向が未設定でも自動計算します。計算結果（固定値／自動計算の内訳）を確認してから確定できます。個別に比率・畝数を指定したい場合は下の設定を調整してください。</div>
       ${prereqHTML}
       ${bodyHTML}
       <div class="autoad-btn-row">
@@ -9010,20 +9029,20 @@ function _adpAutoDesignRun() {
 }
 
 /**
- * v4仕様4.：「🪄 完全自動設計」ボタン（パネル最上部）。タップ一回でAutoDesign.run()の結果を
- * プレビューを経由せず即座に確定する。畝方向が未設定でも自動計算（最長辺）して確定に含める。
- * 畝ピッチ境界ギリギリの作物（nearBoundary）がある場合は、安全のため通常の「適用」と同様に
- * 確認ダイアログを一度だけ挟む（対象0件なら即時確定）。
- * 改善①：即時確定＝既存の作物設定（比率・畝数等）を無条件で上書きする操作のため、
- * 境界確認が不要な通常ケースでもshowConfirmDialogでワンクッション挟み、誤タップによる
- * 意図しない上書きを防ぐ（高齢者ユーザーも想定した誤操作対策）。
+ * v4仕様4.：「🪄 完全自動設計」ボタン（パネル最上部）。タップ一回でAutoDesign.run()を実行し、
+ * 畝方向が未設定でも自動計算（最長辺）して確定に含める。
+ * UX見直し（2026-07 ④）：従来は計算前に内容の見えない状態で確認ダイアログを挟んでいたため、
+ * 「固定値」と「自動計算」の内訳を見ないまま確定していた。今回から、まず計算だけを行って
+ * バッジ付きパネル（固定＝グレー／自動計算＝青）を一度表示し、内容を見た上で確定するかどうか
+ * 判断できるようにする（実質「🔍プレビュー」→「✓適用」を1操作にまとめた形）。
+ * 畝ピッチ境界ギリギリの作物（nearBoundary）がある場合は、従来通り専用の確認モーダルに切り替える
+ * （境界モーダル自体が対象作物の内容を見せた上での確認になっているため、二重の確認は挟まない）。
+ * キャンセルした場合はプレビューを破棄せずそのまま残す（内容を見てから値を手直しする、
+ * 改めて「✓ 適用」を押す、のいずれも可能な状態にしておく）。
  */
 async function _adpAutoDesignFullAuto() {
   if (typeof AutoDesign === 'undefined') return;
   if (!_adpAutoDesignPrereqStatus().allOk) return; // 作物0件ならフェイルセーフで何もしない
-
-  const ok = await showConfirmDialog('現在の比率・畝数の設定を自動計算した内容で上書きします。よろしいですか？', '確定する', 'キャンセル', false);
-  if (!ok) return;
 
   _adpEnsureRidgeDirAutoDetected(); // 畝方向未設定でも自動計算して確定に含める
 
@@ -9035,19 +9054,22 @@ async function _adpAutoDesignFullAuto() {
     objective: _adpAutoDesignSettings.objective,
   });
   _adpAutoDesignPreview = result;
+  _adpRenderPlantingPane(); // バッジ付きパネルを先に表示し、内容が見える状態にしてから確認へ進む
 
   if (!result.ok) {
-    _adpRenderPlantingPane();
     showToast(`⚠ ${result.message}`, 'red');
     return;
   }
 
   const boundaryCrops = result.results.filter(r => r.nearBoundary);
   if (boundaryCrops.length > 0) {
-    _adpRenderPlantingPane();
     _adpShowBoundaryConfirmModal(boundaryCrops);
     return;
   }
+
+  const ok = await showConfirmDialog('この内容（🔒固定値／🤖自動計算）で確定します。よろしいですか？', '確定する', 'キャンセル', false);
+  if (!ok) return; // プレビューは残す（値を見ながら手直し・再計算・後から「✓ 適用」のいずれも可能）
+
   _adpAutoDesignCommit([]);
   showToast('🪄 完全自動設計を確定しました', 'green');
 }

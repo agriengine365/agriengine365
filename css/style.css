@@ -12290,6 +12290,55 @@ html.draw-dialog-active .bottom-nav {
   white-space: nowrap;
 }
 
+/* UX見直し（2026-07 ④）：「固定値」「自動計算」バッジ。
+   固定＝グレー系（ユーザー入力をそのまま使う＝変化なし）、
+   自動計算＝青系（--blue はこのアプリで元々「自動計算系」ハイライトに使う色）。
+   行全体の左枠線色（.autoad-row-field--fixed/--auto）と合わせて、バッジ単体を見なくても
+   行の並びだけでどの項目が固定／自動計算かをパッと判別できるようにする。 */
+.autoad-value-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  line-height: 1.7;
+}
+.autoad-value-badge-fixed {
+  background: color-mix(in srgb, var(--text2) 18%, transparent);
+  border: 1px solid var(--text3);
+  color: var(--text2);
+}
+.autoad-value-badge-auto {
+  background: color-mix(in srgb, var(--blue) 18%, transparent);
+  border: 1px solid var(--blue);
+  color: var(--blue);
+}
+.autoad-row-field--fixed {
+  border-left: 3px solid var(--text3);
+  padding-left: 6px;
+  border-radius: 0 6px 6px 0;
+}
+.autoad-row-field--auto {
+  border-left: 3px solid var(--blue);
+  padding-left: 6px;
+  border-radius: 0 6px 6px 0;
+}
+.autoad-badge-legend {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  font-size: 10px;
+  color: var(--text3);
+  padding-bottom: 2px;
+}
+.autoad-badge-legend span:not(.autoad-value-badge) {
+  margin-right: 4px;
+}
+
 .autoad-incr-btn {
   background: var(--bg2);
   border: 1px solid var(--border);
