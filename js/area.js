@@ -8401,18 +8401,25 @@ function _adpSetCrossSectionActiveCrop(cropId) {
 }
 
 /**
+/**
  * UX見直し（2026-07）：差分フラッシュ用ヘルパー。
- * 「描画」タブの平面図（#unified-ridge-preview）に現在表示中の畝ライン
- * （.plt-shapesvg-cropridge）の座標・色クラスを、再描画で失われる前に捕捉する。
+ * 「描画」タブの平面図（#unified-ridge-preview）に現在表示中の
+ * ①畝の実ライン（.plt-shapesvg-cropridge：帯の実位置が動く変更で移動）
+ * ②寸法線オーバーレイの可視部分（.plt-dimline-top/.plt-dimline-path/.plt-dimline-single：
+ *    畝比率（ridgeRatioPct）変更で分割点Cが移動する模式的な線）
+ * の座標・見た目種別を、再描画で失われる前に捕捉する。
  * 「調整」タブ表示中など平面図が存在しない場合は空配列を返す（＝差分フラッシュなし）。
  * @param {Element} blockEl - #planting-result [data-maintabs-body] 相当のコンテナ
- * @returns {Array<{x1:number,y1:number,x2:number,y2:number,colorClass:string}>}
+ * @returns {{ridge: Array<{x1:number,y1:number,x2:number,y2:number,colorClass:string}>,
+ *            dim: Array<{x1:number,y1:number,x2:number,y2:number,kind:string}>}}
  */
 function _adpCaptureRidgeGhostLines(blockEl) {
-  if (!blockEl) return [];
+  const empty = { ridge: [], dim: [] };
+  if (!blockEl) return empty;
   const svg = blockEl.querySelector('#unified-ridge-preview svg.plt-shapesvg');
-  if (!svg) return [];
-  return Array.from(svg.querySelectorAll('.plt-shapesvg-cropridge')).map(line => {
+  if (!svg) return empty;
+
+  const ridge = Array.from(svg.querySelectorAll('.plt-shapesvg-cropridge')).map(line => {
     const colorClass = Array.from(line.classList).find(c => c.startsWith('plt-cropcolor-')) || 'plt-cropcolor-0';
     return {
       x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
@@ -8420,42 +8427,78 @@ function _adpCaptureRidgeGhostLines(blockEl) {
       colorClass,
     };
   }).filter(l => Number.isFinite(l.x1) && Number.isFinite(l.y1) && Number.isFinite(l.x2) && Number.isFinite(l.y2));
+
+  const dim = Array.from(svg.querySelectorAll('.plt-dimline-top, .plt-dimline-path, .plt-dimline-single')).map(line => {
+    const kind = line.classList.contains('plt-dimline-top') ? 'top'
+      : line.classList.contains('plt-dimline-path') ? 'path' : 'single';
+    return {
+      x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
+      x2: parseFloat(line.getAttribute('x2')), y2: parseFloat(line.getAttribute('y2')),
+      kind,
+    };
+  }).filter(l => Number.isFinite(l.x1) && Number.isFinite(l.y1) && Number.isFinite(l.x2) && Number.isFinite(l.y2));
+
+  return { ridge, dim };
 }
 
 /**
- * 再描画後の平面図に、再描画前の畝位置を点線の残像（.plt-diffghost）として一瞬重ね、
- * CSSアニメーション（plt-diffghost-fade）でフェードアウトさせる。
- * 座標が完全一致するライン（＝実質変化なし）は残像を出さない。
+ * 再描画後の平面図に、再描画前の畝位置・寸法線分割点を点線の残像（.plt-diffghost）として
+ * 一瞬重ね、CSSアニメーション（plt-diffghost-fade）でフェードアウトさせる。
+ * 座標が完全一致するライン（＝実質変化なし）は残像を出さない（畝ライン・寸法線それぞれ独立判定）。
  * アニメーション終了後は要素を確実に除去する（CSSだけに任せず、要素残留を防ぐ）。
  * @param {Element} blockEl
- * @param {Array<{x1:number,y1:number,x2:number,y2:number,colorClass:string}>} oldLines
+ * @param {{ridge: Array, dim: Array}} oldLines - _adpCaptureRidgeGhostLines の戻り値
  */
 function _adpInjectRidgeGhostLines(blockEl, oldLines) {
-  if (!blockEl || !Array.isArray(oldLines) || !oldLines.length) return;
+  if (!blockEl || !oldLines) return;
   const svg = blockEl.querySelector('#unified-ridge-preview svg.plt-shapesvg');
   if (!svg) return;
 
-  const newLines = Array.from(svg.querySelectorAll('.plt-shapesvg-cropridge')).map(line => ({
-    x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
-    x2: parseFloat(line.getAttribute('x2')), y2: parseFloat(line.getAttribute('y2')),
-  }));
-  const changed = oldLines.some((old, i) => {
-    const cur = newLines[i];
-    return !cur || Math.abs(old.x1 - cur.x1) > 0.5 || Math.abs(old.y1 - cur.y1) > 0.5 ||
-      Math.abs(old.x2 - cur.x2) > 0.5 || Math.abs(old.y2 - cur.y2) > 0.5;
-  });
-  if (!changed) return; // 実質変化なしなら残像は出さない（無駄な明滅を避ける）
-
   const ns = 'http://www.w3.org/2000/svg';
+  const linesDiffer = (a, b) => !b || Math.abs(a.x1 - b.x1) > 0.5 || Math.abs(a.y1 - b.y1) > 0.5 ||
+    Math.abs(a.x2 - b.x2) > 0.5 || Math.abs(a.y2 - b.y2) > 0.5;
+
   const g = document.createElementNS(ns, 'g');
   g.setAttribute('class', 'plt-diffghost');
-  oldLines.forEach(l => {
-    const el = document.createElementNS(ns, 'line');
-    el.setAttribute('x1', l.x1); el.setAttribute('y1', l.y1);
-    el.setAttribute('x2', l.x2); el.setAttribute('y2', l.y2);
-    el.setAttribute('class', `plt-diffghost-line ${l.colorClass}`);
-    g.appendChild(el);
-  });
+  let any = false;
+
+  const oldRidge = Array.isArray(oldLines.ridge) ? oldLines.ridge : [];
+  if (oldRidge.length) {
+    const newRidge = Array.from(svg.querySelectorAll('.plt-shapesvg-cropridge')).map(line => ({
+      x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
+      x2: parseFloat(line.getAttribute('x2')), y2: parseFloat(line.getAttribute('y2')),
+    }));
+    if (oldRidge.some((old, i) => linesDiffer(old, newRidge[i]))) {
+      oldRidge.forEach(l => {
+        const el = document.createElementNS(ns, 'line');
+        el.setAttribute('x1', l.x1); el.setAttribute('y1', l.y1);
+        el.setAttribute('x2', l.x2); el.setAttribute('y2', l.y2);
+        el.setAttribute('class', `plt-diffghost-line ${l.colorClass}`);
+        g.appendChild(el);
+      });
+      any = true;
+    }
+  }
+
+  const oldDim = Array.isArray(oldLines.dim) ? oldLines.dim : [];
+  if (oldDim.length) {
+    const newDim = Array.from(svg.querySelectorAll('.plt-dimline-top, .plt-dimline-path, .plt-dimline-single')).map(line => ({
+      x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
+      x2: parseFloat(line.getAttribute('x2')), y2: parseFloat(line.getAttribute('y2')),
+    }));
+    if (oldDim.some((old, i) => linesDiffer(old, newDim[i]))) {
+      oldDim.forEach(l => {
+        const el = document.createElementNS(ns, 'line');
+        el.setAttribute('x1', l.x1); el.setAttribute('y1', l.y1);
+        el.setAttribute('x2', l.x2); el.setAttribute('y2', l.y2);
+        el.setAttribute('class', `plt-diffghost-line plt-diffghost-dim-${l.kind}`);
+        g.appendChild(el);
+      });
+      any = true;
+    }
+  }
+
+  if (!any) return; // 実質変化なしなら残像は出さない（無駄な明滅を避ける）
   svg.appendChild(g);
   setTimeout(() => g.remove(), 900);
 }
@@ -8468,7 +8511,7 @@ function _adpInjectRidgeGhostLines(blockEl, oldLines) {
  * 入力フィールドにフォーカスがある状態で呼ばれた場合、再描画（innerHTML差し替え）で
  * フォーカス・カーソル位置が失われるため、対象フィールドと選択範囲を保存しておき、
  * 再描画後に同じ入力欄へフォーカス・カーソル位置を復元する。
- * UX見直し（2026-07）：「描画」タブの平面図が対象の場合、再描画前後の畝位置を比較し、
+ * UX見直し（2026-07）：「描画」タブの平面図が対象の場合、再描画前後の畝位置・寸法線分割点を比較し、
  * 変化があれば旧位置を点線残像として一瞬重ねる差分フラッシュを行う
  * （_adpCaptureRidgeGhostLines / _adpInjectRidgeGhostLines）。
  */
@@ -8489,7 +8532,7 @@ function _adpRefreshRidgeInputBlock() {
 
   blockEl.innerHTML = _adpBuildPlantingTabBody(_adpPlantingUITab);
 
-  if (ghostLines.length) _adpInjectRidgeGhostLines(blockEl, ghostLines);
+  if (ghostLines.ridge.length || ghostLines.dim.length) _adpInjectRidgeGhostLines(blockEl, ghostLines);
 
   if (focusField) {
     const restored = blockEl.querySelector(`.plt-input-item[data-field="${focusField}"] input`);
@@ -8501,6 +8544,7 @@ function _adpRefreshRidgeInputBlock() {
     }
   }
 }
+
 
 /**
  * カード側の削除・占有率変更や平面図側の寸法線タップ誘導など、新ブロック以外の経路で
