@@ -11456,6 +11456,69 @@ html.draw-dialog-active .bottom-nav {
   color: var(--amber);
 }
 
+/* ═══════════════════════════════════════════
+   Step5: FIELD ADD CONTROLLER — 地図を合わせる（入口統合、仕様書3.1/3.2）
+   ボトムナビ「圃場追加」タップ後、最初に表示される共通画面
+   （field-add-scope-phase）。「自動で検出」＝塗りつぶし・主役、
+   「手動で描く」＝アウトライン・脇役。既存の.efd-shape-grid/.efd-shape-btn
+   と寸法・トークンを揃えつつ、主役/脇役の塗り分けのみ変える。
+   ═══════════════════════════════════════════ */
+
+.fac-choice-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.fac-choice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 10px;
+  border-radius: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+  -webkit-tap-highlight-color: transparent;
+}
+.fac-choice-btn:active {
+  transform: scale(0.98);
+}
+.fac-choice-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* 主役：自動で検出（塗りつぶし） */
+.fac-choice-auto {
+  background: var(--green3);
+  border: 1px solid var(--green2);
+  color: #fff;
+}
+.fac-choice-auto:hover, .fac-choice-auto:active {
+  background: var(--green2);
+  border-color: var(--green2);
+}
+.fac-choice-auto .fac-choice-icon {
+  color: #fff;
+}
+
+/* 脇役：手動で描く（アウトライン） */
+.fac-choice-manual {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+.fac-choice-manual:hover, .fac-choice-manual:active {
+  border-color: var(--green3);
+  color: var(--green);
+}
+.fac-choice-manual .fac-choice-icon {
+  color: var(--green2);
+}
+
 /* Leaflet.Editable の頂点ハンドルを既存の確定頂点マーカーと近い見た目に統一 */
 .leaflet-editable-vertex-icon {
   background: var(--green) !important;

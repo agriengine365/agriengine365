@@ -35,13 +35,11 @@
 
 <!-- 下部フロートナビ -->
 <div class="bottom-nav" id="bottom-nav">
-  <button class="bnav-btn bnav-primary" onclick="mfbAddField()" title="圃場追加">
+  <!-- Step5：「圃場追加」「かんたん追加」の2ボタンを1つに統合。
+       タップで「地図を合わせる」画面（自動検出／手動で描く の選択）を開く。 -->
+  <button class="bnav-btn bnav-primary" onclick="FieldAddController.start()" title="圃場追加">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     <span>圃場追加</span>
-  </button>
-  <button class="bnav-btn" onclick="EasyFieldDetect.start()" title="かんたん追加（自動検出）">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.6 3.9L18 8.2l-3.4 2.6.9 4.2L12 12.8l-3.5 2.2.9-4.2L6 8.2l4.4-1.3z"/><path d="M19 15l.7 1.7L21.5 17l-1.6 1.2.4 2-1.7-1-1.7 1 .4-2L16.7 17l1.8-.3z"/></svg>
-    <span>かんたん追加</span>
   </button>
   <button class="bnav-btn" data-nav="areas"    onclick="openPage('areas')"    title="エリア">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -56,8 +54,24 @@
 <!-- 地図上：描画操作ダイアログ（画面下端フルワイド） -->
 <div class="map-draw-dialog" id="map-draw-dialog" hidden aria-hidden="true">
 
+  <!-- ═══ Step5：地図を合わせる（入口統合の共通フェーズ、js/fieldAdd/fieldAddController.js）═══ -->
+  <div class="draw-phase" id="field-add-scope-phase" hidden>
+    <p class="map-draw-dialog-hint">地図を動かして、圃場の中心にスコープを合わせてください</p>
+    <div class="fac-choice-grid">
+      <button type="button" class="fac-choice-btn fac-choice-auto" onclick="FieldAddController.chooseAuto()">
+        <span class="fac-choice-icon">⚡</span>自動で検出
+      </button>
+      <button type="button" class="fac-choice-btn fac-choice-manual" onclick="FieldAddController.chooseManual()">
+        <span class="fac-choice-icon">✏️</span>手動で描く
+      </button>
+    </div>
+    <div class="map-draw-dialog-actions efd-actions-single">
+      <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="FieldAddController.cancel()">キャンセル</button>
+    </div>
+  </div>
+
   <!-- フェーズ A: 描画中 -->
-  <div class="draw-phase" id="draw-phase-drawing">
+  <div class="draw-phase" id="draw-phase-drawing" hidden>
     <p class="map-draw-dialog-hint" id="map-draw-dialog-hint">地図をタップして頂点を配置</p>
     <div class="map-draw-dialog-actions">
       <button type="button" class="map-draw-btn map-draw-btn-cancel"  id="btn-draw-cancel"   onclick="PolygonDraw.cancel()">キャンセル</button>
@@ -332,6 +346,7 @@
 <script src="js/map.js"></script>
 <script src="js/ridgeGeometry.js"></script>
 <script src="js/vendor/msqr.min.js"></script>
+<script src="js/fieldAdd/fieldAddController.js"></script>
 <script src="js/fieldAdd/fieldDetectAlgorithms.js"></script>
 <script src="js/fieldAdd/fieldConfirmAdjust.js"></script>
 <script src="js/fieldAdd/polygonDraw.js"></script>

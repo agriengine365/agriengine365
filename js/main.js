@@ -31,11 +31,8 @@ loadAreas();
 // ═══════════════════════════════════════════
 //  FAB — ボタン挙動
 // ═══════════════════════════════════════════
-
-function mfbAddField() {
-  if (typeof PolygonDraw !== 'undefined' && typeof PolygonDraw.start === 'function') {
-    PolygonDraw.start();
-  } else {
-    showToast('描画機能を読み込み中です', 'amber');
-  }
-}
+//
+//  Step5（入口統合）：旧mfbAddField()は廃止。ボトムナビ「圃場追加」ボタンの
+//  onclickは index.html 側で直接 FieldAddController.start() を呼ぶよう変更した
+//  （このファイル内に他の呼び出し元がないことを確認済み）。
+//  「地図を合わせる」画面（自動検出／手動で描く の選択）を経由するようになる。

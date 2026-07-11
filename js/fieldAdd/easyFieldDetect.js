@@ -32,10 +32,17 @@
 //  - onSensitivityChange()の150ms debounceはこのファイルに残す（仕様書5.3の
 //    デバウンス責務の置き場所。FieldConfirmAdjust.onSensitivityChange()から呼ばれる）
 //
-//  6章決定：完全な矩形化（形状差し替え）は廃止。EFD-1の形状選択UI自体は
-//  Step5（入口統合）まで温存するが、選択結果（shapeMode）は検出ロジックの
-//  分岐には使わない。矩形フィットの代わりに、直角に近い頂点だけをピタッと
-//  合わせる軽微な角度補正（snapNearRightAngles）のみ適用する。
+//  Step5（入口統合）で以下を変更：
+//  - start() → beginDetectFlow() にリネーム。「圃場を追加」の真の入口は
+//    js/fieldAdd/fieldAddController.js（FieldAddController.start()）になり、
+//    ここは「地図を合わせる」画面で「自動で検出」を選んだ後に呼ばれる
+//    （FieldAddController.chooseAuto()から委譲）。
+//  - フェーズ管理（ALL_PHASE_IDS／_showPhase等）をFieldAddControllerに一本化。
+//    このファイルからは削除し、FieldAddController.showPhase() 等を呼ぶだけにした。
+//  - 6章決定を今回のみ覆し、EFD-1「四角形」選択を復活。selectShape('rect')の
+//    場合のみ、検出成功時にconvexHull()→minAreaRect()で矩形フィットする
+//    （_buildAndShowPreviewFromMask()参照）。'complex'は従来通り
+//    snapNearRightAnglesによる軽微な角度補正のみ（実際の輪郭形状を尊重）。
 //
 //  技術メモ：
 //  - map.js側でタイルレイヤーに crossOrigin:true を指定しているため、
@@ -80,48 +87,11 @@ const EasyFieldDetect = (() => {
 
   // ═══════════════════════════════════════════
   //  フェーズ切替（map-draw-dialog内の他フェーズと排他）
+  //  Step5：ALL_PHASE_IDS／_showPhase／_hideAllPhases／_openDialog／
+  //  _closeDialogはfieldConfirmAdjust.js・polygonDraw.jsと3ファイルで
+  //  ほぼ同じ実装が重複していたため、js/fieldAdd/fieldAddController.js
+  //  に一本化した。ここではFieldAddController.showPhase() 等を呼ぶだけ。
   // ═══════════════════════════════════════════
-
-  const ALL_PHASE_IDS = [
-    'draw-phase-drawing',
-    'draw-phase-wizard',
-    'efd-phase-shape',
-    'efd-phase-tap',
-  ];
-
-  function _showPhase(targetId) {
-    ALL_PHASE_IDS.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.hidden = (id !== targetId);
-    });
-  }
-
-  function _hideAllPhases() {
-    ALL_PHASE_IDS.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.hidden = true;
-    });
-  }
-
-  function _openDialog() {
-    const dlg = document.getElementById('map-draw-dialog');
-    if (dlg) {
-      dlg.hidden = false;
-      dlg.removeAttribute('aria-hidden');
-    }
-    if (typeof closePage === 'function') closePage();
-    document.documentElement.classList.add('draw-dialog-active');
-  }
-
-  function _closeDialog() {
-    const dlg = document.getElementById('map-draw-dialog');
-    if (dlg) {
-      if (typeof _blurIfInside === 'function') _blurIfInside(dlg);
-      dlg.hidden = true;
-      dlg.setAttribute('aria-hidden', 'true');
-    }
-    document.documentElement.classList.remove('draw-dialog-active');
-  }
 
   function _setScopeVisible(visible) {
     const el = document.getElementById('draw-scope');
@@ -161,9 +131,12 @@ const EasyFieldDetect = (() => {
 
   // ═══════════════════════════════════════════
   //  公開フロー：開始 → 形状選択 → タップ検出 → プレビュー確定
+  //  Step5：旧start()はFieldAddController.chooseAuto()から呼ばれる
+  //  beginDetectFlow()にリネーム（「地図を合わせる」画面が真の入口になった
+  //  ため、ここはその次のステップという位置づけに変更）。
   // ═══════════════════════════════════════════
 
-  function start() {
+  function beginDetectFlow() {
     if (typeof PolygonDraw !== 'undefined' && PolygonDraw.isActive()) {
       PolygonDraw.cancel();
     }
@@ -185,16 +158,18 @@ const EasyFieldDetect = (() => {
     currentAreaData = null;
     if (typeof resetStats === 'function') resetStats();
 
-    _openDialog();
-    _showPhase('efd-phase-shape');
+    FieldAddController.openDialog();
+    FieldAddController.showPhase('efd-phase-shape');
     showToast('形を選んでください', '', 2400);
   }
 
   function selectShape(mode) {
-    // 6章決定：矩形化廃止に伴い、この選択は検出結果の分岐には使わない
-    // （UI遷移のみ。将来Step5でEFD-1自体を廃止する際にまとめて整理する）。
+    // Step5決定（仕様書6章の矩形化廃止を今回のみ覆す）：
+    // 「四角形」選択時のみ、検出成功時に矩形フィット（convexHull→minAreaRect）
+    // を適用する。「複雑な形」は従来通りdouglasPeucker→snapNearRightAngles。
+    // 分岐は_buildAndShowPreviewFromMask()内でstate.shapeModeを見て行う。
     state.shapeMode = mode;
-    _showPhase('efd-phase-tap');
+    FieldAddController.showPhase('efd-phase-tap');
     _setDetectingUI(false);
     _setScopeVisible(true);
     updateMapDrawHint('地図を動かして中央を圃場に合わせてください');
@@ -210,30 +185,37 @@ const EasyFieldDetect = (() => {
     state.gradientMap  = null;
     state.rasterScale  = 1;
     state.sensitivity  = DEFAULT_SENSITIVITY;
-    _showPhase('efd-phase-tap');
+    FieldAddController.showPhase('efd-phase-tap');
     _setDetectingUI(false);
     _setScopeVisible(true);
     showDrawToast('地図を動かして再度合わせ、「この地点で検出」をタップしてください');
   }
 
+  // ─── キャンセル（B案：即終了。「地図を合わせる」へは戻さない） ───
   function cancel() {
     if (state.cancelToken) state.cancelToken.cancelled = true;
     _clearSensitivityDebounce();
     _setScopeVisible(false);
-    _hideAllPhases();
-    _closeDialog();
+    FieldAddController.hideAllPhases();
+    FieldAddController.closeDialog();
     if (typeof setSheet === 'function') setSheet('half');
     showToast('かんたん追加をキャンセルしました');
   }
 
+  // ─── 手動描画へ退避（EFD-2の緊急退避ボタン。screen1経由せず直接手動描画へ） ───
+  // FieldAddController.chooseManual()経由にすることで、PolygonDraw.start()内の
+  // showPhase('draw-phase-drawing')呼び出しが効き、draw-phase-drawingのhidden
+  // 解除漏れ（旧実装のバグ：手動描画に切り替えると描画UIが空白になる）を回避する。
   function fallbackManual() {
     if (state.cancelToken) state.cancelToken.cancelled = true;
     _clearSensitivityDebounce();
     _setScopeVisible(false);
-    _hideAllPhases();
-    _closeDialog();
     showToast('手動描画に切り替えました', 'amber');
-    if (typeof PolygonDraw !== 'undefined') PolygonDraw.start();
+    if (typeof FieldAddController !== 'undefined' && typeof FieldAddController.chooseManual === 'function') {
+      FieldAddController.chooseManual();
+    } else if (typeof PolygonDraw !== 'undefined') {
+      PolygonDraw.start();
+    }
   }
 
   // ─── 低ズーム警告（非ブロッキング・テキストのみ、仕様書4章） ───
@@ -395,9 +377,11 @@ const EasyFieldDetect = (() => {
     _buildAndShowPreviewFromMask(closedMask, w, h);
   }
 
-  // ─── mask → 輪郭抽出 → 単純化 → 軽微な角度補正 → FieldConfirmAdjustへ引き渡し ───
-  // 6章決定：矩形化（形状差し替え）は廃止済みのため、shapeModeによる分岐はしない。
-  // 直角に近い頂点だけをFieldDetectAlgorithms.snapNearRightAngles()で補正する。
+  // ─── mask → 輪郭抽出 → 単純化・矩形フィット → FieldConfirmAdjustへ引き渡し ───
+  // Step5決定：EFD-1「四角形」選択（state.shapeMode === 'rect'）の場合のみ、
+  // 検出結果を凸包→最小外接矩形（convexHull→minAreaRect）でフィットする。
+  // 「複雑な形」（'complex'）は従来通りdouglasPeucker→snapNearRightAnglesで
+  // 実際の輪郭の形を尊重する（6章の軽微な角度補正のみ、という方針を維持）。
   // Step3：プレビュー表示・確認画面フェーズの所有権はFieldConfirmAdjustに移管済み。
   // 初回検出成功時／感度スライダー再検出成功時のいずれもここに集約される。
   function _buildAndShowPreviewFromMask(mask, w, h) {
@@ -410,22 +394,33 @@ const EasyFieldDetect = (() => {
       return;
     }
 
-    let eps = Math.max(2, diag * 0.003);
-    let simplified = FieldDetectAlgorithms.douglasPeucker(contour, eps);
-    // 頂点が多すぎる場合は簡略度を上げて再調整（最大4回）
-    let guard = 0;
-    while (simplified.length > 40 && guard < 4) {
-      eps *= 1.8;
-      simplified = FieldDetectAlgorithms.douglasPeucker(contour, eps);
-      guard++;
-    }
-    if (simplified.length < 3) simplified = FieldDetectAlgorithms.convexHull(contour);
+    let snapped;
 
-    const snapped = FieldDetectAlgorithms.snapNearRightAngles(simplified, RIGHT_ANGLE_TOLERANCE_DEG);
+    if (state.shapeMode === 'rect') {
+      // ─ 四角形選択時のみ：矩形フィット（形状全体を回転矩形へ差し替え） ─
+      const hull = FieldDetectAlgorithms.convexHull(contour);
+      snapped = hull.length >= 3 ? FieldDetectAlgorithms.minAreaRect(hull) : null;
+      if (!snapped || snapped.length < 3) {
+        _onDetectFailure('矩形を検出できませんでした。感度を調整するか、「複雑な形」をお試しください。');
+        return;
+      }
+    } else {
+      let eps = Math.max(2, diag * 0.003);
+      let simplified = FieldDetectAlgorithms.douglasPeucker(contour, eps);
+      // 頂点が多すぎる場合は簡略度を上げて再調整（最大4回）
+      let guard = 0;
+      while (simplified.length > 40 && guard < 4) {
+        eps *= 1.8;
+        simplified = FieldDetectAlgorithms.douglasPeucker(contour, eps);
+        guard++;
+      }
+      if (simplified.length < 3) simplified = FieldDetectAlgorithms.convexHull(contour);
 
-    if (!snapped || snapped.length < 3) {
-      _onDetectFailure('有効な形になりませんでした。感度を調整するか、手動描画をご利用ください。');
-      return;
+      snapped = FieldDetectAlgorithms.snapNearRightAngles(simplified, RIGHT_ANGLE_TOLERANCE_DEG);
+      if (!snapped || snapped.length < 3) {
+        _onDetectFailure('有効な形になりませんでした。感度を調整するか、手動描画をご利用ください。');
+        return;
+      }
     }
 
     // ラスタライズ時の縮小スケールを戻してから地図座標へ変換
@@ -487,9 +482,9 @@ const EasyFieldDetect = (() => {
     return { canvas, scale };
   }
 
-  // ─── 公開API ───
+  // ─── 公開API（Step5：start → beginDetectFlow にリネーム） ───
   return {
-    start,
+    beginDetectFlow,
     selectShape,
     detect,
     cancelDetect,

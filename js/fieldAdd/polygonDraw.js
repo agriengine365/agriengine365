@@ -8,6 +8,19 @@
 //    onDrawPolygonComplete()へ渡していたが、確認・微調整画面
 //    （js/fieldAdd/fieldConfirmAdjust.js）へ引き渡すだけに変更。
 //    実際の保存フローへの接続はFieldConfirmAdjust.confirm()側で行う。
+//
+//  Step5（入口統合）で以下を変更：
+//  - 開始トリガーをFieldAddController.chooseManual()経由に変更
+//    （旧：ボトムナビ「圃場追加」直呼び／EasyFieldDetectの手動退避時直呼び
+//    → 新：どちらもFieldAddController経由でPolygonDraw.start()を呼ぶ）。
+//    描画ロジック自体は無改修。
+//  - start()冒頭でFieldAddController.showPhase('draw-phase-drawing')を呼ぶよう
+//    追加（バグ修正）。旧実装はsetControlsVisible(true)でダイアログ本体こそ
+//    開いていたが、draw-phase-drawing自身のhidden解除は行っておらず、
+//    「手動に切替」「手動描画へ」経由で呼ばれた際に描画UIが空白になる
+//    バグがあった（他フェーズがdraw-phase-drawingをhidden=trueにしたまま
+//    残っていたため）。FieldAddControllerによるフェーズ一元管理により解消。
+//  - cancel()の挙動は変更なし（B案：即終了。「地図を合わせる」へは戻さない）。
 // ═══════════════════════════════════════════
 
 // ─── aria-hidden 適用前にフォーカスを外す共通ヘルパー ───
@@ -180,6 +193,13 @@ const PolygonDraw = (() => {
     map.on('move',    onMapMove);
     map.on('moveend', onMapMove);
     map.getContainer().classList.add('polygon-draw-active');
+
+    // Step5バグ修正：draw-phase-drawing自身のhiddenを明示的に解除する。
+    // setControlsVisible(true)はダイアログ本体（#map-draw-dialog）の
+    // 開閉のみを担当しており、このフェーズdiv自体の表示切替は行っていない。
+    if (typeof FieldAddController !== 'undefined' && typeof FieldAddController.showPhase === 'function') {
+      FieldAddController.showPhase('draw-phase-drawing');
+    }
 
     setScopeVisible(true);
     setControlsVisible(true);

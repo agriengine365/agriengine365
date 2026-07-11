@@ -323,9 +323,12 @@ function showWizardDone(areaName) {
 }
 
 // ─── 続けてエリアを追加（完了画面から連続追加） ───
+// Step5：PolygonDraw.start()直呼びから、入口統合後のFieldAddController.start()
+// 経由に変更（仕様書3.1・9章）。これにより「地図を合わせる」画面（自動検出／
+// 手動で描く の選択）を毎回経由するようになる。
 function addAnotherArea() {
   hideWizard();
-  PolygonDraw.start();
+  FieldAddController.start();
 }
 
 // ─── エリア一覧へ移動 ───
