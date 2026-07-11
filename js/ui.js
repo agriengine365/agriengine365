@@ -412,3 +412,30 @@ function _confirmModalAnswer(result) {
   if (overlay) overlay.classList.remove('open');
   if (_confirmResolve) { _confirmResolve(result); _confirmResolve = null; }
 }
+
+// ═══════════════════════════════════════════
+//  保存データ全削除（トップ画面の単独ボタン）
+//  この端末（ブラウザ）のlocalStorageに保存されたデータを全て削除する。
+//  Firestore等クラウド側のデータには触れない（ローカルのみを対象とする）。
+// ═══════════════════════════════════════════
+
+async function confirmClearLocalData() {
+  const ok = await showConfirmDialog(
+    'この端末に保存されているデータ（エリア・設定など）をすべて削除します。この操作は取り消せません。よろしいですか？',
+    '削除する',
+    'キャンセル',
+    true
+  );
+  if (!ok) return;
+
+  try {
+    localStorage.clear();
+  } catch (e) {
+    console.error('[confirmClearLocalData] localStorage.clear失敗:', e);
+    showToast('削除に失敗しました', 'amber');
+    return;
+  }
+
+  showToast('保存データを削除しました');
+  setTimeout(() => location.reload(), 600);
+}

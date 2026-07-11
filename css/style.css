@@ -54,6 +54,37 @@ body {
 }
 .icon-btn:hover { border-color: var(--green3); color: var(--green); }
 
+/* 保存データ削除ボタン（トップ画面右上に単独配置。他のナビ・操作系とは意図的に分離） */
+.data-clear-btn {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(14, 26, 18, 0.90);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border);
+  color: var(--text3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 450;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.55);
+  transition: border-color 0.15s, color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.data-clear-btn:hover, .data-clear-btn:active {
+  border-color: var(--red);
+  color: var(--red);
+}
+html.draw-dialog-active .data-clear-btn {
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* ─── Map ─── */
 #map {
   position: fixed;
