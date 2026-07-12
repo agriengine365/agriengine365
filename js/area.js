@@ -9370,6 +9370,11 @@ function _adpAutoDesignCommit(increaseCropIds) {
 
   _adpAutoDesignPreview = null;
   _adpCloseBoundaryConfirmModal();
+  // バグ修正（2026-07）：他のratio変更箇所（_adpUpdatePracticeRatio等）と同様に、
+  // メイン表示の作物チップ＋占有率%バッジを再描画する呼び出しが漏れていたため追加。
+  // これが無いと crop.ratio 自体は正しく更新されるのに、自動設計確定直後は
+  // メイン表示側の%表示が古い値のまま残ってしまっていた。
+  _adpRenderPracticecrops();
   _adpRefreshPracticeTabs();
 }
 

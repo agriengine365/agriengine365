@@ -548,7 +548,13 @@ const RidgeGeometry = (() => {
         areaSqm: _bandAreaWithHoles(poly, normalDir, offsetCursor, offsetEnd, holesLocal),
       });
 
-      const gap = (Array.isArray(gapWidthsM) && Number(gapWidthsM[i]) > 0) ? Number(gapWidthsM[i]) : 0;
+      // バグ修正（2026-07）：占有率0%の帯（幅ゼロ）と、その次の帯との境界には
+      // 実体のある区切りが存在しないため、ギャップを予約しない。従来は ratio が
+      // 0%でも gapWidthsM[i] が無条件に適用され、0%作物の分だけ隣の作物の実面積が
+      // 目減りする（合計比率が100%からズレる）不具合があった。
+      const nextRatio = (i + 1 < ratios.length) ? (Number(ratios[i + 1]) || 0) : null;
+      const gapEligible = ratio > 0 && (nextRatio === null || nextRatio > 0);
+      const gap = (gapEligible && Array.isArray(gapWidthsM) && Number(gapWidthsM[i]) > 0) ? Number(gapWidthsM[i]) : 0;
       offsetCursor = Math.min(offsetEnd + gap, projMax);
     }
 
@@ -624,9 +630,16 @@ const RidgeGeometry = (() => {
       const provisional = _splitBandsCore(poly, normalDir, projMin, projMax, ratios, totalArea, holesLocal, null);
 
       // パス1の境界位置に基づき、各ギャップ帯の実面積（穴除外後）を見積もる
+      // バグ修正（2026-07）：占有率0%の帯の前後は実体のある区切りが無いため、
+      // ギャップ面積の見積もりからも除外する（_splitBandsCore側の修正と対で必要。
+      // ここで除外しないと、0%作物の分だけ effectiveArea が不必要に目減りし、
+      // 他の作物の実面積が本来の占有率より小さくなってしまう）。
       let totalGapArea = 0;
       for (let i = 0; i < gaps.length; i++) {
         if (gaps[i] <= 0) continue;
+        const ratioHere = Number(ratios[i]) || 0;
+        const ratioNext = Number(ratios[i + 1]) || 0;
+        if (ratioHere <= 0 || ratioNext <= 0) continue;
         const gStart = provisional[i].boundaryEnd;
         const gEnd   = Math.min(gStart + gaps[i], projMax);
         totalGapArea += _bandAreaWithHoles(poly, normalDir, gStart, gEnd, holesLocal);
