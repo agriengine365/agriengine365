@@ -9970,15 +9970,14 @@ function _adpBuildUnifiedRidgePreviewSVG() {
       marginNoteHTML = `<div class="plt-shapesvg-note">📏 外膜マージン ${hm.frameMarginM}m を内側に反映した実効境界（グレー破線）です。畝・苗数はこの内側だけで計算されます。</div>`;
     }
 
-    // computeHouseGeometry の穴の並び順（entrance→opposite、それぞれ条件を満たす場合のみ）に合わせてラベルを対応させる。
-    // oppositeDepthM は未指定（null/undefined/''）ならentranceDepthMを共通値として使うフォールバックをridgeGeometry.js側と同じ条件で再現する。
+    // 穴の種別（entrance/opposite）は computeHouseGeometry が holes と同じ添字で確定して返す
+    // holeKinds をそのまま使う（クリップ結果によって条件だけから逆算するとズレる可能性があるため、
+    // area.js側で独自に再構築するのはやめた）。
     const entranceDepthM = Number(hm.entranceDepthM) || 0;
     const oppositeDepthM = (hm.oppositeDepthM === undefined || hm.oppositeDepthM === null || hm.oppositeDepthM === '')
       ? entranceDepthM
       : (Number(hm.oppositeDepthM) || 0);
-    const holeKinds = [];
-    if (entranceDepthM > 0) holeKinds.push('entrance');
-    if (oppositeDepthM > 0 && geo.oppositeEdgeIndex >= 0) holeKinds.push('opposite');
+    const holeKinds = geo.holeKinds || [];
 
     (geo.holes || []).forEach((holeLatLngs, i) => {
       const kind = holeKinds[i];

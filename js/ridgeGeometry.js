@@ -793,16 +793,72 @@ const RidgeGeometry = (() => {
   }
 
   /**
+   * 入口辺の「反対側（Uターンスペース）」の辺を実際に探して特定する。
+   * ハウス圃場は基本的に矩形（4辺）を前提とするが、GPS/地図上での圃場ドローでは
+   * 頂点数が4より多くなる（角の近くに余分な点が入る等）ことがあるため、
+   * 単純な「辺総数の半分だけインデックスをずらす」近似ではなく、
+   * 入口辺から見て（1）奥行き方向に最も離れていて、（2）向きが入口辺とほぼ平行、
+   * の2条件でスコア付けして最も反対側らしい辺を選ぶ。
+   * 矩形（4頂点）の場合は常に真の対辺と一致する。
+   *
+   * @param {{x:number,y:number}[]} poly — ローカル座標のポリゴン（原辺）
+   * @param {number} entranceEdgeIndex
+   * @returns {number} 反対側辺のインデックス（見つからない場合 -1）
+   */
+  function _findOppositeEdgeIndex(poly, entranceEdgeIndex) {
+    const n = poly.length;
+    if (n < 3 || entranceEdgeIndex < 0 || entranceEdgeIndex >= n) return -1;
+
+    const a = poly[entranceEdgeIndex];
+    const b = poly[(entranceEdgeIndex + 1) % n];
+    const entranceDir = _normalize({ x: b.x - a.x, y: b.y - a.y });
+    const sign = _signedArea(poly) >= 0 ? 1 : -1;
+    const inward = sign > 0
+      ? { x: -entranceDir.y, y: entranceDir.x }
+      : { x: entranceDir.y, y: -entranceDir.x };
+    const entranceMid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+
+    let bestIdx = -1, bestScore = -Infinity;
+    for (let i = 0; i < n; i++) {
+      if (i === entranceEdgeIndex) continue;
+      const p1 = poly[i], p2 = poly[(i + 1) % n];
+      const edgeVec = { x: p2.x - p1.x, y: p2.y - p1.y };
+      const edgeLen = _len(edgeVec);
+      if (edgeLen <= 0) continue;
+      const dir = { x: edgeVec.x / edgeLen, y: edgeVec.y / edgeLen };
+
+      // 平行度：入口辺と同一直線的（平行）なほど1に近づく（符号は問わない＝逆向きでもOK）
+      const parallelism = Math.abs(_dot(dir, entranceDir));
+      // 奥行き：入口辺の内向き法線方向にどれだけ離れているか（大きいほど「奥」＝反対側らしい）
+      const mid = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+      const depth = _dot({ x: mid.x - entranceMid.x, y: mid.y - entranceMid.y }, inward);
+      if (depth <= 0) continue; // 入口より手前（外側）の辺は反対側になり得ない
+
+      // 奥行きを主軸に、平行度と辺の長さ（短い余剰辺を避ける）で補正する
+      const score = depth * 2 + parallelism * edgeLen * 0.5;
+      if (score > bestScore) { bestScore = score; bestIdx = i; }
+    }
+    return bestIdx;
+  }
+
+  /**
    * 圃場の実効ジオメトリ（外周マージン内側オフセット＋入口帯・反対側（Uターン）帯の穴）を計算する。
    * 全栽培タイプ（露地・ハウス問わず）共通で使用する。
    * 入口辺は省略時、元ポリゴンの最短辺を自動選択する。
    * 反対側（Uターンスペース）帯の辺は、矩形圃場を前提に入口辺の対辺を自動特定する
-   * （辺総数の半分だけインデックスをずらす簡易近似。変形圃場では厳密な対辺にならない場合がある）。
+   * （_findOppositeEdgeIndex：奥行き・平行度による幾何的マッチング。矩形なら常に真の対辺と一致する）。
    *
    * 【圃場マージン再設計】
    * - entranceWidthM は廃止。入口帯は「辺全体を幅とする帯」になった（_buildEdgeBand）。
    * - equipWidthM（設備通路幅）は廃止。入口帯に統合された。
    * - oppositeDepthM（反対側帯の奥行き）を新設。未指定時は entranceDepthM を共通値として使う。
+   *
+   * 【穴の種別タグ】
+   * - holes[i] に対応する種別（'entrance' | 'opposite'）を holeKinds[i] として同時に返す。
+   *   呼び出し側（描画コード等）は holeKinds を使ってラベル・スタイルを対応させること。
+   *   holes は「実際に穴として成立した（クリップ後3点以上残った）ものだけ」が入るため、
+   *   entranceDepthM/oppositeDepthM の指定だけから種別を逆算すると、
+   *   クリップ結果によっては本関数の実際の生成順とズレる可能性がある。
    *
    * @param {Array<{lat:number,lng:number}>} polygonLatLngs — 圃場ポリゴン全体
    * @param {Object} opts
@@ -814,13 +870,14 @@ const RidgeGeometry = (() => {
    * @returns {{
    *   outerPolygon: Array<{lat:number,lng:number}>,
    *   holes: Array<Array<{lat:number,lng:number}>>,
+   *   holeKinds: Array<'entrance'|'opposite'>,
    *   entranceEdgeIndex: number,
    *   oppositeEdgeIndex: number,
    *   availableAreaSqm: number
    * }}
    */
   function computeHouseGeometry(polygonLatLngs, opts) {
-    const empty = { outerPolygon: [], holes: [], entranceEdgeIndex: -1, oppositeEdgeIndex: -1, availableAreaSqm: 0 };
+    const empty = { outerPolygon: [], holes: [], holeKinds: [], entranceEdgeIndex: -1, oppositeEdgeIndex: -1, availableAreaSqm: 0 };
     if (!polygonLatLngs || polygonLatLngs.length < 3) return empty;
 
     const o = opts || {};
@@ -847,12 +904,8 @@ const RidgeGeometry = (() => {
       }
     }
 
-    // 2. 反対側（Uターン）辺の決定：矩形圃場前提で対辺を自動特定
-    let oppositeEdgeIndex = -1;
-    if (n >= 3) {
-      oppositeEdgeIndex = (entranceEdgeIndex + Math.round(n / 2)) % n;
-      if (oppositeEdgeIndex === entranceEdgeIndex) oppositeEdgeIndex = -1; // 三角形等、対辺が定義できない場合
-    }
+    // 2. 反対側（Uターン）辺の決定：矩形圃場前提で対辺を幾何的に特定（_findOppositeEdgeIndex）
+    const oppositeEdgeIndex = _findOppositeEdgeIndex(poly, entranceEdgeIndex);
 
     // 3. 【Step7-6】畝辺（入口辺・反対側辺以外）だけを外周マージンぶん内側にクリップする。
     //    入口辺・反対側辺は原辺のまま動かさない（外膜マージンの影響を受けない）。
@@ -864,15 +917,16 @@ const RidgeGeometry = (() => {
     // 4. 入口帯・反対側帯の穴を生成（原辺基準の帯を、実効境界＝outerPolyに交差クリップする）
     //    交差クリップにより、帯の左右の幅は自動的に「畝辺のマージンオフセット線まで」に収まる。
     const holesLocal = [];
+    const holeKindsLocal = []; // holesLocal と同じ添字で種別を対応させる（呼び出し側での取り違え防止）
     if (entranceDepthM > 0) {
       const band = _buildEdgeBand(poly, entranceEdgeIndex, entranceDepthM);
       const clipped = _clipPolygonToConvex(band, outerPoly);
-      if (clipped.length >= 3) holesLocal.push(clipped);
+      if (clipped.length >= 3) { holesLocal.push(clipped); holeKindsLocal.push('entrance'); }
     }
     if (oppositeDepthM > 0 && oppositeEdgeIndex >= 0) {
       const band = _buildEdgeBand(poly, oppositeEdgeIndex, oppositeDepthM);
       const clipped = _clipPolygonToConvex(band, outerPoly);
-      if (clipped.length >= 3) holesLocal.push(clipped);
+      if (clipped.length >= 3) { holesLocal.push(clipped); holeKindsLocal.push('opposite'); }
     }
 
     // 5. 面積集計（実効境界 − 各穴）
@@ -882,6 +936,7 @@ const RidgeGeometry = (() => {
     return {
       outerPolygon: outerPoly.map(p => _fromLocal(p, origin)),
       holes: holesLocal.map(hole => hole.map(p => _fromLocal(p, origin))),
+      holeKinds: holeKindsLocal,
       entranceEdgeIndex,
       oppositeEdgeIndex,
       availableAreaSqm: Math.round(Math.max(availableArea, 0) * 10) / 10,
