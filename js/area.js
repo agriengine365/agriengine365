@@ -1296,14 +1296,6 @@ let _adpCurrentSubTab = 'ranking'; // 現在のサブタブ
 let _adpSwipeAnimating = false;
 
 function _adpSwitchSubTab(name) {
-  // 5.5（Step3）：栽植設計ペインから他ペインへ切り替わる際、自動設計プレビューが
-  // 残っていれば「適用」相当の確定処理を自動実行する（境界確認ダイアログが必要な
-  // 場合はそのまま表示される）。セグメント切替経由（_adpSwitchSeg → 先頭タブへ）も
-  // 本関数を通るため、この1箇所のフックでカバーできる。
-  if (_adpCurrentSubTab === 'planting' && name !== 'planting' && _adpAutoDesignPreview?.ok) {
-    _adpAutoDesignApply();
-  }
-
   _adpCurrentSubTab = name;
 
   // セグメント自動同期：外部から直接タブ名で呼ばれた場合に正しいバーを表示する
