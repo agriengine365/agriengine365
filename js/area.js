@@ -679,7 +679,7 @@ async function openAreaDetailPanel(area) {
 
   // 実務側の占有率帯・畝セグメントを最新状態に同期（エリア再オープン時に前回の
   // 保存データと畝方向・畝間設定にズレがあっても、開いた時点で必ず正しく揃える）
-  if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin, _adpAutoDesignSettings.zonePriorityMode)) {
+  if (_adpRecalcAllBandsSafe(_adpAutoDesignSettings.zonePriorityMode)) {
     _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
   }
 
@@ -5357,7 +5357,7 @@ function _adpRemovePracticeCrop(cropId) {
 
 function _adpRefreshPracticeTabs() {
   // 占有率変更・作物追加削除のたびに帯状分割（実面積比例）・畝セグメントを再計算する
-  if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin, _adpAutoDesignSettings.zonePriorityMode)) {
+  if (_adpRecalcAllBandsSafe(_adpAutoDesignSettings.zonePriorityMode)) {
     _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
   }
   if (typeof _renderFertResultMulti === 'function')  _renderFertResultMulti(_adpPracticecrops);
@@ -7377,7 +7377,7 @@ function _adpSelectRidgeDirEdge(edgeIndex, silent) {
     });
   }
 
-  if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+  if (_adpRecalcAllBandsSafe()) {
     _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
   }
   if (_adpAnalysisPlantingDesign) {
@@ -7557,7 +7557,7 @@ function _adpToggleOppositeSameDepth(checked) {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   _adpSaveHouseMargin(areaId);
 
-  if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+  if (_adpRecalcAllBandsSafe()) {
     _adpSavePracticecrops(areaId);
   }
   if (_adpAnalysisPlantingDesign) {
@@ -7712,6 +7712,21 @@ function _adpRotateActiveEdge() {
 }
 
 /**
+ * PlantingLogic.recalcAllBands() の呼び出し前に、畝方向（meta.ridgeBaseDirection）が
+ * 未設定なら自動判定して確定させる共通ラッパー（2026-07 追加・不具合修正）。
+ * recalcAllBands は畝方向が未設定だと即座にfalseを返し帯を一切更新しない仕様のため、
+ * これを経由せず直接呼んでいた箇所では「畝方向を決める前に入口辺トグル・圃場マージン・
+ * 作物追加などを操作すると、以後ずっと無反応（占有面積が0/未割当のまま）になる」という
+ * 不具合が発生していた。recalcAllBands を呼ぶ箇所は全てこのラッパー経由に統一する。
+ * @param {string} [zonePriorityMode]
+ * @returns {boolean} recalcAllBandsの戻り値（帯の再計算に成功したか）
+ */
+function _adpRecalcAllBandsSafe(zonePriorityMode) {
+  _adpEnsureRidgeDirAutoDetected();
+  return PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin, zonePriorityMode);
+}
+
+/**
  * 圃場マージン入力欄の変更ハンドラ（外膜マージン・入口奥行き・反対側奥行き）。
  * 全帯・分析側の畝を再計算し、プレビュー部分＋各カードの結果表示のみを部分更新する
  * （入力欄自体は再描画しないため、typingにより入力フォーカスを失わない）。
@@ -7729,7 +7744,7 @@ function _adpUpdateHouseMarginField(field, value) {
   _adpDebounce('housemargin', () => {
     _adpSaveHouseMargin(areaId);
 
-    if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+    if (_adpRecalcAllBandsSafe()) {
       _adpSavePracticecrops(areaId);
     }
     if (_adpAnalysisPlantingDesign) {
@@ -7777,7 +7792,7 @@ function _adpRotateEntranceEdge() {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   _adpSaveHouseMargin(areaId);
 
-  if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+  if (_adpRecalcAllBandsSafe()) {
     _adpSavePracticecrops(areaId);
   }
   if (_adpAnalysisPlantingDesign) {
@@ -9375,7 +9390,7 @@ function _adpSetRidgeInputMode(cropId, mode, seg) {
     if (!_adpAnalysisPlantingDesign) return;
     PlantingLogic.recalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, PlantingLogic.effectivePitchCm(_adpAnalysisPlantingDesign), _adpArea, _adpHouseMargin);
   } else {
-    PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin);
+    _adpRecalcAllBandsSafe();
     const calcForSave = PlantingLogic.calcPlanting(design);
     design.purchase = calcForSave ? calcForSave.purchase : null;
     _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
@@ -9450,7 +9465,7 @@ function _adpRefreshDetailPitchDisplay(seg, cropId) {
     if (seg === 'analysis') {
       PlantingLogic.recalcAnalysisRidgeSegments(design, pitchCm, _adpArea, _adpHouseMargin);
     } else {
-      if (PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin)) {
+      if (_adpRecalcAllBandsSafe()) {
         _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
       }
     }
@@ -9817,7 +9832,7 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
     // 全帯を再計算（境界ギャップは隣接畝のridgeRatioPctにも依存するため、ratio変更時も再計算が必要。
     // targetRowCountは畝数指定方式でのピッチ逆算のトリガー）
     if (field === 'rowWidth' || field === 'ridgeRatioPct' || field === 'targetRowCount') {
-      PlantingLogic.recalcAllBands(_adpPracticecrops, _adpArea, _adpHouseMargin);
+      _adpRecalcAllBandsSafe();
     }
 
     // purchase を先に計算して書き戻してから保存（施肥タブの株数基準に必要）
