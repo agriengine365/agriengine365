@@ -12133,6 +12133,22 @@ html.draw-dialog-active .bottom-nav {
   fill: var(--text2);
 }
 
+/* 拡大詳細図：畝数が3本を超える場合の「他◯畝 同条件」注記（断面図の
+   .plt-crosssection-label-omitted と同じトーンで統一） */
+.plt-zoomview-label-omitted {
+  font-size: 9px;
+  font-weight: 500;
+  fill: var(--text3);
+}
+/* 拡大詳細図：畝番号・条数・株間・条間・外側マージンなどの副次的な数値ラベル。
+   主要寸法（畝上幅・畝長・畝間）の .plt-zoomview-label より一段小さく控えめにし、
+   図内に多数の数値を並べても密集して見えないようにする。 */
+.plt-zoomview-label-sub {
+  font-size: 9px;
+  font-weight: 500;
+  fill: var(--text3);
+}
+
 /* ─── 自動設計（Step1・Agri_planting_auto_design_spec.MD → v4仕様4.でアコーディオン撤去・直接展開に刷新） ─── */
 .autoad-panel {
   background: var(--bg3);

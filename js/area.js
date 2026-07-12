@@ -8203,12 +8203,18 @@ function _adpBuildRidgeZoomDetailSVG(entry, colorClass) {
   const missingRate  = (design.missingRate !== null && design.missingRate !== undefined && design.missingRate !== '')
     ? Number(design.missingRate) : null;
 
+  // 数値の図内一本化（2026-07）：畝数／条数／株間／条間は下部テキストではなく図の該当箇所に
+  // 直接ラベルとして描画するため、ここでは infoLines に含めない（矛盾防止・対応関係の明確化）。
+  // 図内で表現できない欠株率のみ、引き続き下部テキストに残す。
   const infoLines = [];
-  if (totalRows != null)    infoLines.push(`畝数 ${totalRows}本`);
-  if (linesPerRow != null)  infoLines.push(`条数 ${linesPerRow}条`);
-  if (plantSpacing != null) infoLines.push(`株間 ${plantSpacing}cm`);
-  if (rowSpacing != null)   infoLines.push(`条間 ${rowSpacing}cm`);
-  if (missingRate != null)  infoLines.push(`欠株率 ${missingRate}%`);
+  if (missingRate != null) infoLines.push(`欠株率 ${missingRate}%`);
+
+  // 数値の描画網羅（2026-07）：「畝数◯本」の文字表示だけでは実際の見た目と一致しないため
+  // （例：畝数3本・条数4条なのに帯が1本しか描かれず「4条3畝に見えない」）、
+  // 断面図（_adpBuildRidgeCrossSectionSVG）と同じ考え方で、実畝数ぶん（最大3本）の帯を
+  // 実際に並べて描画し、各帯の中に条数ぶんの線を入れる。4本目以降は「他◯畝 同条件」で注記する。
+  const displayCount = (totalRows != null && totalRows > 0) ? Math.min(totalRows, 3) : 1;
+  const midIdx = Math.floor((displayCount - 1) / 2);
 
   const VIEW_W = 300;
   const topY = 26, botY = 124;
@@ -8217,63 +8223,150 @@ function _adpBuildRidgeZoomDetailSVG(entry, colorClass) {
   // 情報ラベル行の有無に応じて下方向に可変拡張する（従来固定150 → 行数ぶん追加）。
   const VIEW_H = infoLines.length ? (infoTopY + infoLines.length * INFO_LINE_H) : 150;
 
-  const totalCm = topCm + pathCm;
+  // --- 帯（畝）をcm単位で左から順に配置する（displayCount本、間に実際のpathCmの隙間） ---
+  const bandsCm = [];
+  {
+    let cursor = halfPathCm; // 左端の余白（隣接畝との共有ぶん、片側だけ）
+    for (let i = 0; i < displayCount; i++) {
+      const x1 = cursor, x2 = cursor + topCm;
+      bandsCm.push({ x1, x2 });
+      cursor = x2 + pathCm; // 次の帯までの実際の畝間ぶん進める
+    }
+  }
+  const totalCm = bandsCm[bandsCm.length - 1].x2 + halfPathCm;
   const scale = Math.min(220 / Math.max(totalCm, 1), 6); // px/cm、最大6倍
-  const bandWpx = topCm * scale, halfPathWpx = halfPathCm * scale;
-  const cx = VIEW_W / 2;
-  const bandX1 = cx - bandWpx / 2, bandX2 = cx + bandWpx / 2;
-  const outerX1 = bandX1 - halfPathWpx, outerX2 = bandX2 + halfPathWpx;
+  const totalWpx = totalCm * scale;
+  const startXpx = (VIEW_W - totalWpx) / 2; // 全体を水平中央に配置
+  const cmToPx = (cm) => startXpx + cm * scale;
 
   let svg = '';
-  svg += `<rect x="${outerX1.toFixed(1)}" y="${topY}" width="${(bandX1 - outerX1).toFixed(1)}" height="${botY - topY}" class="plt-zoomview-path" />`;
-  svg += `<rect x="${bandX2.toFixed(1)}" y="${topY}" width="${(outerX2 - bandX2).toFixed(1)}" height="${botY - topY}" class="plt-zoomview-path" />`;
-  svg += `<rect x="${bandX1.toFixed(1)}" y="${topY}" width="${bandWpx.toFixed(1)}" height="${botY - topY}" class="plt-zoomview-ridge ${colorClass}" data-cross-crop="${entry.cropId}" />`;
-  svg += `<line x1="${bandX1.toFixed(1)}" y1="${topY - 10}" x2="${bandX2.toFixed(1)}" y2="${topY - 10}" class="plt-zoomview-dim" />`;
-  svg += `<text x="${cx.toFixed(1)}" y="${topY - 14}" text-anchor="middle" class="plt-zoomview-label">畝上幅 ${topCm}cm</text>`;
-  svg += `<line x1="${(outerX2 + 14).toFixed(1)}" y1="${topY}" x2="${(outerX2 + 14).toFixed(1)}" y2="${botY}" class="plt-zoomview-dim" />`;
-  svg += `<text x="${(outerX2 + 20).toFixed(1)}" y="${((topY + botY) / 2).toFixed(1)}" text-anchor="start" class="plt-zoomview-label">畝長 ${rowLengthLabel}</text>`;
 
-  // 畝間：左の畝間（谷）ゾーンの縦中央に水平寸法線＋ラベルを追加。halfPathCmは片側ぶんの表示、
-  // 実際の畝間（両ピッチ分）はpathCmとして併記する。
-  if (pathCm > 0 && bandX1 > outerX1) {
+  // --- 畝間（谷）ゾーン：帯と帯の間、および左右の外側余白 ---
+  if (halfPathCm > 0) {
+    svg += `<rect x="${cmToPx(0).toFixed(1)}" y="${topY}" width="${(cmToPx(bandsCm[0].x1) - cmToPx(0)).toFixed(1)}" height="${botY - topY}" class="plt-zoomview-path" />`;
+    const lastX2 = bandsCm[bandsCm.length - 1].x2;
+    svg += `<rect x="${cmToPx(lastX2).toFixed(1)}" y="${topY}" width="${(cmToPx(totalCm) - cmToPx(lastX2)).toFixed(1)}" height="${botY - topY}" class="plt-zoomview-path" />`;
+  }
+  for (let i = 0; i < bandsCm.length - 1; i++) {
+    svg += `<rect x="${cmToPx(bandsCm[i].x2).toFixed(1)}" y="${topY}" width="${(cmToPx(bandsCm[i + 1].x1) - cmToPx(bandsCm[i].x2)).toFixed(1)}" height="${botY - topY}" class="plt-zoomview-path" />`;
+  }
+
+  // --- 各帯（畝）本体＋条数ぶんの模式線＋畝番号ラベル ---
+  // 数値の図内一本化：各帯の下に「畝1」「畝2」…を表示し、テキストの「畝数◯本」を見なくても
+  // 図を数えるだけで畝数と対応関係が分かるようにする。
+  const lineXsPerBand = [];
+  bandsCm.forEach((band, idx) => {
+    const bx1 = cmToPx(band.x1), bx2 = cmToPx(band.x2);
+    const isMid = idx === midIdx;
+    const midAttr = isMid ? ` data-cross-crop="${entry.cropId}"` : '';
+    svg += `<rect x="${bx1.toFixed(1)}" y="${topY}" width="${(bx2 - bx1).toFixed(1)}" height="${botY - topY}" class="plt-zoomview-ridge ${colorClass}"${midAttr} />`;
+
+    const lineXs = [];
+    if (linesPerRow != null && (bx2 - bx1) > 0) {
+      for (let i = 1; i <= linesPerRow; i++) {
+        const lx = bx1 + ((bx2 - bx1) * i) / (linesPerRow + 1);
+        lineXs.push(lx);
+        svg += `<line x1="${lx.toFixed(1)}" y1="${topY.toFixed(1)}" x2="${lx.toFixed(1)}" y2="${botY.toFixed(1)}" class="plt-zoomview-dim" />`;
+      }
+    }
+    lineXsPerBand.push(lineXs);
+
+    const bandCenterX = (bx1 + bx2) / 2;
+    svg += `<text x="${bandCenterX.toFixed(1)}" y="${(botY + 12).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label-sub">畝${idx + 1}</text>`;
+  });
+
+  // --- 畝上幅：代表（中央）の帯の上に表示 ---
+  const midBand = bandsCm[midIdx];
+  const midX1 = cmToPx(midBand.x1), midX2 = cmToPx(midBand.x2);
+  svg += `<line x1="${midX1.toFixed(1)}" y1="${topY - 10}" x2="${midX2.toFixed(1)}" y2="${topY - 10}" class="plt-zoomview-dim" />`;
+  svg += `<text x="${((midX1 + midX2) / 2).toFixed(1)}" y="${topY - 14}" text-anchor="middle" class="plt-zoomview-label">畝上幅 ${topCm}cm</text>`;
+
+  // --- 条数：代表（中央）の帯の線群、右端の線の脇に本数ラベル ---
+  if (linesPerRow != null) {
+    const midLineXsForCount = lineXsPerBand[midIdx] || [];
+    const labelX = midLineXsForCount.length ? midLineXsForCount[midLineXsForCount.length - 1] : (midX1 + midX2) / 2;
+    svg += `<text x="${(labelX + 4).toFixed(1)}" y="${(topY + 14).toFixed(1)}" text-anchor="start" class="plt-zoomview-label-sub">${linesPerRow}条</text>`;
+  }
+
+  // --- 畝長：右端の外側に縦の寸法線 ---
+  const rightEdgeX = cmToPx(totalCm);
+  svg += `<line x1="${(rightEdgeX + 14).toFixed(1)}" y1="${topY}" x2="${(rightEdgeX + 14).toFixed(1)}" y2="${botY}" class="plt-zoomview-dim" />`;
+  svg += `<text x="${(rightEdgeX + 20).toFixed(1)}" y="${((topY + botY) / 2).toFixed(1)}" text-anchor="start" class="plt-zoomview-label">畝長 ${rowLengthLabel}</text>`;
+
+  // --- 畝間：実際に2本以上の帯が並んでいれば、隣り合う帯どうしの実寸ギャップをそのまま表示する
+  //     （従来は1帯しか描かず「片側◯cm」と併記する模式表現だったが、実畝を並べたことで
+  //     実際の畝間そのものをそのまま指し示せるようになった）。1本しか表示できない場合のみ、
+  //     従来通り帯の外側余白を使った模式表示＋片側併記にフォールバックする。
+  //     2本以上の場合は、帯と帯の間の畝間に加えて、左右の外側マージン（隣接畝との共有ぶん）
+  //     にも寸法線＋数値ラベルを付け、図のどこが何cmか分かるようにする。
+  if (bandsCm.length >= 2) {
+    const gapX1 = cmToPx(bandsCm[0].x2), gapX2 = cmToPx(bandsCm[1].x1);
+    const pathDimY = (topY + botY) / 2;
+    svg += `<line x1="${gapX1.toFixed(1)}" y1="${pathDimY.toFixed(1)}" x2="${gapX2.toFixed(1)}" y2="${pathDimY.toFixed(1)}" class="plt-zoomview-dim" />`;
+    svg += `<text x="${((gapX1 + gapX2) / 2).toFixed(1)}" y="${(pathDimY - 6).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label">畝間 ${pathCm}cm</text>`;
+
+    if (halfPathCm > 0) {
+      const leftX1 = cmToPx(0), leftX2 = cmToPx(bandsCm[0].x1);
+      svg += `<line x1="${leftX1.toFixed(1)}" y1="${pathDimY.toFixed(1)}" x2="${leftX2.toFixed(1)}" y2="${pathDimY.toFixed(1)}" class="plt-zoomview-dim" />`;
+      svg += `<text x="${((leftX1 + leftX2) / 2).toFixed(1)}" y="${(pathDimY - 6).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label-sub">外側 ${halfPathCm}cm</text>`;
+
+      const lastX2b = bandsCm[bandsCm.length - 1].x2;
+      const rightX1 = cmToPx(lastX2b), rightX2 = cmToPx(totalCm);
+      svg += `<line x1="${rightX1.toFixed(1)}" y1="${pathDimY.toFixed(1)}" x2="${rightX2.toFixed(1)}" y2="${pathDimY.toFixed(1)}" class="plt-zoomview-dim" />`;
+      svg += `<text x="${((rightX1 + rightX2) / 2).toFixed(1)}" y="${(pathDimY - 6).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label-sub">外側 ${halfPathCm}cm</text>`;
+    }
+  } else if (pathCm > 0 && halfPathCm > 0) {
+    const outerX1 = cmToPx(0), bandX1 = cmToPx(bandsCm[0].x1);
     const pathDimY = (topY + botY) / 2;
     svg += `<line x1="${outerX1.toFixed(1)}" y1="${pathDimY.toFixed(1)}" x2="${bandX1.toFixed(1)}" y2="${pathDimY.toFixed(1)}" class="plt-zoomview-dim" />`;
     svg += `<text x="${((outerX1 + bandX1) / 2).toFixed(1)}" y="${(pathDimY - 6).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label">畝間 ${pathCm}cm</text>`;
     svg += `<text x="${((outerX1 + bandX1) / 2).toFixed(1)}" y="${(pathDimY + 14).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label">（片側${halfPathCm}cm）</text>`;
+
+    // 1畝しか表示できない場合でも、右側にも同じ片側マージンがあることを示し、
+    // 左右対称であることが一目で分かるようにする（「全体をイメージしやすく」するための追加）。
+    const outerX2 = cmToPx(totalCm), bandX2 = cmToPx(bandsCm[0].x2);
+    svg += `<line x1="${bandX2.toFixed(1)}" y1="${pathDimY.toFixed(1)}" x2="${outerX2.toFixed(1)}" y2="${pathDimY.toFixed(1)}" class="plt-zoomview-dim" />`;
+    svg += `<text x="${((bandX2 + outerX2) / 2).toFixed(1)}" y="${(pathDimY - 6).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label-sub">外側 ${halfPathCm}cm</text>`;
   }
 
-  // 条数：畝上幅の帯の中に、条数ぶんの模式線を等間隔配置する。
-  let lineXs = [];
-  if (linesPerRow != null && bandWpx > 0) {
-    for (let i = 1; i <= linesPerRow; i++) {
-      const lx = bandX1 + (bandWpx * i) / (linesPerRow + 1);
-      lineXs.push(lx);
-      svg += `<line x1="${lx.toFixed(1)}" y1="${topY.toFixed(1)}" x2="${lx.toFixed(1)}" y2="${botY.toFixed(1)}" class="plt-zoomview-dim" />`;
-    }
-  }
-
-  // 株間：条（畝上の線）のうち1本を選び、その上に模式的に等間隔のドットを配置する。
+  // --- 株間：代表（中央）の帯の1条目に、模式的に等間隔のドットを配置し、
+  //     ドット間（1つぶん）に寸法線＋cm数値を添えて実際の間隔を示す ---
   if (plantSpacing != null) {
-    const dotX = lineXs.length ? lineXs[0] : cx;
+    const midLineXs = lineXsPerBand[midIdx] || [];
+    const dotX = midLineXs.length ? midLineXs[0] : (midX1 + midX2) / 2;
     const DOT_COUNT = 5;
+    const dotYs = [];
     for (let i = 0; i < DOT_COUNT; i++) {
       const dy = topY + ((botY - topY) * i) / (DOT_COUNT - 1);
+      dotYs.push(dy);
       svg += `<circle cx="${dotX.toFixed(1)}" cy="${dy.toFixed(1)}" r="2.5" class="plt-zoomview-ridge ${colorClass}" />`;
+    }
+    const dimX = dotX - 10;
+    svg += `<line x1="${dimX.toFixed(1)}" y1="${dotYs[0].toFixed(1)}" x2="${dimX.toFixed(1)}" y2="${dotYs[1].toFixed(1)}" class="plt-zoomview-dim" />`;
+    svg += `<text x="${(dimX - 4).toFixed(1)}" y="${((dotYs[0] + dotYs[1]) / 2).toFixed(1)}" text-anchor="end" class="plt-zoomview-label-sub">株間 ${plantSpacing}cm</text>`;
+  }
+
+  // --- 条間：代表（中央）の帯で、条が2本以上ある場合に隣り合う条の間へ寸法線＋数値ラベルを追加する ---
+  if (linesPerRow != null && linesPerRow >= 2 && rowSpacing != null) {
+    const midLineXs = lineXsPerBand[midIdx] || [];
+    if (midLineXs.length >= 2) {
+      const dimY = topY + 10;
+      svg += `<line x1="${midLineXs[0].toFixed(1)}" y1="${dimY.toFixed(1)}" x2="${midLineXs[1].toFixed(1)}" y2="${dimY.toFixed(1)}" class="plt-zoomview-dim" />`;
+      svg += `<text x="${((midLineXs[0] + midLineXs[1]) / 2).toFixed(1)}" y="${(dimY - 3).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label-sub">条間 ${rowSpacing}cm</text>`;
     }
   }
 
-  // 条間：条が2本以上ある場合、隣り合う条の間に小さな寸法線を追加する。
-  if (linesPerRow != null && linesPerRow >= 2 && rowSpacing != null && lineXs.length >= 2) {
-    const dimY = topY + 10;
-    svg += `<line x1="${lineXs[0].toFixed(1)}" y1="${dimY.toFixed(1)}" x2="${lineXs[1].toFixed(1)}" y2="${dimY.toFixed(1)}" class="plt-zoomview-dim" />`;
-  }
+  // 実際の畝数（totalRows）が3本を超える場合、断面図と同様に「他◯畝 同条件」を注記する。
+  const omittedLabel = (totalRows != null && totalRows > 3)
+    ? `<text x="${(VIEW_W / 2).toFixed(1)}" y="${(topY - 20).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label plt-zoomview-label-omitted">他${totalRows - 3}畝 同条件</text>`
+    : '';
 
-  // 畝数／条数／株間／条間／欠株率：存在する値だけ、図の下に数値ラベルとして並べる。
-  infoLines.forEach((line, idx) => {
-    svg += `<text x="${cx.toFixed(1)}" y="${(infoTopY + idx * INFO_LINE_H).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label">${line}</text>`;
-  });
+  // 欠株率：図内で表現できないため、引き続き下部テキストに数値ラベルとして表示する。
+  const infoLinesHTML = infoLines.map((line, idx) =>
+    `<text x="${(VIEW_W / 2).toFixed(1)}" y="${(infoTopY + idx * INFO_LINE_H).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label">${line}</text>`
+  ).join('');
 
-  return `<div class="plt-zoomview-wrap"><svg viewBox="0 0 ${VIEW_W} ${VIEW_H}" class="plt-zoomview-svg">${svg}</svg></div>`;
+  return `<div class="plt-zoomview-wrap"><svg viewBox="0 0 ${VIEW_W} ${VIEW_H}" class="plt-zoomview-svg">${omittedLabel}${svg}${infoLinesHTML}</svg></div>`;
 }
 
 /**
