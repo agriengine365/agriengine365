@@ -8967,16 +8967,13 @@ html.draw-dialog-active .bottom-nav {
    🌱 栽植設計ペイン
    ════════════════════════════════════════════════════════════════ */
 
-/* 🌾 圃場マージン設定パネル（全cultivationModeで表示。旧ハウスマージン設定） */
+/* 🌾 圃場マージン設定パネル（全cultivationModeで表示。旧ハウスマージン設定）
+   【入口マージンUI簡素化（2026-07）】「調整」タブ最上部に常時表示するコンパクト版に刷新。
+   ±0.1mステッパー付きチップ（.autoad-chip-group系を流用）＋3列グリッド。 */
 .plt-housemargin-section {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   background: color-mix(in srgb, var(--amber, #f59e0b) 5%, transparent);
-}
-/* Step7-4：.plt-housemargin-section内では.plt-detail-accordionが唯一の子要素になるため、
-   Step5（カード内利用）で付与しているmargin-top:8pxを打ち消し、外側paddingとの二重余白を防ぐ */
-.plt-housemargin-section .plt-detail-accordion {
-  margin-top: 0;
 }
 .plt-housemargin-title {
   font-size: 12px;
@@ -8984,31 +8981,120 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text2);
   margin-bottom: 8px;
 }
-/* 反対側奥行き：「入口と同じ値を使う」チェックボックス行 */
-.plt-checkbox-row {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--text2);
-  cursor: pointer;
-  user-select: none;
+.hm-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
 }
-.plt-checkbox-row input[type="checkbox"] {
-  width: 14px;
-  height: 14px;
-  margin: 0;
-  cursor: pointer;
-}
-/* Step8-2：反対側奥行きチップ用のコンパクト版チェックボックス行（チップの外・上に小さく配置） */
-.plt-oppositedepth-wrap {
+.hm-cell {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-}
-.plt-checkbox-row-compact {
-  font-size: 10px;
   gap: 4px;
+  min-width: 0;
+}
+.hm-cell-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text2);
+  white-space: nowrap;
+}
+.hm-cell-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+/* マージン用チップ：ステッパー幅は比率チップ（±10%）より少し狭めて3列に収まりやすくする */
+.hm-chip-group .autoad-stepper-btn {
+  width: 30px;
+  height: 30px;
+}
+.hm-chip-group .autoad-chip-input {
+  width: 34px;
+}
+.hm-same-note {
+  font-size: 11px;
+  color: var(--text2);
+  padding: 5px 0;
+}
+/* 反対側奥行き：「入口と同じ値を使う」ミニトグルスイッチ（旧・小さなチェックボックスから変更） */
+.hm-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.hm-toggle input[type="checkbox"] {
+  position: absolute;
+  inset: 0;
+  width: 30px;
+  height: 18px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.hm-toggle-track {
+  display: inline-block;
+  width: 30px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--border);
+  position: relative;
+  transition: background .15s;
+}
+.hm-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0,0,0,.3);
+  transition: left .15s;
+}
+.hm-toggle input:checked + .hm-toggle-track {
+  background: var(--green2);
+}
+.hm-toggle input:checked + .hm-toggle-track .hm-toggle-knob {
+  left: 14px;
+}
+/* 狭幅端末（〜480px）では3列グリッドが窮屈になるため縦積みに切り替える */
+@media (max-width: 480px) {
+  .hm-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 「？」タップ式の一文説明トグル（badge凡例・自動枠注釈などで共通利用） */
+.hm-info-btn {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  color: var(--text3);
+  font-size: 10px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.hm-info-btn-active {
+  border-color: var(--green2);
+  color: var(--green2);
+}
+.hm-info-note {
+  display: none;
+  font-size: 10px;
+  color: var(--text3);
+  line-height: 1.5;
+  padding: 4px 2px 2px;
+}
+.hm-info-note.hm-info-open {
+  display: block;
 }
 /* 🔀 辺選択トグルバー（入口辺／畝方向を1つに統合） */
 /* 【圃場マージン再設計・栽植プレビュー統合仕様書 Step7-3】
@@ -9172,81 +9258,6 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text3);
   flex-shrink: 0;
   width: 18px;
-}
-
-/* Step8-2：入力チップ列（ラベル＋数値＋単位を1行に収めたコンパクトUI）。
-   圃場マージン設定（外膜マージン・入口奥行き・反対側奥行き）で使用。
-   見た目のトーンは辺選択トグルバー（.plt-edgetoggle-chip）と統一している。 */
-.plt-inputchip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.plt-input-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  border-radius: 8px;
-  border: 1.5px solid var(--border);
-  background: var(--bg2);
-}
-.plt-chip-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text2);
-  white-space: nowrap;
-}
-.plt-chip-inputwrap {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.plt-chip-input {
-  width: 52px;
-  background: transparent;
-  border: none;
-  border-bottom: 1px solid var(--border);
-  color: var(--text);
-  font-size: 13px;
-  font-family: var(--mono);
-  padding: 2px 2px;
-  text-align: right;
-  min-width: 0;
-  transition: border-color .15s;
-}
-.plt-chip-input:focus {
-  outline: none;
-  border-color: var(--green2);
-}
-.plt-chip-input:disabled {
-  opacity: .5;
-}
-.plt-chip-unit {
-  font-size: 10px;
-  color: var(--text3);
-  flex-shrink: 0;
-}
-
-/* 圃場マージン調整UIのモバイル対応（2026-07）：実機の狭幅（375px前後）では
-   3つのチップ（外膜マージン／入口奥行き／反対側奥行き）が1行に収まりきらず
-   崩れるため、狭幅では縦積み＋各行「ラベル左・数値右」の横並びに切り替える。 */
-@media (max-width: 480px) {
-  .plt-inputchip-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .plt-input-chip,
-  .plt-oppositedepth-wrap {
-    width: 100%;
-    box-sizing: border-box;
-  }
-  .plt-input-chip {
-    justify-content: space-between;
-  }
-  .plt-oppositedepth-wrap .plt-input-chip {
-    width: 100%;
-  }
 }
 
 /* 警告（外側ラッパー：中身が無い時は余白を残さない） */
@@ -12297,13 +12308,19 @@ html.draw-dialog-active .bottom-nav {
   padding-top: 10px;
 }
 /* v4仕様4.：比率/最低比率/畝数がチップ+ステッパー化され幅を取るため、
-   4列グリッドではなく作物名を見出しにした縦積みレイアウトにする（狭幅端末でも詰まらない）。 */
+   広めの画面では3列グリッドで横並びにして高さを圧縮する（調整タブ簡略化 2026-07）。
+   狭幅（〜480px）では1列に収まりきらず崩れるため縦積みにフォールバックする。 */
 .autoad-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px 10px;
   padding: 8px 0;
   border-bottom: 1px solid var(--border);
+}
+@media (max-width: 480px) {
+  .autoad-row {
+    grid-template-columns: 1fr;
+  }
 }
 .autoad-row:last-child { border-bottom: none; }
 .autoad-row-name {
@@ -12325,7 +12342,7 @@ html.draw-dialog-active .bottom-nav {
 }
 
 /* タップ編集チップ＋±10%ステッパー（比率／最低比率）。見た目のトーンは
-   既存の畝断面図パネルの入力チップ（.plt-input-chip/.plt-chip-input）と統一している。 */
+   見た目のトーンは辺選択トグルバー（.plt-edgetoggle-chip）と統一している。 */
 .autoad-chip-group {
   display: inline-flex;
   align-items: center;
@@ -12455,15 +12472,15 @@ html.draw-dialog-active .bottom-nav {
   color: var(--text3);
   padding-bottom: 2px;
 }
-.autoad-badge-legend span:not(.autoad-value-badge) {
-  margin-right: 4px;
-}
 
-/* 調整タブの自動枠トグル（2026-07 追加） */
+/* 調整タブの自動枠トグル（2026-07 追加）
+   【調整タブ簡略化（2026-07）】説明文を常時表示せず「？」ボタン（.hm-info-btn）で
+   タップ時だけ表示するため、ラベルとボタンを横並びにする（旧・縦積みから変更）。 */
 .autoad-adjust-autoslot-row {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
   padding: 6px 8px;
   background: var(--bg2);
   border: 1px solid var(--border);
@@ -12484,10 +12501,6 @@ html.draw-dialog-active .bottom-nav {
 .autoad-adjust-autoslot-label .adp-pcc-auto-badge {
   font-size: 10px;
   font-weight: 500;
-}
-.autoad-adjust-autoslot-note {
-  font-size: 10px;
-  color: var(--text3);
 }
 
 

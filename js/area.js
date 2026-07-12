@@ -7462,82 +7462,132 @@ function _adpHighlightPreviewTarget(selector, on) {
  * （`btn.closest('.plt-detail-accordion')` で動く汎用実装）をそのまま流用し、新規関数は追加しない。
  */
 /**
- * 【Step8-2（畝断面図の統合とプレビュー内入力欄コンパクト化 仕様書）】
- * アコーディオン（.plt-detail-accordion）を廃止し、常時展開の横1行チップ列
- * （ラベル＋数値＋単位を1行に収めた.plt-input-chip）に変更した。
- * 開閉トグル関連（_adpToggleDetailAccordion）はここでは使わなくなったが、
- * 同関数は他のカード内詳細設定（畝幅アコーディオン等）でも使う汎用関数のため削除しない。
+ * 【入口マージンUI簡素化（2026-07）】
+ * 外膜マージン／入口奥行き／反対側奥行きを、3列グリッド＋±0.1mステッパー付きチップに刷新。
+ * 見た目・部品は既存の「自動設計」タブの比率チップ（_adpAutoRatioChipHTML／autoad-chip-group）
+ * をそのまま流用し、新規CSSクラスの重複を避けている。
+ * 「調整」タブ（数値入力タブ）にのみ表示する（描画タブは表示専用のため呼び出さない）。
+ * data-housemargin-block でラップし、±ステッパー操作時はこのブロックごと再描画して
+ * 表示中の数値をステッパーの結果に同期させる（直接キーボード入力時は再描画しないため
+ * フォーカスを失わない＝従来仕様を維持）。
  */
 function _adpBuildHouseMarginSection() {
-  const hm = _adpHouseMargin || {};
-
   return `
-    <div class="plt-housemargin-section">
-      <div class="plt-housemargin-title">🌾 圃場マージン設定（外周・入口奥行き・反対側）</div>
-      <div class="plt-inputchip-row">
-        <div class="plt-input-chip">
-          <span class="plt-chip-label">外膜マージン</span>
-          <div class="plt-chip-inputwrap">
-            <input type="number" class="plt-chip-input" min="0" step="0.1" value="${hm.frameMarginM ?? ''}" placeholder="0.5"
-              oninput="_adpUpdateHouseMarginField('frameMarginM', this.value)"
-              onfocus="_adpHighlightPreviewTarget('.plt-shapesvg-marginline', true)"
-              onblur="_adpHighlightPreviewTarget('.plt-shapesvg-marginline', false)">
-            <span class="plt-chip-unit">m</span>
-          </div>
-        </div>
-        <div class="plt-input-chip">
-          <span class="plt-chip-label">入口奥行き</span>
-          <div class="plt-chip-inputwrap">
-            <input type="number" class="plt-chip-input" min="0" step="0.1" value="${hm.entranceDepthM ?? ''}" placeholder="1.0"
-              oninput="_adpUpdateHouseMarginField('entranceDepthM', this.value)"
-              onfocus="_adpHighlightPreviewTarget('.plt-shapesvg-entrance', true)"
-              onblur="_adpHighlightPreviewTarget('.plt-shapesvg-entrance', false)">
-            <span class="plt-chip-unit">m</span>
-          </div>
-        </div>
-        <div class="plt-oppositedepth-wrap" data-opposite-depth-block>
-          ${_adpBuildOppositeDepthInner()}
-        </div>
+    <div class="plt-housemargin-section hm-compact" data-housemargin-block>
+      ${_adpBuildHouseMarginSectionInner()}
+    </div>`;
+}
+
+/** _adpBuildHouseMarginSection の中身のみ（ステッパー操作時の部分再描画用）。 */
+function _adpBuildHouseMarginSectionInner() {
+  const hm = _adpHouseMargin || {};
+  return `
+    <div class="plt-housemargin-title">🌾 圃場マージン設定</div>
+    <div class="hm-grid">
+      <div class="hm-cell">
+        <span class="hm-cell-label">外周</span>
+        ${_adpBuildMarginChipHTML('frameMarginM', hm.frameMarginM, '.plt-shapesvg-marginline')}
+      </div>
+      <div class="hm-cell">
+        <span class="hm-cell-label">入口奥行き</span>
+        ${_adpBuildMarginChipHTML('entranceDepthM', hm.entranceDepthM, '.plt-shapesvg-entrance')}
+      </div>
+      <div class="hm-cell" data-opposite-depth-block>
+        ${_adpBuildOppositeDepthInner()}
       </div>
     </div>`;
+}
+
+/**
+ * ±0.1mステッパー付き数値チップを生成する（外周／入口奥行き／反対側奥行き共通）。
+ * ボタン・入力欄・単位の見た目は自動設計タブの比率チップ（.autoad-chip-group系）を流用。
+ * @param {string} field - _adpHouseMarginのキー（frameMarginM/entranceDepthM/oppositeDepthM）
+ * @param {number|null} value
+ * @param {string} focusSel - フォーカス時にプレビュー上で明滅させる対象のCSSセレクタ
+ */
+function _adpBuildMarginChipHTML(field, value, focusSel) {
+  const v = (value === undefined || value === null || value === '') ? '' : Number(value);
+  return `
+    <div class="autoad-chip-group hm-chip-group">
+      <button type="button" class="autoad-stepper-btn" onclick="_adpStepHouseMargin('${field}',-0.1)">−</button>
+      <div class="autoad-chip-inputwrap">
+        <input type="number" class="autoad-chip-input hm-chip-input" inputmode="decimal" min="0" step="0.1"
+          value="${v}" placeholder="0.0"
+          oninput="_adpUpdateHouseMarginField('${field}', this.value)"
+          onfocus="_adpHighlightPreviewTarget('${focusSel}', true)"
+          onblur="_adpHighlightPreviewTarget('${focusSel}', false)">
+        <span class="autoad-chip-unit">m</span>
+      </div>
+      <button type="button" class="autoad-stepper-btn" onclick="_adpStepHouseMargin('${field}',0.1)">＋</button>
+    </div>`;
+}
+
+/**
+ * マージン系ステッパーボタンの共通ハンドラ（0未満にはならないよう丸めてクランプ）。
+ * 値の確定は既存の _adpUpdateHouseMarginField にそのまま委譲し（保存・再計算ロジックの
+ * 二重実装を避ける）、その後ステッパーの結果を画面に反映するためブロックだけ再描画する。
+ */
+function _adpStepHouseMargin(field, delta) {
+  if (!_adpArea) return;
+  const hm = _adpHouseMargin || {};
+  const current = Number(hm[field]) || 0;
+  const next = Math.max(0, Math.round((current + delta) * 10) / 10);
+  _adpUpdateHouseMarginField(field, next);
+  _adpRefreshHouseMarginSection();
+}
+
+/** ステッパー操作後、圃場マージン設定ブロックだけを最新値で再描画する。 */
+function _adpRefreshHouseMarginSection() {
+  const block = document.querySelector('#planting-result [data-housemargin-block]');
+  if (block) block.innerHTML = _adpBuildHouseMarginSectionInner();
+}
+
+/**
+ * 【調整タブ簡略化（2026-07）】老人にもわかりやすいUIのため、常時2行表示していた
+ * 凡例・注釈テキストを「？」ボタンタップ時だけ表示する汎用トグル。
+ * ボタンの直後の兄弟要素（.hm-info-note）の表示/非表示を切り替えるだけの単純な仕組みで、
+ * 圃場マージン系に限らず凡例・注釈が付くUI全般で再利用できる。
+ * @param {HTMLButtonElement} btn - class="hm-info-btn" のボタン（直後にhm-info-noteを置くこと）
+ */
+function _adpToggleInfoNote(btn) {
+  if (!btn) return;
+  const note = btn.parentElement && btn.parentElement.nextElementSibling;
+  if (!note || !note.classList.contains('hm-info-note')) return;
+  const open = note.classList.toggle('hm-info-open');
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  btn.classList.toggle('hm-info-btn-active', open);
 }
 
 /**
  * 「反対側奥行き（oppositeDepthM）」入力ブロックのHTMLを生成する。
- * チェックボックスON＝「入口と同じ値を使う」＝ oppositeDepthM を null にして
+ * トグルスイッチON＝「入口と同じ値を使う」＝ oppositeDepthM を null にして
  * ridgeGeometry.js側のフォールバック（entranceDepthMを共通値として使用）に委ねる。
- * チェックボックスOFF＝個別の数値を入力（入力欄は有効化）。
- * このブロックはチェックボックス切替時に data-opposite-depth-block ごと部分再描画される。
- *
- * 【Step8-2】チェックボックスはチップの外・上に小さく残し、チップ自体は数値入力のみにする。
+ * トグルOFF＝個別の数値をステッパー付きチップで入力（従来のチェックボックスから、
+ * ON/OFFが一目でわかるミニトグルスイッチに変更。ONの間は数値入力の代わりに
+ * 「入口と同じ（○m）」と実効値を表示し、なぜ入力できないかが分かるようにする）。
+ * このブロックはトグル切替時に data-opposite-depth-block ごと部分再描画される。
  */
 function _adpBuildOppositeDepthInner() {
   const hm = _adpHouseMargin || {};
   const isSame = (hm.oppositeDepthM === undefined || hm.oppositeDepthM === null || hm.oppositeDepthM === '');
+  const entranceVal = Number(hm.entranceDepthM) || 0;
 
   return `
-    <label class="plt-checkbox-row plt-checkbox-row-compact">
-      <input type="checkbox" ${isSame ? 'checked' : ''} onchange="_adpToggleOppositeSameDepth(this.checked)">
-      入口と同じ
-    </label>
-    <div class="plt-input-chip">
-      <span class="plt-chip-label">反対側奥行き</span>
-      <div class="plt-chip-inputwrap">
-        <input type="number" class="plt-chip-input" min="0" step="0.1"
-          value="${isSame ? '' : (hm.oppositeDepthM ?? '')}"
-          placeholder="1.0"
-          ${isSame ? 'disabled' : ''}
-          oninput="_adpUpdateHouseMarginField('oppositeDepthM', this.value)"
-          onfocus="_adpHighlightPreviewTarget('.plt-shapesvg-opposite', true)"
-          onblur="_adpHighlightPreviewTarget('.plt-shapesvg-opposite', false)">
-        <span class="plt-chip-unit">m</span>
-      </div>
-    </div>`;
+    <div class="hm-cell-label-row">
+      <span class="hm-cell-label">反対側奥行き</span>
+      <label class="hm-toggle" title="入口と同じ値を使う">
+        <input type="checkbox" ${isSame ? 'checked' : ''} onchange="_adpToggleOppositeSameDepth(this.checked)">
+        <span class="hm-toggle-track"><span class="hm-toggle-knob"></span></span>
+      </label>
+    </div>
+    ${isSame
+      ? `<div class="hm-same-note">入口と同じ（${entranceVal}m）</div>`
+      : _adpBuildMarginChipHTML('oppositeDepthM', hm.oppositeDepthM, '.plt-shapesvg-opposite')}`;
 }
 
 
 /**
- * 「入口と同じ値を使う」チェックボックスの切替ハンドラ。
+ * 「入口と同じ値を使う」トグルスイッチの切替ハンドラ。
  * ON：oppositeDepthM を null にする（ridgeGeometry.js側でentranceDepthMを自動使用）
  * OFF：入力欄を有効化し、現在のentranceDepthMを初期値としてセット（空欄より親切なため）
  */
@@ -7841,9 +7891,13 @@ function _adpBuildUnifiedFieldPanel(isAnalysis) {
 
 /**
  * Step8-1（〜Step8-6までの経緯）：パネルA（圃場平面図）。
- * 占有率legend以外の平面図系3つ（辺選択トグル／統合畝プレビューSVG／圃場マージン設定）。
+ * 占有率legend以外の平面図系2つ（辺選択トグル／統合畝プレビューSVG）。
  * Step8-7では表示トグルが「全体」の時にこの内容をそのまま差し込む
  * （既存の平面図の構造・ロジックは変更しない）。
+ *
+ * 【入口マージンUI簡素化（2026-07）】圃場マージン設定（外周・入口奥行き・反対側）は
+ * 数値入力のため「調整」タブ（_adpBuildAdjustTabInner）へ移設した。描画タブは
+ * 表示専用という仕様通りに揃えるため、ここでは呼び出さない。
  */
 function _adpBuildFieldPanelA() {
   return `
@@ -7851,7 +7905,6 @@ function _adpBuildFieldPanelA() {
       <div class="plt-panel-title">🌾 圃場平面図（全体）</div>
       ${_adpBuildEdgeToggleBar()}
       ${_adpBuildUnifiedRidgePreviewSVG()}
-      ${_adpBuildHouseMarginSection()}
     </div>`;
 }
 
@@ -7917,7 +7970,7 @@ function _adpSwitchPlantingUITab(tab) {
  * Step8-7後半：タブキーに応じた中身のHTMLを返す（新規ロジックは追加せず、
  * 既存の各生成関数を機械的に振り分けるだけ）。
  * - auto  ：既存の自動設計パネルをそのまま独立タブとして表示
- * - adjust：数値入力のみ（作物タブ＋畝上比率スライダー＋入力グリッド。SVG等の表示専用要素は持たない）
+ * - adjust：数値入力のみ（圃場マージン設定＋作物タブ＋畝上比率スライダー＋入力グリッド。SVG等の表示専用要素は持たない）
  * - draw  ：表示専用（作物タブ＋拡大詳細/全体トグル＋平面図/断面図。数値入力は持たない）
  * - crops ：作物ごとに既存の計算結果カードをアコーディオンで並べるだけ
  */
@@ -7932,16 +7985,20 @@ function _adpBuildPlantingTabBody(tab) {
 }
 
 /**
- * Step8-7後半：「調整」タブの中身。数値入力のみ（畝上比率スライダー＋入力グリッド）。
+ * Step8-7後半：「調整」タブの中身。数値入力のみ（圃場マージン設定＋畝上比率スライダー＋入力グリッド）。
  * 表示専用のSVG（平面図・断面図）は「描画」タブ側が担当するため、ここには含めない。
  * 自動設計⇔調整タブ再編（2026-07）：自動設計タブから移設した占有比率／最低比率／畝数の
  * 🔒固定・🤖自動計算チップと「残り％」バーを、アクティブ作物ぶんだけ上部に表示する
  * （_adpBuildAutoAllocBlockHTML）。
+ * 【入口マージンUI簡素化（2026-07）】圃場マージン設定（外周・入口奥行き・反対側）は
+ * 作物の有無に関わらず常に最上部へ表示する（圃場全体の設定のため）。
  */
 function _adpBuildAdjustTabInner() {
   const crops = _adpPracticecrops || [];
   if (!crops.length) {
-    return `<div class="plt-cross-section-placeholder">作物が未選択です</div>`;
+    return `
+      ${_adpBuildHouseMarginSection()}
+      <div class="plt-cross-section-placeholder">作物が未選択です</div>`;
   }
 
   const activeCropId = _adpResolveCrossSectionActiveCropId();
@@ -7951,6 +8008,7 @@ function _adpBuildAdjustTabInner() {
   const cropId = activeEntry.cropId;
 
   return `
+    ${_adpBuildHouseMarginSection()}
     ${_adpBuildRidgeCrossSectionTabs()}
     <div class="plt-quicklink-row">
       <button type="button" class="plt-quicklink-btn" onclick="_adpSwitchPlantingUITab('draw')">📐 断面図で確認</button>
@@ -7999,17 +8057,20 @@ function _adpBuildAutoAllocBlockHTML(entry) {
         </div>
       </div>
       <div class="autoad-badge-legend">
-        <span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span><span>＝入力した値をそのまま使用</span>
-        <span class="autoad-value-badge autoad-value-badge-auto">🤖 自動計算</span><span>＝残りから自動で算出</span>
+        <span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span>
+        <span class="autoad-value-badge autoad-value-badge-auto">🤖 自動計算</span>
+        <button type="button" class="hm-info-btn" aria-expanded="false" onclick="_adpToggleInfoNote(this)">？</button>
       </div>
+      <div class="hm-info-note">🔒 固定値＝入力した値をそのまま使用／🤖 自動計算＝残りから自動で算出</div>
       <div class="autoad-adjust-autoslot-row">
         <label class="autoad-adjust-autoslot-label${isAdjustAutoSlot ? ' autoad-adjust-autoslot-label--active' : ''}">
           <input type="checkbox" ${isAdjustAutoSlot ? 'checked' : ''}
             onchange="_adpSetAdjustAutoSlot('${cropId}', this.checked)">
           🎯 調整タブの自動枠にする${isAdjustAutoSlot ? '<span class="adp-pcc-auto-badge">現在の自動枠</span>' : ''}
         </label>
-        <span class="autoad-adjust-autoslot-note">＝調整タブで占有率スライダーを操作できず、残り%を自動で受け取る作物（常に1件）</span>
+        <button type="button" class="hm-info-btn" aria-expanded="false" onclick="_adpToggleInfoNote(this)">？</button>
       </div>
+      <div class="hm-info-note">＝調整タブで占有率スライダーを操作できず、残り%を自動で受け取る作物（常に1件）</div>
       <div class="autoad-rows">
         <div class="autoad-row" data-crop-id="${cropId}">
           <div class="autoad-row-field ${autoSet.fixedRatio ? 'autoad-row-field--fixed' : 'autoad-row-field--auto'}">
