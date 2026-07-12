@@ -642,11 +642,12 @@ async function openAreaDetailPanel(area) {
       const parsed = JSON.parse(savedWorkCropRaw);
       if (Array.isArray(parsed)) {
         _adpPracticecrops = parsed;
+        _adpEnsureAutoSlot(_adpPracticecrops); // 旧データにisAutoSlotが無い場合のフェイルセーフ付与
       } else if (typeof parsed === 'string') {
-        _adpPracticecrops = [{ cropId: parsed, ratio: 100 }];
+        _adpPracticecrops = [{ cropId: parsed, ratio: 100, isAutoSlot: true }];
       }
     } catch {
-      _adpPracticecrops = [{ cropId: savedWorkCropRaw, ratio: 100 }];
+      _adpPracticecrops = [{ cropId: savedWorkCropRaw, ratio: 100, isAutoSlot: true }];
     }
   }
 
@@ -5190,8 +5191,10 @@ function _adpOpenCropSelectSheet(seg) {
         _adpPracticecrops = _adpPracticecrops.map((c, i) => ({
           ...c,
           ratio: baseRatio + (i === 0 ? rem : 0),
+          isAutoSlot: false, // 新規追加作物に自動枠を明け渡す
         }));
-        _adpPracticecrops.push({ cropId, ratio: baseRatio, plantingDesign: PlantingLogic.initDesign(cropId), variety: '', sowDate: '', transplantDate: '', harvestStart: '', harvestEnd: '', fertRecords: [], pesticideRecords: [], harvestRecords: [] });
+        _adpPracticecrops.push({ cropId, ratio: baseRatio, isAutoSlot: true, plantingDesign: PlantingLogic.initDesign(cropId), variety: '', sowDate: '', transplantDate: '', harvestStart: '', harvestEnd: '', fertRecords: [], pesticideRecords: [], harvestRecords: [] });
+        _adpRecalcAutoSlotRatio(_adpPracticecrops); // 誤差ゼロ保証：自動枠を「100−他合計」で導出し直す
         _adpSavePracticecrops(areaId);
         _adpRenderPracticecrops();
         _adpRefreshPracticeTabs();
@@ -5225,6 +5228,37 @@ function _adpGetCropById(cropId) {
 function _adpSavePracticecrops(areaId) {
   if (!areaId) return;
   localStorage.setItem(`adpCropWork_${areaId}`, JSON.stringify(_adpPracticecrops));
+}
+
+/**
+ * 調整タブの「自動枠」（占有率スライダー操作不可・残り%を自動吸収する1作物）を
+ * 配列インデックスではなく明示フラグ（isAutoSlot）で管理する（2026-07 修正）。
+ * ここで「常にちょうど1件がisAutoSlot:trueである」ことを保証する（0件・複数件の
+ * 異常状態を検知した場合は末尾の作物へ自動的に付け替えるフェイルセーフ）。
+ * @param {Array} crops - _adpPracticecrops 相当
+ * @returns {number} 自動枠となっている作物のインデックス（crops.length===0なら-1）
+ */
+function _adpEnsureAutoSlot(crops) {
+  if (!Array.isArray(crops) || crops.length === 0) return -1;
+  const flagged = crops.reduce((acc, c, i) => { if (c.isAutoSlot) acc.push(i); return acc; }, []);
+  if (flagged.length === 1) return flagged[0];
+  // 0件（未設定）または複数件（異常）の場合は末尾の作物に一本化するフェイルセーフ
+  crops.forEach((c, i) => { c.isAutoSlot = (i === crops.length - 1); });
+  return crops.length - 1;
+}
+
+/**
+ * isAutoSlotの作物の占有率を「100% − 他の作物の合計」として再計算し、書き戻す。
+ * 誤差ゼロ保証：自動枠の値は独立入力せず、常にこの関数経由で導出する。
+ * @param {Array} crops - _adpPracticecrops 相当
+ * @returns {number} 自動枠のインデックス
+ */
+function _adpRecalcAutoSlotRatio(crops) {
+  const autoIdx = _adpEnsureAutoSlot(crops);
+  if (autoIdx < 0) return -1;
+  const sumOthers = crops.reduce((s, c, i) => s + (i === autoIdx ? 0 : (Number(c.ratio) || 0)), 0);
+  crops[autoIdx].ratio = Math.max(0, 100 - sumOthers);
+  return autoIdx;
 }
 
 /**
@@ -5270,27 +5304,26 @@ function _adpSaveIrrigationRecords(areaId) {
  */
 function _adpPreviewPracticeRatio(cropId, newRatio) {
   const idx = _adpPracticecrops.findIndex(c => c.cropId === cropId);
-  const lastIdx = _adpPracticecrops.length - 1;
-  if (idx < 0 || idx === lastIdx) return;
+  const autoIdx = _adpEnsureAutoSlot(_adpPracticecrops);
+  if (idx < 0 || idx === autoIdx) return;
 
   const sumOthers = _adpPracticecrops
-    .slice(0, lastIdx)
-    .reduce((s, c, i) => s + (i === idx ? newRatio : (c.ratio || 0)), 0);
+    .reduce((s, c, i) => s + ((i === autoIdx) ? 0 : (i === idx ? newRatio : (c.ratio || 0))), 0);
   const autoRatio  = Math.max(0, 100 - sumOthers);
-  const lastCropId = _adpPracticecrops[lastIdx].cropId;
+  const autoCropId = _adpPracticecrops[autoIdx].cropId;
 
   // 自分自身の%表示（栽植パネル）
   const ownValEl = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"] .plt-ratio-val`);
   if (ownValEl) ownValEl.textContent = `${newRatio}%`;
 
-  // 自動枠（最後の作物）の%表示（栽植パネル）
-  const autoValEl = document.querySelector(`#planting-result .plt-card[data-crop-id="${lastCropId}"] .plt-ratio-val`);
+  // 自動枠の%表示（栽植パネル）
+  const autoValEl = document.querySelector(`#planting-result .plt-card[data-crop-id="${autoCropId}"] .plt-ratio-val`);
   if (autoValEl) autoValEl.innerHTML = `${autoRatio}% <span class="adp-pcc-auto-badge">自動</span>`;
 
   // サムネ一覧（adp-practice-crops-list）のバッジも同期
   const ownBadgeEl = document.querySelector(`#adp-practice-crops-list .adp-practice-crop-card[data-crop-id="${cropId}"] .adp-pcc-ratio-badge`);
   if (ownBadgeEl) ownBadgeEl.textContent = `${newRatio}%`;
-  const autoBadgeEl = document.querySelector(`#adp-practice-crops-list .adp-practice-crop-card[data-crop-id="${lastCropId}"] .adp-pcc-ratio-badge`);
+  const autoBadgeEl = document.querySelector(`#adp-practice-crops-list .adp-practice-crop-card[data-crop-id="${autoCropId}"] .adp-pcc-ratio-badge`);
   if (autoBadgeEl) autoBadgeEl.textContent = `${autoRatio}%`;
 }
 
@@ -5298,15 +5331,10 @@ function _adpUpdatePracticeRatio(cropId, newRatio) {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   const idx = _adpPracticecrops.findIndex(c => c.cropId === cropId);
   if (idx < 0) return;
-  // 最後の作物は操作不可（自動計算）
-  const lastIdx = _adpPracticecrops.length - 1;
-  if (idx === lastIdx) return;
+  const autoIdx = _adpEnsureAutoSlot(_adpPracticecrops);
+  if (idx === autoIdx) return; // 自動枠は操作不可
   _adpPracticecrops[idx].ratio = newRatio;
-  // 最後の作物に残りを全て割り当て
-  const sumOthers = _adpPracticecrops
-    .slice(0, lastIdx)
-    .reduce((s, c) => s + (c.ratio || 0), 0);
-  _adpPracticecrops[lastIdx].ratio = Math.max(0, 100 - sumOthers);
+  _adpRecalcAutoSlotRatio(_adpPracticecrops); // 誤差ゼロ保証：自動枠を「100−他合計」で導出し直す
   _adpSavePracticecrops(areaId);
   _adpRenderPracticecrops();
   _adpRefreshPracticeTabs();
@@ -5316,17 +5344,11 @@ function _adpRemovePracticeCrop(cropId) {
   const areaId = _adpArea?.id || _adpArea?.name || '';
   _adpPracticecrops = _adpPracticecrops.filter(c => c.cropId !== cropId);
 
-  // 削除後、必ず合計が100%になるよう「最後（自動枠）」の占有率を再計算する。
-  // ・中間の作物を削除 → 既存の最後の作物が差分を吸収
-  // ・自動枠（最後）自体を削除 → 新たに最後になった作物が自動枠に切り替わり再計算
-  // ・1作物だけ残る → その作物が100%になる
-  if (_adpPracticecrops.length > 0) {
-    const lastIdx = _adpPracticecrops.length - 1;
-    const sumOthers = _adpPracticecrops
-      .slice(0, lastIdx)
-      .reduce((s, c) => s + (c.ratio || 0), 0);
-    _adpPracticecrops[lastIdx].ratio = Math.max(0, 100 - sumOthers);
-  }
+  // 削除後、必ず合計が100%になるよう自動枠（isAutoSlot）の占有率を再計算する。
+  // ・中間の作物を削除 → 既存の自動枠が差分を吸収
+  // ・自動枠自体を削除 → _adpEnsureAutoSlotが末尾の作物へ自動的に付け替えて再計算
+  // ・1作物だけ残る → その作物が自動枠として100%になる
+  _adpRecalcAutoSlotRatio(_adpPracticecrops);
 
   _adpSavePracticecrops(areaId);
   _adpRenderPracticecrops();
@@ -7948,6 +7970,8 @@ function _adpBuildAutoAllocBlockHTML(entry) {
   const remaining = _adpAutoDesignComputeRemaining();
   const allocatedPct = Math.max(0, Math.min(100, 100 - remaining));
   const shownRows = Number(design.targetRowCount) || 0;
+  _adpEnsureAutoSlot(_adpPracticecrops); // 表示前にisAutoSlotの整合性（常に1件）を保証
+  const isAdjustAutoSlot = !!entry.isAutoSlot;
 
   const ratioBadge = autoSet.fixedRatio
     ? '<span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span>'
@@ -7970,6 +7994,14 @@ function _adpBuildAutoAllocBlockHTML(entry) {
       <div class="autoad-badge-legend">
         <span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span><span>＝入力した値をそのまま使用</span>
         <span class="autoad-value-badge autoad-value-badge-auto">🤖 自動計算</span><span>＝残りから自動で算出</span>
+      </div>
+      <div class="autoad-adjust-autoslot-row">
+        <label class="autoad-adjust-autoslot-label${isAdjustAutoSlot ? ' autoad-adjust-autoslot-label--active' : ''}">
+          <input type="checkbox" ${isAdjustAutoSlot ? 'checked' : ''}
+            onchange="_adpSetAdjustAutoSlot('${cropId}', this.checked)">
+          🎯 調整タブの自動枠にする${isAdjustAutoSlot ? '<span class="adp-pcc-auto-badge">現在の自動枠</span>' : ''}
+        </label>
+        <span class="autoad-adjust-autoslot-note">＝調整タブで占有率スライダーを操作できず、残り%を自動で受け取る作物（常に1件）</span>
       </div>
       <div class="autoad-rows">
         <div class="autoad-row" data-crop-id="${cropId}">
@@ -8064,11 +8096,11 @@ function _adpBuildCropsDetailTabInner() {
   if (!crops.length) {
     return `<div class="empty-mini">作物を追加すると栽植設計が入力できます。</div>`;
   }
-  return crops.map(({ cropId, ratio, plantingDesign }, idx) => {
+  _adpEnsureAutoSlot(crops); // 描画前にisAutoSlotの整合性（常に1件）を保証
+  return crops.map(({ cropId, ratio, plantingDesign, isAutoSlot }, idx) => {
     const design   = plantingDesign || PlantingLogic.initDesign(cropId);
     const cropName = _adpCropIdToName(cropId);
-    const isLast   = idx === crops.length - 1;
-    return _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast, isAnalysis: false });
+    return _adpBuildPlantingCard({ cropId, cropName, ratio, design, isAutoSlot: !!isAutoSlot, isAnalysis: false });
   }).join('');
 }
 
@@ -9054,6 +9086,27 @@ function _adpBuildAutoDesignPanel() {
  * 設定変更のみで、帯・畝の再計算（recalcAllBands）は行わない。非固定（自動計算）作物への
  * 実際の配分反映は「🔄 自動配分を再計算・反映」ボタン（_adpAutoDesignFullAuto）で行う。
  */
+/**
+ * 自動設計タブの「調整タブの自動枠にする」トグル用ハンドラ（2026-07 追加）。
+ * ラジオボタン的挙動：指定作物をisAutoSlot:trueにし、他の全作物をfalseにする。
+ * 常に1件が自動枠であるべきなので、チェックを外す操作（rawValue=false）は無視する
+ * （自動枠を変えたい場合は別の作物をONにしてもらう）。
+ * @param {string} cropId
+ * @param {boolean} rawValue
+ */
+function _adpSetAdjustAutoSlot(cropId, rawValue) {
+  if (!rawValue) {
+    _adpRefreshRidgeInputBlock(); // チェック解除は無効化し表示を元に戻す
+    return;
+  }
+  _adpPracticecrops.forEach(c => { c.isAutoSlot = (c.cropId === cropId); });
+  _adpRecalcAutoSlotRatio(_adpPracticecrops); // 誤差ゼロ保証：自動枠を「100−他合計」で導出し直す
+  _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
+  _adpRefreshRidgeInputBlock();
+  _adpRenderPracticecrops();
+  _adpRefreshPracticeTabs();
+}
+
 function _adpAutoDesignSetCropField(cropId, field, rawValue) {
   const crop = _adpPracticecrops.find(c => c.cropId === cropId);
   if (!crop) return;
@@ -9172,12 +9225,8 @@ function _adpAutoDesignCommit(increaseCropIds) {
       : r.targetRowCount;
   });
 
-  // 丸め誤差対策：合計が100%からズレていた場合は最後の作物で吸収する
-  const lastIdx = _adpPracticecrops.length - 1;
-  if (lastIdx >= 0) {
-    const sumOthers = _adpPracticecrops.slice(0, lastIdx).reduce((s, c) => s + (Number(c.ratio) || 0), 0);
-    _adpPracticecrops[lastIdx].ratio = Math.max(0, 100 - sumOthers);
-  }
+  // 丸め誤差対策：合計が100%からズレていた場合は自動枠（isAutoSlot）の作物で吸収する
+  _adpRecalcAutoSlotRatio(_adpPracticecrops);
 
   _adpAutoDesignPreview = null;
   _adpCloseBoundaryConfirmModal();
@@ -9476,7 +9525,7 @@ function _adpBuildRatioLegendRow(isAnalysis) {
   return `<div class="plt-ratiolegend-row">${legendHTML}</div>`;
 }
 
-function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false, isAnalysis = false }) {
+function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isAutoSlot = false, isAnalysis = false }) {
   const calc = PlantingLogic.calcPlanting(design);
   const warn = isAnalysis ? null : PlantingLogic.areaWarn(design._bandAreaSqm ?? null, calc?.rowAreaSqm ?? null);
   const areaId = _adpArea?.id || _adpArea?.name || '';
@@ -9492,9 +9541,9 @@ function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isLast = false
     <div class="plt-slider-row">
       <label class="plt-label">占有率</label>
       <input type="range" min="0" max="100" value="${ratio}"
-        class="adp-pcc-slider${isLast ? ' adp-pcc-slider-auto' : ''}"
-        ${isLast ? 'disabled' : `oninput="_adpPreviewPracticeRatio('${cropId}', Number(this.value))" onchange="_adpUpdatePracticeRatio('${cropId}', Number(this.value))"`}>
-      <span class="plt-ratio-val">${ratio}%${isLast ? ' <span class="adp-pcc-auto-badge">自動</span>' : ''}</span>
+        class="adp-pcc-slider${isAutoSlot ? ' adp-pcc-slider-auto' : ''}"
+        ${isAutoSlot ? 'disabled' : `oninput="_adpPreviewPracticeRatio('${cropId}', Number(this.value))" onchange="_adpUpdatePracticeRatio('${cropId}', Number(this.value))"`}>
+      <span class="plt-ratio-val">${ratio}%${isAutoSlot ? ' <span class="adp-pcc-auto-badge">自動</span>' : ''}</span>
     </div>`;
 
   // 削除ボタン（実務側のみ）。Step8-7後半：「作物詳細」タブでカード全体がアコーディオンの
