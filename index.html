@@ -130,6 +130,9 @@
   <!-- EFD-2: 地図を動かして対象地点をスコープ中央に合わせる -->
   <div class="draw-phase" id="efd-phase-tap" hidden>
     <p class="map-draw-dialog-hint" id="efd-tap-hint">地図を動かして、検出したい圃場の中央にスコープを合わせてください</p>
+    <!-- 圃場追加フロー6項目改善セッション②：日本語ガイダンス（ズーム推奨・色判定の説明）。
+         文言はcultivationHintの有無でEasyFieldDetect._updateTapSubhint()が出し分ける。 -->
+    <p class="map-draw-dialog-hint efd-tap-subhint" id="efd-tap-subhint">なるべく圃場いっぱいにズームしてください<br>色の違いで境界を判定しています</p>
     <!-- 待機中：既存3ボタン -->
     <div class="map-draw-dialog-actions efd-actions-three" id="efd-tap-actions-idle">
       <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="EasyFieldDetect.cancel()">キャンセル</button>
@@ -146,16 +149,20 @@
   <!-- 手動描画の「完了」直後（Step4で接続予定）、および自動検出の「検出」成功直後は
        いずれもこの同一フェーズに入る（仕様書5章）。旧EFD-3（efd-phase-preview）は撤去済み。 -->
   <div class="draw-phase" id="field-confirm-phase" hidden>
-    <p class="map-draw-dialog-hint" id="fca-hint">頂点をドラッグして移動、長押しで削除。辺の中間点をタップすると頂点を追加できます</p>
+    <p class="map-draw-dialog-hint" id="fca-hint">頂点をドラッグして移動、タップで削除。辺の中間点をタップすると頂点を追加できます</p>
     <div class="efd-preview-status" id="fca-house-snap-note" hidden></div>
     <div class="fca-rect-lock-row" id="fca-rect-lock-row" hidden>
       <button type="button" class="map-draw-btn map-draw-btn-sub" onclick="FieldConfirmAdjust.unlockRect()">矩形の拘束を解除して自由に編集</button>
     </div>
     <div class="efd-sensitivity-row" id="fca-sensitivity-row" hidden>
       <span class="efd-sensitivity-label">検出感度（微調整）</span>
+      <button type="button" class="efd-sensitivity-nudge-btn" aria-label="感度を下げる"
+              onclick="FieldConfirmAdjust.nudgeSensitivity(-1)">◀</button>
       <input type="range" id="fca-sensitivity-slider" class="efd-sensitivity-slider"
              min="6" max="70" value="28" step="1"
              oninput="FieldConfirmAdjust.onSensitivityChange(this.value)">
+      <button type="button" class="efd-sensitivity-nudge-btn" aria-label="感度を上げる"
+              onclick="FieldConfirmAdjust.nudgeSensitivity(1)">▶</button>
       <span class="efd-sensitivity-val" id="fca-sensitivity-val">28</span>
     </div>
     <div class="efd-preview-status" id="fca-area-status"></div>

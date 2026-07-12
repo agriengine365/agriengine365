@@ -147,6 +147,20 @@
 //    （'complex'形状モードのみ。'rect'は常に4隅のため対象外）に適用。近接クラスタは
 //    重心へ潰すのではなく、各点の「角らしさ」（隣接2辺のなす角の180度からの乖離）が
 //    最も高い1点だけを残す方式。
+//
+//  圃場追加フロー6項目改善セッションで以下を変更：
+//  - クロップ範囲：CROP_SIZE_M_HOUSE(20m)・CROP_SIZE_M_FIELD(50m)の固定値を廃止し、
+//    _computeZoomLinkedCropSizeM()で「画面（スコープ）の短辺の80%」に相当する実距離(m)を
+//    現在のズーム・中心位置から動的算出してベースクロップサイズとするよう変更。
+//    cultivationHint（ハウス/加温/露地）はクロップサイズの決定にはもう使わず、
+//    _updateTapSubhint()の案内文言の強弱のみに使用する。CROP_GROW_FACTOR×
+//    CROP_GROW_MAX_ATTEMPTSのはみ出し時フォールバック拡張ループは維持。
+//  - efd-phase-tap画面に日本語ガイダンス文言（ズーム推奨・色判定の説明）を追加。
+//    _updateTapSubhint()で#efd-tap-subhintへ描画。cultivationHintの有無で
+//    「ハウス」「圃場」の呼称のみ出し分ける。
+//  - 感度◀▶微調整ボタン（fieldConfirmAdjust.js側にnudgeSensitivity()追加）を
+//    追加。既存のonSensitivityChange()デバウンス経路をそのまま再利用するため、
+//    このファイル側の変更は不要。
 // ═══════════════════════════════════════════
 
 const EasyFieldDetect = (() => {
@@ -155,8 +169,11 @@ const EasyFieldDetect = (() => {
   const MIN_DETECT_ZOOM        = 17;   // 地理院タイルmaxNativeZoom=18を踏まえた暫定値。要現地調整
   // 検出精度改善セッション：旧RASTER_MAX_DIMENSION(480px・画面全体を縮小)を廃止し、
   // タップ地点周辺だけを高解像度でクロップする方式に変更（_rasterizeCropToCanvas参照）。
-  const CROP_SIZE_M_HOUSE      = 20;   // クロップ一辺の実距離[m]：ハウス/加温の初期値（対象が小さいため狭く高精細に）
-  const CROP_SIZE_M_FIELD      = 50;   // クロップ一辺の実距離[m]：露地の初期値
+  // 圃場追加フロー6項目改善セッション：CROP_SIZE_M_HOUSE(20m)・CROP_SIZE_M_FIELD(50m)の
+  // 固定値は廃止し、_computeZoomLinkedCropSizeM()による動的算出に置き換えた。
+  // CROP_SIZE_M_FALLBACKは画面サイズ取得に失敗した場合などの異常値に対する保険値のみ。
+  const CROP_SIZE_M_FALLBACK   = 50;   // _computeZoomLinkedCropSizeM()が異常値を返した場合の保険（露地相当）
+  const CROP_SIZE_SCREEN_RATIO = 0.8;  // 画面短辺に対する基準クロップ幅の比率
   const CROP_RASTER_TARGET_PX  = 1000; // クロップ後の解析用キャンバス解像度
   // 検出感度改善セッション（第3弾）：「ハウスが実際は25mあるのに20m/21mで打ち切られる」
   // 「北海道の圃場は100mを超えることも普通」という指摘を受け、クロップ範囲を固定値
@@ -240,6 +257,38 @@ const EasyFieldDetect = (() => {
     return map.containerPointToLatLng(L.point(cx, cy));
   }
 
+  // ─── ズーム連動クロップサイズ算出（圃場追加フロー6項目改善セッション） ───
+  // 画面（スコープ）の短辺の CROP_SIZE_SCREEN_RATIO(80%) に相当する実距離(m)を、
+  // 現在のズーム・中心位置から動的に算出する。cultivationHintはここでは使わない
+  // （案内文言の強弱のみに使用。_updateTapSubhint参照）。
+  function _computeZoomLinkedCropSizeM() {
+    try {
+      const size = map.getSize(); // L.Point（現在の地図表示ピクセルサイズ）
+      const shortSidePx = Math.min(size.x, size.y);
+      const targetPx = Math.max(shortSidePx * CROP_SIZE_SCREEN_RATIO, 1);
+
+      const center   = map.getCenter();
+      const centerPt = map.latLngToContainerPoint(center);
+      const edgePt   = L.point(centerPt.x + targetPx / 2, centerPt.y);
+      const edgeLatLng = map.containerPointToLatLng(edgePt);
+
+      const cropSizeM = center.distanceTo(edgeLatLng) * 2;
+      return Number.isFinite(cropSizeM) && cropSizeM > 0 ? cropSizeM : CROP_SIZE_M_FALLBACK;
+    } catch (e) {
+      console.warn('[EFD] ズーム連動クロップサイズの算出に失敗、フォールバック値を使用:', e);
+      return CROP_SIZE_M_FALLBACK;
+    }
+  }
+
+  // ─── efd-phase-tap画面の日本語ガイダンス文言を更新（圃場追加フロー6項目改善セッション） ───
+  // cultivationHintの有無で対象の呼称（ハウス／圃場）のみ出し分ける。
+  function _updateTapSubhint() {
+    const el = document.getElementById('efd-tap-subhint');
+    if (!el) return;
+    const target = state.cultivationHint ? 'ハウス' : '圃場';
+    el.innerHTML = `なるべく${target}いっぱいにズームしてください<br>色の違いで境界を判定しています`;
+  }
+
   // ─── 1フレーム分だけ制御を返す（描画直後の座標ズレ対策・キャンセル割込み用） ───
   function _yieldFrame() {
     return new Promise(resolve => requestAnimationFrame(() => resolve()));
@@ -309,6 +358,7 @@ const EasyFieldDetect = (() => {
     FieldAddController.showPhase('efd-phase-tap');
     _setDetectingUI(false);
     _setScopeVisible(true);
+    _updateTapSubhint();
     updateMapDrawHint('地図を動かして中央をハウスに合わせてください');
     showDrawToast('地図をドラッグして検出したいハウスの中央にスコープを合わせ、「この地点で検出」をタップしてください');
   }
@@ -322,6 +372,7 @@ const EasyFieldDetect = (() => {
     FieldAddController.showPhase('efd-phase-tap');
     _setDetectingUI(false);
     _setScopeVisible(true);
+    _updateTapSubhint();
     updateMapDrawHint('地図を動かして中央を圃場に合わせてください');
     showDrawToast('地図をドラッグして検出したい圃場の中央にスコープを合わせ、「この地点で検出」をタップしてください');
   }
@@ -340,6 +391,7 @@ const EasyFieldDetect = (() => {
     FieldAddController.showPhase('efd-phase-tap');
     _setDetectingUI(false);
     _setScopeVisible(true);
+    _updateTapSubhint();
     showDrawToast('地図を動かして再度合わせ、「この地点で検出」をタップしてください');
   }
 
@@ -443,7 +495,7 @@ const EasyFieldDetect = (() => {
       // 検出感度改善セッション（第3弾）：対象が初期クロップより大きい場合、maskがcrop端に
       // 接する（=はみ出している可能性が高い）ので、その時だけcropSizeMを段階的に広げて
       // 再検出する（_detectAtCropSize参照）。
-      const baseCropSizeM = state.cultivationHint ? CROP_SIZE_M_HOUSE : CROP_SIZE_M_FIELD;
+      const baseCropSizeM = _computeZoomLinkedCropSizeM();
 
       let attemptResult = null;
       for (let attempt = 0; attempt < CROP_GROW_MAX_ATTEMPTS; attempt++) {

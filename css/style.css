@@ -1085,6 +1085,15 @@ html.draw-dialog-active .data-clear-btn {
   letter-spacing: 0.02em;
 }
 
+/* 圃場追加フロー6項目改善セッション②：efd-phase-tap 日本語ガイダンス（ズーム推奨・色判定の説明） */
+.efd-tap-subhint {
+  font-size: 10.5px;
+  color: var(--text3);
+  margin-top: -4px;
+  margin-bottom: 12px;
+  opacity: 0.85;
+}
+
 /* ボタン行: 戻る | 確定(広め) | 完了 | リセット */
 .map-draw-dialog-actions {
   display: grid;
@@ -11577,6 +11586,28 @@ html.draw-dialog-active .bottom-nav {
   min-width: 24px;
   text-align: right;
   flex-shrink: 0;
+}
+
+/* 圃場追加フロー6項目改善セッション⑥：感度◀▶微調整ボタン（スライダーの補助。1刻み） */
+.efd-sensitivity-nudge-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--bg3);
+  background: var(--bg2);
+  color: var(--text2);
+  font-size: 11px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+}
+.efd-sensitivity-nudge-btn:active {
+  background: var(--bg3);
+  color: var(--text);
 }
 
 /* EFD-3: プレビューステータス（検出面積・警告） */

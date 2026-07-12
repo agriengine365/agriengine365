@@ -2,7 +2,7 @@
 //  FIELD CONFIRM ADJUST — 「確認・微調整」画面（手動・自動 共通）
 //  仕様書5章・9章。手動描画の「完了」直後、および自動検出の「検出」成功直後は
 //  同一のこの画面（#field-confirm-phase）に入る。プレビュー用のEditableポリゴン
-//  レイヤーはこのモジュールが所有し、頂点ドラッグ／タップ追加／長押し削除・
+//  レイヤーはこのモジュールが所有し、頂点ドラッグ／タップ追加／タップ削除・
 //  リアルタイム面積表示をここに集約する（5章：手動描画側の課題も自動検出側の
 //  頂点編集機能とまとめて解決する統合方針）。
 //
@@ -19,21 +19,45 @@
 //  頂点編集タッチジェスチャー（仕様書5.2）：
 //  - 頂点マーカーのドラッグ＝移動：Leaflet.Editable標準動作そのまま
 //  - 中間点マーカーのタップ＝新規頂点追加：Leaflet.Editable標準動作
-//    （MiddleMarkerのクリックハンドラが内部で新規頂点を挿入する。Leafletは
-//    タッチのtapをclickイベントへ正規化するため独自実装は不要という判断で
-//    実装しているが、実機タッチ操作での最終確認を推奨）
-//  - 頂点マーカーの長押し(500ms)＝削除確認：独自実装（このファイル内）。
-//    削除確認は ui.js の showConfirmDialog() を利用。
-//    頂点数が3未満になる削除は無効化する。
+//    （MiddleMarkerのクリックハンドラ=onMouseDownが内部で新規頂点を挿入する）
+//  - 頂点マーカーのタップ＝即削除：独自実装（このファイル内）。確認ダイアログなし。
+//    頂点数が3未満になる削除は無効化する（トースト表示のみ）。
 //    ＊初期表示済みの頂点（enableEdit()時点で既に存在する頂点）には
 //      'editable:vertex:new'イベントが発火しないため、_buildPreviewLayer()内で
 //      editor.editLayer を直接走査して個別にバインドする。中間点タップ等で
 //      後から追加された頂点は map レベルの 'editable:vertex:new' で拾う。
+//
+//  圃場追加フロー6項目改善セッションで以下を変更：
+//  - ③辺タップでの頂点追加バグ修正：MiddleMarkerのmousedownが実機タッチで
+//    確実に発火しないケースへの対応として、click イベントを明示的にバインドし
+//    フォールバックとして同じ挿入処理(onMouseDown)を呼べるようにした
+//    （_bindMiddleMarkerFallback）。ベストエフォートの互換性パッチであり、
+//    実機タッチでの最終確認を推奨する。
+//  - ④頂点削除：長押し(500ms)判定を撤去し、タップで確認ダイアログなしに即削除する
+//    方式に変更（_bindVertexLongPress → _bindVertexTapDelete）。3点未満になる
+//    削除は引き続き無効（トースト表示は残す）。矩形拘束中の削除は、拘束解除の
+//    確認なしにそのまま解除＋削除し、解除した旨をトーストで案内する。
+//    ＊頂点「追加」時（editable:vertex:new）の矩形拘束解除確認ダイアログは
+//      削除フローとは別物のため、意図的にそのまま維持している。
+//  - ⑤四角形モード頂点ドラッグ：prevUnit・nextUnitを直交化した上で、ドラッグ中の
+//    頂点(idx)自体もその直交基底から再計算するように変更（_applyRectConstraint）。
+//    常に完全な長方形（直角）を維持しつつ、面積（間口×奥行き）は自由に変化できる
+//    （旧実装は idx 自身の位置を直交基底に合わせておらず、台形化することがあった）。
+//  - ⑥感度◀▶微調整ボタン：nudgeSensitivity(delta)を追加。既存のスライダー
+//    （fca-sensitivity-slider）・onSensitivityChange()デバウンス経路をそのまま
+//    使う。値は保存しない（既存のstate.sensitivity管理のまま）。
+//  - ポリゴンの形状が変わるたび（頂点追加・移動・削除のたび）に中間点マーカーは
+//    再生成されるため、③④のバインドは _rebindEditHandles() に一本化し、
+//    _buildPreviewLayer() および各種 editable:* イベント後に都度呼び直す。
 // ═══════════════════════════════════════════
 
 const FieldConfirmAdjust = (() => {
 
-  const LONG_PRESS_MS = 500;
+  // 圃場追加フロー6項目改善セッション：中間点マーカーのclickフォールバック
+  // （_bindMiddleMarkerFallback）が、mousedown経由の正規挿入と二重発火しないよう
+  // 判定するための猶予時間。この時間内に'editable:vertex:new'が発火していれば
+  // フォールバック側は何もしない。
+  const MIDDLE_MARKER_FALLBACK_GUARD_MS = 400;
 
   const state = {
     source:          'auto', // 'manual' | 'auto'
@@ -43,6 +67,7 @@ const FieldConfirmAdjust = (() => {
     cultivationHint: null,   // null | 'greenhouse' | 'heatedGreenhouse'
     houseSnapInfo:   null,   // easyFieldDetect.jsの_applyHouseSnap()結果
     _rectDrag:       null,   // ドラッグ中の一時作業領域（{anchorIdx, prevIdx, nextIdx, prevUnit, nextUnit, anchorPt}）
+    _lastVertexAddedAt: 0,   // 直近で頂点が追加された時刻（Date.now()）。中間点フォールバックの二重発火防止用
   };
 
   let _editableEventsBound = false;
@@ -109,7 +134,7 @@ const FieldConfirmAdjust = (() => {
     if (hintEl) {
       hintEl.textContent = (state.isRectMode && state.rectLocked)
         ? '角をドラッグしてサイズ調整（矩形を維持したまま拡大・縮小できます）'
-        : '頂点をドラッグして移動、長押しで削除。辺の中間点をタップすると頂点を追加できます';
+        : '頂点をドラッグして移動、タップで削除。辺の中間点をタップすると頂点を追加できます';
     }
   }
 
@@ -193,6 +218,22 @@ const FieldConfirmAdjust = (() => {
     const valEl  = document.getElementById('fca-sensitivity-val');
     if (slider) slider.value = value;
     if (valEl)  valEl.textContent = String(value);
+  }
+
+  // ─── 感度◀▶微調整ボタン（圃場追加フロー6項目改善セッション） ───
+  // 1回のタップで1刻みだけスライダー値を増減する。既存スライダーの
+  // oninput＝onSensitivityChange()デバウンス経路をそのまま再利用するため、
+  // 値の保存は行わない（リロード・やり直しで初期値に戻る）。
+  function nudgeSensitivity(delta) {
+    const slider = document.getElementById('fca-sensitivity-slider');
+    if (!slider) return;
+    const min = Number(slider.min);
+    const max = Number(slider.max);
+    let value = Number(slider.value) + delta;
+    if (Number.isFinite(min)) value = Math.max(min, value);
+    if (Number.isFinite(max)) value = Math.min(max, value);
+    slider.value = value;
+    onSensitivityChange(value);
   }
 
   // ═══════════════════════════════════════════
@@ -317,9 +358,10 @@ const FieldConfirmAdjust = (() => {
     if (typeof L.Editable !== 'undefined') {
       if (!map.editTools) map.editTools = new L.Editable(map);
       poly.enableEdit();
-      // 初期表示済みの頂点（enableEdit()時点で既存の全頂点）に長押し削除を個別バインド。
-      // これらは 'editable:vertex:new' が発火しないため、editor.editLayer を直接走査する。
-      _bindAllExistingVertexLongPress(poly);
+      // 初期表示済みの頂点・中間点（enableEdit()時点で既に存在するもの）に
+      // タップ削除・中間点フォールバックを個別バインド。これらは
+      // 'editable:vertex:new' が発火しないため、editor.editLayer を直接走査する。
+      _rebindEditHandles(poly);
     } else {
       console.warn('[FieldConfirmAdjust] Leaflet.Editableが読み込まれていません。頂点の手動微調整はできません。');
     }
@@ -346,11 +388,17 @@ const FieldConfirmAdjust = (() => {
   //  （一度だけbindし、e.layerで現在のstate.previewLayerかどうかを判定する）。
   // ═══════════════════════════════════════════
 
-  function _bindAllExistingVertexLongPress(poly) {
-    if (!poly.editor || !poly.editor.editLayer || !L.Editable.VertexMarker) return;
+  // ─── 頂点・中間点マーカーへのバインドを一括で行う（圃場追加フロー6項目改善セッション） ───
+  // MiddleMarkerはL.Editable.VertexMarkerのサブクラスのため、
+  // 「instanceof VertexMarker」はMiddleMarkerにも一致してしまう。
+  // 先にMiddleMarker判定してから残りをVertexMarkerとして扱う順序が重要。
+  function _rebindEditHandles(poly) {
+    if (!poly || !poly.editor || !poly.editor.editLayer || !L.Editable.VertexMarker) return;
     poly.editor.editLayer.eachLayer(layer => {
-      if (layer instanceof L.Editable.VertexMarker) {
-        _bindVertexLongPress(layer);
+      if (L.Editable.MiddleMarker && layer instanceof L.Editable.MiddleMarker) {
+        _bindMiddleMarkerFallback(layer);
+      } else if (layer instanceof L.Editable.VertexMarker) {
+        _bindVertexTapDelete(layer);
       }
     });
   }
@@ -359,12 +407,17 @@ const FieldConfirmAdjust = (() => {
     if (_editableEventsBound) return;
     _editableEventsBound = true;
 
-    // 中間点タップ等で新たに挿入された頂点はここで拾って長押し削除をバインドする。
+    // 中間点タップ等で新たに挿入された頂点はここで拾ってタップ削除をバインドし、
+    // 形状変化で再生成された中間点マーカー群も併せて再バインドする（③④共通）。
     // 矩形拘束中（isRectMode && rectLocked）に頂点が追加されると4頂点の矩形が
-    // 崩れてしまうため、確認ダイアログを出し、同意しない場合は追加を取り消す。
+    // 崩れてしまうため、確認ダイアログを出し、同意しない場合は追加を取り消す
+    // （＊追加時の確認ダイアログは、④で撤去した削除時の確認ダイアログとは別物
+    //   なので維持している）。
     map.on('editable:vertex:new', async (e) => {
       if (e.layer !== state.previewLayer) return;
-      if (e.vertex) _bindVertexLongPress(e.vertex);
+      state._lastVertexAddedAt = Date.now();
+      if (e.vertex) _bindVertexTapDelete(e.vertex);
+      _rebindEditHandles(state.previewLayer);
 
       if (state.isRectMode && state.rectLocked) {
         const addedVertex = e.vertex;
@@ -386,6 +439,9 @@ const FieldConfirmAdjust = (() => {
     // ─── 矩形拘束中の頂点ドラッグ：対角固定・リサイズ型に変換 ───
     // ドラッグ開始頂点の対角（anchor）は固定したまま、隣接2頂点を
     // 「アンカーから見た元の辺方向」への投影で再計算し、常に矩形を維持する。
+    // ⑤：prevUnit・nextUnitはここで厳密に直交化してからstateへ保持する
+    // （元の2辺がわずかに非直交でも、直交化した基底上で以後の計算を行うことで
+    //   ドラッグ中に矩形が台形化するバグを防ぐ）。
     map.on('editable:vertex:dragstart', (e) => {
       if (e.layer !== state.previewLayer) return;
       if (!state.isRectMode || !state.rectLocked) return;
@@ -406,14 +462,23 @@ const FieldConfirmAdjust = (() => {
 
       const prevVec = { x: prevPt0.x - anchorPt.x, y: prevPt0.y - anchorPt.y };
       const prevLen = Math.hypot(prevVec.x, prevVec.y) || 1;
+      const prevUnit = { x: prevVec.x / prevLen, y: prevVec.y / prevLen };
+
       const nextVec = { x: nextPt0.x - anchorPt.x, y: nextPt0.y - anchorPt.y };
       const nextLen = Math.hypot(nextVec.x, nextVec.y) || 1;
+      const nextUnitRaw = { x: nextVec.x / nextLen, y: nextVec.y / nextLen };
+
+      // prevUnitを90度回転させた向きをnextUnitの基準とし、元のnextUnitに近い側の
+      // 符号を採用する（回転方向の判定のみに元のnextUnitを使い、以後は直交基底で統一）。
+      const rotated = { x: -prevUnit.y, y: prevUnit.x };
+      const sign = (rotated.x * nextUnitRaw.x + rotated.y * nextUnitRaw.y) >= 0 ? 1 : -1;
+      const nextUnit = { x: rotated.x * sign, y: rotated.y * sign };
 
       state._rectDrag = {
-        anchorIdx, prevIdx, nextIdx, zoom,
+        anchorIdx, prevIdx, nextIdx, idx, zoom,
         anchorPt,
-        prevUnit: { x: prevVec.x / prevLen, y: prevVec.y / prevLen },
-        nextUnit: { x: nextVec.x / nextLen, y: nextVec.y / nextLen },
+        prevUnit,
+        nextUnit,
       };
     });
 
@@ -429,16 +494,22 @@ const FieldConfirmAdjust = (() => {
         _applyRectConstraint(e.vertex);
       }
       state._rectDrag = null;
+      _rebindEditHandles(state.previewLayer);
       updateLiveAreaDisplay();
     });
 
     map.on('editable:vertex:deleted', (e) => {
       if (e.layer !== state.previewLayer) return;
+      _rebindEditHandles(state.previewLayer);
       updateLiveAreaDisplay();
     });
   }
 
-  // ─── ドラッグ中の頂点位置から、矩形を維持するよう他2頂点を再計算して反映 ───
+  // ─── ドラッグ中の頂点位置から、矩形を維持するよう3頂点（idx自身含む）を再計算して反映 ───
+  // ⑤：旧実装はprevIdx・nextIdxのみ再計算し、ドラッグ中の頂点(idx)自身は実際の
+  // ドラッグ位置（直交基底からズレている可能性がある）をそのまま使っていたため、
+  // 台形化することがあった。idx自身もprevUnit/nextUnitの直交基底上へスナップし
+  // 直すことで、常に完全な長方形（直角）を維持する（面積は自由に変化してよい）。
   function _applyRectConstraint(draggedVertexMarker) {
     const rd = state._rectDrag;
     if (!rd) return;
@@ -455,10 +526,15 @@ const FieldConfirmAdjust = (() => {
 
     const newPrevPt = { x: rd.anchorPt.x + rd.prevUnit.x * prevDot, y: rd.anchorPt.y + rd.prevUnit.y * prevDot };
     const newNextPt = { x: rd.anchorPt.x + rd.nextUnit.x * nextDot, y: rd.anchorPt.y + rd.nextUnit.y * nextDot };
+    const newIdxPt  = {
+      x: rd.anchorPt.x + rd.prevUnit.x * prevDot + rd.nextUnit.x * nextDot,
+      y: rd.anchorPt.y + rd.prevUnit.y * prevDot + rd.nextUnit.y * nextDot,
+    };
 
     const markers = _getVertexMarkersByIndex(state.previewLayer);
     if (markers[rd.prevIdx]) markers[rd.prevIdx].setLatLng(unproject(newPrevPt));
     if (markers[rd.nextIdx]) markers[rd.nextIdx].setLatLng(unproject(newNextPt));
+    draggedVertexMarker.setLatLng(unproject(newIdxPt));
 
     updateLiveAreaDisplay();
   }
@@ -468,44 +544,50 @@ const FieldConfirmAdjust = (() => {
     const arr = [];
     if (!poly || !poly.editor || !poly.editor.editLayer || !L.Editable.VertexMarker) return arr;
     poly.editor.editLayer.eachLayer(layer => {
+      if (L.Editable.MiddleMarker && layer instanceof L.Editable.MiddleMarker) return;
       if (layer instanceof L.Editable.VertexMarker) arr[layer.getIndex()] = layer;
     });
     return arr;
   }
 
-  // ─── 頂点マーカーへの長押し（500ms）＝削除確認 バインド ───
-  function _bindVertexLongPress(vertexMarker) {
-    const el = vertexMarker.getElement && vertexMarker.getElement();
-    if (!el || el._fcaLongPressBound) return;
-    el._fcaLongPressBound = true;
+  // ─── 中間点マーカーのclickフォールバックをバインド（③辺タップ頂点追加バグ対応） ───
+  // MiddleMarkerのmousedown（実機タッチではLeafletがtouchをmousedownへ正規化する
+  // 想定）が実機タッチで確実に発火しないケースへの対応として、clickイベントも
+  // 明示的にバインドし、同じ挿入処理（onMouseDown）を呼べるようにする。
+  // mousedown経由で既に挿入済みの場合はeditable:vertex:new側で
+  // state._lastVertexAddedAtが更新されるため、その直後のclickは二重発火防止で無視する。
+  function _bindMiddleMarkerFallback(middleMarker) {
+    const el = middleMarker.getElement && middleMarker.getElement();
+    if (!el || el._fcaMiddleFallbackBound) return;
+    el._fcaMiddleFallbackBound = true;
 
-    let pressTimer = null;
-
-    const start = () => {
-      pressTimer = setTimeout(() => {
-        _handleVertexDeleteRequest(vertexMarker);
-      }, LONG_PRESS_MS);
-    };
-    const cancelTimer = () => {
-      clearTimeout(pressTimer);
-      pressTimer = null;
-    };
-
-    el.addEventListener('touchstart', start, { passive: true });
-    el.addEventListener('touchmove',  cancelTimer, { passive: true });
-    el.addEventListener('touchend',   cancelTimer);
-    el.addEventListener('touchcancel', cancelTimer);
-    // PC検証用（マウス操作でも同様に長押し削除を有効化）
-    el.addEventListener('mousedown', start);
-    el.addEventListener('mouseup',   cancelTimer);
-    el.addEventListener('mouseleave', cancelTimer);
-
-    // ドラッグ（頂点移動）が始まったら長押し削除とみなさない
-    vertexMarker.on('dragstart', cancelTimer);
-    vertexMarker.on('drag', cancelTimer);
+    el.addEventListener('click', (ev) => {
+      if (Date.now() - state._lastVertexAddedAt < MIDDLE_MARKER_FALLBACK_GUARD_MS) return;
+      if (typeof middleMarker.onMouseDown === 'function') {
+        middleMarker.onMouseDown(ev);
+      }
+    });
   }
 
-  async function _handleVertexDeleteRequest(vertexMarker) {
+  // ─── 頂点マーカーへのタップ＝即削除 バインド（④長押し撤去） ───
+  function _bindVertexTapDelete(vertexMarker) {
+    const el = vertexMarker.getElement && vertexMarker.getElement();
+    if (!el || el._fcaTapDeleteBound) return;
+    el._fcaTapDeleteBound = true;
+
+    // ドラッグ（頂点移動）操作の直後のclickを誤って削除と判定しないようにするガード。
+    let justDragged = false;
+    vertexMarker.on('dragstart', () => { justDragged = true; });
+    vertexMarker.on('dragend',   () => { setTimeout(() => { justDragged = false; }, 50); });
+
+    el.addEventListener('click', () => {
+      if (justDragged) return;
+      _handleVertexDeleteRequest(vertexMarker);
+    });
+  }
+
+  // ─── 頂点タップ即削除の実処理（④確認ダイアログなし） ───
+  function _handleVertexDeleteRequest(vertexMarker) {
     const layer = state.previewLayer;
     if (!layer) return;
     const latlngs = layer.getLatLngs()[0];
@@ -515,13 +597,6 @@ const FieldConfirmAdjust = (() => {
     }
 
     const rectLockedAtRequest = state.isRectMode && state.rectLocked;
-    const ok = rectLockedAtRequest
-      ? await showConfirmDialog(
-          '頂点を削除すると、矩形の拘束が解除され自由に編集できるようになります。削除しますか？',
-          '解除して削除', 'キャンセル', true
-        )
-      : await showConfirmDialog('この頂点を削除しますか？', '削除する', 'キャンセル', true);
-    if (!ok) return;
 
     try {
       if (typeof vertexMarker.delete === 'function') {
@@ -536,6 +611,9 @@ const FieldConfirmAdjust = (() => {
     if (rectLockedAtRequest) {
       state.rectLocked = false;
       _updateRectLockUI();
+      showDrawToast('頂点を削除しました（矩形の拘束を解除しました）', 'amber');
+    } else {
+      showDrawToast('頂点を削除しました');
     }
     updateLiveAreaDisplay();
   }
@@ -546,6 +624,7 @@ const FieldConfirmAdjust = (() => {
     close,
     updateLiveAreaDisplay,
     onSensitivityChange,
+    nudgeSensitivity,
     confirm,
     retry,
     switchToManual,
