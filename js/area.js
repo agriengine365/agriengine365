@@ -7905,6 +7905,9 @@ function _adpBuildPlantingTabBody(tab) {
 /**
  * Step8-7後半：「調整」タブの中身。数値入力のみ（畝上比率スライダー＋入力グリッド）。
  * 表示専用のSVG（平面図・断面図）は「描画」タブ側が担当するため、ここには含めない。
+ * 自動設計⇔調整タブ再編（2026-07）：自動設計タブから移設した占有比率／最低比率／畝数の
+ * 🔒固定・🤖自動計算チップと「残り％」バーを、アクティブ作物ぶんだけ上部に表示する
+ * （_adpBuildAutoAllocBlockHTML）。
  */
 function _adpBuildAdjustTabInner() {
   const crops = _adpPracticecrops || [];
@@ -7923,8 +7926,79 @@ function _adpBuildAdjustTabInner() {
     <div class="plt-quicklink-row">
       <button type="button" class="plt-quicklink-btn" onclick="_adpSwitchPlantingUITab('draw')">📐 断面図で確認</button>
     </div>
+    ${_adpBuildAutoAllocBlockHTML(activeEntry)}
     ${design ? _adpBuildRidgeRatioSliderHTML(cropId, design) : ''}
     ${design ? _adpBuildRidgeInputGridHTML(cropId, design) : `<div class="plt-cross-section-placeholder">畝データが未計算です</div>`}`;
+}
+
+/**
+ * 自動設計⇔調整タブ再編（2026-07）：占有比率／最低比率／畝数の🔒固定・🤖自動計算チップと
+ * 「残り％」バーを、アクティブ作物（1件）ぶんだけ表示する。値は既存の
+ * _adpAutoDesignSetCropField を経由してそのまま保存され、帯・畝の再計算は行わない
+ * （非固定＝自動計算の作物への実配分反映は「🔄 自動配分を再計算・反映」ボタンで一括実行する）。
+ * @param {object} entry - _adpPracticecrops の1要素（アクティブ作物）
+ * @returns {string}
+ */
+function _adpBuildAutoAllocBlockHTML(entry) {
+  if (!entry) return '';
+  const cropId = entry.cropId;
+  const design = entry.plantingDesign || {};
+  const autoSet = design.autoDesign || { fixedRatio: false, minRatio: 0, fixedRowCount: false };
+  const limits = _adpAutoDesignComputeLimits(cropId);
+  const remaining = _adpAutoDesignComputeRemaining();
+  const allocatedPct = Math.max(0, Math.min(100, 100 - remaining));
+  const shownRows = Number(design.targetRowCount) || 0;
+
+  const ratioBadge = autoSet.fixedRatio
+    ? '<span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span>'
+    : '<span class="autoad-value-badge autoad-value-badge-auto">🤖 自動計算</span>';
+  const rowsBadge = autoSet.fixedRowCount
+    ? '<span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span>'
+    : '<span class="autoad-value-badge autoad-value-badge-auto">🤖 自動計算</span>';
+
+  return `
+    <div class="autoad-panel">
+      <div class="autoad-remaining${remaining < 0 ? ' autoad-remaining-zero' : ''}">
+        <div class="autoad-remaining-labels">
+          <span>残り</span>
+          <span class="autoad-remaining-pct">${remaining}%</span>
+        </div>
+        <div class="plt-ratio-bar-track">
+          <div class="plt-ratio-bar-fill" style="width:${allocatedPct}%;background:${remaining < 0 ? 'var(--red)' : remaining === 0 ? 'var(--green)' : 'var(--green2)'}"></div>
+        </div>
+      </div>
+      <div class="autoad-badge-legend">
+        <span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span><span>＝入力した値をそのまま使用</span>
+        <span class="autoad-value-badge autoad-value-badge-auto">🤖 自動計算</span><span>＝残りから自動で算出</span>
+      </div>
+      <div class="autoad-rows">
+        <div class="autoad-row" data-crop-id="${cropId}">
+          <div class="autoad-row-field ${autoSet.fixedRatio ? 'autoad-row-field--fixed' : 'autoad-row-field--auto'}">
+            <span class="autoad-field-label">比率</span>
+            ${_adpAutoRatioChipHTML(cropId, 'ratio', entry.ratio, limits.max, !autoSet.fixedRatio)}
+            ${ratioBadge}
+            <label class="autoad-fixed-label">
+              <input type="checkbox" ${autoSet.fixedRatio ? 'checked' : ''}
+                onchange="_adpAutoDesignSetCropField('${cropId}','fixedRatio', this.checked)"> 固定にする
+            </label>
+          </div>
+          <div class="autoad-row-field">
+            <span class="autoad-field-label">最低比率</span>
+            ${_adpAutoRatioChipHTML(cropId, 'minRatio', autoSet.minRatio, limits.max, autoSet.fixedRatio)}
+          </div>
+          <div class="autoad-row-field ${autoSet.fixedRowCount ? 'autoad-row-field--fixed' : 'autoad-row-field--auto'}">
+            <span class="autoad-field-label">畝数</span>
+            ${_adpAutoRowCountChipHTML(cropId, shownRows, !autoSet.fixedRowCount)}
+            ${rowsBadge}
+            <label class="autoad-fixed-label">
+              <input type="checkbox" ${autoSet.fixedRowCount ? 'checked' : ''}
+                onchange="_adpAutoDesignSetCropField('${cropId}','fixedRowCount', this.checked)"> 固定にする
+            </label>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="autoad-full-btn" onclick="_adpAutoDesignFullAuto()">🔄 自動配分を再計算・反映</button>
+    </div>`;
 }
 
 /**
@@ -8025,11 +8099,36 @@ function _adpSetCrossSectionViewMode(mode) {
 }
 
 /**
+ * 断面図・拡大詳細図で共通して使う「実畝数」を解決するヘルパー。
+ * ②断面図フォールバック仕様：ridgeSegments（地図自動計算結果）があればその本数を最優先、
+ * 無ければ design.targetRowCount（畝数指定方式）、それも無ければ design.rows（手動入力・
+ * 後方互換フィールド）を使う。いずれも無ければ null（呼び出し側で1本表示等にフォールバック）。
+ * @param {object} design - plantingDesign
+ * @returns {number|null}
+ */
+function _adpResolveRidgeRowCount(design) {
+  if (!design) return null;
+  if (Array.isArray(design.ridgeSegments) && design.ridgeSegments.length > 0) {
+    return design.ridgeSegments.length;
+  }
+  const target = Number(design.targetRowCount);
+  if (target > 0) return target;
+  const rows = Number(design.rows);
+  if (rows > 0) return rows;
+  return null;
+}
+
+/**
  * Step8-7：選択中の畝を上から見た拡大詳細図（新設・模式図）。
  * 実ポリゴン座標は使わず、design.rowWidth・ridgeRatioPctから派生した畝上幅／畝間の
  * 比率と、畝長（自動計算 or 手動入力）の値をラベル表示する模式的な平面ズーム表現とする
  * （仕様書9節：既存の平面図描画ロジックからの座標流用は行わず、計算値ベースの模式図で
  * 「選択中の畝を拡大して見ながら調整したい」というニーズに応える）。
+ * ③拡大詳細図の追加ラベル（2026-07）：既存の「畝上幅」「畝長」に加え、存在する値だけを
+ * 追加描画する――畝間（谷部分に寸法線＋ラベル）、畝数、条数（畝上に模式線を配置）、
+ * 株間（1条上にドットを模式配置）、条間（条同士の間に寸法線）、欠株率（数値ラベルのみ）。
+ * 新規CSSクラスは追加せず、既存の .plt-zoomview-dim／.plt-zoomview-label／
+ * .plt-zoomview-ridge を流用する。
  * @param {object} entry - _adpPracticecrops の1要素
  * @param {string} colorClass
  * @returns {string}
@@ -8047,16 +8146,36 @@ function _adpBuildRidgeZoomDetailSVG(entry, colorClass) {
 
   const topCm  = derived.topCm;
   const pathCm = derived.pathCm;
-  const halfPathCm = pathCm / 2;
+  const halfPathCm = Math.round(pathCm / 2 * 10) / 10;
 
-  const VIEW_W = 300, VIEW_H = 150;
+  // ③追加ラベル対象の値（存在する値だけ描画するため、先に有無を確定しておく）
+  const totalRows    = _adpResolveRidgeRowCount(design);
+  const linesPerRow  = Number(design.linesPerRow) > 0 ? Number(design.linesPerRow) : null;
+  const plantSpacing = Number(design.plantSpacing) > 0 ? Number(design.plantSpacing) : null;
+  const rowSpacing   = Number(design.rowSpacing) > 0 ? Number(design.rowSpacing) : null;
+  const missingRate  = (design.missingRate !== null && design.missingRate !== undefined && design.missingRate !== '')
+    ? Number(design.missingRate) : null;
+
+  const infoLines = [];
+  if (totalRows != null)    infoLines.push(`畝数 ${totalRows}本`);
+  if (linesPerRow != null)  infoLines.push(`条数 ${linesPerRow}条`);
+  if (plantSpacing != null) infoLines.push(`株間 ${plantSpacing}cm`);
+  if (rowSpacing != null)   infoLines.push(`条間 ${rowSpacing}cm`);
+  if (missingRate != null)  infoLines.push(`欠株率 ${missingRate}%`);
+
+  const VIEW_W = 300;
+  const topY = 26, botY = 124;
+  const INFO_LINE_H = 16;
+  const infoTopY = botY + 30;
+  // 情報ラベル行の有無に応じて下方向に可変拡張する（従来固定150 → 行数ぶん追加）。
+  const VIEW_H = infoLines.length ? (infoTopY + infoLines.length * INFO_LINE_H) : 150;
+
   const totalCm = topCm + pathCm;
   const scale = Math.min(220 / Math.max(totalCm, 1), 6); // px/cm、最大6倍
   const bandWpx = topCm * scale, halfPathWpx = halfPathCm * scale;
   const cx = VIEW_W / 2;
   const bandX1 = cx - bandWpx / 2, bandX2 = cx + bandWpx / 2;
   const outerX1 = bandX1 - halfPathWpx, outerX2 = bandX2 + halfPathWpx;
-  const topY = 26, botY = 124;
 
   let svg = '';
   svg += `<rect x="${outerX1.toFixed(1)}" y="${topY}" width="${(bandX1 - outerX1).toFixed(1)}" height="${botY - topY}" class="plt-zoomview-path" />`;
@@ -8066,6 +8185,46 @@ function _adpBuildRidgeZoomDetailSVG(entry, colorClass) {
   svg += `<text x="${cx.toFixed(1)}" y="${topY - 14}" text-anchor="middle" class="plt-zoomview-label">畝上幅 ${topCm}cm</text>`;
   svg += `<line x1="${(outerX2 + 14).toFixed(1)}" y1="${topY}" x2="${(outerX2 + 14).toFixed(1)}" y2="${botY}" class="plt-zoomview-dim" />`;
   svg += `<text x="${(outerX2 + 20).toFixed(1)}" y="${((topY + botY) / 2).toFixed(1)}" text-anchor="start" class="plt-zoomview-label">畝長 ${rowLengthLabel}</text>`;
+
+  // 畝間：左の畝間（谷）ゾーンの縦中央に水平寸法線＋ラベルを追加。halfPathCmは片側ぶんの表示、
+  // 実際の畝間（両ピッチ分）はpathCmとして併記する。
+  if (pathCm > 0 && bandX1 > outerX1) {
+    const pathDimY = (topY + botY) / 2;
+    svg += `<line x1="${outerX1.toFixed(1)}" y1="${pathDimY.toFixed(1)}" x2="${bandX1.toFixed(1)}" y2="${pathDimY.toFixed(1)}" class="plt-zoomview-dim" />`;
+    svg += `<text x="${((outerX1 + bandX1) / 2).toFixed(1)}" y="${(pathDimY - 6).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label">畝間 ${pathCm}cm</text>`;
+    svg += `<text x="${((outerX1 + bandX1) / 2).toFixed(1)}" y="${(pathDimY + 14).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label">（片側${halfPathCm}cm）</text>`;
+  }
+
+  // 条数：畝上幅の帯の中に、条数ぶんの模式線を等間隔配置する。
+  let lineXs = [];
+  if (linesPerRow != null && bandWpx > 0) {
+    for (let i = 1; i <= linesPerRow; i++) {
+      const lx = bandX1 + (bandWpx * i) / (linesPerRow + 1);
+      lineXs.push(lx);
+      svg += `<line x1="${lx.toFixed(1)}" y1="${topY.toFixed(1)}" x2="${lx.toFixed(1)}" y2="${botY.toFixed(1)}" class="plt-zoomview-dim" />`;
+    }
+  }
+
+  // 株間：条（畝上の線）のうち1本を選び、その上に模式的に等間隔のドットを配置する。
+  if (plantSpacing != null) {
+    const dotX = lineXs.length ? lineXs[0] : cx;
+    const DOT_COUNT = 5;
+    for (let i = 0; i < DOT_COUNT; i++) {
+      const dy = topY + ((botY - topY) * i) / (DOT_COUNT - 1);
+      svg += `<circle cx="${dotX.toFixed(1)}" cy="${dy.toFixed(1)}" r="2.5" class="plt-zoomview-ridge ${colorClass}" />`;
+    }
+  }
+
+  // 条間：条が2本以上ある場合、隣り合う条の間に小さな寸法線を追加する。
+  if (linesPerRow != null && linesPerRow >= 2 && rowSpacing != null && lineXs.length >= 2) {
+    const dimY = topY + 10;
+    svg += `<line x1="${lineXs[0].toFixed(1)}" y1="${dimY.toFixed(1)}" x2="${lineXs[1].toFixed(1)}" y2="${dimY.toFixed(1)}" class="plt-zoomview-dim" />`;
+  }
+
+  // 畝数／条数／株間／条間／欠株率：存在する値だけ、図の下に数値ラベルとして並べる。
+  infoLines.forEach((line, idx) => {
+    svg += `<text x="${cx.toFixed(1)}" y="${(infoTopY + idx * INFO_LINE_H).toFixed(1)}" text-anchor="middle" class="plt-zoomview-label">${line}</text>`;
+  });
 
   return `<div class="plt-zoomview-wrap"><svg viewBox="0 0 ${VIEW_W} ${VIEW_H}" class="plt-zoomview-svg">${svg}</svg></div>`;
 }
@@ -8237,13 +8396,17 @@ function _adpBuildRidgeInputGridHTML(cropId, design) {
 }
 
 /**
- * 畝断面図SVG本体を生成する（山型シルエット3本・谷2本、表示専用）。
+ * 畝断面図SVG本体を生成する（山型シルエット最大3本・谷、表示専用）。
  * Step8-7：畝上幅・畝間は design.rowWidth・ridgeRatioPct から PlantingLogic.deriveRidgeWidths()
  * で派生算出する（旧・design.ridgeTopWidth／pathWidthの直接参照は撤去）。
  * 数値の編集は入力グリッド（_adpBuildRidgeInputGridHTML）・畝上比率スライダー
  * （_adpBuildRidgeRatioSliderHTML）に一本化されており、SVG側は表示とハイライト連動
  * （.plt-crosssection-ridge-mid／.plt-crosssection-valley-highlight）のみを担う。
  * 縦は大幅圧縮（Step8-7）。畝数が多い場合は「他◯畝 同条件」表記で省略する。
+ * ②実畝数未計算時のフォールバック（2026-07）：ridgeSegments（地図自動計算結果）が空でも
+ * _adpResolveRidgeRowCount() で targetRowCount／rows があればその本数（最大3本）を描画し、
+ * どちらも無ければ1本のみ（単一畝の模式として）表示する。4本以上は従来通り3本＋
+ * 「他◯畝 同条件」表記。
  *
  * @param {object} entry - _adpPracticecrops の1要素（{cropId, ratio, plantingDesign}）
  * @param {string} colorClass - 平面図・タブと共通の plt-cropcolor-N クラス名
@@ -8261,14 +8424,14 @@ function _adpBuildRidgeCrossSectionSVG(entry, colorClass) {
   const pathCm = derived.pathCm;
   if (!(topCm > 0)) return empty;
 
+  // ②フォールバック：実畝数（totalRows）が無ければ1本、あれば最大3本まで表示する。
+  const totalRows = _adpResolveRidgeRowCount(design) || 0;
+  const displayCount = totalRows > 0 ? Math.min(totalRows, 3) : 1;
+
   // 斜面は畝間側にのみ食い込ませる：畝間の半分（片側25%ずつ）を斜面用に、残りを谷底の平坦部に充てる。
   const SLOPE_RATIO = 0.5; // 畝間のうち斜面に使う割合（左右合計）
   const slopeCm = pathCm * SLOPE_RATIO / 2; // 片側の斜面幅
   const flatValleyCm = Math.max(0, pathCm - slopeCm * 2);
-
-  // 山3本・谷2本ぶんの水平距離（cm）。外側（左端・右端）にも同じ斜面幅ぶんの余白を確保し、
-  // 端の山も地面から立ち上がって見えるようにする。
-  const totalCm = topCm * 3 + pathCm * 2 + slopeCm * 2;
 
   // Step8-7：縦を大幅圧縮（170→110、高さ約35%減）。横幅・パディングは維持。
   const VIEW_W = 340, VIEW_H = 110;
@@ -8276,13 +8439,10 @@ function _adpBuildRidgeCrossSectionSVG(entry, colorClass) {
   const BASE_Y = 90;  // 地面のベースラインY座標
   const PEAK_Y = 30;  // 山頂Y座標（固定比率：cm値に関係なく常に同じ高さで描画）
 
-  const scale = (VIEW_W - PAD_X * 2) / totalCm;
-  const cmToPx = (cm) => PAD_X + cm * scale;
-
-  // --- 各山の頂点をcm単位で左から順に計算 ---
+  // --- 各山の頂点をcm単位で左から順に計算（本数は displayCount 本に可変） ---
   let cursor = 0; // 現在位置（cm、左端からの距離）
   const mountains = []; // {baseL, topL, topR, baseR}（すべてcm）
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < displayCount; i++) {
     const baseL = cursor;                  // 左裾の付け根（地面）
     const topL  = baseL + slopeCm;         // 左肩（山頂の左端）
     const topR  = topL + topCm;            // 右肩（山頂の右端）
@@ -8290,14 +8450,22 @@ function _adpBuildRidgeCrossSectionSVG(entry, colorClass) {
     mountains.push({ baseL, topL, topR, baseR });
     cursor = baseR + flatValleyCm;         // 次の山の左裾開始位置（谷底ぶん進める）
   }
+  // 山n本・谷(n-1)本ぶんの水平距離（cm）。外側（左端・右端）にも同じ斜面幅ぶんの余白を確保し、
+  // 端の山も地面から立ち上がって見えるようにする。
+  const totalCm = mountains[mountains.length - 1].baseR;
+
+  const scale = (VIEW_W - PAD_X * 2) / totalCm;
+  const cmToPx = (cm) => PAD_X + cm * scale;
 
   // --- 地面のベースライン（全幅） ---
   const baseX1 = cmToPx(0), baseX2 = cmToPx(totalCm);
   let svg = `<line x1="${baseX1.toFixed(1)}" y1="${BASE_Y}" x2="${baseX2.toFixed(1)}" y2="${BASE_Y}" class="plt-crosssection-baseline" />`;
 
   // --- 各山を台形ポリゴンとして描画 ---
-  // 中央（2本目）の山にのみ plt-crosssection-ridge-mid クラス＋data-cross-crop属性を
-  // 付与し、畝上比率スライダーのfocus時にこの1本だけをハイライト対象にできるようにする。
+  // 中央の山にのみ plt-crosssection-ridge-mid クラス＋data-cross-crop属性を付与し、
+  // 畝上比率スライダーのfocus時にこの1本だけをハイライト対象にできるようにする。
+  // 中央インデックス：1本なら0本目、2本なら0本目（右隣に唯一の谷）、3本なら1本目（中央）。
+  const midIdx = Math.floor((displayCount - 1) / 2);
   mountains.forEach((m, idx) => {
     const pts = [
       [cmToPx(m.baseL), BASE_Y],
@@ -8305,33 +8473,40 @@ function _adpBuildRidgeCrossSectionSVG(entry, colorClass) {
       [cmToPx(m.topR),  PEAK_Y],
       [cmToPx(m.baseR), BASE_Y],
     ].map(p => p.map(v => v.toFixed(1)).join(',')).join(' ');
-    const isMid = idx === 1;
+    const isMid = idx === midIdx;
     const midClass = isMid ? ' plt-crosssection-ridge-mid' : '';
     const midAttr  = isMid ? ` data-cross-crop="${cropId}"` : '';
     svg += `<polygon points="${pts}" class="plt-crosssection-ridge ${colorClass}${midClass}"${midAttr} />`;
   });
 
   // --- 寸法ラベル位置計算（表示専用。数値の編集は入力グリッド・畝上比率スライダーに一本化） ---
-  // 畝上幅：中央の山（2本目）の頂上に表示。畝間：1本目と2本目の間の谷に表示。
-  const midMountain = mountains[1];
+  // 畝上幅：中央の山の頂上に表示。畝間：中央の山のすぐ左の谷に表示（谷が無い＝1本のみの場合は省略）。
+  const midMountain = mountains[midIdx];
   const topLabelX = (cmToPx(midMountain.topL) + cmToPx(midMountain.topR)) / 2;
-  const valleyL = mountains[0].baseR, valleyR = mountains[1].baseL;
-  const valleyLabelX = (cmToPx(valleyL) + cmToPx(valleyR)) / 2;
+  const valleyIdx = Math.max(midIdx - 1, 0);
+  const hasValley = mountains.length >= 2;
 
-  // 畝間ハイライト用の可視マーカー（通常モードでは谷が潰れて見た目に区間が無いため、
-  // 中心を基準に最低幅（左右12pxぶん＝計24px）を確保した帯を用意しておく。デフォルト非表示、
-  // 入力フォーカス時に .plt-highlight-blink が付与されて明滅表示される）。
-  const MIN_HIT_HALF_PX = 12;
-  const valleyCenterPx = (cmToPx(valleyL) + cmToPx(valleyR)) / 2;
-  const valleyHitX1 = Math.min(cmToPx(valleyL), valleyCenterPx - MIN_HIT_HALF_PX);
-  const valleyHitX2 = Math.max(cmToPx(valleyR), valleyCenterPx + MIN_HIT_HALF_PX);
-  svg += `<rect x="${valleyHitX1.toFixed(1)}" y="${PEAK_Y.toFixed(1)}" width="${(valleyHitX2 - valleyHitX1).toFixed(1)}" height="${(BASE_Y - PEAK_Y).toFixed(1)}" class="plt-crosssection-valley-highlight" data-cross-crop="${cropId}" />`;
+  let valleyLabelHTML = '';
+  if (hasValley) {
+    const valleyL = mountains[valleyIdx].baseR, valleyR = mountains[valleyIdx + 1].baseL;
+    const valleyLabelX = (cmToPx(valleyL) + cmToPx(valleyR)) / 2;
+
+    // 畝間ハイライト用の可視マーカー（通常モードでは谷が潰れて見た目に区間が無いため、
+    // 中心を基準に最低幅（左右12pxぶん＝計24px）を確保した帯を用意しておく。デフォルト非表示、
+    // 入力フォーカス時に .plt-highlight-blink が付与されて明滅表示される）。
+    const MIN_HIT_HALF_PX = 12;
+    const valleyCenterPx = (cmToPx(valleyL) + cmToPx(valleyR)) / 2;
+    const valleyHitX1 = Math.min(cmToPx(valleyL), valleyCenterPx - MIN_HIT_HALF_PX);
+    const valleyHitX2 = Math.max(cmToPx(valleyR), valleyCenterPx + MIN_HIT_HALF_PX);
+    svg += `<rect x="${valleyHitX1.toFixed(1)}" y="${PEAK_Y.toFixed(1)}" width="${(valleyHitX2 - valleyHitX1).toFixed(1)}" height="${(BASE_Y - PEAK_Y).toFixed(1)}" class="plt-crosssection-valley-highlight" data-cross-crop="${cropId}" />`;
+
+    valleyLabelHTML = `<text x="${valleyLabelX.toFixed(1)}" y="${BASE_Y - 6}" class="plt-crosssection-label plt-crosssection-label-path" text-anchor="middle">畝間 ${pathCm}cm</text>`;
+  }
 
   svg += `<text x="${topLabelX.toFixed(1)}" y="${PEAK_Y - 6}" class="plt-crosssection-label plt-crosssection-label-top" text-anchor="middle">畝上幅 ${topCm}cm</text>`;
-  svg += `<text x="${valleyLabelX.toFixed(1)}" y="${BASE_Y - 6}" class="plt-crosssection-label plt-crosssection-label-path" text-anchor="middle">畝間 ${pathCm}cm</text>`;
+  svg += valleyLabelHTML;
 
-  // 同条件省略表示：実際の畝数が3本を超える場合、「他◯畝 同条件」を下部に注記する。
-  const totalRows = Array.isArray(design.ridgeSegments) ? design.ridgeSegments.length : 0;
+  // 同条件省略表示：実際の畝数（totalRows）が3本を超える場合、「他◯畝 同条件」を下部に注記する。
   const omittedLabel = totalRows > 3
     ? `<text x="${(VIEW_W / 2).toFixed(1)}" y="${VIEW_H - 4}" class="plt-crosssection-label plt-crosssection-label-omitted" text-anchor="middle">他${totalRows - 3}畝 同条件</text>`
     : '';
@@ -8831,78 +9006,17 @@ function _adpAutoRowCountChipHTML(cropId, value, disabled) {
 }
 
 /**
- * 自動設計の設定パネルを生成する（v4仕様4.：アコーディオン撤去・直接展開）。
- * プレビュー結果（_adpAutoDesignPreview）がある場合はプレビュー値を、無ければ実データ
- * （_adpPracticecrops の現在値）を表示する。
+ * 自動設計の設定パネルを生成する。
+ * 作物別「比率／最低比率／畝数」の固定・自動計算チップと「残り％」バーは「調整」タブへ
+ * 移設済み（_adpBuildAutoAllocBlockHTML）。ここはゾーン優先度／目的関数の選択と
+ * 🪄完全自動設計ボタンのみに簡素化し、「プレビュー」→「適用」の2段階概念は廃止した
+ * （実行→境界ギリギリ時のみ確認モーダル→即確定、の1操作にまとめている）。
  */
 function _adpBuildAutoDesignPanel() {
-  const { hasRidgeDir, hasCrops, allOk } = _adpAutoDesignPrereqStatus();
+  const { hasRidgeDir, hasCrops } = _adpAutoDesignPrereqStatus();
   const prereqHTML = _adpBuildAutoDesignPrereqHTML(hasRidgeDir, hasCrops);
 
-  const preview = _adpAutoDesignPreview;
-  const previewMap = preview?.results ? Object.fromEntries(preview.results.map(r => [r.cropId, r])) : null;
-  const remaining = _adpAutoDesignComputeRemaining();
-  const allocatedPct = Math.max(0, Math.min(100, 100 - remaining));
-
-  const rowsHTML = !hasCrops ? '' : _adpPracticecrops.map(({ cropId, ratio, plantingDesign }) => {
-    const design      = plantingDesign || {};
-    const autoSet     = design.autoDesign || { fixedRatio: false, minRatio: 0, fixedRowCount: false };
-    const cropName    = _adpCropIdToName(cropId);
-    const pv          = previewMap ? previewMap[cropId] : null;
-    const shownRatio  = pv ? pv.ratio : (Number(ratio) || 0);
-    const shownRows   = pv ? pv.targetRowCount : (Number(design.targetRowCount) || 0);
-    // 5.6.2：この作物の比率／最低比率チップの動的上限（自分以外の固定比率合計・最低比率合計から算出）
-    const limits      = _adpAutoDesignComputeLimits(cropId);
-
-    // UX見直し（2026-07 ④）：「固定」（ユーザーが値を指定し、エンジンが一切変更しない）と
-    // 「自動計算」（エンジンが他の固定値・制約から逆算した値）を、バッジ＋行全体の左枠線色で
-    // 一目で区別できるようにする。自動計算バッジはプレビュー結果（pv）が存在する時のみ表示
-    // （まだ一度も実行していない・設定変更でプレビューが破棄された直後は「未計算」＝バッジなし）。
-    const ratioFieldClass = autoSet.fixedRatio ? 'autoad-row-field--fixed' : (pv ? 'autoad-row-field--auto' : '');
-    const ratioBadge = autoSet.fixedRatio
-      ? '<span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span>'
-      : (pv ? '<span class="autoad-value-badge autoad-value-badge-auto">🤖 自動計算</span>' : '');
-    const rowsFieldClass = autoSet.fixedRowCount ? 'autoad-row-field--fixed' : (pv ? 'autoad-row-field--auto' : '');
-    const rowsBadge = autoSet.fixedRowCount
-      ? '<span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span>'
-      : (pv ? '<span class="autoad-value-badge autoad-value-badge-auto">🤖 自動計算</span>' : '');
-
-    return `
-      <div class="autoad-row" data-crop-id="${cropId}">
-        <div class="autoad-row-name">${cropName}</div>
-        <div class="autoad-row-field ${ratioFieldClass}">
-          <span class="autoad-field-label">比率</span>
-          ${_adpAutoRatioChipHTML(cropId, 'ratio', shownRatio, limits.max, !autoSet.fixedRatio)}
-          ${ratioBadge}
-          <label class="autoad-fixed-label">
-            <input type="checkbox" ${autoSet.fixedRatio ? 'checked' : ''}
-              onchange="_adpAutoDesignSetCropField('${cropId}','fixedRatio', this.checked)"> 固定にする
-          </label>
-        </div>
-        <div class="autoad-row-field">
-          <span class="autoad-field-label">最低比率</span>
-          ${_adpAutoRatioChipHTML(cropId, 'minRatio', autoSet.minRatio, limits.max, autoSet.fixedRatio)}
-        </div>
-        <div class="autoad-row-field ${rowsFieldClass}">
-          <span class="autoad-field-label">畝数</span>
-          ${_adpAutoRowCountChipHTML(cropId, shownRows, !autoSet.fixedRowCount)}
-          ${rowsBadge}
-          <label class="autoad-fixed-label">
-            <input type="checkbox" ${autoSet.fixedRowCount ? 'checked' : ''}
-              onchange="_adpAutoDesignSetCropField('${cropId}','fixedRowCount', this.checked)"> 固定にする
-          </label>
-        </div>
-      </div>`;
-  }).join('');
-
-  const statusHTML = preview
-    ? (preview.ok
-        ? `<div class="autoad-status autoad-status-ok">✓ プレビュー中（未適用）／反復${preview.iterations}回${preview.converged ? '・収束' : '・上限到達'}</div>`
-        : `<div class="autoad-status autoad-status-error">⚠ ${preview.message}</div>`)
-    : '';
-
-  // 5.6.1：作物0件時は設定行・比率チップ等を表示せず、チェックリストのみ表示する
-  const bodyHTML = !hasCrops ? '' : `
+  const globalHTML = !hasCrops ? '' : `
         <div class="autoad-global-row">
           <label class="autoad-global-field">
             ゾーン優先度
@@ -8919,47 +9033,26 @@ function _adpBuildAutoDesignPanel() {
               <option value="profit"${_adpAutoDesignSettings.objective === 'profit' ? ' selected' : ''}>利益(円)最大化（肥料費差引）</option>
             </select>
           </label>
-        </div>
-        <!-- 占有ゲージ整理②：共通legend行から撤去した合計バーの代わりに、ここで「残り%」を視覚化 -->
-        <div class="autoad-remaining${remaining < 0 ? ' autoad-remaining-zero' : ''}">
-          <div class="autoad-remaining-labels">
-            <span>残り</span>
-            <span class="autoad-remaining-pct">${remaining}%</span>
-          </div>
-          <div class="plt-ratio-bar-track">
-            <div class="plt-ratio-bar-fill" style="width:${allocatedPct}%;background:${remaining < 0 ? 'var(--red)' : remaining === 0 ? 'var(--green)' : 'var(--green2)'}"></div>
-          </div>
-        </div>
-        <div class="autoad-badge-legend">
-          <span class="autoad-value-badge autoad-value-badge-fixed">🔒 固定値</span><span>＝入力した値をそのまま使用</span>
-          <span class="autoad-value-badge autoad-value-badge-auto">🤖 自動計算</span><span>＝残りから自動で算出</span>
-        </div>
-        <div class="autoad-rows">${rowsHTML}</div>
-        ${statusHTML}`;
+        </div>`;
 
   return `
     <div class="autoad-panel" id="autoad-panel">
       <button type="button" class="autoad-full-btn" ${hasCrops ? '' : 'disabled'} onclick="_adpAutoDesignFullAuto()">
-        🪄 完全自動設計（タップで計算→確認）
+        🪄 完全自動設計（タップで計算→確定）
       </button>
-      <div class="autoad-full-help">畝方向が未設定でも自動計算します。計算結果（固定値／自動計算の内訳）を確認してから確定できます。個別に比率・畝数を指定したい場合は下の設定を調整してください。</div>
+      <div class="autoad-full-help">畝方向が未設定でも自動計算します。実行すると比率・畝数を自動配分してそのまま確定します。個別に比率・畝数を固定指定したい場合は「調整」タブで作物ごとに設定してください。</div>
       ${prereqHTML}
-      ${bodyHTML}
-      <div class="autoad-btn-row">
-        <button type="button" class="autoad-run-btn" ${allOk ? '' : 'disabled'} onclick="_adpAutoDesignRun()">🔍 プレビュー</button>
-        <button type="button" class="autoad-apply-btn" ${preview?.ok ? '' : 'disabled'} onclick="_adpAutoDesignApply()">✓ 適用</button>
-      </div>
-      <div class="autoad-help-text">「プレビュー」はまだ反映されません。内容を確認してから「適用」を押すと確定します。</div>
+      ${globalHTML}
     </div>`;
 }
 
 /**
  * 自動設計パネルの1フィールド変更を反映する。
- * ratio/minRatio/targetRowCount はプルダウンのvalue（文字列）を数値化して保存。
+ * ratio/minRatio/targetRowCount は入力欄の値（文字列）を数値化して保存。
  * fixedRatio/fixedRowCount はチェックボックスの真偽値。
- * 設定変更のみで、帯・畝の再計算（recalcAllBands）は行わない（「自動設計」実行時にまとめて反映）。
- * 手動で固定チェックを外した場合など、プレビューは一旦破棄する（設定変更前の古いプレビューを
- * 誤って適用しないため）。
+ * 自動設計⇔調整タブ再編：このチップ群は「調整」タブに移設済み（_adpBuildAutoAllocBlockHTML）。
+ * 設定変更のみで、帯・畝の再計算（recalcAllBands）は行わない。非固定（自動計算）作物への
+ * 実際の配分反映は「🔄 自動配分を再計算・反映」ボタン（_adpAutoDesignFullAuto）で行う。
  */
 function _adpAutoDesignSetCropField(cropId, field, rawValue) {
   const crop = _adpPracticecrops.find(c => c.cropId === cropId);
@@ -8984,12 +9077,11 @@ function _adpAutoDesignSetCropField(cropId, field, rawValue) {
     crop.plantingDesign.targetRowCount = Number(rawValue) || 0;
   }
 
-  _adpAutoDesignPreview = null; // 設定変更時はプレビューを破棄（古い結果の誤適用を防ぐ）
   _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
-  _adpRenderPlantingPane();
+  _adpRefreshRidgeInputBlock();
 }
 
-/** 畝数プルダウンの増分ボタン（+1／+10）。固定チェックが入っている作物のみ操作可能。 */
+/** 畝数チップの増分ボタン（+1／+10）。固定チェックが入っている作物のみ操作可能。 */
 function _adpAutoDesignIncrRowCount(cropId, delta) {
   const crop = _adpPracticecrops.find(c => c.cropId === cropId);
   if (!crop?.plantingDesign?.autoDesign?.fixedRowCount) return;
@@ -9000,47 +9092,20 @@ function _adpAutoDesignIncrRowCount(cropId, delta) {
 /** グローバル設定（ゾーン優先度・目的関数）の変更を保存する。 */
 function _adpAutoDesignSetGlobalOption(key, value) {
   _adpAutoDesignSettings[key] = value;
-  _adpAutoDesignPreview = null;
   _adpSaveAutoDesignSettings(_adpArea?.id || _adpArea?.name || '');
   _adpRenderPlantingPane();
 }
 
 /**
- * 「プレビュー」ボタン：AutoDesign.run() を実行し、結果をプレビューとして
- * 設定パネルのチップに反映する（この時点では practicecrops へ書き込まない）。
- * v4仕様5.：畝方向が未設定の場合は実行前に自動判定して確定する（未設定のままではAutoDesign.runが
+ * 🪄「完全自動設計」ボタン（自動設計タブ）／🔄「自動配分を再計算・反映」ボタン（調整タブ）の
+ * 共通ハンドラ。AutoDesign.run() を実行し、そのまま _adpAutoDesignApply() で確定まで行う
+ * （UX見直し：旧「🔍プレビュー」→「✓適用」の2段階、および完全自動設計側の確認ダイアログを
+ * 廃止し、実行＝即確定の1操作に統一した。畝ピッチ境界ギリギリの作物（nearBoundary）が
+ * ある場合のみ、従来通り専用の確認モーダルを挟む）。
+ * 畝方向が未設定の場合は実行前に自動判定して確定する（未設定のままではAutoDesign.runが
  * NO_RIDGE_DIRECTIONで失敗するため）。
  */
-function _adpAutoDesignRun() {
-  if (typeof AutoDesign === 'undefined') return;
-  // 5.6.1：UI上はボタン自体を非活性化して押せない状態にしているが、フェイルセーフとして
-  // 事前条件（作物1件以上）を関数側でも確認する
-  if (!_adpAutoDesignPrereqStatus().allOk) return;
-  _adpEnsureRidgeDirAutoDetected();
-  const result = AutoDesign.run({
-    practicecrops: _adpPracticecrops,
-    area: _adpArea,
-    houseMargin: _adpHouseMargin,
-    zonePriorityMode: _adpAutoDesignSettings.zonePriorityMode,
-    objective: _adpAutoDesignSettings.objective,
-  });
-  _adpAutoDesignPreview = result;
-  _adpRenderPlantingPane();
-}
-
-/**
- * v4仕様4.：「🪄 完全自動設計」ボタン（パネル最上部）。タップ一回でAutoDesign.run()を実行し、
- * 畝方向が未設定でも自動計算（最長辺）して確定に含める。
- * UX見直し（2026-07 ④）：従来は計算前に内容の見えない状態で確認ダイアログを挟んでいたため、
- * 「固定値」と「自動計算」の内訳を見ないまま確定していた。今回から、まず計算だけを行って
- * バッジ付きパネル（固定＝グレー／自動計算＝青）を一度表示し、内容を見た上で確定するかどうか
- * 判断できるようにする（実質「🔍プレビュー」→「✓適用」を1操作にまとめた形）。
- * 畝ピッチ境界ギリギリの作物（nearBoundary）がある場合は、従来通り専用の確認モーダルに切り替える
- * （境界モーダル自体が対象作物の内容を見せた上での確認になっているため、二重の確認は挟まない）。
- * キャンセルした場合はプレビューを破棄せずそのまま残す（内容を見てから値を手直しする、
- * 改めて「✓ 適用」を押す、のいずれも可能な状態にしておく）。
- */
-async function _adpAutoDesignFullAuto() {
+function _adpAutoDesignFullAuto() {
   if (typeof AutoDesign === 'undefined') return;
   if (!_adpAutoDesignPrereqStatus().allOk) return; // 作物0件ならフェイルセーフで何もしない
 
@@ -9053,25 +9118,18 @@ async function _adpAutoDesignFullAuto() {
     zonePriorityMode: _adpAutoDesignSettings.zonePriorityMode,
     objective: _adpAutoDesignSettings.objective,
   });
-  _adpAutoDesignPreview = result;
-  _adpRenderPlantingPane(); // バッジ付きパネルを先に表示し、内容が見える状態にしてから確認へ進む
 
   if (!result.ok) {
     showToast(`⚠ ${result.message}`, 'red');
     return;
   }
 
-  const boundaryCrops = result.results.filter(r => r.nearBoundary);
-  if (boundaryCrops.length > 0) {
-    _adpShowBoundaryConfirmModal(boundaryCrops);
-    return;
+  _adpAutoDesignPreview = result;
+  _adpAutoDesignApply(); // 境界ギリギリが無ければここで即確定（_adpAutoDesignPreviewはnullに戻る）
+
+  if (_adpAutoDesignPreview === null) {
+    showToast('🪄 自動配分を反映しました', 'green');
   }
-
-  const ok = await showConfirmDialog('この内容（🔒固定値／🤖自動計算）で確定します。よろしいですか？', '確定する', 'キャンセル', false);
-  if (!ok) return; // プレビューは残す（値を見ながら手直し・再計算・後から「✓ 適用」のいずれも可能）
-
-  _adpAutoDesignCommit([]);
-  showToast('🪄 完全自動設計を確定しました', 'green');
 }
 
 /**
