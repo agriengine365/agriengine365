@@ -8475,13 +8475,40 @@ function _adpBuildRidgeCrossSectionSVG(entry, colorClass) {
   const totalRows = _adpResolveRidgeRowCount(design) || 0;
   const displayCount = totalRows > 0 ? Math.min(totalRows, 3) : 1;
 
+  // 数値の描画網羅（2026-07）：拡大詳細図と同じ付帯情報（畝長・畝数・条数・株間・条間・欠株率）を
+  // 断面図にも追記する。存在する値だけを表示し、無ければ行自体を出さない。
+  const calcForInfo = PlantingLogic.calcPlanting(design);
+  const rowLengthLabel = calcForInfo?.rowLength != null
+    ? `${calcForInfo.rowLength}m`
+    : (design.rowLength != null ? `${design.rowLength}m` : null);
+  const linesPerRow  = Number(design.linesPerRow) > 0 ? Number(design.linesPerRow) : null;
+  const plantSpacing = Number(design.plantSpacing) > 0 ? Number(design.plantSpacing) : null;
+  const rowSpacing   = Number(design.rowSpacing) > 0 ? Number(design.rowSpacing) : null;
+  const missingRate  = (design.missingRate !== null && design.missingRate !== undefined && design.missingRate !== '')
+    ? Number(design.missingRate) : null;
+
+  const infoLines = [];
+  if (rowLengthLabel != null) infoLines.push(`畝長 ${rowLengthLabel}`);
+  if (totalRows > 0)          infoLines.push(`畝数 ${totalRows}本`);
+  if (linesPerRow != null)    infoLines.push(`条数 ${linesPerRow}条`);
+  if (plantSpacing != null)   infoLines.push(`株間 ${plantSpacing}cm`);
+  if (rowSpacing != null)     infoLines.push(`条間 ${rowSpacing}cm`);
+  if (missingRate != null)    infoLines.push(`欠株率 ${missingRate}%`);
+
   // 斜面は畝間側にのみ食い込ませる：畝間の半分（片側25%ずつ）を斜面用に、残りを谷底の平坦部に充てる。
   const SLOPE_RATIO = 0.5; // 畝間のうち斜面に使う割合（左右合計）
   const slopeCm = pathCm * SLOPE_RATIO / 2; // 片側の斜面幅
   const flatValleyCm = Math.max(0, pathCm - slopeCm * 2);
 
   // Step8-7：縦を大幅圧縮（170→110、高さ約35%減）。横幅・パディングは維持。
-  const VIEW_W = 340, VIEW_H = 110;
+  // 数値の描画網羅（2026-07）：付帯情報行＋「他◯畝 同条件」注記の分だけ高さを可変で伸ばす。
+  const hasOmittedNote = totalRows > 3;
+  const extraInfoRows = infoLines.length + (hasOmittedNote ? 1 : 0);
+  const VIEW_W = 340;
+  const BASE_VIEW_H = 110;
+  const INFO_LINE_H = 14;
+  const infoTopY = BASE_VIEW_H + 6;
+  const VIEW_H = extraInfoRows ? (infoTopY + extraInfoRows * INFO_LINE_H) : BASE_VIEW_H;
   const PAD_X  = 14;
   const BASE_Y = 90;  // 地面のベースラインY座標
   const PEAK_Y = 30;  // 山頂Y座標（固定比率：cm値に関係なく常に同じ高さで描画）
@@ -8552,6 +8579,11 @@ function _adpBuildRidgeCrossSectionSVG(entry, colorClass) {
 
   svg += `<text x="${topLabelX.toFixed(1)}" y="${PEAK_Y - 6}" class="plt-crosssection-label plt-crosssection-label-top" text-anchor="middle">畝上幅 ${topCm}cm</text>`;
   svg += valleyLabelHTML;
+
+  // 数値の描画網羅（2026-07）：畝長・畝数・条数・株間・条間・欠株率を下部に並べる（存在する値だけ）。
+  infoLines.forEach((line, idx) => {
+    svg += `<text x="${(VIEW_W / 2).toFixed(1)}" y="${(infoTopY + idx * INFO_LINE_H).toFixed(1)}" text-anchor="middle" class="plt-crosssection-label plt-crosssection-label-info">${line}</text>`;
+  });
 
   // 同条件省略表示：実際の畝数（totalRows）が3本を超える場合、「他◯畝 同条件」を下部に注記する。
   const omittedLabel = totalRows > 3
@@ -10083,6 +10115,8 @@ function _adpBuildUnifiedRidgePreviewSVG() {
 
   // --- 3. 全作物の帯・畝・寸法線（作物ごとに固有色で描画） ---
   const cropLegendItems = [];
+  // 数値の描画網羅（2026-07）：断面図・拡大詳細図と同じ数値を、全体図側にも作物ごとに一覧表示する。
+  const cropDetailRows = [];
   let anyDim = false, anyDimSchematic = false;
 
   crops.forEach((entry, idx) => {
@@ -10094,6 +10128,30 @@ function _adpBuildUnifiedRidgePreviewSVG() {
       const bandSvgPts = band.map(p => toSvg(toLocal(p)));
       svgBody += `<polygon points="${ptsStr(bandSvgPts)}" class="plt-shapesvg-cropband ${colorClass}" />`;
       cropLegendItems.push(`<span class="plt-shapesvg-legend-item"><i class="plt-shapesvg-swatch ${colorClass}"></i>${cropName}（${entry.ratio}%）</span>`);
+    }
+
+    {
+      const d = entry?.plantingDesign;
+      const derived = d ? PlantingLogic.deriveRidgeWidths(d) : null;
+      if (derived) {
+        const parts = [`畝上幅${derived.topCm}cm`, `畝間${derived.pathCm}cm`];
+        const rowCount = _adpResolveRidgeRowCount(d);
+        if (rowCount != null) parts.push(`畝数${rowCount}本`);
+        if (Number(d.linesPerRow) > 0) parts.push(`条数${Number(d.linesPerRow)}条`);
+        if (Number(d.plantSpacing) > 0) parts.push(`株間${Number(d.plantSpacing)}cm`);
+        if (Number(d.rowSpacing) > 0) parts.push(`条間${Number(d.rowSpacing)}cm`);
+        if (d.missingRate !== null && d.missingRate !== undefined && d.missingRate !== '') parts.push(`欠株率${Number(d.missingRate)}%`);
+        const calc = PlantingLogic.calcPlanting(d);
+        const rowLengthLabel = calc?.rowLength != null ? `${calc.rowLength}m` : (d.rowLength != null ? `${d.rowLength}m` : null);
+        if (rowLengthLabel != null) parts.push(`畝長${rowLengthLabel}`);
+
+        cropDetailRows.push(`
+          <div class="plt-cropdetail-row">
+            <i class="plt-shapesvg-swatch ${colorClass}"></i>
+            <span class="plt-cropdetail-name">${cropName}</span>
+            <span class="plt-cropdetail-values">${parts.join('・')}</span>
+          </div>`);
+      }
     }
 
     const segments = entry?.plantingDesign?.ridgeSegments || [];
@@ -10138,6 +10196,11 @@ function _adpBuildUnifiedRidgePreviewSVG() {
     ? `<div class="plt-dimline-schematic-note">📏 寸法線は模式図です（畝上幅・畝間の内訳は実際のポリゴン形状には反映されません）。</div>`
     : '';
 
+  // 数値の描画網羅（2026-07）：作物ごとの畝上幅・畝間・条数・株間・条間・欠株率・畝長を一覧表示。
+  const cropDetailSummaryHTML = cropDetailRows.length
+    ? `<div class="plt-cropdetail-summary">${cropDetailRows.join('')}</div>`
+    : '';
+
   // UX見直し（2026-07）：ゾーン判定バッジ。矩形ゾーンは従来どおり無表示（正常時は静かに）、
   // 余剰形状ゾーンが成立している場合のみ警告として表示し、タップで一文説明を出す。
   const zoneInfo = (typeof PlantingLogic.getLastZoneInfo === 'function') ? PlantingLogic.getLastZoneInfo() : { valid: false };
@@ -10157,6 +10220,7 @@ function _adpBuildUnifiedRidgePreviewSVG() {
       ${marginNoteHTML}
       ${dimNoteHTML}
       <div class="plt-shapesvg-legend">${legendItems.join('')}</div>
+      ${cropDetailSummaryHTML}
     </div>`;
 }
 

@@ -7706,6 +7706,38 @@ html.draw-dialog-active .bottom-nav {
   margin-bottom: 8px;
 }
 
+/* 数値の描画網羅（2026-07）：全体図下部の作物別詳細サマリー（畝上幅・畝間・条数・株間・条間・
+   欠株率・畝長を作物ごとに1行で列挙）。凡例（nowrapのチップ列）とは別に、折り返し前提の
+   縦積みリストとして持たせる。 */
+.plt-cropdetail-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+}
+.plt-cropdetail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text2);
+  flex-wrap: wrap;
+}
+.plt-cropdetail-row .plt-shapesvg-swatch {
+  align-self: center;
+  flex-shrink: 0;
+}
+.plt-cropdetail-name {
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.plt-cropdetail-values {
+  color: var(--text2);
+}
+
 /* 凡例 */
 .plt-shapesvg-legend {
   display: flex;
@@ -9194,6 +9226,27 @@ html.draw-dialog-active .bottom-nav {
   font-size: 10px;
   color: var(--text3);
   flex-shrink: 0;
+}
+
+/* 圃場マージン調整UIのモバイル対応（2026-07）：実機の狭幅（375px前後）では
+   3つのチップ（外膜マージン／入口奥行き／反対側奥行き）が1行に収まりきらず
+   崩れるため、狭幅では縦積み＋各行「ラベル左・数値右」の横並びに切り替える。 */
+@media (max-width: 480px) {
+  .plt-inputchip-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .plt-input-chip,
+  .plt-oppositedepth-wrap {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .plt-input-chip {
+    justify-content: space-between;
+  }
+  .plt-oppositedepth-wrap .plt-input-chip {
+    width: 100%;
+  }
 }
 
 /* 警告（外側ラッパー：中身が無い時は余白を残さない） */
@@ -11945,6 +11998,14 @@ html.draw-dialog-active .bottom-nav {
   font-size: 9px;
   font-weight: 500;
   fill: var(--text3);
+}
+
+/* 数値の描画網羅（2026-07）：断面図下部の付帯情報行（畝長・畝数・条数・株間・条間・欠株率）。
+   拡大詳細図の .plt-zoomview-label と同じトーンで統一する。 */
+.plt-crosssection-label-info {
+  font-size: 10px;
+  font-weight: 500;
+  fill: var(--text2);
 }
 
 /* 入力グリッド（畝数・畝長・ピッチ・条数・株間・条間・欠株率）。
