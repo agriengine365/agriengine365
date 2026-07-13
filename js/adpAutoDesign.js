@@ -200,7 +200,7 @@ const AutoDesign = (() => {
         }
         const crop = _adpGetCropById(w.cropId);
         const std  = crop?.plantingStandard;
-        const rowWidthCm = Number(std?.rowWidth) || Number(design.rowWidth) || 0;
+        const rowWidthCm = Number(design.rowWidth) || Number(std?.rowWidth) || 0;
         if (!(rowWidthCm > 0)) {
           design.targetRowCount = 0;
           lastBandWidthM[i] = null;
@@ -237,7 +237,11 @@ const AutoDesign = (() => {
         const std    = crop?.plantingStandard;
         const bandAreaSqm = Number(design._bandAreaSqm) || 0;
         if (!(bandAreaSqm > 0) || !Array.isArray(design.ridgeSegments) || !design.ridgeSegments.length) return 0;
-        const seedlings = RidgeGeometry.totalPlants(design.ridgeSegments, Number(std?.linesPerRow), Number(std?.plantSpacing));
+        const seedlings = RidgeGeometry.totalPlants(
+          design.ridgeSegments,
+          Number(design.linesPerRow) || Number(std?.linesPerRow),
+          Number(design.plantSpacing) || Number(std?.plantSpacing)
+        );
         const yieldKg   = seedlings * (Number(crop?.yieldPerPlant) || 0);
         const value     = objective === 'revenue'
           ? yieldKg * (normalizeYenPerKg(crop?.price) || 0)
