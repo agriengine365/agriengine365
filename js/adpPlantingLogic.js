@@ -238,6 +238,17 @@ const PlantingLogic = (() => {
   /**
    * エリアの圃場ポリゴン（緯度経度配列）を取得する共通ヘルパー。
    * geojsonのパース処理を一箇所に集約する。
+   *
+   * 【重要・根本原因修正（2026-07）】GeoJSON Polygonの環（ring）は仕様上、
+   * 先頭点と末尾点が同一になるよう閉じられている（RFC 7946 3.1.6）。この末尾の
+   * 重複点を残したままRidgeGeometry側（辺の長さ計算・最短辺＝入口辺の自動選択）に
+   * 渡すと、末尾→先頭を結ぶ「長さ0の偽の辺」が生まれ、これが必ず最短辺として
+   * 入口辺に誤選択されてしまう。反対側（Uターン）辺はこの誤った入口辺を基準に
+   * 「対辺」を計算するため、本来の対辺とは無関係な辺がずれて選ばれ、
+   * 「入口・反対側が描画されない／おかしい位置に出る」不具合の根本原因になっていた。
+   * ここでRidgeGeometryに渡す前に一度だけ重複点を除去し、以降の全ての辺計算
+   * （getPolygonEdges・computeHouseGeometry・getLongestEdgeIndex等）を正しい
+   * 頂点数・辺数で行えるようにする。
    * @param {object} area - _adpArea 相当のエリアオブジェクト（geojsonを持つ）
    * @returns {Array<{lat:number,lng:number}>|null} 頂点3点未満・パース失敗時は null
    */
@@ -245,7 +256,18 @@ const PlantingLogic = (() => {
     try {
       const gj = typeof area?.geojson === 'string' ? JSON.parse(area.geojson) : area?.geojson;
       const coords = gj?.geometry?.coordinates?.[0] || gj?.coordinates?.[0] || [];
-      const latLngs = coords.map(([lng, lat]) => ({ lat, lng }));
+      let latLngs = coords.map(([lng, lat]) => ({ lat, lng }));
+
+      // GeoJSON環の閉じ点（先頭＝末尾）を除去する。浮動小数の誤差を考慮し微小許容誤差で比較。
+      if (latLngs.length >= 2) {
+        const first = latLngs[0];
+        const last = latLngs[latLngs.length - 1];
+        const EPS = 1e-9;
+        if (Math.abs(first.lat - last.lat) < EPS && Math.abs(first.lng - last.lng) < EPS) {
+          latLngs = latLngs.slice(0, -1);
+        }
+      }
+
       return latLngs.length >= 3 ? latLngs : null;
     } catch (e) {
       return null;
