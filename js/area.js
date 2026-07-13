@@ -7880,13 +7880,12 @@ function _adpRefreshAllCardsAfterGeometryChange() {
 function _adpBuildUnifiedFieldPanel(isAnalysis) {
   if (isAnalysis) {
     // 分析側：Step8-7対象外。既存の並び・ロジックを変更しない。
-    return _adpBuildRatioLegendRow(true)
+    return _adpBuildRatioLegendRow()
       + _adpBuildEdgeToggleBar()
       + _adpBuildHouseMarginSection();
   }
-  // 実務側：占有率legend（変更なし）＋ 4タブ構成本体
-  return _adpBuildRatioLegendRow(false)
-    + _adpBuildPlantingMainTabsPanel();
+  // 実務側：占有率legendは4タブいずれにも紐付かない浮いた表示のため削除（前回決定）。
+  return _adpBuildPlantingMainTabsPanel();
 }
 
 /**
@@ -9702,10 +9701,12 @@ function _adpRefreshDetailPitchDisplay(seg, cropId) {
  * - 占有率合計バーは実務側（isAnalysis=false）かつ作物が2件以上の場合のみ表示する
  *   （従来のratioBarHTML表示条件をそのまま踏襲）。分析側は凡例のみ表示する。
  *
- * @param {boolean} isAnalysis
+ * 実務側（isAnalysis=false）は4タブいずれにも紐付かない浮いた表示だったため呼び出しを廃止。
+ * 本関数は分析側専用として残す。
+ *
  * @returns {string}
  */
-function _adpBuildRatioLegendRow(isAnalysis) {
+function _adpBuildRatioLegendRow() {
   const legendHTML = `
     <div class="plt-provisional-legend">
       <span class="plt-provisional-legend-item plt-provisional-legend-fixed">🔒 固定＝入力済み</span>
@@ -9713,14 +9714,7 @@ function _adpBuildRatioLegendRow(isAnalysis) {
       <span class="plt-provisional-legend-item plt-provisional-legend-auto">🗺️ 自動＝残り%を自動計算</span>
     </div>`;
 
-  if (isAnalysis) {
-    return `<div class="plt-ratiolegend-row plt-ratiolegend-row-analysis">${legendHTML}</div>`;
-  }
-
-  // 占有ゲージ整理：共通legend行の合計バーは撤去し、凡例テキストのみ残す。
-  // 占有率の合計比率は「🤖自動設計」タブ内の残り%バー（_adpBuildAutoDesignPanel）側で
-  // 視覚的に確認できるため、ここでは重複表示しない。
-  return `<div class="plt-ratiolegend-row">${legendHTML}</div>`;
+  return `<div class="plt-ratiolegend-row plt-ratiolegend-row-analysis">${legendHTML}</div>`;
 }
 
 function _adpBuildPlantingCard({ cropId, cropName, ratio, design, isAutoSlot = false, isAnalysis = false }) {
