@@ -100,6 +100,9 @@ const PlantingLogic = (() => {
       // ── 畝配置の入力方式（ピッチ指定 or 畝数指定）──
       ridgeInputMode: 'pitch', // 'pitch'（ピッチ入力→畝数自動）| 'count'（畝数入力→ピッチ自動）
       targetRowCount: null,    // ridgeInputMode==='count'時の目標畝数。それ以外はnull
+      // 畝数・条数が両方固定のとき、条間(rowSpacing)をrecalcAutoRowSpacingが自動算出した
+      // 値かどうかのフラグ（🗺️自動バッジ表示用）。ユーザーが条間を手動編集すると解除される。
+      _autoRowSpacing: false,
       // ── 作物比率連動・帯状分割（仕様書セクション1）── recalcAllBands が書き込むキャッシュ
       _bandPolygon:   null,   // このデザインが担当する帯ポリゴン [{lat,lng},...] | null（未割当 or 未計算）
       _bandAreaSqm:   null,   // 帯の実面積 [m²] | null
@@ -653,6 +656,71 @@ const PlantingLogic = (() => {
   }
 
   /**
+   * 条間の自動計算に使う最低条間 [cm]。
+   * 「畝上を人が歩いて手入れできる最低限の目安」として置く暫定の共通フォールバック値。
+   * 実際に必要な条間は作物によって異なるため、将来的に作物ごとの下限が必要になった場合は
+   * cropDBのplantingStandardに専用フィールド（例: minRowSpacing）を追加し、
+   * recalcAutoRowSpacing内の参照を
+   * 「Number(crop?.plantingStandard?.minRowSpacing) || MIN_ROW_SPACING_CM」のように
+   * 差し替え可能な設計にしておくこと（2026-07時点では未対応・共通値のみ）。
+   */
+  const MIN_ROW_SPACING_CM = 20;
+
+  /**
+   * 畝数（targetRowCount）・条数（linesPerRow）が両方「固定」（ユーザー確定値）のとき、
+   * 畝上幅（topCm）に条数本を均等マージン配置した条間（rowSpacing）を自動算出する。
+   *
+   * 【固定判定】
+   * - 畝数固定：design.ridgeInputMode === 'count' かつ design.targetRowCount > 0（畝数指定モード）
+   * - 条数固定：design.linesPerRow が暫定（cropDB由来の未編集値）でなく、ユーザーが確定した値
+   *
+   * 【算出式（均等マージン配置）】
+   *   rowSpacing_auto  = topCm ÷ 条数
+   *     ↑ 条を等間隔に並べ、両端に半間隔ずつ余白を作る配置（畝の端ギリギリに植えない）
+   *   rowSpacing_final = max(MIN_ROW_SPACING_CM, rowSpacing_auto)
+   *     ↑ 人が畝上を歩いて手入れできる最低幅を下限としてクランプ
+   *
+   * 畝上幅が条数に対して狭すぎる場合（クランプが発動した場合）は、実際には畝上幅を
+   * 超えて配置される計算上の妥協状態になる。呼び出し側（area.js）でその旨をUIに
+   * 表示するかどうかは別途判断すること（本関数はクランプの発生自体は通知しない）。
+   *
+   * 条件を満たさない・算出不可の場合は design.rowSpacing を変更せず false を返す。
+   * 直前まで自動計算対象だったが条件を満たさなくなった場合は _autoRowSpacing フラグ
+   * のみを外し、最後に算出済みだった値は手入力値としてそのまま残す（唐突に空欄化しない）。
+   *
+   * @param {object} design
+   * @returns {boolean} 自動計算を実行したかどうか
+   */
+  function recalcAutoRowSpacing(design) {
+    if (!design) return false;
+
+    const rowsFixed  = design.ridgeInputMode === 'count' && Number(design.targetRowCount) > 0;
+    const linesFixed = Number(design.linesPerRow) > 0 && !isProvisional(design, 'linesPerRow');
+
+    if (!rowsFixed || !linesFixed) {
+      if (design._autoRowSpacing) design._autoRowSpacing = false;
+      return false;
+    }
+
+    const derived = deriveRidgeWidths(design);
+    if (!derived || !(derived.topCm > 0)) return false;
+
+    const n     = Number(design.linesPerRow);
+    const auto  = derived.topCm / n;
+    const final = Math.max(MIN_ROW_SPACING_CM, Math.round(auto * 10) / 10);
+
+    design.rowSpacing = final;
+    design._autoRowSpacing = true;
+    // 自動計算枠（🗺️自動）と暫定バッジ（🟡暫定）は排他表示のため、暫定フラグが
+    // 残っていれば外しておく（cropDB由来の暫定値からの直接遷移に備えたガード）。
+    if (Array.isArray(design.provisionalFields)) {
+      const i = design.provisionalFields.indexOf('rowSpacing');
+      if (i >= 0) design.provisionalFields.splice(i, 1);
+    }
+    return true;
+  }
+
+  /**
    * 帯実面積（占有率で実ポリゴン分割した後の実面積 _bandAreaSqm）と畝面積の
    * 不一致を判定する（5%超で警告）。
    * bandAreaSqm が null/0（未割当・分析側等）の場合は警告しない。
@@ -681,6 +749,7 @@ const PlantingLogic = (() => {
     recalcAllBands,
     getLastZoneInfo,
     recalcAnalysisRidgeSegments,
+    recalcAutoRowSpacing,
     calcPlanting,
     areaWarn,
   };

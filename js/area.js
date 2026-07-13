@@ -8558,9 +8558,14 @@ function _adpBuildRidgeInputGridHTML(cropId, design) {
             oninput="_adpUpdatePlantingField('${cropId}','plantSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
         </div>`;
 
+  // 条間バッジ：畝数・条数が両方固定で自動算出された場合は🗺️自動（比率スライダーと同じ自動枠の意味）。
+  // それ以外は従来どおり🟡暫定（cropDB由来の未編集値）。両者は排他表示。
+  const rowSpacingBadgeHTML = design._autoRowSpacing
+    ? ' <span class="plt-auto-badge">🗺️ 自動</span>'
+    : (PlantingLogic.isProvisional(design, 'rowSpacing') ? ' <span class="plt-badge-provisional">暫定</span>' : '');
   const rowSpacingHTML = `
         <div class="plt-input-item" data-field="rowSpacing">
-          <label class="plt-label">条間${PlantingLogic.isProvisional(design, 'rowSpacing') ? ' <span class="plt-badge-provisional">暫定</span>' : ''}</label>
+          <label class="plt-label">条間${rowSpacingBadgeHTML}</label>
           <div class="plt-input-wrap"><input type="number" class="plt-input" min="1" value="${design.rowSpacing ?? ''}" placeholder="例: 40"
             oninput="_adpUpdatePlantingField('${cropId}','rowSpacing',this.value,'${seg}')"><span class="plt-unit">cm</span></div>
         </div>`;
@@ -9573,6 +9578,9 @@ function _adpSetRidgeInputMode(cropId, mode, seg) {
     PlantingLogic.recalcAnalysisRidgeSegments(_adpAnalysisPlantingDesign, PlantingLogic.effectivePitchCm(_adpAnalysisPlantingDesign), _adpArea, _adpHouseMargin);
   } else {
     _adpRecalcAllBandsSafe();
+    // 畝数指定モードへの切替（または解除）で「畝数固定」の条件が変わるため、
+    // 条間(rowSpacing)の自動計算対象かどうかも合わせて再判定する。
+    PlantingLogic.recalcAutoRowSpacing(design);
     const calcForSave = PlantingLogic.calcPlanting(design);
     design.purchase = calcForSave ? calcForSave.purchase : null;
     _adpSavePracticecrops(_adpArea?.id || _adpArea?.name || '');
@@ -9993,11 +10001,16 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
   }
   _adpPracticecrops[idxNow].plantingDesign[field] = parsed;
   _adpUnmarkProvisional(_adpPracticecrops[idxNow].plantingDesign, field);
+  // 条間をユーザーが直接編集した場合、畝数・条数からの自動計算(🗺️自動)は解除し、
+  // 以後は手入力値をそのまま尊重する（recalcAutoRowSpacingは呼ばない）。
+  if (field === 'rowSpacing') _adpPracticecrops[idxNow].plantingDesign._autoRowSpacing = false;
 
   // 「暫定」バッジは即座に除去
   const cardImmediate2 = document.querySelector(`#planting-result .plt-card[data-crop-id="${cropId}"]`);
   const badgeElImmediate2 = cardImmediate2?.querySelector(`.plt-input-item[data-field="${field}"] .plt-badge-provisional`);
   if (badgeElImmediate2) badgeElImmediate2.remove();
+  const autoBadgeElImmediate2 = cardImmediate2?.querySelector(`.plt-input-item[data-field="rowSpacing"] .plt-auto-badge`);
+  if (field === 'rowSpacing' && autoBadgeElImmediate2) autoBadgeElImmediate2.remove();
 
   _adpDebounce(`pltfield:practice:${cropId}:${field}`, () => {
     const idx = _adpPracticecrops.findIndex(c => c.cropId === cropId);
@@ -10010,6 +10023,13 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
     // targetRowCountは畝数指定方式でのピッチ逆算のトリガー）
     if (field === 'rowWidth' || field === 'ridgeRatioPct' || field === 'targetRowCount') {
       _adpRecalcAllBandsSafe();
+    }
+
+    // 畝数・条数（＋畝幅・畝上比率＝畝上幅topCmの構成要素）が変わった場合、
+    // 両方「固定」なら条間(rowSpacing)を自動算出する（recalcAutoRowSpacing）。
+    // 条件を満たさない場合は内部で_autoRowSpacingを解除するだけで値は変更しない。
+    if (field === 'rowWidth' || field === 'ridgeRatioPct' || field === 'targetRowCount' || field === 'linesPerRow') {
+      PlantingLogic.recalcAutoRowSpacing(design);
     }
 
     // purchase を先に計算して書き戻してから保存（施肥タブの株数基準に必要）
@@ -10036,6 +10056,11 @@ function _adpUpdatePlantingField(cropId, field, value, seg) {
       _adpRefreshUnifiedPreview();
       // Step8-7：rowWidth・ridgeRatioPct・targetRowCountは断面図・拡大詳細図・入力グリッドの
       // 畝上幅／畝間／ピッチ表示に使われるため同期する
+      _adpRefreshCrossSectionIfActive(cropId);
+    } else if (field === 'linesPerRow') {
+      // 条数変更はridgeSegmentsに影響しないため上記3項目ほど広範な再描画は不要だが、
+      // recalcAutoRowSpacingが自動算出した条間の値・🗺️自動バッジを画面へ反映するために
+      // 入力グリッドだけは再描画する。
       _adpRefreshCrossSectionIfActive(cropId);
     }
   }, 300);
