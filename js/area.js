@@ -8805,7 +8805,6 @@ function _adpSetCrossSectionActiveCrop(cropId) {
 }
 
 /**
-/**
  * UX見直し（2026-07）：差分フラッシュ用ヘルパー。
  * 「描画」タブの平面図（#unified-ridge-preview）に現在表示中の
  * ①畝の実ライン（.plt-shapesvg-cropridge：帯の実位置が動く変更で移動）
@@ -8826,6 +8825,7 @@ function _adpCaptureRidgeGhostLines(blockEl) {
   const ridge = Array.from(svg.querySelectorAll('.plt-shapesvg-cropridge')).map(line => {
     const colorClass = Array.from(line.classList).find(c => c.startsWith('plt-cropcolor-')) || 'plt-cropcolor-0';
     return {
+      key: line.getAttribute('data-key') || null, // cropId:畝index。無ければ null（旧描画結果など・照合不可扱い）
       x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
       x2: parseFloat(line.getAttribute('x2')), y2: parseFloat(line.getAttribute('y2')),
       colorClass,
@@ -8835,7 +8835,9 @@ function _adpCaptureRidgeGhostLines(blockEl) {
   const dim = Array.from(svg.querySelectorAll('.plt-dimline-top, .plt-dimline-path, .plt-dimline-single')).map(line => {
     const kind = line.classList.contains('plt-dimline-top') ? 'top'
       : line.classList.contains('plt-dimline-path') ? 'path' : 'single';
+    const cropKey = line.getAttribute('data-crop') || '';
     return {
+      key: `${cropKey}:${kind}`, // cropId:top/path/single。作物ごとに各kind最大1本なので一意に定まる
       x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
       x2: parseFloat(line.getAttribute('x2')), y2: parseFloat(line.getAttribute('y2')),
       kind,
@@ -8868,11 +8870,19 @@ function _adpInjectRidgeGhostLines(blockEl, oldLines) {
 
   const oldRidge = Array.isArray(oldLines.ridge) ? oldLines.ridge : [];
   if (oldRidge.length) {
-    const newRidge = Array.from(svg.querySelectorAll('.plt-shapesvg-cropridge')).map(line => ({
-      x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
-      x2: parseFloat(line.getAttribute('x2')), y2: parseFloat(line.getAttribute('y2')),
-    }));
-    if (oldRidge.some((old, i) => linesDiffer(old, newRidge[i]))) {
+    // キー（cropId:畝index）で新ラインをマップ化。畝数・条数変更で本数が変わっても、
+    // 同じ畝同士（無ければ「消えた畝」）を正しく比較できる（配列インデックス直接比較だと
+    // ズレて無関係な畝同士を比べてしまう不具合があった）。
+    const newRidgeByKey = new Map();
+    Array.from(svg.querySelectorAll('.plt-shapesvg-cropridge')).forEach(line => {
+      const key = line.getAttribute('data-key');
+      if (!key) return;
+      newRidgeByKey.set(key, {
+        x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
+        x2: parseFloat(line.getAttribute('x2')), y2: parseFloat(line.getAttribute('y2')),
+      });
+    });
+    if (oldRidge.some(old => linesDiffer(old, old.key ? newRidgeByKey.get(old.key) : undefined))) {
       oldRidge.forEach(l => {
         const el = document.createElementNS(ns, 'line');
         el.setAttribute('x1', l.x1); el.setAttribute('y1', l.y1);
@@ -8886,11 +8896,17 @@ function _adpInjectRidgeGhostLines(blockEl, oldLines) {
 
   const oldDim = Array.isArray(oldLines.dim) ? oldLines.dim : [];
   if (oldDim.length) {
-    const newDim = Array.from(svg.querySelectorAll('.plt-dimline-top, .plt-dimline-path, .plt-dimline-single')).map(line => ({
-      x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
-      x2: parseFloat(line.getAttribute('x2')), y2: parseFloat(line.getAttribute('y2')),
-    }));
-    if (oldDim.some((old, i) => linesDiffer(old, newDim[i]))) {
+    const newDimByKey = new Map();
+    Array.from(svg.querySelectorAll('.plt-dimline-top, .plt-dimline-path, .plt-dimline-single')).forEach(line => {
+      const kind = line.classList.contains('plt-dimline-top') ? 'top'
+        : line.classList.contains('plt-dimline-path') ? 'path' : 'single';
+      const cropKey = line.getAttribute('data-crop') || '';
+      newDimByKey.set(`${cropKey}:${kind}`, {
+        x1: parseFloat(line.getAttribute('x1')), y1: parseFloat(line.getAttribute('y1')),
+        x2: parseFloat(line.getAttribute('x2')), y2: parseFloat(line.getAttribute('y2')),
+      });
+    });
+    if (oldDim.some(old => linesDiffer(old, newDimByKey.get(old.key)))) {
       oldDim.forEach(l => {
         const el = document.createElementNS(ns, 'line');
         el.setAttribute('x1', l.x1); el.setAttribute('y1', l.y1);
@@ -10330,7 +10346,8 @@ function _adpBuildUnifiedRidgePreviewSVG() {
       const a = toSvg(toLocal(seg.p1));
       const b = toSvg(toLocal(seg.p2));
       const lenLabel = (seg.length != null) ? `：${seg.length}m` : '';
-      svgBody += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" class="plt-shapesvg-cropridge ${colorClass}"><title>${cropName} 畝${i + 1}${lenLabel}</title></line>`;
+      const ridgeKey = `${String(entry.cropId).replace(/"/g, '&quot;')}:${i}`;
+      svgBody += `<line x1="${a.x.toFixed(1)}" y1="${a.y.toFixed(1)}" x2="${b.x.toFixed(1)}" y2="${b.y.toFixed(1)}" class="plt-shapesvg-cropridge ${colorClass}" data-key="${ridgeKey}"><title>${cropName} 畝${i + 1}${lenLabel}</title></line>`;
     });
 
     // 畝幅寸法線オーバーレイ（UX見直し・2026-07：タップでその場に一文説明を表示）を作物ごとに重ねる
@@ -10646,7 +10663,7 @@ function _adpBuildRidgeDimensionSVG(cropId, design, toLocal, toSvg, fieldLocalPt
     const curVal = design.rowWidth ?? pitchCm;
     const singleAttr = explainAttr(`畝幅 ${curVal}cm がこの畝のピッチ全体です（畝間の内訳なし）。`);
     svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline-hit" ${singleAttr} />`;
-    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline plt-dimline-single"${dashAttr} ${singleAttr} />`;
+    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline plt-dimline-single" data-crop="${escAttr(cropId)}"${dashAttr} ${singleAttr} />`;
     svg += tickLine(svgA, 'plt-dimline-tick-single');
     svg += tickLine(svgB, 'plt-dimline-tick-single');
     const mid = midOf(svgA, svgB);
@@ -10665,8 +10682,8 @@ function _adpBuildRidgeDimensionSVG(cropId, design, toLocal, toSvg, fieldLocalPt
 
     svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgC.x.toFixed(1)}" y2="${svgC.y.toFixed(1)}" class="plt-dimline-hit" ${topAttr} />`;
     svg += `<line x1="${svgC.x.toFixed(1)}" y1="${svgC.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline-hit" ${pathAttr} />`;
-    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgC.x.toFixed(1)}" y2="${svgC.y.toFixed(1)}" class="plt-dimline plt-dimline-top"${dashAttr} ${topAttr} />`;
-    svg += `<line x1="${svgC.x.toFixed(1)}" y1="${svgC.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline plt-dimline-path"${dashAttr} ${pathAttr} />`;
+    svg += `<line x1="${svgA.x.toFixed(1)}" y1="${svgA.y.toFixed(1)}" x2="${svgC.x.toFixed(1)}" y2="${svgC.y.toFixed(1)}" class="plt-dimline plt-dimline-top" data-crop="${escAttr(cropId)}"${dashAttr} ${topAttr} />`;
+    svg += `<line x1="${svgC.x.toFixed(1)}" y1="${svgC.y.toFixed(1)}" x2="${svgB.x.toFixed(1)}" y2="${svgB.y.toFixed(1)}" class="plt-dimline plt-dimline-path" data-crop="${escAttr(cropId)}"${dashAttr} ${pathAttr} />`;
     svg += tickLine(svgA, 'plt-dimline-tick-top');
     svg += tickLine(svgC, 'plt-dimline-tick-path');
     svg += tickLine(svgB, 'plt-dimline-tick-path');
