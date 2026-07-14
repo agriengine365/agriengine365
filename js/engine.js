@@ -425,7 +425,11 @@ function scoreCrop(crop, areaData) {
   //     なければ estimateSunshineHours(lat) フォールバック
   // ════════════════════════════════════════
   {
-    const sunDef = SUNSHINE_DEFAULT_ENGINE[crop.conditions.category]
+    // 2026-07修正: crop.conditions.category はDBに存在しないため常にundefinedとなり、
+    // 常に_defaultへフォールバックしていた。calculateProfitability(879行目)と
+    // 同じパターンで crop.category へのフォールバックを追加し、カテゴリ別の
+    // 日照デフォルト（葉物3.0h/果樹5.5h等）が実際に機能するよう修正。
+    const sunDef = SUNSHINE_DEFAULT_ENGINE[crop.conditions?.category || crop.category]
       || SUNSHINE_DEFAULT_ENGINE._default;
     const sunDecadeMin = crop.conditions.sunDecadeMin ?? sunDef.min;
     const sunDecadeOpt = crop.conditions.sunDecadeOpt ?? sunDef.opt;
