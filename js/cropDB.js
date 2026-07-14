@@ -1,9 +1,12 @@
 // ═══════════════════════════════════════════════════════════
 //  CROP_DB — 作物データベース
-//  223件 重複統合済み・calendar(sow/harvest)全件更新
+//  245件 重複統合済み・calendar(sow/harvest)全件更新
 //  最終更新: waterNeedLperSqmPerDay（1日あたり標準灌水量 L/m²/日）全223件追加
 //  追加更新: yield/price NULL 145件を実勢推定値で補完（unit内に「実勢推定値」と明記）
 //  追加更新: rainfallMin/Max・phMin/Max 12件、latMin/Max・elevMax・soilTypes 120件を補完
+//  追加更新: cauliflower/banana/avocado/guava/sasage/quinoa/yacon/jerusalem_artichoke/reishi/stevia 10件を新規追加（223→233件）
+//  追加更新: お茶用ハーブ12件（hibiscus/rosehip/lemongrass/lemon_verbena/elderflower/nettle/mulberry_leaf/habucha/dandelion/honeysuckle/kakidooshi/passionflower）新規追加（233→245件）
+//  追加更新: 薬用・アロマ系ハーブ26件（mint_japanese/holy_basil/marjoram/bay_laurel/dill/coriander/tarragon/calendula/borage/chervil/bergamot/hyssop/mallow/linden/clary_sage/lavandin/yarrow/rue/lovage/nasturtium/artichoke/akajiso/pineapple_sage/anise_hyssop/curry_plant/angelica_european）新規追加（245→271件）
 // ═══════════════════════════════════════════════════════════
 const CROP_DB = [
   {
@@ -21880,5 +21883,6607 @@ const CROP_DB = [
     },
     "yieldPerPlant": 0.032,
     "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "cauliflower",
+    "heatType": "cool",
+    "name": "カリフラワー",
+    "category": "vegetable",
+    "variety": "一般品種",
+    "conditions": {
+      "family": "Brassicaceae",
+      "scientificName": "Brassica oleracea var. botrytis",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 800,
+      "tempMeanMin": 8,
+      "tempMeanMax": 21,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 1,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 130,
+      "rainfallMin": 900,
+      "rainfallMax": 1500,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 5,
+      "absTempMax": 28,
+      "absRainMin": 600,
+      "absRainMax": 2000,
+      "absPhMin": 5.5,
+      "absPhMax": 7.5,
+      "cropCategory": "vegetables",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "seedling": [
+        7,
+        8
+      ],
+      "transplant": [
+        8,
+        9
+      ],
+      "manage": [
+        9,
+        10,
+        11
+      ],
+      "harvest": [
+        11,
+        12,
+        1,
+        2
+      ],
+      "prep": [
+        3,
+        4,
+        5,
+        6
+      ],
+      "memo": {
+        "sowing": "育苗期間25〜30日。ブロッコリーよりやや低温を好む",
+        "transplant": "株間50〜60cm。低温期の定植は霜よけが必要",
+        "manage": "花蕾が見え始めたら外葉で覆って白い花蕾を保つ（ブランチング）",
+        "harvest": "花蕾が締まって直径15cm前後になったら収穫。開花前が適期"
+      }
+    },
+    "fertilizer": {
+      "N": 22,
+      "P": 16,
+      "K": 16,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ブロッコリーに準ずる。ホウ素欠乏で茶色変色に注意。",
+      "perPlant": {
+        "N": 5.5,
+        "P": 4.0,
+        "K": 4.0
+      }
+    },
+    "yield": {
+      "min": 1200,
+      "max": 2000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 150,
+      "max": 350,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "コナガ",
+        "level": "high",
+        "note": "薬剤抵抗性強。ローテーション防除。"
+      },
+      {
+        "type": "rotation",
+        "name": "連作障害",
+        "level": "high",
+        "note": "アブラナ科。根こぶ病。3年輪作。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.48,
+    "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "banana",
+    "heatType": "warm",
+    "name": "バナナ",
+    "category": "fruit",
+    "variety": "島バナナ・台湾種等",
+    "conditions": {
+      "family": "Musaceae",
+      "scientificName": "Musa spp.",
+      "taxonID": null,
+      "latMin": 24,
+      "latMax": 32,
+      "elevMax": 300,
+      "tempMeanMin": 22,
+      "tempMeanMax": 32,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "high",
+      "continuousCropYears": 15,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 420,
+      "rainfallMin": 1500,
+      "rainfallMax": 2500,
+      "phMin": 5.5,
+      "phMax": 7.0,
+      "absTempMin": 10,
+      "absTempMax": 38,
+      "absRainMin": 1000,
+      "absRainMax": 4000,
+      "absPhMin": 4.5,
+      "absPhMax": 7.5,
+      "cropCategory": "fruits & nuts",
+      "lifeForm": "herb (giant perennial)",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "harvest": [
+        9,
+        10,
+        11
+      ],
+      "prep": [
+        1,
+        2,
+        12
+      ],
+      "memo": {
+        "manage": "耐寒性が低く10℃以下で生育停止、5℃以下で枯死のおそれ。冬季は防寒（マルチ・不織布）必須",
+        "harvest": "房が丸みを帯び角が取れたら収穫し追熟。露地栽培は沖縄・奄美・九州南部が中心"
+      }
+    },
+    "fertilizer": {
+      "N": 25,
+      "P": 10,
+      "K": 35,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "カリ要求量が非常に高い。防寒対策が収量を左右する。",
+      "perPlant": {
+        "N": 100.0,
+        "P": 40.0,
+        "K": 140.0
+      }
+    },
+    "yield": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 300,
+      "max": 700,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "high",
+        "note": "10℃以下で生育停止、霜で枯死。防寒必須。"
+      },
+      {
+        "type": "weather",
+        "name": "台風・強風",
+        "level": "high",
+        "note": "葉が裂けやすく倒伏リスク大。防風対策推奨。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 250,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 18.75,
+    "waterNeedLperSqmPerDay": 5.0
+  },
+  {
+    "id": "avocado",
+    "heatType": "warm",
+    "name": "アボカド",
+    "category": "fruit",
+    "variety": "ベーコン・フェルテ等（耐寒品種）",
+    "conditions": {
+      "family": "Lauraceae",
+      "scientificName": "Persea americana",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 35,
+      "elevMax": 400,
+      "tempMeanMin": 18,
+      "tempMeanMax": 28,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 15,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 365,
+      "rainfallMin": 1000,
+      "rainfallMax": 2000,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 5,
+      "absTempMax": 35,
+      "absRainMin": 600,
+      "absRainMax": 3000,
+      "absPhMin": 5.0,
+      "absPhMax": 7.5,
+      "cropCategory": "fruits & nuts",
+      "lifeForm": "tree",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "harvest": [
+        10,
+        11,
+        12
+      ],
+      "prep": [
+        1,
+        2
+      ],
+      "memo": {
+        "manage": "-2℃前後で寒害。国内では和歌山・愛媛等の温暖地でハウス・露地半促成栽培が中心",
+        "harvest": "果実の色つやと硬さで判断。収穫後の追熟（常温1〜2週間）で食べ頃になる"
+      }
+    },
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 20,
+      "baseDressing": 0.5,
+      "topDressing": 0.5,
+      "notes": "耐寒性が弱く防寒・ハウス化が必要な地域が多い。",
+      "perPlant": {
+        "N": 120.0,
+        "P": 80.0,
+        "K": 160.0
+      }
+    },
+    "yield": {
+      "min": 500,
+      "max": 1200,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 600,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "寒害",
+        "level": "high",
+        "note": "-2℃前後で樹体に致命的ダメージ。防寒必須。"
+      },
+      {
+        "type": "pest",
+        "name": "カイガラムシ",
+        "level": "medium",
+        "note": "枝葉に付着し樹勢低下。定期防除。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 34.0,
+    "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "guava",
+    "heatType": "warm",
+    "name": "グァバ",
+    "category": "fruit",
+    "variety": "island種等",
+    "conditions": {
+      "family": "Myrtaceae",
+      "scientificName": "Psidium guajava",
+      "taxonID": null,
+      "latMin": 24,
+      "latMax": 30,
+      "elevMax": 300,
+      "tempMeanMin": 20,
+      "tempMeanMax": 30,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 10,
+      "growthPeriodMin": 180,
+      "growthPeriodMax": 270,
+      "rainfallMin": 1200,
+      "rainfallMax": 2500,
+      "phMin": 5.0,
+      "phMax": 7.0,
+      "absTempMin": 8,
+      "absTempMax": 38,
+      "absRainMin": 800,
+      "absRainMax": 4000,
+      "absPhMin": 4.5,
+      "absPhMax": 8.0,
+      "cropCategory": "fruits & nuts",
+      "lifeForm": "shrub/tree",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        8,
+        9,
+        10,
+        11
+      ],
+      "prep": [
+        1,
+        2,
+        12
+      ],
+      "memo": {
+        "manage": "耐寒性が低く5℃以下で落葉・枯死リスク。沖縄・奄美中心の露地栽培",
+        "harvest": "果皮が黄緑〜黄色になり香りが強まったら収穫。追熟でさらに甘みが増す"
+      }
+    },
+    "fertilizer": {
+      "N": 18,
+      "P": 12,
+      "K": 18,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "生育旺盛で年数回の摘心・剪定が必要。",
+      "perPlant": {
+        "N": 80.0,
+        "P": 55.0,
+        "K": 80.0
+      }
+    },
+    "yield": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 400,
+      "max": 900,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "high",
+        "note": "5℃以下で落葉・枯死のおそれ。防寒対策必須。"
+      },
+      {
+        "type": "pest",
+        "name": "ミバエ類",
+        "level": "high",
+        "note": "果実に産卵し被害甚大。防除ネット・薬剤散布。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 250,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 20.25,
+    "waterNeedLperSqmPerDay": 4.0
+  },
+  {
+    "id": "sasage",
+    "heatType": "warm",
+    "name": "ササゲ",
+    "category": "legume",
+    "variety": "三尺ササゲ等",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Vigna unguiculata",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 600,
+      "tempMeanMin": 20,
+      "tempMeanMax": 32,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 60,
+      "growthPeriodMax": 90,
+      "rainfallMin": 600,
+      "rainfallMax": 1500,
+      "phMin": 5.5,
+      "phMax": 6.8,
+      "absTempMin": 12,
+      "absTempMax": 40,
+      "absRainMin": 400,
+      "absRainMax": 2500,
+      "absPhMin": 4.5,
+      "absPhMax": 8.0,
+      "cropCategory": "pulses (grain legumes)",
+      "lifeForm": "herb (vine)",
+      "growthHabit": "climber/scrambler/scadent",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        5,
+        6
+      ],
+      "manage": [
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        8,
+        9
+      ],
+      "prep": [
+        10,
+        11,
+        12,
+        1,
+        2,
+        3,
+        4
+      ],
+      "memo": {
+        "sowing": "地温15℃以上で発芽。株間30cm、つる性なので支柱が必要",
+        "manage": "つるが伸びたら誘引。開花後莢が肥大するまで灌水を切らさない",
+        "harvest": "赤飯用の乾燥豆は莢が茶色く枯れてから収穫。若莢は緑のうちに収穫可能"
+      }
+    },
+    "fertilizer": {
+      "N": 4,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 1,
+      "topDressing": 0,
+      "notes": "根粒菌のためN控えめ。過湿に弱く排水管理が重要。",
+      "perPlant": {
+        "N": 0.15,
+        "P": 0.3,
+        "K": 0.3
+      }
+    },
+    "yield": {
+      "min": 150,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1800,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "medium",
+        "note": "新芽に群生しウイルス媒介。早期防除。"
+      },
+      {
+        "type": "rotation",
+        "name": "連作障害",
+        "level": "medium",
+        "note": "マメ科。2〜3年輪作推奨。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.05,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "quinoa",
+    "heatType": "cool",
+    "name": "キヌア",
+    "category": "grain",
+    "variety": "一般品種",
+    "conditions": {
+      "family": "Amaranthaceae",
+      "scientificName": "Chenopodium quinoa",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 50,
+      "elevMax": 1500,
+      "tempMeanMin": 10,
+      "tempMeanMax": 25,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "volcanic",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 150,
+      "rainfallMin": 300,
+      "rainfallMax": 800,
+      "phMin": 6.0,
+      "phMax": 8.5,
+      "absTempMin": 3,
+      "absTempMax": 35,
+      "absRainMin": 200,
+      "absRainMax": 1500,
+      "absPhMin": 4.5,
+      "absPhMax": 9.0,
+      "cropCategory": "cereals & pseudocereals",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5
+      ],
+      "manage": [
+        5,
+        6,
+        7
+      ],
+      "harvest": [
+        8,
+        9
+      ],
+      "prep": [
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "発芽適温15〜20℃。条播で覆土は薄め（1cm程度）",
+        "manage": "乾燥・貧栄養地でも育つが、多湿・過湿には弱いため排水管理が重要",
+        "harvest": "穂が乾燥し実が硬くなったら刈り取り、天日乾燥後に脱穀・サポニン除去（水洗い）を行う"
+      }
+    },
+    "fertilizer": {
+      "N": 6,
+      "P": 6,
+      "K": 6,
+      "baseDressing": 1,
+      "topDressing": 0,
+      "notes": "痩せ地でも生育するが過剰施肥は倒伏を招く。",
+      "perPlant": {
+        "N": 0.15,
+        "P": 0.15,
+        "K": 0.15
+      }
+    },
+    "yield": {
+      "min": 100,
+      "max": 200,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1200,
+      "max": 2500,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "多湿障害",
+        "level": "medium",
+        "note": "梅雨時期の多湿で病害発生リスク。排水対策必須。"
+      },
+      {
+        "type": "pest",
+        "name": "鳥害",
+        "level": "medium",
+        "note": "登熟期に鳥に食害されやすい。防鳥ネット推奨。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 30,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.008,
+    "waterNeedLperSqmPerDay": 1.5
+  },
+  {
+    "id": "yacon",
+    "heatType": "warm",
+    "name": "ヤーコン",
+    "category": "root",
+    "variety": "サラダオカメ等",
+    "conditions": {
+      "family": "Asteraceae",
+      "scientificName": "Smallanthus sonchifolius",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 800,
+      "tempMeanMin": 15,
+      "tempMeanMax": 27,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 1,
+      "growthPeriodMin": 180,
+      "growthPeriodMax": 220,
+      "rainfallMin": 900,
+      "rainfallMax": 1800,
+      "phMin": 5.5,
+      "phMax": 6.8,
+      "absTempMin": 5,
+      "absTempMax": 32,
+      "absRainMin": 600,
+      "absRainMax": 2500,
+      "absPhMin": 5.0,
+      "absPhMax": 7.5,
+      "cropCategory": "roots/tubers",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual (perennial in warm climate)"
+    },
+    "calendar": {
+      "planting": [
+        4,
+        5
+      ],
+      "manage": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        10,
+        11
+      ],
+      "prep": [
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "planting": "種芋（塊茎の芽）を植付。株間60cmで畝立て栽培",
+        "manage": "生育旺盛でジャガイモに似た管理。土寄せで塊根の肥大を促す",
+        "harvest": "霜が降りる前に地上部を刈り取り、その後に塊根を掘り上げる"
+      }
+    },
+    "fertilizer": {
+      "N": 10,
+      "P": 10,
+      "K": 18,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "カリ要求量が高め。連作を避けると病害少ない。",
+      "perPlant": {
+        "N": 3.6,
+        "P": 3.6,
+        "K": 6.5
+      }
+    },
+    "yield": {
+      "min": 2500,
+      "max": 4500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 200,
+      "max": 450,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "線虫",
+        "level": "medium",
+        "note": "連作地で塊根に被害。輪作推奨。"
+      },
+      {
+        "type": "weather",
+        "name": "霜害",
+        "level": "medium",
+        "note": "地上部は霜で枯死。収穫前の適期刈取りが重要。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 70,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 1.575,
+    "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "jerusalem_artichoke",
+    "heatType": "cool",
+    "name": "キクイモ",
+    "category": "root",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Asteraceae",
+      "scientificName": "Helianthus tuberosus",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 50,
+      "elevMax": 1000,
+      "tempMeanMin": 12,
+      "tempMeanMax": 26,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 1,
+      "growthPeriodMin": 150,
+      "growthPeriodMax": 200,
+      "rainfallMin": 600,
+      "rainfallMax": 1500,
+      "phMin": 5.5,
+      "phMax": 7.5,
+      "absTempMin": 3,
+      "absTempMax": 32,
+      "absRainMin": 400,
+      "absRainMax": 2500,
+      "absPhMin": 4.5,
+      "absPhMax": 8.0,
+      "cropCategory": "roots/tubers",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial (grown as annual)"
+    },
+    "calendar": {
+      "planting": [
+        3,
+        4
+      ],
+      "manage": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        11,
+        12,
+        1
+      ],
+      "prep": [
+        2
+      ],
+      "memo": {
+        "planting": "種芋を植付。生命力が強く痩せ地でも栽培可能",
+        "manage": "草丈2m前後まで生育。倒伏防止に土寄せを行う",
+        "harvest": "地上部が枯れた後、霜が降りてから掘り上げると甘みが増す。収穫は翌春まで随時可能"
+      }
+    },
+    "fertilizer": {
+      "N": 6,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 1,
+      "topDressing": 0,
+      "notes": "痩せ地でも育つため施肥は控えめでよい。繁殖力が強く残根に注意。",
+      "perPlant": {
+        "N": 2.0,
+        "P": 2.0,
+        "K": 3.3
+      }
+    },
+    "yield": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 250,
+      "max": 500,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weed",
+        "name": "逸出・雑草化",
+        "level": "medium",
+        "note": "残根から再生し雑草化しやすい。収穫後の残根処理を徹底。"
+      },
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "生育旺盛で被害は軽微なことが多い。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 80,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 1.2,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "reishi",
+    "heatType": "warm",
+    "name": "霊芝（レイシ）",
+    "category": "forest",
+    "variety": "赤霊芝等",
+    "conditions": {
+      "family": "Ganodermataceae",
+      "scientificName": "Ganoderma lucidum",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 900,
+      "tempMeanMin": 22,
+      "tempMeanMax": 28,
+      "soilTypes": [
+        "unknown"
+      ],
+      "waterNeed": "high",
+      "continuousCropYears": 3,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 150,
+      "rainfallMin": 1000,
+      "rainfallMax": 2500,
+      "phMin": 5.0,
+      "phMax": 6.5,
+      "absTempMin": 15,
+      "absTempMax": 32,
+      "absRainMin": 700,
+      "absRainMax": 3500,
+      "absPhMin": 4.0,
+      "absPhMax": 7.5,
+      "cropCategory": "mushrooms",
+      "lifeForm": "mushroom",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        8,
+        9,
+        10
+      ],
+      "prep": [
+        1,
+        2,
+        3,
+        11,
+        12
+      ],
+      "memo": {
+        "manage": "原木（クヌギ・ナラ等）またはオガクズ菌床で栽培。高温多湿環境を好む",
+        "harvest": "傘の縁の白い成長帯が消え、全体が茶褐色になったら収穫。乾燥させて出荷"
+      }
+    },
+    "fertilizer": {
+      "N": 0,
+      "P": 0,
+      "K": 0,
+      "baseDressing": 0,
+      "topDressing": 0,
+      "notes": "原木・菌床栽培のため施肥不要。温湿度管理が収量を左右する。",
+      "perPlant": {
+        "N": 0.0,
+        "P": 0.0,
+        "K": 0.0
+      }
+    },
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（原木換算・実勢推定値）"
+    },
+    "price": {
+      "min": 5000,
+      "max": 15000,
+      "unit": "円/kg（乾燥品・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "害虫・カビ",
+        "level": "medium",
+        "note": "高湿度環境でカビ発生リスク。換気管理が重要。"
+      },
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "medium",
+        "note": "生育適温を下回ると発生が停止する。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 20,
+      "rowWidth": 20,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.008,
+    "waterNeedLperSqmPerDay": 4.0
+  },
+  {
+    "id": "stevia",
+    "heatType": "warm",
+    "name": "ステビア",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Asteraceae",
+      "scientificName": "Stevia rebaudiana",
+      "taxonID": null,
+      "latMin": 28,
+      "latMax": 40,
+      "elevMax": 500,
+      "tempMeanMin": 18,
+      "tempMeanMax": 30,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 3,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 150,
+      "rainfallMin": 1200,
+      "rainfallMax": 2000,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": 8,
+      "absTempMax": 35,
+      "absRainMin": 800,
+      "absRainMax": 3000,
+      "absPhMin": 5.0,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial (grown as annual in cool areas)"
+    },
+    "calendar": {
+      "seedling": [
+        3,
+        4
+      ],
+      "transplant": [
+        5
+      ],
+      "manage": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "seedling": "育苗期間は40〜50日。地温20℃以上で順調に生育",
+        "transplant": "株間30cm。霜に弱いため終霜後に定植",
+        "harvest": "開花直前に甘味成分（ステビオシド）が最大になるため、開花前に刈取る。年2〜3回収穫可能"
+      }
+    },
+    "fertilizer": {
+      "N": 10,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "多年草だが寒冷地では冬季に地上部が枯死。防寒でマルチ推奨。",
+      "perPlant": {
+        "N": 0.6,
+        "P": 0.5,
+        "K": 0.6
+      }
+    },
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（乾燥葉換算・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "medium",
+        "note": "0℃以下で地上部が枯死。寒冷地では防寒対策必要。"
+      },
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがあるが被害は軽微。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.135,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "hibiscus",
+    "heatType": "warm",
+    "name": "ハイビスカス（ローゼル）",
+    "category": "herb",
+    "variety": "ローゼル種",
+    "conditions": {
+      "family": "Malvaceae",
+      "scientificName": "Hibiscus sabdariffa",
+      "taxonID": null,
+      "latMin": 24,
+      "latMax": 32,
+      "elevMax": 300,
+      "tempMeanMin": 20,
+      "tempMeanMax": 32,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 1,
+      "growthPeriodMin": 150,
+      "growthPeriodMax": 200,
+      "rainfallMin": 1000,
+      "rainfallMax": 2000,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 10,
+      "absTempMax": 38,
+      "absRainMin": 600,
+      "absRainMax": 3000,
+      "absPhMin": 5.5,
+      "absPhMax": 7.5,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb/shrub",
+      "growthHabit": "erect",
+      "lifeSpan": "annual (perennial in tropics)"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5
+      ],
+      "manage": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        9,
+        10,
+        11
+      ],
+      "prep": [
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "地温20℃以上で発芽。霜の心配がなくなってから直播または定植",
+        "manage": "高温多湿を好み生育旺盛。倒伏防止に軽く土寄せする",
+        "harvest": "開花後に赤く肥大したガク（萼）を収穫し乾燥させてハーブティー原料にする"
+      }
+    },
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 15,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "ガクの収穫が目的のため実（種子）の収穫は不要。開花期の追肥で肥大を促す。",
+      "perPlant": {
+        "N": 8.1,
+        "P": 5.4,
+        "K": 8.1
+      }
+    },
+    "yield": {
+      "min": 100,
+      "max": 300,
+      "unit": "kg/10a（乾燥ガク・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥ガク・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "medium",
+        "note": "新芽・蕾に群生。早期防除。"
+      },
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "high",
+        "note": "熱帯性で10℃以下の生育停止・霜で枯死。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 90,
+      "rowWidth": 120,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.108,
+    "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "rosehip",
+    "heatType": "cool",
+    "name": "ローズヒップ（ハマナス）",
+    "category": "herb",
+    "variety": "ハマナス・ドッグローズ等",
+    "conditions": {
+      "family": "Rosaceae",
+      "scientificName": "Rosa rugosa / Rosa canina",
+      "taxonID": null,
+      "latMin": 35,
+      "latMax": 45,
+      "elevMax": 800,
+      "tempMeanMin": 12,
+      "tempMeanMax": 22,
+      "soilTypes": [
+        "loam",
+        "sandy",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 15,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 365,
+      "rainfallMin": 800,
+      "rainfallMax": 1800,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": 0,
+      "absTempMax": 30,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "fruits & nuts, medicinals & aromatic",
+      "lifeForm": "shrub",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "manage": "耐寒性・耐塩性が高く海岸沿いでも栽培可能。剪定は落葉期に実施",
+        "harvest": "果実（偽果）が赤く熟したら収穫。生食よりも乾燥・煮出しでハーブティー原料にする"
+      }
+    },
+    "fertilizer": {
+      "N": 10,
+      "P": 10,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "耐寒性が高く北海道等の冷涼地でも栽培可能。過湿を嫌うため排水管理が重要。",
+      "perPlant": {
+        "N": 30.0,
+        "P": 30.0,
+        "K": 36.0
+      }
+    },
+    "yield": {
+      "min": 200,
+      "max": 500,
+      "unit": "kg/10a（生果・実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（乾燥ヒップ・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "カイガラムシ",
+        "level": "medium",
+        "note": "枝に付着し樹勢低下。定期観察と防除。"
+      },
+      {
+        "type": "weather",
+        "name": "多湿障害",
+        "level": "low",
+        "note": "過湿地では根腐れのおそれ。排水対策推奨。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 150,
+      "rowSpacing": 200,
+      "rowWidth": 200,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 1.05,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "lemongrass",
+    "heatType": "warm",
+    "name": "レモングラス",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Poaceae",
+      "scientificName": "Cymbopogon citratus",
+      "taxonID": null,
+      "latMin": 24,
+      "latMax": 33,
+      "elevMax": 300,
+      "tempMeanMin": 20,
+      "tempMeanMax": 32,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 3,
+      "growthPeriodMin": 120,
+      "growthPeriodMax": 200,
+      "rainfallMin": 1200,
+      "rainfallMax": 2500,
+      "phMin": 5.5,
+      "phMax": 7.0,
+      "absTempMin": 10,
+      "absTempMax": 38,
+      "absRainMin": 800,
+      "absRainMax": 4000,
+      "absPhMin": 4.5,
+      "absPhMax": 7.5,
+      "cropCategory": "medicinals & aromatic, forage/pasture",
+      "lifeForm": "grass (herb)",
+      "growthHabit": "erect (tussock)",
+      "lifeSpan": "perennial (tender)"
+    },
+    "calendar": {
+      "planting": [
+        4,
+        5
+      ],
+      "manage": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "planting": "株分けまたは苗を植付。地温20℃以上で活着が良い",
+        "manage": "耐寒性が低く冬季は室内・ハウスでの防寒が必要な地域が多い",
+        "harvest": "葉が30〜40cmに伸びたら株元から刈り取る。刈り取り後も再生し年数回収穫可能"
+      }
+    },
+    "fertilizer": {
+      "N": 15,
+      "P": 8,
+      "K": 15,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "生育旺盛で追肥を好む。冬季の防寒対策が収量を左右する。",
+      "perPlant": {
+        "N": 3.6,
+        "P": 1.9,
+        "K": 3.6
+      }
+    },
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（生葉・実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2500,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "high",
+        "note": "5℃以下で葉が傷み、霜で枯死。防寒・室内越冬が必須。"
+      },
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "密植で発生することがあるが被害は軽微。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.276,
+    "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "lemon_verbena",
+    "heatType": "warm",
+    "name": "レモンバーベナ",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Verbenaceae",
+      "scientificName": "Aloysia citrodora",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 40,
+      "elevMax": 600,
+      "tempMeanMin": 15,
+      "tempMeanMax": 28,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 5,
+      "growthPeriodMin": 150,
+      "growthPeriodMax": 300,
+      "rainfallMin": 900,
+      "rainfallMax": 1600,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 5,
+      "absTempMax": 35,
+      "absRainMin": 600,
+      "absRainMax": 2500,
+      "absPhMin": 5.0,
+      "absPhMax": 7.5,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "shrub",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial (deciduous)"
+    },
+    "calendar": {
+      "seedling": [
+        3,
+        4
+      ],
+      "transplant": [
+        5
+      ],
+      "manage": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "seedling": "挿し木での増殖が容易。育苗期間は40〜50日",
+        "transplant": "終霜後に定植。株間60〜80cm",
+        "harvest": "レモンに似た強い香りの葉を随時収穫し乾燥。冬は落葉するが根は生存し春に再生"
+      }
+    },
+    "fertilizer": {
+      "N": 10,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "寒冷地では鉢上げして室内越冬させると翌年も収穫可能。",
+      "perPlant": {
+        "N": 4.8,
+        "P": 3.8,
+        "K": 4.8
+      }
+    },
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（乾燥葉・実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "medium",
+        "note": "0℃以下で地上部が枯死するおそれ。防寒・室内越冬推奨。"
+      },
+      {
+        "type": "pest",
+        "name": "ハダニ",
+        "level": "low",
+        "note": "乾燥期に発生しやすい。葉水で予防。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 80,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.144,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "elderflower",
+    "heatType": "cool",
+    "name": "エルダーフラワー（セイヨウニワトコ）",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Adoxaceae",
+      "scientificName": "Sambucus nigra",
+      "taxonID": null,
+      "latMin": 35,
+      "latMax": 45,
+      "elevMax": 1000,
+      "tempMeanMin": 10,
+      "tempMeanMax": 22,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 15,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 365,
+      "rainfallMin": 700,
+      "rainfallMax": 1800,
+      "phMin": 5.5,
+      "phMax": 7.0,
+      "absTempMin": -5,
+      "absTempMax": 30,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 5.0,
+      "absPhMax": 7.5,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "shrub/small tree",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        3,
+        4
+      ],
+      "harvest": [
+        5,
+        6
+      ],
+      "prep": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "manage": "耐寒性が高く冷涼地向き。落葉期に剪定して樹形を整える",
+        "harvest": "満開直前の花房を朝の涼しいうちに収穫し、すぐに乾燥させて香りを保つ"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "花のみ収穫するため過度な窒素施肥は花付きを悪くする。",
+      "perPlant": {
+        "N": 60.0,
+        "P": 60.0,
+        "K": 75.0
+      }
+    },
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（乾燥花・実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（乾燥花・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽・花房に付着することがあるが被害は軽微。"
+      },
+      {
+        "type": "weather",
+        "name": "開花期の低温・長雨",
+        "level": "medium",
+        "note": "開花期の悪天候で花付き・収量が減少。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 250,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.75,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "nettle",
+    "heatType": "cool",
+    "name": "ネトル（セイヨウイラクサ）",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Urticaceae",
+      "scientificName": "Urtica dioica",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 50,
+      "elevMax": 1200,
+      "tempMeanMin": 10,
+      "tempMeanMax": 24,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 5,
+      "growthPeriodMin": 120,
+      "growthPeriodMax": 365,
+      "rainfallMin": 700,
+      "rainfallMax": 2000,
+      "phMin": 5.5,
+      "phMax": 7.5,
+      "absTempMin": -10,
+      "absTempMax": 32,
+      "absRainMin": 400,
+      "absRainMax": 3000,
+      "absPhMin": 4.5,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic, vegetables",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "sowing": [
+        3,
+        4
+      ],
+      "manage": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "prep": [
+        10,
+        11,
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "sowing": "こぼれ種でもよく増える。株分けでの増殖も可能",
+        "manage": "葉の刺毛に触れるとかぶれるため、収穫・管理時は必ず手袋を着用",
+        "harvest": "開花前の若い葉が最も栄養価が高い。手袋を着用し茎ごと刈り取り乾燥させる"
+      }
+    },
+    "fertilizer": {
+      "N": 12,
+      "P": 6,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "繁殖力が非常に強く区画管理が必要。窒素豊富な土壌を好む。",
+      "perPlant": {
+        "N": 0.9,
+        "P": 0.5,
+        "K": 0.75
+      }
+    },
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（乾燥葉・実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weed",
+        "name": "繁殖・拡散",
+        "level": "high",
+        "note": "地下茎と種子でよく広がる。区画外への逸出に注意。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.135,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "mulberry_leaf",
+    "heatType": "warm",
+    "name": "桑の葉",
+    "category": "herb",
+    "variety": "一般種（葉利用）",
+    "conditions": {
+      "family": "Moraceae",
+      "scientificName": "Morus alba",
+      "taxonID": null,
+      "latMin": 24,
+      "latMax": 45,
+      "elevMax": 1000,
+      "tempMeanMin": 10,
+      "tempMeanMax": 26,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 20,
+      "growthPeriodMin": 200,
+      "growthPeriodMax": 365,
+      "rainfallMin": 900,
+      "rainfallMax": 2000,
+      "phMin": 5.5,
+      "phMax": 7.0,
+      "absTempMin": -10,
+      "absTempMax": 35,
+      "absRainMin": 500,
+      "absRainMax": 3000,
+      "absPhMin": 4.5,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic, forage/pasture",
+      "lifeForm": "tree",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "manage": "養蚕地域で栽培実績豊富。摘採（せんてい）で低樹形に管理すると収穫しやすい",
+        "harvest": "若葉を随時摘み取り、天日または機械乾燥させて桑茶（くわ茶）原料にする"
+      }
+    },
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 12,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "葉のみ収穫が目的のため摘採後の肥培管理（追肥）で再生を促す。",
+      "perPlant": {
+        "N": 22.5,
+        "P": 15.0,
+        "K": 18.0
+      }
+    },
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（乾燥葉・実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "クワノメイガ",
+        "level": "medium",
+        "note": "新芽・葉を食害。早期発見と防除。"
+      },
+      {
+        "type": "pest",
+        "name": "うどんこ病",
+        "level": "low",
+        "note": "多湿・密植で発生しやすい。風通し確保。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 100,
+      "rowSpacing": 150,
+      "rowWidth": 150,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 1.725,
+    "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "habucha",
+    "heatType": "warm",
+    "name": "ハブ茶（エビスグサ）",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Senna obtusifolia",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 40,
+      "elevMax": 500,
+      "tempMeanMin": 18,
+      "tempMeanMax": 30,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 150,
+      "rainfallMin": 700,
+      "rainfallMax": 1500,
+      "phMin": 5.5,
+      "phMax": 7.0,
+      "absTempMin": 10,
+      "absTempMax": 36,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 4.5,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic, pulses (grain legumes)",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        5,
+        6
+      ],
+      "manage": [
+        7,
+        8
+      ],
+      "harvest": [
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2,
+        3,
+        4
+      ],
+      "memo": {
+        "sowing": "地温20℃以上で発芽。株間30cm程度の点播または条播",
+        "manage": "マメ科で根粒菌を活用するため多肥は不要。過湿に弱く排水管理が重要",
+        "harvest": "莢が黄褐色に熟したら刈り取り、天日乾燥後に脱穀して種子（決明子）を取り出し焙煎する"
+      }
+    },
+    "fertilizer": {
+      "N": 6,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 1,
+      "topDressing": 0,
+      "notes": "根粒菌でN固定するため施肥は控えめ。過湿に弱い。",
+      "perPlant": {
+        "N": 0.19,
+        "P": 0.26,
+        "K": 0.26
+      }
+    },
+    "yield": {
+      "min": 150,
+      "max": 300,
+      "unit": "kg/10a（乾燥種子・実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1800,
+      "unit": "円/kg（乾燥種子・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "medium",
+        "note": "新芽・莢に群生。早期防除。"
+      },
+      {
+        "type": "rotation",
+        "name": "連作障害",
+        "level": "medium",
+        "note": "マメ科。2〜3年輪作推奨。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.0405,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "dandelion",
+    "heatType": "cool",
+    "name": "タンポポ（セイヨウタンポポ）",
+    "category": "herb",
+    "variety": "セイヨウタンポポ等",
+    "conditions": {
+      "family": "Asteraceae",
+      "scientificName": "Taraxacum officinale",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 50,
+      "elevMax": 1200,
+      "tempMeanMin": 10,
+      "tempMeanMax": 24,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 1,
+      "growthPeriodMin": 150,
+      "growthPeriodMax": 220,
+      "rainfallMin": 700,
+      "rainfallMax": 1800,
+      "phMin": 5.5,
+      "phMax": 7.5,
+      "absTempMin": -5,
+      "absTempMax": 30,
+      "absRainMin": 400,
+      "absRainMax": 3000,
+      "absPhMin": 4.5,
+      "absPhMax": 8.0,
+      "cropCategory": "vegetables, medicinals & aromatic, weed",
+      "lifeForm": "herb (rosette)",
+      "growthHabit": "prostrate/erect",
+      "lifeSpan": "perennial (grown as annual/biennial)"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5
+      ],
+      "manage": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        10,
+        11
+      ],
+      "prep": [
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "条播で覆土は薄め。発芽適温15〜20℃",
+        "manage": "根を太らせるため深耕した土壌が望ましい。除草を兼ねて中耕する",
+        "harvest": "地上部が枯れ始めたら根を掘り上げ、乾燥後に焙煎してタンポポ茶（根）に用いる"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "根の肥大を優先するため過剰なN施肥は避ける。深耕土壌を用意する。",
+      "perPlant": {
+        "N": 0.036,
+        "P": 0.036,
+        "K": 0.045
+      }
+    },
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（生根・実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 1200,
+      "unit": "円/kg（乾燥根・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weed",
+        "name": "逸出・雑草化",
+        "level": "medium",
+        "note": "種子が風で飛散し野生化しやすい。開花前の管理が重要。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 30,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.052,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "honeysuckle",
+    "heatType": "warm",
+    "name": "スイカズラ（忍冬）",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Caprifoliaceae",
+      "scientificName": "Lonicera japonica",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 800,
+      "tempMeanMin": 12,
+      "tempMeanMax": 26,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 15,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 365,
+      "rainfallMin": 900,
+      "rainfallMax": 2000,
+      "phMin": 5.5,
+      "phMax": 7.5,
+      "absTempMin": -5,
+      "absTempMax": 33,
+      "absRainMin": 600,
+      "absRainMax": 3000,
+      "absPhMin": 4.5,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "vine",
+      "growthHabit": "climber/scrambler",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "harvest": [
+        5,
+        6
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "manage": "つる性で棚・フェンス等の支柱が必須。日本各地に自生し丈夫",
+        "harvest": "開花直前の白い花蕾（銀花）を収穫し乾燥。開花後は薬効・香りが落ちるため適期収穫が重要"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "丈夫で肥料要求量は少ない。花蕾収穫のため開花前の管理が重要。",
+      "perPlant": {
+        "N": 24.0,
+        "P": 24.0,
+        "K": 24.0
+      }
+    },
+    "yield": {
+      "min": 30,
+      "max": 80,
+      "unit": "kg/10a（乾燥花蕾・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥花蕾・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽・花蕾に付着することがある。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 150,
+      "rowSpacing": 200,
+      "rowWidth": 200,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.165,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "kakidooshi",
+    "heatType": "cool",
+    "name": "カキドオシ",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Lamiaceae",
+      "scientificName": "Glechoma hederacea",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 1000,
+      "tempMeanMin": 10,
+      "tempMeanMax": 24,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 3,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 200,
+      "rainfallMin": 900,
+      "rainfallMax": 2000,
+      "phMin": 5.5,
+      "phMax": 7.0,
+      "absTempMin": -5,
+      "absTempMax": 30,
+      "absRainMin": 600,
+      "absRainMax": 3000,
+      "absPhMin": 4.5,
+      "absPhMax": 7.5,
+      "cropCategory": "medicinals & aromatic, weed",
+      "lifeForm": "herb (creeping vine)",
+      "growthHabit": "prostrate/creeping",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        3,
+        4,
+        5,
+        6
+      ],
+      "harvest": [
+        4,
+        5,
+        6
+      ],
+      "prep": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "manage": "匍匐して広がるためプランターや仕切りでの区画管理が推奨",
+        "harvest": "開花期に地上部を刈り取り、天日で乾燥させて民間療法茶（子供の疳の虫封じ茶）に用いる"
+      }
+    },
+    "fertilizer": {
+      "N": 6,
+      "P": 6,
+      "K": 6,
+      "baseDressing": 0.7,
+      "topDressing": 0.3,
+      "notes": "丈夫で肥料はほとんど不要。広がりすぎに注意が必要。",
+      "perPlant": {
+        "N": 0.011,
+        "P": 0.011,
+        "K": 0.011
+      }
+    },
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（乾燥全草・実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "円/kg（乾燥全草・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weed",
+        "name": "匍匐拡散",
+        "level": "medium",
+        "note": "地を這って際限なく広がるため区画外への逸出に注意。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 30,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.0105,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "passionflower",
+    "heatType": "warm",
+    "name": "パッションフラワー（トケイソウ）",
+    "category": "herb",
+    "variety": "薬用種",
+    "conditions": {
+      "family": "Passifloraceae",
+      "scientificName": "Passiflora incarnata",
+      "taxonID": null,
+      "latMin": 28,
+      "latMax": 38,
+      "elevMax": 500,
+      "tempMeanMin": 15,
+      "tempMeanMax": 28,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 5,
+      "growthPeriodMin": 150,
+      "growthPeriodMax": 300,
+      "rainfallMin": 900,
+      "rainfallMax": 1800,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 0,
+      "absTempMax": 35,
+      "absRainMin": 600,
+      "absRainMax": 2500,
+      "absPhMin": 5.0,
+      "absPhMax": 7.5,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "vine",
+      "growthHabit": "climber",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "manage": "つる性で支柱・棚が必須。霜に弱く寒冷地では地上部が枯死することがある",
+        "harvest": "開花期の茎葉を刈り取り、天日または機械乾燥させて鎮静作用のあるハーブティー原料にする"
+      }
+    },
+    "fertilizer": {
+      "N": 10,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "薬用種（Passiflora incarnata）は食用パッションフルーツ（P. edulis）とは別種。",
+      "perPlant": {
+        "N": 15.0,
+        "P": 12.0,
+        "K": 15.0
+      }
+    },
+    "yield": {
+      "min": 150,
+      "max": 350,
+      "unit": "kg/10a（乾燥葉・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "medium",
+        "note": "霜で地上部が枯死。寒冷地ではマルチ・防寒対策推奨。"
+      },
+      {
+        "type": "pest",
+        "name": "ハダニ",
+        "level": "low",
+        "note": "乾燥期に発生することがある。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 100,
+      "rowSpacing": 150,
+      "rowWidth": 150,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.375,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "mint_japanese",
+    "heatType": "cool",
+    "name": "ニホンハッカ（和種薄荷）",
+    "category": "herb",
+    "variety": "北海道系（北見系統）",
+    "conditions": {
+      "family": "Lamiaceae",
+      "scientificName": "Mentha canadensis",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 600,
+      "tempMeanMin": 8,
+      "tempMeanMax": 24,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 5,
+      "growthPeriodMin": 120,
+      "growthPeriodMax": 200,
+      "rainfallMin": 900,
+      "rainfallMax": 1500,
+      "phMin": 5.5,
+      "phMax": 6.5,
+      "absTempMin": -5,
+      "absTempMax": 30,
+      "absRainMin": 600,
+      "absRainMax": 2500,
+      "absPhMin": 4.5,
+      "absPhMax": 7.5,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "planting": [
+        4,
+        5
+      ],
+      "manage": [
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        7,
+        8,
+        9
+      ],
+      "prep": [
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "planting": "地下茎の株分けで増殖。北見市等でハッカ油蒸留用に大規模栽培された歴史を持つ",
+        "manage": "地下茎でよく増えるため区画管理が必要。西洋系ミントとは別種",
+        "harvest": "開花前に地上部を刈り取り、蒸留・乾燥してハッカ油やハーブティー原料にする"
+      }
+    },
+    "fertilizer": {
+      "N": 10,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "西洋系ミント(Mentha spp.)とは別種で香気成分の主体がメントール。",
+      "perPlant": {
+        "N": 1.2,
+        "P": 0.72,
+        "K": 0.96
+      }
+    },
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（生葉刈取・実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 1200,
+      "unit": "円/kg（生葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weed",
+        "name": "地下茎による拡散",
+        "level": "medium",
+        "note": "区画外へ広がりやすい。境界管理が必要。"
+      },
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがある。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.138,
+    "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "holy_basil",
+    "heatType": "warm",
+    "name": "ホーリーバジル（トゥルシー）",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Lamiaceae",
+      "scientificName": "Ocimum tenuiflorum",
+      "taxonID": null,
+      "latMin": 24,
+      "latMax": 35,
+      "elevMax": 400,
+      "tempMeanMin": 20,
+      "tempMeanMax": 32,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 1,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 150,
+      "rainfallMin": 1000,
+      "rainfallMax": 2000,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": 10,
+      "absTempMax": 38,
+      "absRainMin": 600,
+      "absRainMax": 3000,
+      "absPhMin": 5.0,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual (perennial in tropics)"
+    },
+    "calendar": {
+      "seedling": [
+        4
+      ],
+      "transplant": [
+        5
+      ],
+      "manage": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "seedling": "育苗期間30日程度。地温20℃以上で発芽良好",
+        "transplant": "終霜後に定植。株間30cm",
+        "harvest": "開花前の葉を随時収穫。アーユルヴェーダで珍重されるハーブティー原料"
+      }
+    },
+    "fertilizer": {
+      "N": 12,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "バジル(Ocimum basilicum)とは別種で薬効成分が異なる。",
+      "perPlant": {
+        "N": 1.0,
+        "P": 0.67,
+        "K": 0.83
+      }
+    },
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（乾燥葉・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがある。"
+      },
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "medium",
+        "note": "10℃以下で生育停止、霜で枯死。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.054,
+    "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "marjoram",
+    "heatType": "warm",
+    "name": "マジョラム（スイートマジョラム）",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Lamiaceae",
+      "scientificName": "Origanum majorana",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 42,
+      "elevMax": 600,
+      "tempMeanMin": 15,
+      "tempMeanMax": 28,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 3,
+      "growthPeriodMin": 100,
+      "growthPeriodMax": 200,
+      "rainfallMin": 600,
+      "rainfallMax": 1200,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": 0,
+      "absTempMax": 35,
+      "absRainMin": 400,
+      "absRainMax": 2000,
+      "absPhMin": 5.0,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb (subshrub)",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial (tender)"
+    },
+    "calendar": {
+      "seedling": [
+        3,
+        4
+      ],
+      "transplant": [
+        5
+      ],
+      "manage": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "prep": [
+        10,
+        11,
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "seedling": "発芽まで2〜3週間とやや遅い。育苗で管理する",
+        "transplant": "株間25〜30cm。排水の良い場所を選ぶ",
+        "harvest": "開花直前の葉が最も香り高い。オレガノより甘く繊細な香りが特徴"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "オレガノ(Origanum vulgare)の近縁種だが香りが穏やか。過湿に弱い。",
+      "perPlant": {
+        "N": 0.06,
+        "P": 0.06,
+        "K": 0.06
+      }
+    },
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（乾燥葉・実勢推定値）"
+    },
+    "price": {
+      "min": 2500,
+      "max": 5000,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "medium",
+        "note": "耐寒性が低く冬季は防寒・室内管理が必要な地域が多い。"
+      },
+      {
+        "type": "pest",
+        "name": "ハダニ",
+        "level": "low",
+        "note": "乾燥期に発生しやすい。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 25,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.0225,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "bay_laurel",
+    "heatType": "warm",
+    "name": "ベイ（月桂樹）",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Lauraceae",
+      "scientificName": "Laurus nobilis",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 40,
+      "elevMax": 600,
+      "tempMeanMin": 12,
+      "tempMeanMax": 24,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 30,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 365,
+      "rainfallMin": 700,
+      "rainfallMax": 1800,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": -5,
+      "absTempMax": 33,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 5.0,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "tree",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial (evergreen)"
+    },
+    "calendar": {
+      "manage": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "harvest": [
+        4,
+        5,
+        10,
+        11
+      ],
+      "prep": [
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "manage": "常緑樹で耐寒性はやや弱め（-5℃前後が限界）。剪定で樹形を整える",
+        "harvest": "葉を随時収穫し陰干しで乾燥。春と秋の葉が香り高いとされる"
+      }
+    },
+    "fertilizer": {
+      "N": 6,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "生育がゆっくりで肥料要求量は少ない。若木は防寒必須。",
+      "perPlant": {
+        "N": 72.0,
+        "P": 72.0,
+        "K": 96.0
+      }
+    },
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（乾燥葉・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "カイガラムシ",
+        "level": "medium",
+        "note": "枝葉に付着し樹勢低下。定期観察と防除。"
+      },
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "medium",
+        "note": "-5℃前後で葉が傷むおそれ。若木は防寒必須。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 300,
+      "rowSpacing": 400,
+      "rowWidth": 400,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 2.1,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "dill",
+    "heatType": "cool",
+    "name": "ディル",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Apiaceae",
+      "scientificName": "Anethum graveolens",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 600,
+      "tempMeanMin": 15,
+      "tempMeanMax": 25,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 60,
+      "growthPeriodMax": 90,
+      "rainfallMin": 600,
+      "rainfallMax": 1200,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 5,
+      "absTempMax": 30,
+      "absRainMin": 400,
+      "absRainMax": 2000,
+      "absPhMin": 5.5,
+      "absPhMax": 7.5,
+      "cropCategory": "vegetables, medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        3,
+        4,
+        9
+      ],
+      "manage": [
+        5,
+        10
+      ],
+      "harvest": [
+        6,
+        7,
+        11
+      ],
+      "prep": [
+        1,
+        2,
+        8
+      ],
+      "memo": {
+        "sowing": "直根性で移植を嫌うため直播が基本。覆土は薄め",
+        "manage": "倒伏しやすいので密植を避け、風通しを良くする",
+        "harvest": "草丈30cm前後で葉を随時収穫。種子利用の場合は花後の褐色化した種子を収穫"
+      }
+    },
+    "fertilizer": {
+      "N": 10,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "直根性で移植を嫌う。セリ科のため輪作に注意。",
+      "perPlant": {
+        "N": 0.045,
+        "P": 0.036,
+        "K": 0.036
+      }
+    },
+    "yield": {
+      "min": 400,
+      "max": 800,
+      "unit": "kg/10a（生葉・実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1800,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "medium",
+        "note": "新芽・花に群生。早期防除。"
+      },
+      {
+        "type": "rotation",
+        "name": "連作障害",
+        "level": "medium",
+        "note": "セリ科。2〜3年輪作推奨。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 30,
+      "rowWidth": 60,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.027,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "coriander",
+    "heatType": "warm",
+    "name": "コリアンダー（パクチー）",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Apiaceae",
+      "scientificName": "Coriandrum sativum",
+      "taxonID": null,
+      "latMin": 28,
+      "latMax": 43,
+      "elevMax": 600,
+      "tempMeanMin": 15,
+      "tempMeanMax": 28,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 60,
+      "growthPeriodMax": 100,
+      "rainfallMin": 600,
+      "rainfallMax": 1500,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 5,
+      "absTempMax": 33,
+      "absRainMin": 400,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 7.5,
+      "cropCategory": "vegetables, medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5,
+        9
+      ],
+      "manage": [
+        6,
+        10
+      ],
+      "harvest": [
+        6,
+        7,
+        11
+      ],
+      "prep": [
+        8,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "直根性で移植を嫌うため直播推奨。種子は2つに割ってから播くと発芽が揃う",
+        "manage": "高温・長日で抽苔しやすいため夏播きは避ける",
+        "harvest": "草丈15〜20cmで株ごと、または外葉から随時収穫"
+      }
+    },
+    "fertilizer": {
+      "N": 10,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "高温・長日で抽苔（トウ立ち）しやすい。",
+      "perPlant": {
+        "N": 0.037,
+        "P": 0.03,
+        "K": 0.03
+      }
+    },
+    "yield": {
+      "min": 500,
+      "max": 1000,
+      "unit": "kg/10a（生葉・実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "medium",
+        "note": "新芽に群生。早期防除。"
+      },
+      {
+        "type": "weather",
+        "name": "高温・長日による抽苔",
+        "level": "medium",
+        "note": "夏場は花芽が上がり葉質が低下しやすい。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 25,
+      "rowWidth": 60,
+      "linesPerRow": 3
+    },
+    "yieldPerPlant": 0.028,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "tarragon",
+    "heatType": "cool",
+    "name": "タラゴン",
+    "category": "herb",
+    "variety": "フレンチタラゴン",
+    "conditions": {
+      "family": "Asteraceae",
+      "scientificName": "Artemisia dracunculus",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 800,
+      "tempMeanMin": 12,
+      "tempMeanMax": 25,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 5,
+      "growthPeriodMin": 120,
+      "growthPeriodMax": 250,
+      "rainfallMin": 700,
+      "rainfallMax": 1400,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": -5,
+      "absTempMax": 30,
+      "absRainMin": 500,
+      "absRainMax": 2000,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "prep": [
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "manage": "フレンチタラゴンは種子ができないため株分け・挿し木で増殖する",
+        "harvest": "開花前の若い葉を随時収穫。香りが強いため少量使用が基本"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "過湿に弱く排水の良い土壌を好む。",
+      "perPlant": {
+        "N": 0.096,
+        "P": 0.072,
+        "K": 0.096
+      }
+    },
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（乾燥葉・実勢推定値）"
+    },
+    "price": {
+      "min": 2500,
+      "max": 5000,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "うどんこ病",
+        "level": "low",
+        "note": "多湿・密植で発生しやすい。風通し確保。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.036,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "calendula",
+    "heatType": "cool",
+    "name": "カレンデュラ（キンセンカ）",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Asteraceae",
+      "scientificName": "Calendula officinalis",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 800,
+      "tempMeanMin": 10,
+      "tempMeanMax": 22,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 1,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 150,
+      "rainfallMin": 700,
+      "rainfallMax": 1500,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": -5,
+      "absTempMax": 30,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        3,
+        4,
+        9
+      ],
+      "manage": [
+        5,
+        6,
+        10
+      ],
+      "harvest": [
+        5,
+        6,
+        7,
+        10,
+        11
+      ],
+      "prep": [
+        8,
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "sowing": "冷涼な気候を好む。発芽適温15〜20℃",
+        "manage": "花がら摘みをすると次々に開花し収穫期間が延びる",
+        "harvest": "満開の花を摘み取り天日または陰干しで乾燥。ハーブティー・軟膏原料になる"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "花がら摘みで収穫期間を延ばせる。",
+      "perPlant": {
+        "N": 0.048,
+        "P": 0.048,
+        "K": 0.048
+      }
+    },
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（乾燥花・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥花・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "medium",
+        "note": "新芽・蕾に群生。早期防除。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.0105,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "borage",
+    "heatType": "cool",
+    "name": "ボリジ",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Boraginaceae",
+      "scientificName": "Borago officinalis",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 800,
+      "tempMeanMin": 12,
+      "tempMeanMax": 24,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 1,
+      "growthPeriodMin": 60,
+      "growthPeriodMax": 90,
+      "rainfallMin": 700,
+      "rainfallMax": 1500,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 0,
+      "absTempMax": 30,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 7.5,
+      "cropCategory": "medicinals & aromatic, vegetables",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5
+      ],
+      "manage": [
+        5,
+        6
+      ],
+      "harvest": [
+        6,
+        7,
+        8
+      ],
+      "prep": [
+        9,
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "こぼれ種でもよく増える。直根性のため直播が向く",
+        "manage": "生育旺盛で草丈60〜90cmになる。倒伏しやすいので株間を確保",
+        "harvest": "星形の青い花をエディブルフラワーとして、若葉をキュウリのような風味のハーブとして収穫"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "生育旺盛でこぼれ種からもよく発芽する。",
+      "perPlant": {
+        "N": 0.096,
+        "P": 0.096,
+        "K": 0.096
+      }
+    },
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（生葉花・実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "うどんこ病",
+        "level": "medium",
+        "note": "多湿・密植で発生しやすい。風通し確保。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.054,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "chervil",
+    "heatType": "cool",
+    "name": "チャービル",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Apiaceae",
+      "scientificName": "Anthriscus cerefolium",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 800,
+      "tempMeanMin": 10,
+      "tempMeanMax": 20,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 60,
+      "growthPeriodMax": 90,
+      "rainfallMin": 700,
+      "rainfallMax": 1500,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 0,
+      "absTempMax": 28,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 7.5,
+      "cropCategory": "vegetables, medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        3,
+        4,
+        9
+      ],
+      "manage": [
+        5,
+        10
+      ],
+      "harvest": [
+        5,
+        6,
+        10,
+        11
+      ],
+      "prep": [
+        7,
+        8,
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "sowing": "高温に弱く半日陰でも栽培可能。直根性で移植を嫌う",
+        "manage": "高温期は生育が止まりやすいため夏を避けた作型が適する",
+        "harvest": "草丈15〜20cmで外葉から随時収穫。繊細な香りは加熱で飛びやすい"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "高温・乾燥に弱く半日陰・多湿気味の管理が向く。",
+      "perPlant": {
+        "N": 0.024,
+        "P": 0.024,
+        "K": 0.024
+      }
+    },
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（生葉・実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "高温障害",
+        "level": "medium",
+        "note": "25℃超で生育不良・抽苔しやすい。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 20,
+      "rowWidth": 60,
+      "linesPerRow": 3
+    },
+    "yieldPerPlant": 0.0135,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "bergamot",
+    "heatType": "cool",
+    "name": "ベルガモット（モナルダ）",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Lamiaceae",
+      "scientificName": "Monarda didyma",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 48,
+      "elevMax": 1000,
+      "tempMeanMin": 10,
+      "tempMeanMax": 24,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 5,
+      "growthPeriodMin": 120,
+      "growthPeriodMax": 365,
+      "rainfallMin": 800,
+      "rainfallMax": 1800,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": -15,
+      "absTempMax": 30,
+      "absRainMin": 600,
+      "absRainMax": 3000,
+      "absPhMin": 5.5,
+      "absPhMax": 7.5,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "harvest": [
+        7,
+        8
+      ],
+      "prep": [
+        9,
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "manage": "耐寒性が高く冷涼地向き。うどんこ病予防に株間・風通しを確保",
+        "harvest": "開花期の花と葉を収穫し乾燥。アールグレイのベルガモット香とは別植物"
+      }
+    },
+    "fertilizer": {
+      "N": 10,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "うどんこ病に弱いため密植を避ける。",
+      "perPlant": {
+        "N": 0.12,
+        "P": 0.096,
+        "K": 0.12
+      }
+    },
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（乾燥花葉・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥花葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "うどんこ病",
+        "level": "medium",
+        "note": "多湿・密植で多発。風通し確保が重要。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.036,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "hyssop",
+    "heatType": "cool",
+    "name": "ヒソップ",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Lamiaceae",
+      "scientificName": "Hyssopus officinalis",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 48,
+      "elevMax": 1000,
+      "tempMeanMin": 10,
+      "tempMeanMax": 24,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 5,
+      "growthPeriodMin": 120,
+      "growthPeriodMax": 365,
+      "rainfallMin": 600,
+      "rainfallMax": 1400,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": -10,
+      "absTempMax": 30,
+      "absRainMin": 400,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        7,
+        8,
+        9
+      ],
+      "prep": [
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "manage": "乾燥・痩せ地に強く過湿を嫌う。剪定で株姿を整える",
+        "harvest": "開花期の花穂を収穫し乾燥。ほろ苦い香りでリキュール・ハーブティーに利用"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "乾燥・貧栄養地でも育つ。過湿は根腐れの原因になる。",
+      "perPlant": {
+        "N": 0.096,
+        "P": 0.096,
+        "K": 0.096
+      }
+    },
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（乾燥花葉・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥花葉・実勢推定値）"
+    },
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.036,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "mallow",
+    "heatType": "cool",
+    "name": "マロウ",
+    "category": "herb",
+    "variety": "コモンマロウ",
+    "conditions": {
+      "family": "Malvaceae",
+      "scientificName": "Malva sylvestris",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 800,
+      "tempMeanMin": 10,
+      "tempMeanMax": 24,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 120,
+      "growthPeriodMax": 250,
+      "rainfallMin": 700,
+      "rainfallMax": 1600,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": -5,
+      "absTempMax": 30,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "biennial/perennial (short-lived)"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5
+      ],
+      "manage": [
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "prep": [
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "こぼれ種でもよく増える。直根性で移植を嫌う",
+        "manage": "草丈1m前後まで生育。倒伏しやすいので支柱を検討",
+        "harvest": "青紫色の花を収穫し乾燥。お湯を注ぐと青色から紫〜ピンクに変化するハーブティーになる"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "こぼれ種で世代交代しやすい2年草〜多年草。",
+      "perPlant": {
+        "N": 0.16,
+        "P": 0.16,
+        "K": 0.16
+      }
+    },
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（乾燥花・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥花・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがある。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.035,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "linden",
+    "heatType": "cool",
+    "name": "リンデン（セイヨウボダイジュ）",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Malvaceae",
+      "scientificName": "Tilia europaea",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 48,
+      "elevMax": 1200,
+      "tempMeanMin": 8,
+      "tempMeanMax": 22,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 30,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 365,
+      "rainfallMin": 700,
+      "rainfallMax": 1800,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": -20,
+      "absTempMax": 30,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "tree",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        3,
+        4,
+        5,
+        6
+      ],
+      "harvest": [
+        6,
+        7
+      ],
+      "prep": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "manage": "耐寒性が非常に高い落葉高木。若木のうちは剪定で樹高管理をする",
+        "harvest": "開花期の花と苞葉を一緒に収穫し乾燥。フランスの伝統的ハーブティー「ティユール」原料"
+      }
+    },
+    "fertilizer": {
+      "N": 6,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "生育がゆっくりで開花・収穫開始まで数年かかる大型樹木。",
+      "perPlant": {
+        "N": 120.0,
+        "P": 120.0,
+        "K": 160.0
+      }
+    },
+    "yield": {
+      "min": 30,
+      "max": 80,
+      "unit": "kg/10a（乾燥花・実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（乾燥花・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新葉に発生することがある。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 400,
+      "rowSpacing": 500,
+      "rowWidth": 500,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 1.1,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "clary_sage",
+    "heatType": "warm",
+    "name": "クラリーセージ",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Lamiaceae",
+      "scientificName": "Salvia sclarea",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 43,
+      "elevMax": 700,
+      "tempMeanMin": 12,
+      "tempMeanMax": 26,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 150,
+      "growthPeriodMax": 250,
+      "rainfallMin": 600,
+      "rainfallMax": 1200,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": -5,
+      "absTempMax": 33,
+      "absRainMin": 400,
+      "absRainMax": 2000,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "biennial"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5
+      ],
+      "manage": [
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        7,
+        8
+      ],
+      "prep": [
+        9,
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "1年目はロゼット状に生育し、2年目に開花する2年草",
+        "manage": "排水の良い土壌を好み過湿を嫌う",
+        "harvest": "2年目の開花期に花穂を収穫し精油・ハーブティー原料にする"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "開花は2年目。1年目は株の充実を優先する。",
+      "perPlant": {
+        "N": 0.16,
+        "P": 0.16,
+        "K": 0.16
+      }
+    },
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（乾燥花穂・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥花穂・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "多湿障害",
+        "level": "low",
+        "note": "過湿地では根腐れのおそれ。排水対策推奨。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.035,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "lavandin",
+    "heatType": "warm",
+    "name": "ラバンディン",
+    "category": "herb",
+    "variety": "グロッソ等",
+    "conditions": {
+      "family": "Lamiaceae",
+      "scientificName": "Lavandula x intermedia",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 43,
+      "elevMax": 900,
+      "tempMeanMin": 12,
+      "tempMeanMax": 26,
+      "soilTypes": [
+        "loam",
+        "sandy",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 10,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 365,
+      "rainfallMin": 500,
+      "rainfallMax": 1200,
+      "phMin": 6.5,
+      "phMax": 8.0,
+      "absTempMin": -10,
+      "absTempMax": 35,
+      "absRainMin": 300,
+      "absRainMax": 2000,
+      "absPhMin": 6.0,
+      "absPhMax": 8.5,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "shrub",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6
+      ],
+      "harvest": [
+        7,
+        8
+      ],
+      "prep": [
+        9,
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "manage": "イングリッシュラベンダーとの交配種で花穂が大きく精油収量が多い。排水良好な土地を選ぶ",
+        "harvest": "開花最盛期に花穂を刈り取り精油蒸留・ドライフラワーに利用"
+      }
+    },
+    "fertilizer": {
+      "N": 6,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "イングリッシュラベンダーより高温耐性があり平地栽培にも向く。過湿厳禁。",
+      "perPlant": {
+        "N": 0.36,
+        "P": 0.48,
+        "K": 0.48
+      }
+    },
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（乾燥花穂・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥花穂・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "多湿障害",
+        "level": "medium",
+        "note": "高温多湿・排水不良の土壌で株が枯れやすい。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 100,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.18,
+    "waterNeedLperSqmPerDay": 2.0
+  },
+  {
+    "id": "yarrow",
+    "heatType": "cool",
+    "name": "ヤロウ",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Asteraceae",
+      "scientificName": "Achillea millefolium",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 50,
+      "elevMax": 1200,
+      "tempMeanMin": 8,
+      "tempMeanMax": 24,
+      "soilTypes": [
+        "loam",
+        "sandy",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 5,
+      "growthPeriodMin": 120,
+      "growthPeriodMax": 365,
+      "rainfallMin": 600,
+      "rainfallMax": 1600,
+      "phMin": 5.5,
+      "phMax": 7.5,
+      "absTempMin": -15,
+      "absTempMax": 30,
+      "absRainMin": 400,
+      "absRainMax": 2500,
+      "absPhMin": 5.0,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "harvest": [
+        6,
+        7,
+        8
+      ],
+      "prep": [
+        9,
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "manage": "丈夫で痩せ地・乾燥地でもよく育つ。地下茎で広がりやすいため区画管理を検討",
+        "harvest": "満開の花と葉を刈り取り乾燥。止血・解熱作用で知られる民間薬草"
+      }
+    },
+    "fertilizer": {
+      "N": 6,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "痩せ地でも旺盛に育つため過剰施肥は不要。",
+      "perPlant": {
+        "N": 0.072,
+        "P": 0.072,
+        "K": 0.096
+      }
+    },
+    "yield": {
+      "min": 150,
+      "max": 350,
+      "unit": "kg/10a（乾燥全草・実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（乾燥全草・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weed",
+        "name": "地下茎による拡散",
+        "level": "low",
+        "note": "繁殖旺盛で区画外に広がることがある。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 2.0
+  },
+  {
+    "id": "rue",
+    "heatType": "warm",
+    "name": "ルー（ヘンルーダ）",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Rutaceae",
+      "scientificName": "Ruta graveolens",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 700,
+      "tempMeanMin": 12,
+      "tempMeanMax": 26,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 5,
+      "growthPeriodMin": 150,
+      "growthPeriodMax": 300,
+      "rainfallMin": 600,
+      "rainfallMax": 1400,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": -5,
+      "absTempMax": 33,
+      "absRainMin": 400,
+      "absRainMax": 2000,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "shrub (herb)",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "prep": [
+        9,
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "manage": "樹液に触れ日光に当たると光毒性皮膚炎を起こすことがあるため、手入れ・収穫時は手袋と長袖を着用",
+        "harvest": "葉を少量ずつ収穫し乾燥。強い苦味と香りがあり少量利用が基本"
+      }
+    },
+    "fertilizer": {
+      "N": 6,
+      "P": 6,
+      "K": 6,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "樹液の光毒性に注意。妊娠中の摂取は避けるべき薬草として知られる。",
+      "perPlant": {
+        "N": 0.072,
+        "P": 0.072,
+        "K": 0.072
+      }
+    },
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（乾燥葉・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがある。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.021,
+    "waterNeedLperSqmPerDay": 2.0
+  },
+  {
+    "id": "lovage",
+    "heatType": "cool",
+    "name": "ラブエイジ",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Apiaceae",
+      "scientificName": "Levisticum officinale",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 48,
+      "elevMax": 1000,
+      "tempMeanMin": 10,
+      "tempMeanMax": 22,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 5,
+      "growthPeriodMin": 150,
+      "growthPeriodMax": 300,
+      "rainfallMin": 800,
+      "rainfallMax": 1800,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": -15,
+      "absTempMax": 30,
+      "absRainMin": 600,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "vegetables, medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "prep": [
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "manage": "草丈1.5〜2mまで大きく育つため株間を十分に確保する",
+        "harvest": "セロリに似た香りの若葉・茎を随時収穫。種子・根も利用可能"
+      }
+    },
+    "fertilizer": {
+      "N": 10,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "草丈が大きくなるため十分な株間と支柱が必要な場合がある。",
+      "perPlant": {
+        "N": 0.2,
+        "P": 0.16,
+        "K": 0.2
+      }
+    },
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（生葉・実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがある。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.09,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "nasturtium",
+    "heatType": "warm",
+    "name": "ナスタチウム",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Tropaeolaceae",
+      "scientificName": "Tropaeolum majus",
+      "taxonID": null,
+      "latMin": 28,
+      "latMax": 45,
+      "elevMax": 800,
+      "tempMeanMin": 12,
+      "tempMeanMax": 26,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 1,
+      "growthPeriodMin": 70,
+      "growthPeriodMax": 120,
+      "rainfallMin": 700,
+      "rainfallMax": 1600,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": 0,
+      "absTempMax": 32,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "vegetables, medicinals & aromatic",
+      "lifeForm": "herb (vine/trailing)",
+      "growthHabit": "climber/prostrate",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5
+      ],
+      "manage": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "prep": [
+        9,
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "直根性で移植を嫌うため直播が基本",
+        "manage": "窒素過多だと葉ばかり茂り花付きが悪くなるため肥料は控えめに",
+        "harvest": "ピリッとした辛みのある葉と花を随時収穫。サラダのエディブルフラワーとして人気"
+      }
+    },
+    "fertilizer": {
+      "N": 6,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "窒素過多は花付き不良の原因。やせ地気味の方が花が多くつく。",
+      "perPlant": {
+        "N": 0.072,
+        "P": 0.096,
+        "K": 0.096
+      }
+    },
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（生葉花・実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "medium",
+        "note": "新芽・花に群生しやすい。コンパニオンプランツとしても利用される。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.036,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "artichoke",
+    "heatType": "cool",
+    "name": "アーティチョーク",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Asteraceae",
+      "scientificName": "Cynara scolymus",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 40,
+      "elevMax": 500,
+      "tempMeanMin": 12,
+      "tempMeanMax": 24,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 5,
+      "growthPeriodMin": 200,
+      "growthPeriodMax": 300,
+      "rainfallMin": 700,
+      "rainfallMax": 1500,
+      "phMin": 6.5,
+      "phMax": 7.5,
+      "absTempMin": 0,
+      "absTempMax": 30,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 6.0,
+      "absPhMax": 8.0,
+      "cropCategory": "vegetables, medicinals & aromatic",
+      "lifeForm": "herb (perennial thistle)",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "seedling": [
+        3
+      ],
+      "transplant": [
+        4,
+        5
+      ],
+      "manage": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        5,
+        6
+      ],
+      "prep": [
+        10,
+        11,
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "seedling": "育苗期間45〜60日。低温にあてて花芽分化を促す（バーナリゼーション）",
+        "transplant": "株間80〜100cmと広めに取る",
+        "harvest": "蕾が開く前の若い花蕾を収穫。葉は薬用茶（アーティチョークティー）としても利用される"
+      }
+    },
+    "fertilizer": {
+      "N": 15,
+      "P": 10,
+      "K": 15,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "多年草で株が充実するほど収量が増える。冬季の防寒が必要な地域あり。",
+      "perPlant": {
+        "N": 12.0,
+        "P": 8.0,
+        "K": 12.0
+      }
+    },
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 1200,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "medium",
+        "note": "蕾・新芽に群生しやすい。"
+      },
+      {
+        "type": "weather",
+        "name": "霜害",
+        "level": "medium",
+        "note": "若い株は霜で傷みやすく防寒対策が必要。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 80,
+      "rowSpacing": 100,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.92,
+    "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "akajiso",
+    "heatType": "warm",
+    "name": "赤じそ",
+    "category": "herb",
+    "variety": "赤紫蘇",
+    "conditions": {
+      "family": "Lamiaceae",
+      "scientificName": "Perilla frutescens var. crispa",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 600,
+      "tempMeanMin": 18,
+      "tempMeanMax": 28,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 1,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 150,
+      "rainfallMin": 900,
+      "rainfallMax": 1800,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 5,
+      "absTempMax": 35,
+      "absRainMin": 600,
+      "absRainMax": 3000,
+      "absPhMin": 5.0,
+      "absPhMax": 7.5,
+      "cropCategory": "vegetables, medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5
+      ],
+      "manage": [
+        6,
+        7
+      ],
+      "harvest": [
+        6,
+        7,
+        8
+      ],
+      "prep": [
+        9,
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "発芽には光が必要なため覆土は薄め",
+        "manage": "梅干し用の需要期（6〜7月）に合わせた作型が主流",
+        "harvest": "梅干しの着色用に葉を大量収穫。青じそ（shiso）とは品種・用途・単価が異なり、出荷は梅の収穫期に集中する"
+      }
+    },
+    "fertilizer": {
+      "N": 10,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "青じそ(shiso)とは同種の別品種。アントシアニン色素が豊富で梅干し着色用として需要期が集中する。",
+      "perPlant": {
+        "N": 0.06,
+        "P": 0.048,
+        "K": 0.048
+      }
+    },
+    "yield": {
+      "min": 500,
+      "max": 1000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 300,
+      "max": 700,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "ハダニ",
+        "level": "low",
+        "note": "乾燥期に発生しやすい。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 30,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.045,
+    "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "pineapple_sage",
+    "heatType": "warm",
+    "name": "パイナップルセージ",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Lamiaceae",
+      "scientificName": "Salvia elegans",
+      "taxonID": null,
+      "latMin": 28,
+      "latMax": 38,
+      "elevMax": 500,
+      "tempMeanMin": 15,
+      "tempMeanMax": 28,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 3,
+      "growthPeriodMin": 150,
+      "growthPeriodMax": 300,
+      "rainfallMin": 900,
+      "rainfallMax": 1800,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 0,
+      "absTempMax": 33,
+      "absRainMin": 600,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 7.5,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "shrub (herb)",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial (tender)"
+    },
+    "calendar": {
+      "manage": [
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        8,
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2,
+        3,
+        4
+      ],
+      "memo": {
+        "manage": "秋に赤い花を咲かせる短日植物。霜に弱く寒冷地では鉢上げ越冬が必要",
+        "harvest": "パイナップルに似た香りの葉を随時収穫。開花期の花も利用可能"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "耐寒性が低く霜で地上部が枯死。防寒・室内越冬推奨。",
+      "perPlant": {
+        "N": 0.16,
+        "P": 0.16,
+        "K": 0.16
+      }
+    },
+    "yield": {
+      "min": 150,
+      "max": 300,
+      "unit": "kg/10a（乾燥葉・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "medium",
+        "note": "霜で地上部が枯死するおそれ。防寒対策推奨。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.045,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "anise_hyssop",
+    "heatType": "cool",
+    "name": "アニスヒソップ",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Lamiaceae",
+      "scientificName": "Agastache foeniculum",
+      "taxonID": null,
+      "latMin": 33,
+      "latMax": 48,
+      "elevMax": 1000,
+      "tempMeanMin": 10,
+      "tempMeanMax": 24,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 3,
+      "growthPeriodMin": 120,
+      "growthPeriodMax": 250,
+      "rainfallMin": 600,
+      "rainfallMax": 1400,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": -10,
+      "absTempMax": 30,
+      "absRainMin": 400,
+      "absRainMax": 2000,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7
+      ],
+      "harvest": [
+        7,
+        8,
+        9
+      ],
+      "prep": [
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "manage": "耐寒性が高く育てやすい。ミツバチが好む蜜源植物としても知られる",
+        "harvest": "アニスのような甘い香りの葉と花穂を収穫し乾燥"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "丈夫で育てやすく病害虫の被害も少ない。",
+      "perPlant": {
+        "N": 0.096,
+        "P": 0.096,
+        "K": 0.096
+      }
+    },
+    "yield": {
+      "min": 150,
+      "max": 300,
+      "unit": "kg/10a（乾燥葉花・実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（乾燥葉花・実勢推定値）"
+    },
+    "risks": [],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.027,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "curry_plant",
+    "heatType": "warm",
+    "name": "カレープラント",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Asteraceae",
+      "scientificName": "Helichrysum italicum",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 40,
+      "elevMax": 600,
+      "tempMeanMin": 12,
+      "tempMeanMax": 26,
+      "soilTypes": [
+        "sandy",
+        "loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 5,
+      "growthPeriodMin": 150,
+      "growthPeriodMax": 300,
+      "rainfallMin": 500,
+      "rainfallMax": 1200,
+      "phMin": 6.5,
+      "phMax": 8.0,
+      "absTempMin": -5,
+      "absTempMax": 33,
+      "absRainMin": 300,
+      "absRainMax": 2000,
+      "absPhMin": 6.0,
+      "absPhMax": 8.5,
+      "cropCategory": "medicinals & aromatic",
+      "lifeForm": "shrub",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        6,
+        7,
+        8
+      ],
+      "prep": [
+        9,
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "manage": "銀灰色の葉を持ち乾燥・過湿嫌う。地中海沿岸のような排水良好な環境が理想",
+        "harvest": "カレーに似た芳香を持つ葉を収穫し乾燥。食用ではなく主に香料・観賞用として利用"
+      }
+    },
+    "fertilizer": {
+      "N": 6,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "過湿に非常に弱く、排水不良の土壌では枯死しやすい。",
+      "perPlant": {
+        "N": 0.096,
+        "P": 0.128,
+        "K": 0.128
+      }
+    },
+    "yield": {
+      "min": 100,
+      "max": 200,
+      "unit": "kg/10a（乾燥葉・実勢推定値）"
+    },
+    "price": {
+      "min": 2500,
+      "max": 5000,
+      "unit": "円/kg（乾燥葉・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "多湿障害",
+        "level": "medium",
+        "note": "排水不良の土壌で根腐れしやすい。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 2.0
+  },
+  {
+    "id": "angelica_european",
+    "heatType": "cool",
+    "name": "西洋アンジェリカ",
+    "category": "herb",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Apiaceae",
+      "scientificName": "Angelica archangelica",
+      "taxonID": null,
+      "latMin": 35,
+      "latMax": 50,
+      "elevMax": 1200,
+      "tempMeanMin": 8,
+      "tempMeanMax": 20,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "high",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 365,
+      "rainfallMin": 900,
+      "rainfallMax": 2000,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": -15,
+      "absTempMax": 28,
+      "absRainMin": 700,
+      "absRainMax": 3000,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "vegetables, medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "biennial"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5
+      ],
+      "manage": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        8,
+        9
+      ],
+      "prep": [
+        10,
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "1年目はロゼット状に生育し、2年目の夏に大型の花茎を伸ばす2年草",
+        "manage": "多湿を好み乾燥に弱いため水切れに注意",
+        "harvest": "2年目の茎と根を収穫。既存のアシタバ（Angelica keiskei）とは別種で、より寒冷地向き"
+      }
+    },
+    "fertilizer": {
+      "N": 10,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "アシタバ(Angelica keiskei)とは別種で耐寒性が高く冷涼地向き。",
+      "perPlant": {
+        "N": 0.35,
+        "P": 0.28,
+        "K": 0.35
+      }
+    },
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（生茎根・実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがある。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 70,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.4025,
+    "waterNeedLperSqmPerDay": 4.0
+  },
+  {
+    "id": "winged_bean",
+    "heatType": "warm",
+    "name": "シカクマメ（四角豆）",
+    "category": "legume",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Psophocarpus tetragonolobus",
+      "taxonID": null,
+      "latMin": 24,
+      "latMax": 35,
+      "elevMax": 400,
+      "tempMeanMin": 22,
+      "tempMeanMax": 32,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 150,
+      "rainfallMin": 1000,
+      "rainfallMax": 2500,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 15,
+      "absTempMax": 38,
+      "absRainMin": 800,
+      "absRainMax": 3000,
+      "absPhMin": 5.5,
+      "absPhMax": 7.5,
+      "cropCategory": "pulses (grain legumes)",
+      "lifeForm": "herb (vine)",
+      "growthHabit": "climbing",
+      "lifeSpan": "annual (perennial in tropics)"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5
+      ],
+      "manage": [
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "地温20℃以上で発芽。沖縄など温暖地向きで支柱・ネットが必要",
+        "manage": "つるを誘引し放任すると混み合うため整枝する",
+        "harvest": "若莢を柔らかいうちに収穫。塊根・葉・花もすべて食用可能な万能豆として知られる"
+      }
+    },
+    "fertilizer": {
+      "N": 4,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 1,
+      "topDressing": 0,
+      "notes": "根粒菌のためN控えめ。",
+      "perPlant": {
+        "N": 0.2,
+        "P": 0.4,
+        "K": 0.4
+      }
+    },
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "medium",
+        "note": "新芽に群生しやすい。早期防除。"
+      },
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "medium",
+        "note": "霜に非常に弱く熱帯・亜熱帯以外は露地越冬不可。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 80,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.08,
+    "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "pigeon_pea",
+    "heatType": "warm",
+    "name": "キマメ（トロピカルピー）",
+    "category": "legume",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Cajanus cajan",
+      "taxonID": null,
+      "latMin": 20,
+      "latMax": 33,
+      "elevMax": 500,
+      "tempMeanMin": 20,
+      "tempMeanMax": 32,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 3,
+      "growthPeriodMin": 150,
+      "growthPeriodMax": 270,
+      "rainfallMin": 600,
+      "rainfallMax": 1500,
+      "phMin": 5.5,
+      "phMax": 7.5,
+      "absTempMin": 10,
+      "absTempMax": 38,
+      "absRainMin": 400,
+      "absRainMax": 2500,
+      "absPhMin": 5.0,
+      "absPhMax": 8.0,
+      "cropCategory": "pulses (grain legumes)",
+      "lifeForm": "shrub (herb)",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial (short-lived, often grown as annual)"
+    },
+    "calendar": {
+      "sowing": [
+        5,
+        6
+      ],
+      "manage": [
+        7,
+        8,
+        9,
+        10
+      ],
+      "harvest": [
+        11,
+        12,
+        1
+      ],
+      "prep": [
+        2,
+        3,
+        4
+      ],
+      "memo": {
+        "sowing": "高温期に播種。乾燥・貧栄養地でも育つ強健種",
+        "manage": "分枝が多く倒伏しやすいため支柱を推奨",
+        "harvest": "莢が乾燥し茶色くなったら収穫。インドではダール豆として重要な主食豆"
+      }
+    },
+    "fertilizer": {
+      "N": 4,
+      "P": 8,
+      "K": 6,
+      "baseDressing": 1,
+      "topDressing": 0,
+      "notes": "多年草的性質を持つ低木状の豆。根粒菌でN固定するため施肥は控えめ。",
+      "perPlant": {
+        "N": 0.6,
+        "P": 1.2,
+        "K": 0.9
+      }
+    },
+    "yield": {
+      "min": 150,
+      "max": 350,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 600,
+      "max": 1200,
+      "unit": "円/kg（国内栽培ほぼなし・輸入品参考値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがある。"
+      },
+      {
+        "type": "pest",
+        "name": "莢シンクイムシ",
+        "level": "medium",
+        "note": "結実期の莢を食害。早期発見が重要。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 60,
+      "rowSpacing": 100,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.15,
+    "waterNeedLperSqmPerDay": 2.0
+  },
+  {
+    "id": "hyacinth_bean",
+    "heatType": "warm",
+    "name": "フジマメ（インゲンマメとは別種）",
+    "category": "legume",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Lablab purpureus",
+      "taxonID": null,
+      "latMin": 28,
+      "latMax": 42,
+      "elevMax": 600,
+      "tempMeanMin": 18,
+      "tempMeanMax": 30,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 150,
+      "rainfallMin": 600,
+      "rainfallMax": 1500,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": 10,
+      "absTempMax": 35,
+      "absRainMin": 400,
+      "absRainMax": 2000,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "pulses (grain legumes)",
+      "lifeForm": "herb (vine)",
+      "growthHabit": "climbing",
+      "lifeSpan": "annual (perennial in warm climates)"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5
+      ],
+      "manage": [
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        9,
+        10,
+        11
+      ],
+      "prep": [
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "地温18℃以上で発芽。観賞用の紫花品種としても栽培される",
+        "manage": "つるが伸びるため支柱・ネットが必須",
+        "harvest": "若莢はインゲンのように利用、完熟種子は煮豆にする。生の未熟莢・種子には微量の毒性成分があるため十分な加熱調理が必須"
+      }
+    },
+    "fertilizer": {
+      "N": 4,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 1,
+      "topDressing": 0,
+      "notes": "根粒菌のためN控えめ。",
+      "perPlant": {
+        "N": 0.24,
+        "P": 0.48,
+        "K": 0.48
+      }
+    },
+    "yield": {
+      "min": 150,
+      "max": 350,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 700,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "medium",
+        "note": "新芽・花に群生。早期防除。"
+      },
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "medium",
+        "note": "霜に弱く早期の収穫終了を招く。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 40,
+      "rowSpacing": 80,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.06,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "rice_bean",
+    "heatType": "warm",
+    "name": "ツルアズキ",
+    "category": "legume",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Vigna umbellata",
+      "taxonID": null,
+      "latMin": 28,
+      "latMax": 43,
+      "elevMax": 800,
+      "tempMeanMin": 20,
+      "tempMeanMax": 30,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 130,
+      "rainfallMin": 700,
+      "rainfallMax": 1800,
+      "phMin": 5.5,
+      "phMax": 7.0,
+      "absTempMin": 10,
+      "absTempMax": 35,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 5.0,
+      "absPhMax": 7.5,
+      "cropCategory": "pulses (grain legumes)",
+      "lifeForm": "herb (vine)",
+      "growthHabit": "climbing/trailing",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        5,
+        6
+      ],
+      "manage": [
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2,
+        3,
+        4
+      ],
+      "memo": {
+        "sowing": "小豆(adzuki)の近縁別種でつる性。地温18℃以上で発芽",
+        "manage": "つるが伸びるため支柱またはネットが有効",
+        "harvest": "莢が茶色く乾燥したら収穫。小豆より小粒で赤褐色の種子を持つ"
+      }
+    },
+    "fertilizer": {
+      "N": 4,
+      "P": 8,
+      "K": 6,
+      "baseDressing": 1,
+      "topDressing": 0,
+      "notes": "アズキ(adzuki)とは別種。過湿にやや弱い。",
+      "perPlant": {
+        "N": 0.18,
+        "P": 0.36,
+        "K": 0.27
+      }
+    },
+    "yield": {
+      "min": 120,
+      "max": 280,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 700,
+      "max": 1400,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがある。"
+      },
+      {
+        "type": "rotation",
+        "name": "連作障害",
+        "level": "medium",
+        "note": "マメ科。2〜3年輪作推奨。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 60,
+      "rowWidth": 90,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.045,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "sword_bean",
+    "heatType": "warm",
+    "name": "ナタマメ（タチナタマメ）",
+    "category": "legume",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Canavalia gladiata",
+      "taxonID": null,
+      "latMin": 28,
+      "latMax": 40,
+      "elevMax": 500,
+      "tempMeanMin": 20,
+      "tempMeanMax": 32,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 120,
+      "growthPeriodMax": 180,
+      "rainfallMin": 700,
+      "rainfallMax": 1800,
+      "phMin": 6.0,
+      "phMax": 7.0,
+      "absTempMin": 12,
+      "absTempMax": 35,
+      "absRainMin": 500,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 7.5,
+      "cropCategory": "pulses (grain legumes)",
+      "lifeForm": "herb (vine)",
+      "growthHabit": "climbing",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        5,
+        6
+      ],
+      "manage": [
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        9,
+        10,
+        11
+      ],
+      "prep": [
+        12,
+        1,
+        2,
+        3,
+        4
+      ],
+      "memo": {
+        "sowing": "大型の種子で発芽力旺盛。強靭なつるが伸びるため頑丈な支柱が必要",
+        "manage": "生育旺盛で広いスペースを要する",
+        "harvest": "若莢は福神漬け等に加工。完熟種子は毒性成分を含むため十分な加熱処理が必須。なた豆茶としても利用される"
+      }
+    },
+    "fertilizer": {
+      "N": 4,
+      "P": 8,
+      "K": 8,
+      "baseDressing": 1,
+      "topDressing": 0,
+      "notes": "生育旺盛で強靭な支柱が必要。完熟種子の生食は不可。",
+      "perPlant": {
+        "N": 0.4,
+        "P": 0.8,
+        "K": 0.8
+      }
+    },
+    "yield": {
+      "min": 150,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1800,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがある。"
+      },
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "medium",
+        "note": "霜に弱く早期収穫終了。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 50,
+      "rowSpacing": 100,
+      "rowWidth": 100,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 0.1,
+    "waterNeedLperSqmPerDay": 3.5
+  },
+  {
+    "id": "bambara_groundnut",
+    "heatType": "warm",
+    "name": "バンバラマメ",
+    "category": "legume",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Vigna subterranea",
+      "taxonID": null,
+      "latMin": 20,
+      "latMax": 33,
+      "elevMax": 500,
+      "tempMeanMin": 22,
+      "tempMeanMax": 32,
+      "soilTypes": [
+        "sandy",
+        "loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 100,
+      "growthPeriodMax": 150,
+      "rainfallMin": 500,
+      "rainfallMax": 1200,
+      "phMin": 5.5,
+      "phMax": 7.0,
+      "absTempMin": 15,
+      "absTempMax": 38,
+      "absRainMin": 350,
+      "absRainMax": 2000,
+      "absPhMin": 5.0,
+      "absPhMax": 7.5,
+      "cropCategory": "pulses (grain legumes)",
+      "lifeForm": "herb (prostrate)",
+      "growthHabit": "prostrate",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        5,
+        6
+      ],
+      "manage": [
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2,
+        3,
+        4
+      ],
+      "memo": {
+        "sowing": "落花生同様、開花後に子房柄が地中に潜り莢を形成する",
+        "manage": "乾燥・貧栄養地でも安定して育つアフリカ原産の豆",
+        "harvest": "地中の莢を掘り上げて収穫。落花生とは別属で栄養価が高いことで知られる"
+      }
+    },
+    "fertilizer": {
+      "N": 3,
+      "P": 8,
+      "K": 6,
+      "baseDressing": 1,
+      "topDressing": 0,
+      "notes": "落花生(Arachis hypogaea)とは別属。過湿に弱い。",
+      "perPlant": {
+        "N": 0.15,
+        "P": 0.4,
+        "K": 0.3
+      }
+    },
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 600,
+      "max": 1400,
+      "unit": "円/kg（国内栽培ほぼなし・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがある。"
+      },
+      {
+        "type": "weather",
+        "name": "多湿障害",
+        "level": "medium",
+        "note": "排水不良の土壌で莢が腐りやすい。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 30,
+      "rowSpacing": 50,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.037,
+    "waterNeedLperSqmPerDay": 2.0
+  },
+  {
+    "id": "fenugreek",
+    "heatType": "cool",
+    "name": "フェヌグリーク",
+    "category": "legume",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Trigonella foenum-graecum",
+      "taxonID": null,
+      "latMin": 28,
+      "latMax": 45,
+      "elevMax": 800,
+      "tempMeanMin": 15,
+      "tempMeanMax": 27,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 3,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 130,
+      "rainfallMin": 400,
+      "rainfallMax": 900,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": 5,
+      "absTempMax": 33,
+      "absRainMin": 300,
+      "absRainMax": 1500,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "pulses (grain legumes), medicinals & aromatic",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        3,
+        4,
+        10
+      ],
+      "manage": [
+        4,
+        5,
+        11
+      ],
+      "harvest": [
+        6,
+        7,
+        1
+      ],
+      "prep": [
+        8,
+        9,
+        2
+      ],
+      "memo": {
+        "sowing": "冷涼期の栽培に向く。乾燥地でも発芽良好",
+        "manage": "過湿を嫌う。追肥は控えめに",
+        "harvest": "若葉はハーブとして随時収穫、完熟種子はスパイス・サプリメント原料として収穫する"
+      }
+    },
+    "fertilizer": {
+      "N": 6,
+      "P": 8,
+      "K": 6,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "マメ科スパイス。種子・若葉両方に利用価値がある。",
+      "perPlant": {
+        "N": 0.036,
+        "P": 0.048,
+        "K": 0.036
+      }
+    },
+    "yield": {
+      "min": 80,
+      "max": 200,
+      "unit": "kg/10a（種子・実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2500,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがある。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 15,
+      "rowSpacing": 25,
+      "rowWidth": 60,
+      "linesPerRow": 3
+    },
+    "yieldPerPlant": 0.018,
+    "waterNeedLperSqmPerDay": 2.0
+  },
+  {
+    "id": "guar",
+    "heatType": "warm",
+    "name": "クラスタ豆（ガーガー豆）",
+    "category": "legume",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Cyamopsis tetragonoloba",
+      "taxonID": null,
+      "latMin": 20,
+      "latMax": 35,
+      "elevMax": 500,
+      "tempMeanMin": 25,
+      "tempMeanMax": 35,
+      "soilTypes": [
+        "sandy",
+        "loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 2,
+      "growthPeriodMin": 90,
+      "growthPeriodMax": 120,
+      "rainfallMin": 300,
+      "rainfallMax": 700,
+      "phMin": 6.0,
+      "phMax": 8.0,
+      "absTempMin": 15,
+      "absTempMax": 42,
+      "absRainMin": 200,
+      "absRainMax": 1200,
+      "absPhMin": 5.5,
+      "absPhMax": 8.5,
+      "cropCategory": "pulses (grain legumes)",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "annual"
+    },
+    "calendar": {
+      "sowing": [
+        5,
+        6
+      ],
+      "manage": [
+        6,
+        7,
+        8
+      ],
+      "harvest": [
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2,
+        3,
+        4
+      ],
+      "memo": {
+        "sowing": "非常に高温・乾燥に強く砂質土壌でも生育可能。地温25℃以上が目安",
+        "manage": "耐乾性が高くほぼ無灌水でも栽培できる",
+        "harvest": "莢が乾燥したら収穫。種子はガム原料（グアーガム）、若莢は野菜としても利用される"
+      }
+    },
+    "fertilizer": {
+      "N": 3,
+      "P": 6,
+      "K": 6,
+      "baseDressing": 1,
+      "topDressing": 0,
+      "notes": "極めて乾燥に強い豆でガム原料としても知られる。",
+      "perPlant": {
+        "N": 0.09,
+        "P": 0.18,
+        "K": 0.18
+      }
+    },
+    "yield": {
+      "min": 100,
+      "max": 220,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 1200,
+      "unit": "円/kg（国内栽培ほぼなし・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "ハダニ",
+        "level": "low",
+        "note": "乾燥期に発生しやすい。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 20,
+      "rowSpacing": 40,
+      "rowWidth": 90,
+      "linesPerRow": 2
+    },
+    "yieldPerPlant": 0.03,
+    "waterNeedLperSqmPerDay": 1.5
+  },
+  {
+    "id": "kudzu",
+    "heatType": "cool",
+    "name": "クズ（葛）",
+    "category": "legume",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Pueraria lobata",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 1200,
+      "tempMeanMin": 10,
+      "tempMeanMax": 26,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 10,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 365,
+      "rainfallMin": 1000,
+      "rainfallMax": 2500,
+      "phMin": 5.5,
+      "phMax": 7.0,
+      "absTempMin": -15,
+      "absTempMax": 35,
+      "absRainMin": 700,
+      "absRainMax": 3000,
+      "absPhMin": 5.0,
+      "absPhMax": 7.5,
+      "cropCategory": "medicinals & aromatic (root crop, legume)",
+      "lifeForm": "vine (herbaceous perennial)",
+      "growthHabit": "climbing/trailing",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        11,
+        12,
+        1,
+        2
+      ],
+      "prep": [
+        3,
+        10
+      ],
+      "memo": {
+        "manage": "非常に繁殖力が強いつる性植物。旺盛な生育のため誘引・管理が必須で、放置すると区画外へ拡散する",
+        "harvest": "冬季の休眠期に肥大した根を掘り上げて収穫。葛粉・葛根湯の原料になる日本自生の薬用・食用豆科植物"
+      }
+    },
+    "fertilizer": {
+      "N": 4,
+      "P": 6,
+      "K": 6,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "繁殖力が非常に強く、栽培区画外への逸出・拡散に厳重な管理が必要。",
+      "perPlant": {
+        "N": 4.0,
+        "P": 6.0,
+        "K": 6.0
+      }
+    },
+    "yield": {
+      "min": 500,
+      "max": 1200,
+      "unit": "kg/10a（生根・実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 4000,
+      "unit": "円/kg（乾燥根・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weed",
+        "name": "繁殖旺盛による拡散",
+        "level": "high",
+        "note": "非常に旺盛なつる性植物で区画外に大きく広がりやすい。境界管理が極めて重要。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 200,
+      "rowSpacing": 300,
+      "rowWidth": 300,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 3.4,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "tamarind",
+    "heatType": "warm",
+    "name": "タマリンド",
+    "category": "legume",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Tamarindus indica",
+      "taxonID": null,
+      "latMin": 24,
+      "latMax": 30,
+      "elevMax": 400,
+      "tempMeanMin": 22,
+      "tempMeanMax": 32,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 30,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 365,
+      "rainfallMin": 600,
+      "rainfallMax": 1500,
+      "phMin": 6.0,
+      "phMax": 7.5,
+      "absTempMin": 5,
+      "absTempMax": 40,
+      "absRainMin": 400,
+      "absRainMax": 2500,
+      "absPhMin": 5.5,
+      "absPhMax": 8.0,
+      "cropCategory": "fruit trees (legume)",
+      "lifeForm": "tree",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial (evergreen, long-lived)"
+    },
+    "calendar": {
+      "manage": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        11,
+        12,
+        1
+      ],
+      "prep": [
+        2,
+        3,
+        10
+      ],
+      "memo": {
+        "manage": "常緑高木で、沖縄などごく一部の温暖地でのみ栽培可能。定植後結実まで6〜8年を要する",
+        "harvest": "莢果が褐色に熟したら収穫。酸味のある果肉は調味料・飲料原料として利用される"
+      }
+    },
+    "fertilizer": {
+      "N": 8,
+      "P": 8,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "熱帯性で日本国内では栽培適地が非常に限られる。若木は防寒必須。",
+      "perPlant": {
+        "N": 96.0,
+        "P": 96.0,
+        "K": 120.0
+      }
+    },
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（成木・実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "high",
+        "note": "霜に非常に弱く、日本国内では栽培適地が沖縄等ごく一部に限られる。"
+      },
+      {
+        "type": "pest",
+        "name": "カイガラムシ",
+        "level": "low",
+        "note": "枝葉に付着し樹勢低下。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 500,
+      "rowSpacing": 600,
+      "rowWidth": 600,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 3.75,
+    "waterNeedLperSqmPerDay": 2.5
+  },
+  {
+    "id": "alfalfa",
+    "heatType": "cool",
+    "name": "アルファルファ",
+    "category": "legume",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Medicago sativa",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 50,
+      "elevMax": 1500,
+      "tempMeanMin": 15,
+      "tempMeanMax": 28,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "medium",
+      "continuousCropYears": 4,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 365,
+      "rainfallMin": 500,
+      "rainfallMax": 1200,
+      "phMin": 6.5,
+      "phMax": 7.5,
+      "absTempMin": -20,
+      "absTempMax": 35,
+      "absRainMin": 350,
+      "absRainMax": 2000,
+      "absPhMin": 6.0,
+      "absPhMax": 8.0,
+      "cropCategory": "forage & sprouts (legume)",
+      "lifeForm": "herb",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial"
+    },
+    "calendar": {
+      "sowing": [
+        4,
+        5,
+        9
+      ],
+      "manage": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "harvest": [
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "prep": [
+        11,
+        12,
+        1,
+        2,
+        3
+      ],
+      "memo": {
+        "sowing": "耐寒性が高く一度定着すれば3〜5年収穫可能",
+        "manage": "年に3〜5回刈り取り可能な多回収穫型。排水の良い土壌を好む",
+        "harvest": "開花直前に刈り取り乾草にする。スプラウトとしては発芽後数日で収穫可能"
+      }
+    },
+    "fertilizer": {
+      "N": 4,
+      "P": 10,
+      "K": 10,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "密植の牧草・スプラウト用マメ科作物。根粒菌によるN固定で土壌改良効果も高い。",
+      "perPlant": {
+        "N": 0.02,
+        "P": 0.05,
+        "K": 0.05
+      }
+    },
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（乾草・実勢推定値）"
+    },
+    "price": {
+      "min": 300,
+      "max": 800,
+      "unit": "円/kg（乾草・実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "pest",
+        "name": "アブラムシ",
+        "level": "low",
+        "note": "新芽に発生することがある。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 5,
+      "rowSpacing": 20,
+      "rowWidth": 90,
+      "linesPerRow": 5
+    },
+    "yieldPerPlant": 0.003,
+    "waterNeedLperSqmPerDay": 3.0
+  },
+  {
+    "id": "carob",
+    "heatType": "warm",
+    "name": "キャロブ",
+    "category": "legume",
+    "variety": "一般種",
+    "conditions": {
+      "family": "Fabaceae",
+      "scientificName": "Ceratonia siliqua",
+      "taxonID": null,
+      "latMin": 30,
+      "latMax": 40,
+      "elevMax": 600,
+      "tempMeanMin": 15,
+      "tempMeanMax": 28,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ],
+      "waterNeed": "low",
+      "continuousCropYears": 40,
+      "growthPeriodMin": 300,
+      "growthPeriodMax": 365,
+      "rainfallMin": 400,
+      "rainfallMax": 900,
+      "phMin": 6.5,
+      "phMax": 8.0,
+      "absTempMin": -5,
+      "absTempMax": 38,
+      "absRainMin": 250,
+      "absRainMax": 1800,
+      "absPhMin": 6.0,
+      "absPhMax": 8.5,
+      "cropCategory": "fruit trees (legume)",
+      "lifeForm": "tree",
+      "growthHabit": "erect",
+      "lifeSpan": "perennial (evergreen, very long-lived)"
+    },
+    "calendar": {
+      "manage": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "harvest": [
+        10,
+        11
+      ],
+      "prep": [
+        12,
+        1,
+        2
+      ],
+      "memo": {
+        "manage": "地中海性気候の乾燥・高温に強い常緑樹。結実まで5〜8年を要する",
+        "harvest": "秋に莢果が褐色に熟したら収穫。チョコレート代替品・ガム原料として利用される"
+      }
+    },
+    "fertilizer": {
+      "N": 4,
+      "P": 6,
+      "K": 8,
+      "baseDressing": 0.6,
+      "topDressing": 0.4,
+      "notes": "非常に長寿命（100年以上）の樹木で乾燥に強い。過湿を嫌う。",
+      "perPlant": {
+        "N": 48.0,
+        "P": 72.0,
+        "K": 96.0
+      }
+    },
+    "yield": {
+      "min": 80,
+      "max": 200,
+      "unit": "kg/10a（成木・実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
+    "risks": [
+      {
+        "type": "weather",
+        "name": "低温障害",
+        "level": "medium",
+        "note": "若木は霜に弱いが成木は耐寒性がやや向上する。"
+      },
+      {
+        "type": "pest",
+        "name": "カイガラムシ",
+        "level": "low",
+        "note": "枝葉に付着し樹勢低下。"
+      }
+    ],
+    "plantingStandard": {
+      "plantSpacing": 600,
+      "rowSpacing": 700,
+      "rowWidth": 700,
+      "linesPerRow": 1
+    },
+    "yieldPerPlant": 5.6,
+    "waterNeedLperSqmPerDay": 2.0
   }
 ];
