@@ -2,6 +2,7 @@
 //  CROP_DB — 作物データベース
 //  223件 重複統合済み・calendar(sow/harvest)全件更新
 //  最終更新: waterNeedLperSqmPerDay（1日あたり標準灌水量 L/m²/日）全223件追加
+//  追加更新: yield/price NULL 145件を実勢推定値で補完（unit内に「実勢推定値」と明記）
 // ═══════════════════════════════════════════════════════════
 const CROP_DB = [
   {
@@ -8581,8 +8582,16 @@ const CROP_DB = [
         "K": 1.6
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 200,
+      "max": 350,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 25,
@@ -8671,8 +8680,16 @@ const CROP_DB = [
         "K": 0.2
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1500,
+      "max": 2500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 150,
+      "max": 250,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 5,
@@ -8758,8 +8775,16 @@ const CROP_DB = [
         "K": 0.2
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 150,
+      "max": 250,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -8843,8 +8868,16 @@ const CROP_DB = [
         "K": 0.2
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1000,
+      "max": 1800,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 250,
+      "max": 400,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -8930,8 +8963,16 @@ const CROP_DB = [
         "K": 0.1
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1500,
+      "max": 2500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 200,
+      "max": 350,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 5,
@@ -9013,8 +9054,16 @@ const CROP_DB = [
         "K": 0.3
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 150,
+      "max": 250,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -9097,8 +9146,16 @@ const CROP_DB = [
         "K": 0.2
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1500,
+      "max": 2500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 150,
+      "max": 250,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -9184,8 +9241,16 @@ const CROP_DB = [
         "K": 3.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1500,
+      "max": 2500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 300,
+      "max": 500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 50,
@@ -9264,8 +9329,16 @@ const CROP_DB = [
         "K": 1.2
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 300,
+      "max": 500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -9347,8 +9420,16 @@ const CROP_DB = [
         "K": 0.4
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1500,
+      "max": 2500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 250,
+      "max": 400,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -9427,8 +9508,16 @@ const CROP_DB = [
         "K": 0.2
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 400,
+      "max": 700,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -9516,8 +9605,16 @@ const CROP_DB = [
         "K": 0.4
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 800,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 15,
@@ -9604,8 +9701,16 @@ const CROP_DB = [
         "K": 8.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 4000,
+      "max": 6000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 400,
+      "max": 700,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 50,
@@ -9689,8 +9794,16 @@ const CROP_DB = [
         "K": 9.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 3000,
+      "max": 5000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 900,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 45,
@@ -9774,8 +9887,16 @@ const CROP_DB = [
         "K": 7.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 300,
+      "max": 500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 45,
@@ -9853,8 +9974,16 @@ const CROP_DB = [
         "K": 3.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1500,
+      "max": 2500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 400,
+      "max": 600,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -9935,8 +10064,16 @@ const CROP_DB = [
         "K": 4.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 3000,
+      "max": 5000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 250,
+      "max": 400,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 60,
@@ -10013,8 +10150,16 @@ const CROP_DB = [
         "K": 6.4
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 3000,
+      "max": 5000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 200,
+      "max": 350,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 80,
@@ -10096,8 +10241,16 @@ const CROP_DB = [
         "K": 15.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 300,
+      "max": 600,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 100,
@@ -10175,8 +10328,16 @@ const CROP_DB = [
         "K": 10.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 4000,
+      "max": 6000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 100,
+      "max": 200,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 100,
@@ -10256,8 +10417,16 @@ const CROP_DB = [
         "K": 0.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1500,
+      "max": 2500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 400,
+      "max": 600,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -10339,8 +10508,16 @@ const CROP_DB = [
         "K": 0.8
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 800,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 25,
@@ -10421,8 +10598,16 @@ const CROP_DB = [
         "K": 0.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 800,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 15,
@@ -10500,8 +10685,16 @@ const CROP_DB = [
         "K": 0.6
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 300,
+      "max": 500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 600,
+      "max": 1000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -10585,8 +10778,16 @@ const CROP_DB = [
         "K": 3.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 4500,
+      "max": 6000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 80,
+      "max": 150,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -10669,8 +10870,16 @@ const CROP_DB = [
         "K": 0.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2500,
+      "max": 3500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 150,
+      "max": 250,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 15,
@@ -10753,8 +10962,16 @@ const CROP_DB = [
         "K": 6.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1500,
+      "max": 2200,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 400,
+      "max": 700,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 80,
@@ -10835,8 +11052,16 @@ const CROP_DB = [
         "K": 1.9
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 300,
+      "max": 500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -10915,8 +11140,16 @@ const CROP_DB = [
         "K": 6.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1000,
+      "max": 1800,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -10996,8 +11229,16 @@ const CROP_DB = [
         "K": 10.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 150,
+      "max": 300,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -11072,8 +11313,16 @@ const CROP_DB = [
         "K": 150.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1500,
+      "max": 2500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 900,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 500,
@@ -11150,8 +11399,16 @@ const CROP_DB = [
         "K": 200.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 500,
+      "max": 1000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 600,
+      "max": 1000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 500,
@@ -11225,8 +11482,16 @@ const CROP_DB = [
         "K": 150.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 300,
+      "max": 600,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 400,
@@ -11301,8 +11566,16 @@ const CROP_DB = [
         "K": 200.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 900,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 300,
@@ -11377,8 +11650,16 @@ const CROP_DB = [
         "K": 200.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 400,
+      "max": 700,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 300,
@@ -11456,8 +11737,16 @@ const CROP_DB = [
         "K": 180.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1500,
+      "max": 2500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 400,
+      "max": 700,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 300,
@@ -11531,8 +11820,16 @@ const CROP_DB = [
         "K": 120.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 300,
+      "max": 500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 400,
@@ -11608,8 +11905,16 @@ const CROP_DB = [
         "K": 120.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 900,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 400,
@@ -11684,8 +11989,16 @@ const CROP_DB = [
         "K": 120.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 200,
+      "max": 400,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 400,
@@ -11760,8 +12073,16 @@ const CROP_DB = [
         "K": 120.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 200,
+      "max": 350,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 400,
@@ -11838,8 +12159,16 @@ const CROP_DB = [
         "K": 40.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 50,
@@ -11915,8 +12244,16 @@ const CROP_DB = [
         "K": 40.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 100,
@@ -11993,8 +12330,16 @@ const CROP_DB = [
         "K": 200.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1000,
+      "max": 1800,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 600,
+      "max": 1000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 300,
@@ -12071,8 +12416,16 @@ const CROP_DB = [
         "K": 160.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 500,
+      "max": 1000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 900,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 300,
@@ -12150,8 +12503,16 @@ const CROP_DB = [
         "K": 80.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 200,
@@ -12228,8 +12589,16 @@ const CROP_DB = [
         "K": 200.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 500,
+      "max": 1000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 900,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 400,
@@ -12311,8 +12680,16 @@ const CROP_DB = [
         "K": 240.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 600,
@@ -12389,8 +12766,16 @@ const CROP_DB = [
         "K": 80.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 300,
@@ -12466,8 +12851,16 @@ const CROP_DB = [
         "K": 150.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 400,
@@ -12548,8 +12941,16 @@ const CROP_DB = [
         "K": 400.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 150,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 700,
@@ -12632,8 +13033,16 @@ const CROP_DB = [
         "K": 200.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 400,
+      "max": 700,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 200,
@@ -12709,8 +13118,16 @@ const CROP_DB = [
         "K": 300.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 500,
@@ -12797,8 +13214,16 @@ const CROP_DB = [
         "K": 20.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 2000,
+      "max": 3500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 300,
+      "max": 500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -12865,8 +13290,16 @@ const CROP_DB = [
         "K": 2.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -12934,8 +13367,16 @@ const CROP_DB = [
         "K": 4.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 500,
+      "max": 1000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 60,
@@ -13002,8 +13443,16 @@ const CROP_DB = [
         "K": 1.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -13070,8 +13519,16 @@ const CROP_DB = [
         "K": 1.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -13138,8 +13595,16 @@ const CROP_DB = [
         "K": 1.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -13206,8 +13671,16 @@ const CROP_DB = [
         "K": 1.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -13274,8 +13747,16 @@ const CROP_DB = [
         "K": 1.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -13342,8 +13823,16 @@ const CROP_DB = [
         "K": 0.4
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 1000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -13410,8 +13899,16 @@ const CROP_DB = [
         "K": 0.3
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -13478,8 +13975,16 @@ const CROP_DB = [
         "K": 0.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 15,
@@ -13546,8 +14051,16 @@ const CROP_DB = [
         "K": 1.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -13614,8 +14127,16 @@ const CROP_DB = [
         "K": 0.8
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 1000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 50,
@@ -13682,8 +14203,16 @@ const CROP_DB = [
         "K": 0.2
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -13750,8 +14279,16 @@ const CROP_DB = [
         "K": 0.2
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -13818,8 +14355,16 @@ const CROP_DB = [
         "K": 0.2
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 500,
+      "max": 1000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -13886,8 +14431,16 @@ const CROP_DB = [
         "K": 1.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -13954,8 +14507,16 @@ const CROP_DB = [
         "K": 1.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 200,
@@ -14022,8 +14583,16 @@ const CROP_DB = [
         "K": 1.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -14090,8 +14659,16 @@ const CROP_DB = [
         "K": 0.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 30,
+      "max": 80,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -14158,8 +14735,16 @@ const CROP_DB = [
         "K": 3.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 60,
@@ -14227,8 +14812,16 @@ const CROP_DB = [
         "K": 24.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 500,
+      "max": 1000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 300,
+      "max": 600,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 200,
@@ -14295,8 +14888,16 @@ const CROP_DB = [
         "K": 16.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 50,
@@ -14363,8 +14964,16 @@ const CROP_DB = [
         "K": 16.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 50,
@@ -14431,8 +15040,16 @@ const CROP_DB = [
         "K": 30.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 100,
@@ -14500,8 +15117,16 @@ const CROP_DB = [
         "K": 30.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 150,
@@ -14568,8 +15193,16 @@ const CROP_DB = [
         "K": 200.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 300,
@@ -14636,8 +15269,16 @@ const CROP_DB = [
         "K": 30.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 200,
@@ -14704,8 +15345,16 @@ const CROP_DB = [
         "K": 1.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 200,
@@ -14772,8 +15421,16 @@ const CROP_DB = [
         "K": 1.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -14840,8 +15497,16 @@ const CROP_DB = [
         "K": 1.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 60,
@@ -14908,8 +15573,16 @@ const CROP_DB = [
         "K": 0.6
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -14976,8 +15649,16 @@ const CROP_DB = [
         "K": 1.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -15044,8 +15725,16 @@ const CROP_DB = [
         "K": 1.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -15112,8 +15801,16 @@ const CROP_DB = [
         "K": 1.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 30,
+      "max": 80,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -15180,8 +15877,16 @@ const CROP_DB = [
         "K": 1.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 250,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -15249,8 +15954,16 @@ const CROP_DB = [
         "K": 0.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 3000,
+      "max": 5000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 800,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -15318,8 +16031,16 @@ const CROP_DB = [
         "K": 0.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 4000,
+      "max": 6000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 400,
+      "max": 700,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 15,
@@ -15387,8 +16108,16 @@ const CROP_DB = [
         "K": 0.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 500,
+      "max": 1000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 15,
@@ -15456,8 +16185,16 @@ const CROP_DB = [
         "K": 0.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 3000,
+      "max": 5000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 800,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 15,
@@ -15525,8 +16262,16 @@ const CROP_DB = [
         "K": 0.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 5,
+      "max": 20,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 20000,
+      "max": 50000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 200,
@@ -15594,8 +16339,16 @@ const CROP_DB = [
         "K": 0.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1,
+      "max": 5,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 30000,
+      "max": 80000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 400,
@@ -15663,8 +16416,16 @@ const CROP_DB = [
         "K": 200.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 5,
+      "max": 15,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 15000,
+      "max": 30000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 200,
@@ -15732,8 +16493,16 @@ const CROP_DB = [
         "K": 0.3
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -15801,8 +16570,16 @@ const CROP_DB = [
         "K": 0.4
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 500,
+      "max": 1000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -15870,8 +16647,16 @@ const CROP_DB = [
         "K": 0.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 400,
+      "max": 800,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -15939,8 +16724,16 @@ const CROP_DB = [
         "K": 2.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 50,
@@ -16008,8 +16801,16 @@ const CROP_DB = [
         "K": 0.8
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -16077,8 +16878,16 @@ const CROP_DB = [
         "K": 0.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 25,
@@ -16146,8 +16955,16 @@ const CROP_DB = [
         "K": 1.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -16215,8 +17032,16 @@ const CROP_DB = [
         "K": 1.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -16284,8 +17109,16 @@ const CROP_DB = [
         "K": 0.4
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -16353,8 +17186,16 @@ const CROP_DB = [
         "K": 0.3
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 1000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -16422,8 +17263,16 @@ const CROP_DB = [
         "K": 1.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -16490,8 +17339,16 @@ const CROP_DB = [
         "K": 0.3
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 500,
+      "max": 1000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -16558,8 +17415,16 @@ const CROP_DB = [
         "K": 0.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -16627,8 +17492,16 @@ const CROP_DB = [
         "K": 1.9
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 300,
+      "max": 600,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 5000,
+      "max": 15000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -16695,8 +17568,16 @@ const CROP_DB = [
         "K": 200.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 300,
@@ -16764,8 +17645,16 @@ const CROP_DB = [
         "K": 6.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1000,
+      "max": 1800,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -16832,8 +17721,16 @@ const CROP_DB = [
         "K": 1.8
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 3000,
+      "max": 5000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 200,
+      "max": 400,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -16901,8 +17798,16 @@ const CROP_DB = [
         "K": 0.4
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 800,
+      "max": 1500,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -16970,8 +17875,16 @@ const CROP_DB = [
         "K": 0.4
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 150,
+      "max": 250,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 1000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -17039,8 +17952,16 @@ const CROP_DB = [
         "K": 2.5
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -17108,8 +18029,16 @@ const CROP_DB = [
         "K": 20.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 100,
@@ -17177,8 +18106,16 @@ const CROP_DB = [
         "K": 15.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 200,
+      "max": 400,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 2500,
+      "max": 5000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 50,
@@ -17245,8 +18182,16 @@ const CROP_DB = [
         "K": 0.3
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 50,
+      "max": 150,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 5000,
+      "max": 10000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -17314,8 +18259,16 @@ const CROP_DB = [
         "K": 15.0
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 100,
+      "max": 300,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 100,
@@ -17383,8 +18336,16 @@ const CROP_DB = [
         "K": 1.7
       }
     },
-    "yield": null,
-    "price": null,
+    "yield": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "kg/10a（実勢推定値）"
+    },
+    "price": {
+      "min": 500,
+      "max": 1000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -17464,7 +18425,11 @@ const CROP_DB = [
       "max": 150,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 800,
+      "max": 1500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -17545,7 +18510,11 @@ const CROP_DB = [
       "max": 400,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 300,
+      "max": 600,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 45,
@@ -17625,7 +18594,11 @@ const CROP_DB = [
       "max": 150,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -17705,7 +18678,11 @@ const CROP_DB = [
       "max": 200,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 1000,
+      "max": 2000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -17785,7 +18762,11 @@ const CROP_DB = [
       "max": 3000,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 50,
+      "max": 100,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 900,
@@ -17865,7 +18846,11 @@ const CROP_DB = [
       "max": 250,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 300,
+      "max": 600,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -17945,7 +18930,11 @@ const CROP_DB = [
       "max": 350,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 200,
+      "max": 400,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -18025,7 +19014,11 @@ const CROP_DB = [
       "max": 300,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 400,
+      "max": 800,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -18106,7 +19099,11 @@ const CROP_DB = [
       "max": 1200,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 50,
+      "max": 150,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 15,
@@ -18186,7 +19183,11 @@ const CROP_DB = [
       "max": 500,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 300,
+      "max": 600,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -18266,7 +19267,11 @@ const CROP_DB = [
       "max": 1500,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 400,
+      "max": 700,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -18346,7 +19351,11 @@ const CROP_DB = [
       "max": 1200,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 300,
+      "max": 500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -18426,7 +19435,11 @@ const CROP_DB = [
       "max": 800,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 500,
+      "max": 900,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 10,
@@ -18506,7 +19519,11 @@ const CROP_DB = [
       "max": 1200,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 300,
+      "max": 500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -18587,7 +19604,11 @@ const CROP_DB = [
       "max": 1500,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 300,
+      "max": 500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 40,
@@ -18667,7 +19688,11 @@ const CROP_DB = [
       "max": 1500,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 200,
+      "max": 350,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 25,
@@ -18747,7 +19772,11 @@ const CROP_DB = [
       "max": 2000,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 250,
+      "max": 400,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 30,
@@ -18829,7 +19858,11 @@ const CROP_DB = [
       "max": 2000,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 300,
+      "max": 500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 15,
@@ -18909,7 +19942,11 @@ const CROP_DB = [
       "max": 1200,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 300,
+      "max": 500,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 25,
@@ -18989,7 +20026,11 @@ const CROP_DB = [
       "max": 1500,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 250,
+      "max": 400,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -19070,7 +20111,11 @@ const CROP_DB = [
       "max": 80,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 3000,
+      "max": 6000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -19151,7 +20196,11 @@ const CROP_DB = [
       "max": 100,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 2000,
+      "max": 4000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
@@ -19232,7 +20281,11 @@ const CROP_DB = [
       "max": 150,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 3000,
+      "max": 8000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 15,
@@ -19313,7 +20366,11 @@ const CROP_DB = [
       "max": 20,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 8000,
+      "max": 20000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 200,
@@ -19394,7 +20451,11 @@ const CROP_DB = [
       "max": 120,
       "unit": "kg/10a"
     },
-    "price": null,
+    "price": {
+      "min": 1500,
+      "max": 3000,
+      "unit": "円/kg（実勢推定値）"
+    },
     "risks": [],
     "plantingStandard": {
       "plantSpacing": 20,
