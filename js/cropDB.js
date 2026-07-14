@@ -3,6 +3,7 @@
 //  223件 重複統合済み・calendar(sow/harvest)全件更新
 //  最終更新: waterNeedLperSqmPerDay（1日あたり標準灌水量 L/m²/日）全223件追加
 //  追加更新: yield/price NULL 145件を実勢推定値で補完（unit内に「実勢推定値」と明記）
+//  追加更新: rainfallMin/Max・phMin/Max 12件、latMin/Max・elevMax・soilTypes 120件を補完
 // ═══════════════════════════════════════════════════════════
 const CROP_DB = [
   {
@@ -1949,7 +1950,11 @@ const CROP_DB = [
       "waterNeed": "medium",
       "continuousCropYears": 1,
       "growthPeriodMin": 50,
-      "growthPeriodMax": 70
+      "growthPeriodMax": 70,
+      "rainfallMin": 1000,
+      "rainfallMax": 1800,
+      "phMin": 5.5,
+      "phMax": 6.8
     },
     "calendar": {
       "sowing": [
@@ -2179,7 +2184,11 @@ const CROP_DB = [
       "waterNeed": "medium",
       "continuousCropYears": 1,
       "growthPeriodMin": 150,
-      "growthPeriodMax": 240
+      "growthPeriodMax": 240,
+      "rainfallMin": 800,
+      "rainfallMax": 1300,
+      "phMin": 6.0,
+      "phMax": 7.0
     },
     "calendar": {
       "seedling": [
@@ -3410,7 +3419,11 @@ const CROP_DB = [
       "waterNeed": "medium",
       "continuousCropYears": 1,
       "growthPeriodMin": 95,
-      "growthPeriodMax": 120
+      "growthPeriodMax": 120,
+      "rainfallMin": 900,
+      "rainfallMax": 1500,
+      "phMin": 6.0,
+      "phMax": 7.0
     },
     "calendar": {
       "seedling": [
@@ -3878,7 +3891,11 @@ const CROP_DB = [
       "waterNeed": "medium",
       "continuousCropYears": 2,
       "growthPeriodMin": 75,
-      "growthPeriodMax": 95
+      "growthPeriodMax": 95,
+      "rainfallMin": 900,
+      "rainfallMax": 1500,
+      "phMin": 5.5,
+      "phMax": 7.0
     },
     "calendar": {
       "sowing": [
@@ -4572,7 +4589,11 @@ const CROP_DB = [
       "waterNeed": "medium",
       "continuousCropYears": 10,
       "growthPeriodMin": 730,
-      "growthPeriodMax": 1095
+      "growthPeriodMax": 1095,
+      "rainfallMin": 900,
+      "rainfallMax": 1500,
+      "phMin": 6.0,
+      "phMax": 6.8
     },
     "calendar": {
       "manage": [
@@ -5288,7 +5309,11 @@ const CROP_DB = [
       "waterNeed": "medium",
       "continuousCropYears": 1,
       "growthPeriodMin": 40,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "rainfallMin": 900,
+      "rainfallMax": 1500,
+      "phMin": 6.0,
+      "phMax": 6.5
     },
     "calendar": {
       "sowing": [
@@ -6087,7 +6112,11 @@ const CROP_DB = [
       "waterNeed": "medium",
       "continuousCropYears": 1,
       "growthPeriodMin": 120,
-      "growthPeriodMax": 180
+      "growthPeriodMax": 180,
+      "rainfallMin": 1000,
+      "rainfallMax": 1500,
+      "phMin": 5.5,
+      "phMax": 6.5
     },
     "calendar": {
       "planting": [
@@ -6314,7 +6343,11 @@ const CROP_DB = [
       "waterNeed": "low",
       "continuousCropYears": 20,
       "growthPeriodMin": 1825,
-      "growthPeriodMax": 2190
+      "growthPeriodMax": 2190,
+      "rainfallMin": 900,
+      "rainfallMax": 1200,
+      "phMin": 5.5,
+      "phMax": 6.5
     },
     "calendar": {
       "manage": [
@@ -6524,7 +6557,11 @@ const CROP_DB = [
       "waterNeed": "medium",
       "continuousCropYears": 20,
       "growthPeriodMin": 2190,
-      "growthPeriodMax": 2555
+      "growthPeriodMax": 2555,
+      "rainfallMin": 900,
+      "rainfallMax": 1300,
+      "phMin": 5.5,
+      "phMax": 6.5
     },
     "calendar": {
       "manage": [
@@ -7089,7 +7126,11 @@ const CROP_DB = [
       "waterNeed": "medium",
       "continuousCropYears": 5,
       "growthPeriodMin": 180,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "rainfallMin": 1200,
+      "rainfallMax": 2000,
+      "phMin": 5.5,
+      "phMax": 6.5
     },
     "calendar": {
       "planting": [
@@ -7526,7 +7567,11 @@ const CROP_DB = [
       "waterNeed": "medium",
       "continuousCropYears": 5,
       "growthPeriodMin": 730,
-      "growthPeriodMax": 1095
+      "growthPeriodMax": 1095,
+      "rainfallMin": 1200,
+      "rainfallMax": 2000,
+      "phMin": 5.5,
+      "phMax": 6.5
     },
     "calendar": {
       "manage": [
@@ -7854,7 +7899,11 @@ const CROP_DB = [
       "waterNeed": "medium",
       "continuousCropYears": 1,
       "growthPeriodMin": 60,
-      "growthPeriodMax": 90
+      "growthPeriodMax": 90,
+      "rainfallMin": 800,
+      "rainfallMax": 2000,
+      "phMin": 5.5,
+      "phMax": 6.5
     },
     "calendar": {
       "manage": [
@@ -8536,7 +8585,15 @@ const CROP_DB = [
       "growthHabit": "acaulescent (or rosette plants)",
       "lifeSpan": "annual, biennial",
       "growthPeriodMin": 35,
-      "growthPeriodMax": 85
+      "growthPeriodMax": 85,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -8629,7 +8686,15 @@ const CROP_DB = [
       "growthHabit": "acaulescent (or rosette plants)",
       "lifeSpan": "annual, biennial, perennial",
       "growthPeriodMin": 40,
-      "growthPeriodMax": 90
+      "growthPeriodMax": 90,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -8727,7 +8792,15 @@ const CROP_DB = [
       "growthHabit": "acaulescent (or rosette plants)",
       "lifeSpan": "annual, biennial, perennial",
       "growthPeriodMin": 40,
-      "growthPeriodMax": 90
+      "growthPeriodMax": 90,
+      "latMin": 28,
+      "latMax": 43,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -8822,7 +8895,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 40,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -8915,7 +8996,15 @@ const CROP_DB = [
       "growthHabit": "acaulescent (or rosette plants)",
       "lifeSpan": "annual, biennial, perennial",
       "growthPeriodMin": 40,
-      "growthPeriodMax": 90
+      "growthPeriodMax": 90,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -9010,7 +9099,15 @@ const CROP_DB = [
       "growthHabit": "acaulescent (or rosette plants)",
       "lifeSpan": "annual, biennial, perennial",
       "growthPeriodMin": 40,
-      "growthPeriodMax": 90
+      "growthPeriodMax": 90,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -9101,7 +9198,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 50,
-      "growthPeriodMax": 100
+      "growthPeriodMax": 100,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -9193,7 +9298,15 @@ const CROP_DB = [
       "growthHabit": "acaulescent (or rosette plants)",
       "lifeSpan": "annual, biennial, perennial",
       "growthPeriodMin": 40,
-      "growthPeriodMax": 90
+      "growthPeriodMax": 90,
+      "latMin": 30,
+      "latMax": 50,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -9288,7 +9401,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 80,
-      "growthPeriodMax": 150
+      "growthPeriodMax": 150,
+      "latMin": 24,
+      "latMax": 38,
+      "elevMax": 500,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -9376,7 +9497,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual, biennial",
       "growthPeriodMin": 120,
-      "growthPeriodMax": 150
+      "growthPeriodMax": 150,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "transplant": [
@@ -9467,7 +9596,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual, perennial",
       "growthPeriodMin": 70,
-      "growthPeriodMax": 100
+      "growthPeriodMax": 100,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "transplant": [
@@ -9555,7 +9692,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 70,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -9652,7 +9797,15 @@ const CROP_DB = [
       "growthHabit": "prostrate/procumbent/semi-erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 0,
-      "growthPeriodMax": 0
+      "growthPeriodMax": 0,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "seedling": [
@@ -9748,7 +9901,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 180
+      "growthPeriodMax": 180,
+      "latMin": 28,
+      "latMax": 43,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "seedling": [
@@ -9841,7 +10002,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 180
+      "growthPeriodMax": 180,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "seedling": [
@@ -9934,7 +10103,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 50,
-      "growthPeriodMax": 180
+      "growthPeriodMax": 180,
+      "latMin": 24,
+      "latMax": 38,
+      "elevMax": 400,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -10021,7 +10198,15 @@ const CROP_DB = [
       "growthHabit": "climber/scrambler/scadent",
       "lifeSpan": "annual",
       "growthPeriodMin": 50,
-      "growthPeriodMax": 70
+      "growthPeriodMax": 70,
+      "latMin": 24,
+      "latMax": 38,
+      "elevMax": 400,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "seedling": [
@@ -10111,7 +10296,15 @@ const CROP_DB = [
       "growthHabit": "climber/scrambler/scadent",
       "lifeSpan": "annual",
       "growthPeriodMin": 40,
-      "growthPeriodMax": 100
+      "growthPeriodMax": 100,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -10197,7 +10390,15 @@ const CROP_DB = [
       "growthHabit": "climber/scrambler/scadent",
       "lifeSpan": "annual",
       "growthPeriodMin": 50,
-      "growthPeriodMax": 120
+      "growthPeriodMax": 120,
+      "latMin": 30,
+      "latMax": 40,
+      "elevMax": 400,
+      "soilTypes": [
+        "sandy_loam",
+        "loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "seedling": [
@@ -10288,7 +10489,15 @@ const CROP_DB = [
       "growthHabit": "climber/scrambler/scadent",
       "lifeSpan": "annual",
       "growthPeriodMin": 80,
-      "growthPeriodMax": 160
+      "growthPeriodMax": 160,
+      "latMin": 26,
+      "latMax": 40,
+      "elevMax": 400,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -10375,7 +10584,15 @@ const CROP_DB = [
       "growthHabit": "prostrate/procumbent/semi-erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 50,
-      "growthPeriodMax": 270
+      "growthPeriodMax": 270,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -10464,7 +10681,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 100,
-      "growthPeriodMax": 150
+      "growthPeriodMax": 150,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -10555,7 +10780,15 @@ const CROP_DB = [
       "growthHabit": "prostrate/procumbent/semi-erect, climber/scrambler/scadent",
       "lifeSpan": "annual",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 140
+      "growthPeriodMax": 140,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -10645,7 +10878,15 @@ const CROP_DB = [
       "growthHabit": "prostrate/procumbent/semi-erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 90,
-      "growthPeriodMax": 150
+      "growthPeriodMax": 150,
+      "latMin": 30,
+      "latMax": 40,
+      "elevMax": 400,
+      "soilTypes": [
+        "sandy_loam",
+        "loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -10732,7 +10973,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 50,
-      "growthPeriodMax": 80
+      "growthPeriodMax": 80,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -10825,7 +11074,15 @@ const CROP_DB = [
       "growthHabit": "acaulescent (or rosette plants)",
       "lifeSpan": "annual, biennial, perennial",
       "growthPeriodMin": 40,
-      "growthPeriodMax": 90
+      "growthPeriodMax": 90,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -10917,7 +11174,14 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 120,
-      "growthPeriodMax": 200
+      "growthPeriodMax": 200,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 200,
+      "soilTypes": [
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "transplant": [
@@ -11009,7 +11273,15 @@ const CROP_DB = [
       "growthHabit": "acaulescent (or rosette plants)",
       "lifeSpan": "biennial",
       "growthPeriodMin": 160,
-      "growthPeriodMax": 240
+      "growthPeriodMax": 240,
+      "latMin": 33,
+      "latMax": 50,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sowing": [
@@ -11099,7 +11371,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 270,
-      "growthPeriodMax": 300
+      "growthPeriodMax": 300,
+      "latMin": 24,
+      "latMax": 33,
+      "elevMax": 300,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "transplant": [
@@ -11187,7 +11467,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 220,
-      "growthPeriodMax": 350
+      "growthPeriodMax": 350,
+      "latMin": 33,
+      "latMax": 40,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "transplant": [
@@ -11276,7 +11564,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 240,
-      "growthPeriodMax": 270
+      "growthPeriodMax": 270,
+      "latMin": 33,
+      "latMax": 42,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -11360,7 +11656,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 150,
-      "growthPeriodMax": 180
+      "growthPeriodMax": 180,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -11446,7 +11750,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 180,
-      "growthPeriodMax": 210
+      "growthPeriodMax": 210,
+      "latMin": 30,
+      "latMax": 40,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -11529,7 +11841,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 140,
-      "growthPeriodMax": 330
+      "growthPeriodMax": 330,
+      "latMin": 32,
+      "latMax": 36,
+      "elevMax": 400,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -11613,7 +11933,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 140,
-      "growthPeriodMax": 330
+      "growthPeriodMax": 330,
+      "latMin": 32,
+      "latMax": 36,
+      "elevMax": 400,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -11697,7 +12025,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 210,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 30,
+      "latMax": 36,
+      "elevMax": 400,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -11784,7 +12120,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 30,
+      "latMax": 35,
+      "elevMax": 300,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -11867,7 +12211,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 30,
+      "latMax": 35,
+      "elevMax": 300,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -11952,7 +12304,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 140,
-      "growthPeriodMax": 330
+      "growthPeriodMax": 330,
+      "latMin": 30,
+      "latMax": 35,
+      "elevMax": 300,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -12036,7 +12396,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 140,
-      "growthPeriodMax": 330
+      "growthPeriodMax": 330,
+      "latMin": 30,
+      "latMax": 35,
+      "elevMax": 300,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -12120,7 +12488,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 120,
-      "growthPeriodMax": 180
+      "growthPeriodMax": 180,
+      "latMin": 35,
+      "latMax": 50,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -12206,7 +12582,15 @@ const CROP_DB = [
       "growthHabit": "climber/scrambler/scadent",
       "lifeSpan": "perennial",
       "growthPeriodMin": 0,
-      "growthPeriodMax": 0
+      "growthPeriodMax": 0,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -12291,7 +12675,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 120,
-      "growthPeriodMax": 300
+      "growthPeriodMax": 300,
+      "latMin": 33,
+      "latMax": 40,
+      "elevMax": 500,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -12377,7 +12769,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 180,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 30,
+      "latMax": 38,
+      "elevMax": 500,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -12463,7 +12863,15 @@ const CROP_DB = [
       "growthHabit": "climbing",
       "lifeSpan": "perennial",
       "growthPeriodMin": 180,
-      "growthPeriodMax": 270
+      "growthPeriodMax": 270,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -12550,7 +12958,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 365,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 33,
+      "latMax": 38,
+      "elevMax": 400,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -12636,7 +13052,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 150,
-      "growthPeriodMax": 180
+      "growthPeriodMax": 180,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -12727,7 +13151,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 150,
-      "growthPeriodMax": 210
+      "growthPeriodMax": 210,
+      "latMin": 35,
+      "latMax": 50,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -12813,7 +13245,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 240,
-      "growthPeriodMax": 270
+      "growthPeriodMax": 270,
+      "latMin": 33,
+      "latMax": 40,
+      "elevMax": 500,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -12898,7 +13338,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 365,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -12988,7 +13436,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 330,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 24,
+      "latMax": 30,
+      "elevMax": 200,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "transplant": [
@@ -13080,7 +13536,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 150,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 24,
+      "latMax": 30,
+      "elevMax": 200,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "manage": [
@@ -13165,7 +13629,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 330,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 24,
+      "latMax": 28,
+      "elevMax": 200,
+      "soilTypes": [
+        "sandy_loam",
+        "loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "transplant": [
@@ -13261,7 +13733,15 @@ const CROP_DB = [
       "growthHabit": "prostrate/procumbent/semi-erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 120,
-      "growthPeriodMax": 200
+      "growthPeriodMax": 200,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -13337,7 +13817,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 120
+      "growthPeriodMax": 120,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 1200,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -13414,7 +13902,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 1200,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -13490,7 +13986,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 120
+      "growthPeriodMax": 120,
+      "latMin": 35,
+      "latMax": 45,
+      "elevMax": 1300,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -13566,7 +14070,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 35,
+      "latMax": 45,
+      "elevMax": 1300,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -13642,7 +14154,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 35,
+      "latMax": 45,
+      "elevMax": 1300,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -13718,7 +14238,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 120
+      "growthPeriodMax": 120,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 1200,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -13794,7 +14322,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 150,
-      "growthPeriodMax": 180
+      "growthPeriodMax": 180,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -13870,7 +14406,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual, biennial",
       "growthPeriodMin": 120,
-      "growthPeriodMax": 150
+      "growthPeriodMax": 150,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -13946,7 +14490,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual, biennial",
       "growthPeriodMin": 120,
-      "growthPeriodMax": 150
+      "growthPeriodMax": 150,
+      "latMin": 38,
+      "latMax": 45,
+      "elevMax": 1400,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14022,7 +14574,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 0,
-      "growthPeriodMax": 0
+      "growthPeriodMax": 0,
+      "latMin": 35,
+      "latMax": 45,
+      "elevMax": 1300,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14098,7 +14658,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 180
+      "growthPeriodMax": 180,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14174,7 +14742,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 0,
-      "growthPeriodMax": 0
+      "growthPeriodMax": 0,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14250,7 +14826,14 @@ const CROP_DB = [
       "growthHabit": "erect, prostrate/procumbent/semi-erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 500,
+      "soilTypes": [
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14326,7 +14909,14 @@ const CROP_DB = [
       "growthHabit": "prostrate/procumbent/semi-erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 40,
-      "growthPeriodMax": 80
+      "growthPeriodMax": 80,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 500,
+      "soilTypes": [
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14402,7 +14992,14 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 150
+      "growthPeriodMax": 150,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 100,
+      "soilTypes": [
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14478,7 +15075,15 @@ const CROP_DB = [
       "growthHabit": "climbing",
       "lifeSpan": "perennial",
       "growthPeriodMin": 180,
-      "growthPeriodMax": 270
+      "growthPeriodMax": 270,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14554,7 +15159,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 90
+      "growthPeriodMax": 90,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14630,7 +15243,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 35,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14706,7 +15327,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 120
+      "growthPeriodMax": 120,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 1200,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14782,7 +15411,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 30,
+      "latMax": 43,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14859,7 +15496,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 36,
+      "latMax": 45,
+      "elevMax": 1500,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -14935,7 +15580,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 38,
+      "latMax": 45,
+      "elevMax": 1500,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15011,7 +15664,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 365,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15087,7 +15748,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 365,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 33,
+      "latMax": 40,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15164,7 +15833,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 365,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15240,7 +15917,15 @@ const CROP_DB = [
       "growthHabit": "climber/scrambler/scadent",
       "lifeSpan": "perennial",
       "growthPeriodMin": 210,
-      "growthPeriodMax": 330
+      "growthPeriodMax": 330,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15316,7 +16001,15 @@ const CROP_DB = [
       "growthHabit": "climbing",
       "lifeSpan": "perennial",
       "growthPeriodMin": 180,
-      "growthPeriodMax": 270
+      "growthPeriodMax": 270,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15392,7 +16085,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 35,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15468,7 +16169,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15544,7 +16253,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 90
+      "growthPeriodMax": 90,
+      "latMin": 35,
+      "latMax": 45,
+      "elevMax": 1200,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15620,7 +16337,15 @@ const CROP_DB = [
       "growthHabit": "acaulescent (or rosette plants)",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 90
+      "growthPeriodMax": 90,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15696,7 +16421,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15772,7 +16505,15 @@ const CROP_DB = [
       "growthHabit": "climber/scrambler/scadent",
       "lifeSpan": "perennial",
       "growthPeriodMin": 0,
-      "growthPeriodMax": 0
+      "growthPeriodMax": 0,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15848,7 +16589,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 35,
+      "latMax": 45,
+      "elevMax": 1200,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -15924,7 +16673,13 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 21,
-      "growthPeriodMax": 35
+      "growthPeriodMax": 35,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16001,7 +16756,13 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16078,7 +16839,13 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 30,
-      "growthPeriodMax": 60
+      "growthPeriodMax": 60,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16155,7 +16922,13 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 21,
-      "growthPeriodMax": 35
+      "growthPeriodMax": 35,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16232,7 +17005,13 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 365,
-      "growthPeriodMax": 1825
+      "growthPeriodMax": 1825,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 1200,
+      "soilTypes": [
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16309,7 +17088,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 1825,
-      "growthPeriodMax": 3650
+      "growthPeriodMax": 3650,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16386,7 +17173,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 365,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16463,7 +17258,15 @@ const CROP_DB = [
       "growthHabit": "erect, prostrate/procumbent/semi-erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 270,
-      "growthPeriodMax": 300
+      "growthPeriodMax": 300,
+      "latMin": 33,
+      "latMax": 50,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16540,7 +17343,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 120,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 30,
+      "latMax": 50,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16617,7 +17428,15 @@ const CROP_DB = [
       "growthHabit": "erect, prostrate/procumbent/semi-erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 140
+      "growthPeriodMax": 140,
+      "latMin": 30,
+      "latMax": 50,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16694,7 +17513,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 120,
-      "growthPeriodMax": 240
+      "growthPeriodMax": 240,
+      "latMin": 30,
+      "latMax": 40,
+      "elevMax": 500,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16771,7 +17598,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 100,
-      "growthPeriodMax": 200
+      "growthPeriodMax": 200,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16848,7 +17683,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 180,
-      "growthPeriodMax": 300
+      "growthPeriodMax": 300,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -16925,7 +17768,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 120,
-      "growthPeriodMax": 240
+      "growthPeriodMax": 240,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -17002,7 +17853,15 @@ const CROP_DB = [
       "growthHabit": "prostrate/procumbent/semi-erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 180,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 38,
+      "latMax": 50,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -17079,7 +17938,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 80,
-      "growthPeriodMax": 270
+      "growthPeriodMax": 270,
+      "latMin": 28,
+      "latMax": 43,
+      "elevMax": 500,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -17156,7 +18023,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 80,
-      "growthPeriodMax": 150
+      "growthPeriodMax": 150,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -17233,7 +18108,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 0,
-      "growthPeriodMax": 0
+      "growthPeriodMax": 0,
+      "latMin": 33,
+      "latMax": 50,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -17310,7 +18193,15 @@ const CROP_DB = [
       "growthHabit": "prostrate/procumbent/semi-erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 180
+      "growthPeriodMax": 180,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "clay",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -17386,7 +18277,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual, biennial",
       "growthPeriodMin": 0,
-      "growthPeriodMax": 0
+      "growthPeriodMax": 0,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 800,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -17462,7 +18361,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 0,
-      "growthPeriodMax": 0
+      "growthPeriodMax": 0,
+      "latMin": 35,
+      "latMax": 45,
+      "elevMax": 700,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -17539,7 +18446,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 365,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 1000,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "transplant": [
@@ -17615,7 +18530,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 270,
-      "growthPeriodMax": 300
+      "growthPeriodMax": 300,
+      "latMin": 24,
+      "latMax": 33,
+      "elevMax": 300,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -17692,7 +18615,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 0,
-      "growthPeriodMax": 0
+      "growthPeriodMax": 0,
+      "latMin": 24,
+      "latMax": 33,
+      "elevMax": 200,
+      "soilTypes": [
+        "sandy_loam",
+        "loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -17768,7 +18699,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 150,
-      "growthPeriodMax": 180
+      "growthPeriodMax": 180,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "transplant": [
@@ -17845,7 +18784,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 0,
-      "growthPeriodMax": 0
+      "growthPeriodMax": 0,
+      "latMin": 30,
+      "latMax": 45,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -17922,7 +18869,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 90,
-      "growthPeriodMax": 150
+      "growthPeriodMax": 150,
+      "latMin": 35,
+      "latMax": 50,
+      "elevMax": 700,
+      "soilTypes": [
+        "sandy_loam",
+        "loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -17999,7 +18954,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 0,
-      "growthPeriodMax": 0
+      "growthPeriodMax": 0,
+      "latMin": 33,
+      "latMax": 40,
+      "elevMax": 500,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -18076,7 +19039,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 0,
-      "growthPeriodMax": 0
+      "growthPeriodMax": 0,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -18153,7 +19124,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "annual",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 120
+      "growthPeriodMax": 120,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 900,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -18229,7 +19208,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "perennial",
       "growthPeriodMin": 60,
-      "growthPeriodMax": 365
+      "growthPeriodMax": 365,
+      "latMin": 33,
+      "latMax": 45,
+      "elevMax": 600,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
@@ -18306,7 +19293,15 @@ const CROP_DB = [
       "growthHabit": "erect",
       "lifeSpan": "biennial, perennial",
       "growthPeriodMin": 120,
-      "growthPeriodMax": 180
+      "growthPeriodMax": 180,
+      "latMin": 24,
+      "latMax": 35,
+      "elevMax": 300,
+      "soilTypes": [
+        "loam",
+        "sandy_loam",
+        "unknown"
+      ]
     },
     "calendar": {
       "sow": [
