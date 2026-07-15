@@ -157,6 +157,68 @@ function _crFilteredScores() {
   return scores;
 }
 
+// ─── 簡易フィルター（2026-07追加）: 総合 / 収益重視 / 手間少なめ ───
+// 初心者が「なぜこの20件なのか」を自分で絞り込めるよう、並び替え軸を追加する。
+// スコアそのものは変更せず、表示順だけを変える軽量な仕組み。
+let _crSortMode = 'score'; // 'score' | 'profit' | 'effort'
+
+const CR_SORT_LABELS = {
+  score:  '総合スコア順',
+  profit: '収益重視',
+  effort: '手間少なめ',
+};
+
+// 収益プロキシ：DBの収量×単価の中央値で概算（10a換算の粗収入目安）
+function _crRevenueProxy(crop) {
+  const y = crop.yield || {};
+  const p = crop.price || {};
+  const yieldVal = Number(y.max ?? y.min ?? 0) || 0;
+  const priceMin = Number(p.min);
+  const priceMax = Number(p.max);
+  const priceVal = (Number.isFinite(priceMin) && Number.isFinite(priceMax))
+    ? (priceMin + priceMax) / 2
+    : (Number.isFinite(priceMin) ? priceMin : (Number.isFinite(priceMax) ? priceMax : 0));
+  return yieldVal * priceVal;
+}
+
+// 手間プロキシ：リスク件数（栽培管理上の注意点の多さ）を簡易的な手間の目安とする
+function _crEffortProxy(crop) {
+  return Array.isArray(crop.risks) ? crop.risks.length : 0;
+}
+
+function _crApplySortMode(scores) {
+  if (_crSortMode === 'profit') {
+    return [...scores].sort((a, b) => _crRevenueProxy(b.crop) - _crRevenueProxy(a.crop));
+  }
+  if (_crSortMode === 'effort') {
+    return [...scores].sort((a, b) => {
+      const diff = _crEffortProxy(a.crop) - _crEffortProxy(b.crop);
+      return diff !== 0 ? diff : (b.score - a.score);
+    });
+  }
+  return scores; // 'score': 既にスコア降順で渡ってくる想定
+}
+
+function _crSetSortMode(mode) {
+  _crSortMode = mode;
+  if (document.getElementById('adp-view')?.classList.contains('open')) {
+    if (typeof _adpRenderRankingList === 'function') _adpRenderRankingList();
+  } else {
+    _crRenderList();
+  }
+}
+
+function _crSortBarHtml() {
+  return `
+    <div class="cr-sort-bar">
+      ${Object.entries(CR_SORT_LABELS).map(([key, label]) => `
+        <button type="button" class="cr-sort-btn ${_crSortMode === key ? 'active' : ''}"
+          onclick="_crSetSortMode('${key}')">${label}</button>
+      `).join('')}
+    </div>
+  `;
+}
+
 // ─── ランキングリスト描画 ───
 // Phase3以降: adp-view開中はcrSwitchMajor/crSwitchMinor/runAnalysis内の分岐により
 // _adpRenderRankingList() / _adpRenderGrowthRankingList()（area.js）が直接呼ばれ、
@@ -171,12 +233,13 @@ function _crFilteredScores() {
 function _crRenderList() {
   const el = document.getElementById('crop-ranking');
   if (!el) return;
-  const scores = _crFilteredScores();
-  if (!scores.length) {
-    el.innerHTML = '<div class="empty-mini">該当作物なし</div>';
+  const scoresRaw = _crFilteredScores();
+  if (!scoresRaw.length) {
+    el.innerHTML = _crSortBarHtml() + '<div class="empty-mini">該当作物なし</div>';
     return;
   }
-  el.innerHTML = scores.slice(0, 20).map((s, i) => {
+  const scores = _crApplySortMode(scoresRaw);
+  el.innerHTML = _crSortBarHtml() + scores.slice(0, 20).map((s, i) => {
     const cls = scoreCls(s.score);
     return `
       <div class="cr-item ${s.viable ? '' : 'cr-item-ng'}"
@@ -192,10 +255,46 @@ function _crRenderList() {
         <div class="cr-bar-track">
           <div class="cr-bar-fill ${s.viable ? cls : 'score-low'}" style="width:${s.viable ? s.score : 0}%"></div>
         </div>
-        ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
+        ${_crAlertHtml(s.alert)}
       </div>
     `;
   }).join('');
+}
+
+// ─── 警告表示ヘルパー（2026-07: NGで弾く代わりに、理由をしっかり伝える強調表示） ───
+function _crAlertHtml(alert) {
+  if (!alert) return '';
+  return `<div class="cr-alert cr-alert-strong">⚠️ ${escHtml(alert)}</div>`;
+}
+
+// ─── 「今月やること」ヘルパー（2026-07追加） ───
+// 診断結果の直下で「今この瞬間、何をすればいいか」が一目でわかるよう、
+// crop.calendar（sowing/manage/harvest/prep, memo）から当月の作業を抽出して表示する。
+// buildWorkCalendarHTML()の詳細版とは別に、常時1目で分かる要約として置く。
+function _crThisMonthTaskHtml(crop) {
+  const cal = crop?.calendar;
+  if (!cal) return '';
+  const month = new Date().getMonth() + 1;
+  const acts = [];
+  if (Array.isArray(cal.sowing)  && cal.sowing.includes(month))  acts.push({ label: '🌱 種まき・植え付けの時期', memo: cal.memo?.sowing });
+  if (Array.isArray(cal.manage)  && cal.manage.includes(month))  acts.push({ label: '🌿 管理・生育中', memo: cal.memo?.manage });
+  if (Array.isArray(cal.harvest) && cal.harvest.includes(month)) acts.push({ label: '🌾 収穫の時期', memo: cal.memo?.harvest });
+  if (!acts.length && Array.isArray(cal.prep) && cal.prep.includes(month)) {
+    acts.push({ label: '🧑\u200d🌾 準備・休閑期', memo: cal.memo?.prep || '次の作付けに向けた土づくりの時期です。' });
+  }
+  if (!acts.length) return '';
+
+  return `
+    <div class="cr-thismonth">
+      <div class="cr-thismonth-title">📅 今月(${month}月)やること</div>
+      ${acts.map(a => `
+        <div class="cr-thismonth-item">
+          <div class="cr-thismonth-label">${a.label}</div>
+          ${a.memo ? `<div class="cr-thismonth-memo">${escHtml(a.memo)}</div>` : ''}
+        </div>
+      `).join('')}
+    </div>
+  `;
 }
 
 // ─── 作物×土地プロフィールのゲージ生成 ───
@@ -657,21 +756,28 @@ function runSingleCropAnalysis(areaName) {
         <div class="cr-bar-fill ${s.viable ? cls : 'score-low'}"
           style="width:${s.viable ? s.score : 0}%"></div>
       </div>
-      ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
+      ${_crAlertHtml(s.alert)}
+      ${_crThisMonthTaskHtml(result.crop)}
       <div class="cr-gauge-wrap">
         ${_crBuildGauges(result.crop, lp, result.cultivationMode)}
       </div>
     </div>
     <div class="sc-detail-section">
       <div class="sc-detail-title">スコア詳細</div>
-      ${s.details.map(d => {
-        const icon = d.ok === true ? '✓' : d.ok === false ? '✗' : '–';
-        const cls  = d.ok === true ? 'det-ok' : d.ok === false ? 'det-ng' : 'det-na';
-        return `<div class="crop-detail-row">
-          <span class="det-icon ${cls}">${icon}</span>
-          <span class="det-text">${escHtml(d.text)}</span>
-        </div>`;
-      }).join('')}
+      <div class="sc-detail-grid">
+        ${s.details.map(d => {
+          const icon = d.ok === true ? '✓' : d.ok === false ? '✗' : '–';
+          const cls  = d.ok === true ? 'det-ok' : d.ok === false ? 'det-ng' : 'det-na';
+          const axisIcon = _scAxisIcon(d.text);
+          return `<div class="sc-detail-cell ${cls}">
+            <div class="sc-detail-cell-head">
+              <span class="sc-detail-axis-icon">${axisIcon}</span>
+              <span class="det-icon ${cls}">${icon}</span>
+            </div>
+            <div class="det-text">${escHtml(d.text)}</div>
+          </div>`;
+        }).join('')}
+      </div>
     </div>
   `;
 
@@ -694,6 +800,20 @@ function runSingleCropAnalysis(areaName) {
   }
 }
 
+// ─── スコア詳細セクション用: 項目名から軸アイコンを判定（2026-07追加） ───
+// 「気温・土壌・pH・降水量・緯度・標高・日照」がひと目でわかるよう、
+// テキストの先頭キーワードからアイコンを割り当てる（文言自体は変更しない＝正確性は維持）。
+function _scAxisIcon(text) {
+  const t = String(text || '');
+  if (t.includes('気温'))       return '🌡️';
+  if (t.includes('緯度'))       return '🌐';
+  if (t.includes('標高'))       return '⛰️';
+  if (t.includes('土壌タイプ')) return '🪨';
+  if (t.includes('降水量'))     return '🌧️';
+  if (t.includes('日照'))       return '☀️';
+  if (t.includes('pH'))         return '🧪';
+  return '📋';
+}
 // ─── 施肥結果描画（計算済みデータ受取版） ───
 // targetId: 描画先要素ID。実務タブ既定値は 'fert-result'、分析側からは 'fert-result-analysis' を渡す。
 function _renderFertResultFromData(crop, fert, targetId = 'fert-result') {

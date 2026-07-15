@@ -171,11 +171,13 @@ function scoreCrop(crop, areaData) {
     Array.isArray(_decadeArr.tMean) && _decadeArr.tMean.length === 36;
 
   // ハウス補正:
-  //   greenhouse      → 最低気温閾値(tempMeanMin)を-4℃して判定を緩める（下限のみ）
-  //   heatedGreenhouse → 旬別に個別計算するためここでは定義しない
-  //   上限(tempMeanMax)・実測データ(tMean)は一切補正しない
+  //   greenhouse      → 最低気温閾値(tempMeanMin)を-4℃して判定を緩める（下限）
+  //   heatedGreenhouse → 旬別に個別計算するためここでは定義しない（下限）
+  //   2026-07追加: 遮光・換気を想定し、上限(tempMeanMax)はハウス・加温共通で+2℃緩和する。
+  //   実測データ(tMean等)自体は一切補正しない（閾値側のみ調整）。
   const houseMinOffset = cultivationMode === 'greenhouse' ? 4 : 0; // 閾値から引く量（正値）
   const isHeated       = cultivationMode === 'heatedGreenhouse';
+  const houseMaxOffset = (cultivationMode === 'greenhouse' || isHeated) ? 2 : 0; // 上限に足す量（正値）
 
   // ── 生育旬を特定（0-indexed: 0=1月上旬 … 35=12月下旬）──
   let growthDecades = null; // null = 特定不能
@@ -215,10 +217,11 @@ function scoreCrop(crop, areaData) {
         const tMin = _decadeArr.tMin[i];
         // 下限閾値を緩める（データ側は触らない）
         const effectiveTMin = c.tempMeanMin - houseMinOffset; // greenhouse: -4緩和
+        const effectiveTMax = c.tempMeanMax + houseMaxOffset; // greenhouse/加温: +2緩和
         const tAdjusted = isHeated
           ? Math.max(tMean, c.tempMeanMin)
           : tMean;
-        if (isHeated || (tAdjusted >= effectiveTMin && tAdjusted <= c.tempMeanMax)) {
+        if (isHeated || (tAdjusted >= effectiveTMin && tAdjusted <= effectiveTMax)) {
           candidates.push({ idx: i, tMean: tMean }); // tMean は実測値のまま格納
         }
       }
@@ -260,7 +263,7 @@ function scoreCrop(crop, areaData) {
       const tMax  = _decadeArr.tMax[i];
       if (tMean === null) { decadeMatch[i] = null; return; }
       const tMin2 = c.tempMeanMin ?? -Infinity;
-      const tMax2 = c.tempMeanMax ??  Infinity;
+      const tMax2 = (c.tempMeanMax ?? Infinity) + houseMaxOffset; // 2026-07: ハウス/加温+2℃緩和
 
       if (isHeated) {
         if (tMean > tMax2 + 2) {
@@ -346,18 +349,20 @@ function scoreCrop(crop, areaData) {
       details.push({ ok: diff < 10, text: `加温ハウス — 年均気温差 ${diff.toFixed(1)}℃補填` });
       if (diff >= 10) severeTemp = `加温が必要な気温差が非常に大きく（${diff.toFixed(1)}℃）、現実的な加温コストを超える可能性があります`;
     } else {
-      // 下限: ハウス時は閾値を-4緩和、上限: rawBase をそのまま比較
+      // 下限: ハウス時は閾値を-4緩和 / 上限: ハウス・加温時は+2緩和（2026-07: 遮光・換気想定）
       const effectiveTMin = (c.tempMeanMin ?? -Infinity) - (isHouseMode ? 4 : 0);
-      const ok = rawBase >= effectiveTMin && rawBase <= (c.tempMeanMax ?? Infinity);
+      const effectiveTMax = (c.tempMeanMax ??  Infinity) + houseMaxOffset;
+      const ok = rawBase >= effectiveTMin && rawBase <= effectiveTMax;
       if (ok) {
         score += 25;
-        const label = isHouseMode ? `${modeLabel}（下限-4℃緩和）` : modeLabel;
+        const label = isHouseMode ? `${modeLabel}（下限-4℃/上限+2℃緩和）` : modeLabel;
         details.push({ ok: true,  text: `推定年均気温 ${rawBase.toFixed(1)}℃ — 適正（${label}）` });
       } else {
         const effMinLabel = isHouseMode ? `${c.tempMeanMin}-4` : c.tempMeanMin;
-        details.push({ ok: false, text: `推定年均気温 ${rawBase.toFixed(1)}℃ — 適正外(${effMinLabel}–${c.tempMeanMax}℃)` });
-        const tempDist = rawBase < effectiveTMin ? (effectiveTMin - rawBase) : (rawBase - (c.tempMeanMax ?? Infinity));
-        if (tempDist >= 3) severeTemp = `推定年均気温が適正範囲から大きく外れています（${effMinLabel}〜${c.tempMeanMax}℃、推定${rawBase.toFixed(1)}℃）`;
+        const effMaxLabel = isHouseMode ? `${c.tempMeanMax}+2` : c.tempMeanMax;
+        details.push({ ok: false, text: `推定年均気温 ${rawBase.toFixed(1)}℃ — 適正外(${effMinLabel}–${effMaxLabel}℃)` });
+        const tempDist = rawBase < effectiveTMin ? (effectiveTMin - rawBase) : (rawBase - effectiveTMax);
+        if (tempDist >= 3) severeTemp = `推定年均気温が適正範囲から大きく外れています（${effMinLabel}〜${effMaxLabel}℃、推定${rawBase.toFixed(1)}℃）`;
       }
     }
   }

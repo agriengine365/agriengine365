@@ -3306,8 +3306,15 @@ function _adpRenderClimateRankingList(el, pane) {
     list = list.filter(r => allowedCats.includes(r.crop.category));
   }
 
+  // 2026-07: 簡易フィルター（総合/収益重視/手間少なめ）は「適合度ランキング」タブのみに適用。
+  // 「生育期間」タブは並び順の意味合いが異なるため対象外とする。
+  const sortBarHtml = (pane === 'ranking' && typeof _crSortBarHtml === 'function') ? _crSortBarHtml() : '';
+  if (pane === 'ranking' && typeof _crApplySortMode === 'function') {
+    list = _crApplySortMode(list);
+  }
+
   if (!list.length) {
-    el.innerHTML = '<div class="empty-mini">該当作物なし</div>';
+    el.innerHTML = sortBarHtml + '<div class="empty-mini">該当作物なし</div>';
     return;
   }
 
@@ -3383,6 +3390,7 @@ function _adpRenderClimateRankingList(el, pane) {
   }).join('');
 
   el.innerHTML =
+    sortBarHtml +
     `<div class="adp-climate-mode-note">🌿 ${currentAreaData?.name ?? 'エリア'}の気候：旬別気温・日照から播種適期を算出</div>` +
     itemsHtml;
 }
@@ -3399,11 +3407,12 @@ function _adpRenderRankingList() {
   }
 
   // ── DBモード（従来） ──
-  const scores = _crFilteredScores();
+  const scoresRaw = _crFilteredScores();
+  const scores    = (typeof _crApplySortMode === 'function') ? _crApplySortMode(scoresRaw) : scoresRaw;
   const mode   = currentAreaData?.cultivationMode || 'openField';
 
   if (!scores.length) {
-    el.innerHTML = '<div class="empty-mini">該当作物なし</div>';
+    el.innerHTML = (typeof _crSortBarHtml === 'function' ? _crSortBarHtml() : '') + '<div class="empty-mini">該当作物なし</div>';
     return;
   }
 
@@ -3451,12 +3460,14 @@ function _adpRenderRankingList() {
         <div class="cr-bar-track">
           <div class="cr-bar-fill ${scoreCls}" style="width:${s.score}%"></div>
         </div>
+        ${(typeof _crAlertHtml === 'function') ? _crAlertHtml(s.alert) : ''}
         <div class="season-block-wrap">${seasonHtml}</div>
       </div>
     `;
   }).join('');
 
-  el.innerHTML = '<div class="adp-db-mode-note">📊 一般データベース：DB平年値ベースの適正スコア</div>' + summaryHtml + itemsHtml;
+  el.innerHTML = (typeof _crSortBarHtml === 'function' ? _crSortBarHtml() : '')
+    + '<div class="adp-db-mode-note">📊 一般データベース：DB平年値ベースの適正スコア</div>' + summaryHtml + itemsHtml;
 }
 
 // ═══════════════════════════════════════════
