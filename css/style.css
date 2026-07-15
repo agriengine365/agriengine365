@@ -2054,6 +2054,8 @@ html.draw-dialog-active #draw-scope {
 .rg-status-in      { font-size: 10px; font-family: var(--mono); font-weight: 700; color: #4ade80; }
 .rg-status-out     { font-size: 10px; font-family: var(--mono); font-weight: 700; color: #f87171; }
 .rg-status-missing { font-size: 10px; font-family: var(--mono); font-weight: 700; color: var(--text3); }
+/* 2026-07追加: 加温ハウスで下限気温を暖房補完できる場合の緩和ステータス（紫＝加温系で統一） */
+.rg-status-heated  { font-size: 10px; font-family: var(--mono); font-weight: 700; color: #a78bfa; }
 
 /* トラックラッパー（マーカーラベルのはみ出し分を確保） */
 .rg-track-wrap {
@@ -2168,6 +2170,18 @@ html.draw-dialog-active #draw-scope {
   border-radius: 1px;
   box-shadow: 0 0 4px rgba(239,68,68,0.6);
   flex-shrink: 0;
+}
+
+/* 2026-07追加: 栽培方式（ハウス/加温）による補正・注記キャプション */
+.rg-mode-note {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text3);
+  margin-top: 5px;
+  padding: 5px 7px;
+  background: rgba(167,139,250,0.10);
+  border-left: 2px solid #a78bfa;
+  border-radius: 0 4px 4px 0;
 }
 
 
@@ -3682,6 +3696,18 @@ html.draw-dialog-active #draw-scope {
   color: #0a1a0c;
 }
 
+/* 2026-07追加: 栽培方式ボタンの効果説明キャプション（常時表示・タップ不要） */
+.ie-cult-note {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text3, #7a8f7c);
+  background: var(--bg3, rgba(74,222,128,0.06));
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+.ie-cult-note b { color: var(--text2, #9ab8a0); }
+
 /* ═══════════════════════════════════════════
    ADP 気温折れ線グラフ（ランキングアコーディオン内包）
 ═══════════════════════════════════════════ */
@@ -3724,16 +3750,61 @@ html.draw-dialog-active #draw-scope {
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: 12px; /* 2026-07: 10px→12pxに拡大（高齢者にも見やすく） */
   color: var(--text2);
   white-space: nowrap;
 }
 
 .adp-tl-dot {
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+/* 2026-07追加: 色覚多様性対応。不適旬は色だけでなく斜線パターンでも区別できるようにする */
+.adp-tl-dot-hatched {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255,255,255,0.85) 0px,
+    rgba(255,255,255,0.85) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* ─── 凡例の折りたたみ詳細（2026-07追加） ───
+   常時表示は主要4項目に絞り、残りは<details>で折りたたむ。
+   ネイティブ要素を使うことで追加JS不要・タップ操作も分かりやすい。 */
+.adp-tl-details {
+  width: 100%;
+  margin-top: 4px;
+}
+.adp-tl-details-summary {
+  font-size: 12px;
+  color: var(--text3, #7a8f7c);
+  cursor: pointer;
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 2px;
+  user-select: none;
+}
+.adp-tl-details-summary::-webkit-details-marker { display: none; }
+.adp-tl-details-summary::before {
+  content: '▸';
+  display: inline-block;
+  transition: transform 0.15s ease;
+}
+.adp-tl-details[open] .adp-tl-details-summary::before {
+  transform: rotate(90deg);
+}
+.adp-tl-details-body {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 2px 2px;
 }
 /* ═══════════════════════════════════════════════════════
    ADP 統合ペイン（気温適性タブ: グラフ固定上部 + ランキング下部スクロール）
@@ -8571,8 +8642,19 @@ html.draw-dialog-active .bottom-nav {
   border-radius: 12px;
   padding: 10px 10px 8px;
   min-width: 140px;
+  max-width: 260px; /* 2026-07: 説明キャプション追加に伴い上限を設定 */
   box-shadow: 0 8px 24px rgba(0,0,0,0.35);
 }
+
+/* 2026-07追加: 各ボタン直下の効果説明キャプション */
+.adp-cult-popup-note {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text3);
+  padding: 0 10px 6px;
+  margin-top: -2px;
+}
+.adp-cult-popup-note b { color: var(--text2); }
 
 .adp-cult-popup-title {
   font-size: 10px;

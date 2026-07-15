@@ -280,9 +280,12 @@ function renderAreaItem(area, container) {
       <div class="field">
         <label>栽培方式（実務マスター・分析タブのサマリーバッジはこれとは独立した一時切替です）</label>
         <div class="ie-cult-row" style="display:flex;gap:8px;">
-          <button type="button" class="adp-cult-btn${(area.cultivationMode || 'openField') === 'openField' ? ' active' : ''}" data-mode="openField" onclick="selectIECult(this)">露地</button>
-          <button type="button" class="adp-cult-btn${area.cultivationMode === 'greenhouse' ? ' active' : ''}" data-mode="greenhouse" onclick="selectIECult(this)">ハウス</button>
-          <button type="button" class="adp-cult-btn${area.cultivationMode === 'heatedGreenhouse' ? ' active' : ''}" data-mode="heatedGreenhouse" onclick="selectIECult(this)">加温</button>
+          <button type="button" class="adp-cult-btn${(area.cultivationMode || 'openField') === 'openField' ? ' active' : ''}" data-mode="openField" onclick="selectIECult(this)" title="外気温そのままで判定します">露地</button>
+          <button type="button" class="adp-cult-btn${area.cultivationMode === 'greenhouse' ? ' active' : ''}" data-mode="greenhouse" onclick="selectIECult(this)" title="最低気温の基準を4℃緩めて判定します（暑さ側は変わりません）">ハウス</button>
+          <button type="button" class="adp-cult-btn${area.cultivationMode === 'heatedGreenhouse' ? ' active' : ''}" data-mode="heatedGreenhouse" onclick="selectIECult(this)" title="人工的に暖房して育てる前提で判定します。外気温との差が大きいほどスコアが下がります（加温コスト増の目安）">加温</button>
+        </div>
+        <div class="ie-cult-note">
+          🏠 ハウス：最低気温の基準を<b>4℃緩和</b>（暑さ側は補正なし）　/　🔥 加温：<b>暖房前提</b>で判定。外気温との差が大きいほど減点されます
         </div>
       </div>
       <div class="field">
@@ -1161,9 +1164,12 @@ function _adpEnsureView() {
     <div id="adp-cult-popup" class="adp-cult-popup" style="display:none;" onclick="_adpCloseCultPopup()">
       <div class="adp-cult-popup-inner" onclick="event.stopPropagation()">
         <div class="adp-cult-popup-title">🌡️ 栽培方式を選ぶ</div>
-        <button class="adp-cult-popup-btn" data-mode="openField"        onclick="_adpCultPopupSelect('openField')">🌾 露地</button>
-        <button class="adp-cult-popup-btn" data-mode="greenhouse"       onclick="_adpCultPopupSelect('greenhouse')">🏠 ハウス</button>
-        <button class="adp-cult-popup-btn" data-mode="heatedGreenhouse" onclick="_adpCultPopupSelect('heatedGreenhouse')">🔥 加温ハウス</button>
+        <button class="adp-cult-popup-btn" data-mode="openField"        onclick="_adpCultPopupSelect('openField')" title="外気温そのままで判定します">🌾 露地</button>
+        <div class="adp-cult-popup-note">外気温そのままで判定します</div>
+        <button class="adp-cult-popup-btn" data-mode="greenhouse"       onclick="_adpCultPopupSelect('greenhouse')" title="最低気温の基準を4℃緩めて判定します">🏠 ハウス</button>
+        <div class="adp-cult-popup-note">最低気温の基準を<b>4℃緩和</b>して判定（暑さ側は補正なし）</div>
+        <button class="adp-cult-popup-btn" data-mode="heatedGreenhouse" onclick="_adpCultPopupSelect('heatedGreenhouse')" title="暖房前提で判定します。外気温との差が大きいほど減点されます">🔥 加温ハウス</button>
+        <div class="adp-cult-popup-note">暖房で<b>設定温度まで補う</b>前提。外気温との差が大きいほど加温コストが増え、スコアも下がります</div>
       </div>
     </div>
 
@@ -1751,7 +1757,7 @@ function _adpUpdateSummaryBar({ cropName, areaName, score, mode, evalMode, confP
   const gradeEl  = document.getElementById('adp-sum-score-grade');
   if (scoreNum != null) {
     if (scoreBar) scoreBar.style.width = scoreNum + '%';
-    if (scoreEl)  scoreEl.textContent  = scoreNum + '%';
+    if (scoreEl)  scoreEl.textContent  = (typeof scoreBadgeText === 'function') ? scoreBadgeText(scoreNum) : Math.round(scoreNum) + '点';
     const gradeColor = scoreNum >= 70 ? 'var(--green)' : scoreNum >= 40 ? 'var(--amber)' : 'var(--red)';
     if (scoreBar) scoreBar.style.background = gradeColor;
     if (scoreEl)  scoreEl.style.color       = gradeColor;
@@ -3234,6 +3240,18 @@ function _crBonusRowHtml(diurnal) {
   </div>`;
 }
 
+// ─── スコアバッジ表示ヘルパー（analysis.js側と表記を統一） ───
+// 「%」表記は確率のように誤解されやすいため「点」表記＋◎○△×の4段階アイコンにする。
+// analysis.js側で同名の関数(scoreBadgeText等)が既に定義されていればそれを使い、
+// 未ロードの場合でも動くようフォールバックを用意する。
+function _adpScoreIcon(score) {
+  return score >= 70 ? '◎' : score >= 45 ? '○' : score >= 20 ? '△' : '×';
+}
+function _adpScoreBadgeText(score) {
+  if (typeof scoreBadgeText === 'function') return scoreBadgeText(score);
+  return `${_adpScoreIcon(score)} ${Math.round(score)}点`;
+}
+
 function _adpRenderClimateRankingList(el, pane) {
   if (!_adpClimateRanking) {
     el.innerHTML = '<div class="empty-mini">気候データ取得中です。しばらくしてから再度タップしてください。</div>';
@@ -3350,7 +3368,7 @@ function _adpRenderClimateRankingList(el, pane) {
         <div class="cr-item-header">
           <span class="cr-rank">#${i + 1}</span>
           <span class="cr-name">${escHtml(r.crop.name)}${gpStr}</span>
-          <span class="cr-score ${scoreCls}">${r.score}%</span>
+          <span class="cr-score ${scoreCls}">${_adpScoreBadgeText(r.score)}</span>
           <svg class="cr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
@@ -3425,7 +3443,7 @@ function _adpRenderRankingList() {
         <div class="cr-item-header">
           <span class="cr-rank">#${i + 1}${rankDiffHtml}</span>
           <span class="cr-name">${escHtml(s.crop.name)}${gpStr}</span>
-          <span class="cr-score ${scoreCls}">${s.score}%</span>
+          <span class="cr-score ${scoreCls}">${_adpScoreBadgeText(s.score)}</span>
           <svg class="cr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
@@ -3799,7 +3817,7 @@ function _adpRenderTempChart(cropId) {
   ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
   ctx.clearRect(0, 0, W, H);
 
-  const PAD = { top: 14, right: 40, bottom: 34, left: 32 };
+  const PAD = { top: 14, right: 54, bottom: 34, left: 32 }; // 2026-07: フォント拡大(12px)に合わせ右余白を拡張
   const gW  = W - PAD.left - PAD.right;
   const gH  = H - PAD.top  - PAD.bottom;
   const N   = 36; // 旬数
@@ -3857,7 +3875,7 @@ function _adpRenderTempChart(cropId) {
     ctx.lineWidth   = 1;
     ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + gW, y); ctx.stroke();
     ctx.fillStyle = 'rgba(90,122,92,0.85)';
-    ctx.font      = '9px DM Mono, monospace';
+    ctx.font      = '12px DM Mono, monospace';
     ctx.textAlign = 'right';
     ctx.fillText(val + '°', PAD.left - 4, y + 3);
   }
@@ -3906,17 +3924,19 @@ function _adpRenderTempChart(cropId) {
 
     if (decadeMatch && decadeMatch.length === N) {
       // ─ 旬別カラーバー（グラフ底部に帯として描画）─
-      // 適合: 緑 / 境界: 黄 / 不適合: 赤 / 加温補填: 紫 / 非生育旬: 透明
-      const BAR_H  = 6;  // 底部帯の高さ（px）
+      // 適合: 緑 / 境界: 黄 / 不適合: 赤+斜線ハッチング / 加温補填: 紫 / 非生育旬: 透明
+      // 2026-07: 赤緑を色だけで区別すると色覚多様性の方には見分けにくいため、
+      // 「不適旬」は色に加えて斜線ハッチングでも識別できるようにする（色＋形の二重化）。
+      const BAR_H  = 8;  // 底部帯の高さ（px）2026-07: 6→8に拡大
       const barY   = PAD.top + gH + 2;
 
       for (let i = 0; i < N; i++) {
         const m = decadeMatch[i];
         if (m === null) continue; // 非生育旬: 塗らない
-        let color;
+        let color, hatched = false;
         if (m === true)         color = 'rgba(74,222,128,0.75)';
         else if (m === 'border') color = 'rgba(251,191,36,0.75)';
-        else if (m === false)    color = 'rgba(239,68,68,0.65)';
+        else if (m === false)   { color = 'rgba(239,68,68,0.65)'; hatched = true; }
         else if (m?.heated)      color = 'rgba(167,139,250,0.75)';
         else                     continue;
 
@@ -3927,6 +3947,23 @@ function _adpRenderTempChart(cropId) {
         if (bW <= 0) continue;
         ctx.fillStyle = color;
         ctx.fillRect(xL, barY, bW, BAR_H);
+
+        // 不適旬: 斜線ハッチングを重ね描き（色覚多様性対応・色以外の手掛かり）
+        if (hatched) {
+          ctx.save();
+          ctx.beginPath();
+          ctx.rect(xL, barY, bW, BAR_H);
+          ctx.clip();
+          ctx.strokeStyle = 'rgba(255,255,255,0.75)';
+          ctx.lineWidth   = 1;
+          for (let sx = xL - BAR_H; sx < xR + BAR_H; sx += 3) {
+            ctx.beginPath();
+            ctx.moveTo(sx, barY + BAR_H);
+            ctx.lineTo(sx + BAR_H, barY);
+            ctx.stroke();
+          }
+          ctx.restore();
+        }
       }
 
       // 適正温度帯（tempMeanMin〜Max）を横破線で表示
@@ -3971,8 +4008,8 @@ function _adpRenderTempChart(cropId) {
       ctx.setLineDash([6, 3]);
       ctx.beginPath(); ctx.moveTo(PAD.left, yAbsMin); ctx.lineTo(PAD.left + gW, yAbsMin); ctx.stroke();
       ctx.setLineDash([]);
-      ctx.fillStyle = 'rgba(239,68,68,0.9)';
-      ctx.font      = '8px DM Mono, monospace';
+      ctx.fillStyle = 'rgba(239,68,68,0.95)';
+      ctx.font      = 'bold 12px DM Mono, monospace';
       ctx.textAlign = 'left';
       ctx.fillText(`限界${absMinEffective}°`, PAD.left + gW + 2, yAbsMin + 3);
     }
@@ -4030,11 +4067,11 @@ function _adpRenderTempChart(cropId) {
   }
 
   // ── 月ラベル（各月中旬 = 旬インデックス m*3+1 の位置）──
-  ctx.fillStyle = 'rgba(90,122,92,0.8)';
-  ctx.font      = '9px DM Mono, monospace';
+  ctx.fillStyle = 'rgba(90,122,92,0.9)';
+  ctx.font      = '12px DM Mono, monospace';
   ctx.textAlign = 'center';
   MONTH_LABELS.forEach((label, m) => {
-    ctx.fillText(label, toX(m * 3 + 1), H - PAD.bottom + 11);
+    ctx.fillText(label, toX(m * 3 + 1), H - PAD.bottom + 12);
   });
 
   // ── 凡例更新 ──
@@ -4075,17 +4112,29 @@ function _adpRenderTempChart(cropId) {
 
     const matchStr  = totalGrowth > 0 ? `適合${matchCount}` + (borderCount ? `・境界${borderCount}` : '') + (missCount ? `・不適${missCount}` : '') + (heatedCount ? `・加温${heatedCount}` : '') + `旬 / ${totalGrowth}旬` : '';
 
-    if (legendEl) legendEl.innerHTML = `
+    // 2026-07: 凡例が最大9項目に及び老眼だと読みづらいため、
+    // 「常時表示する主要4項目＋集計サマリー」と「詳細（折りたたみ）」に分割する。
+    const primaryHtml = `
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#fbbf24"></span>旬最高気温</span>
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:#38bdf8"></span>旬最低気温</span>
-      ${houseNote}
       <span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(74,222,128,0.75)"></span>適合旬</span>
-      <span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(251,191,36,0.75)"></span>境界旬</span>
-      <span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(239,68,68,0.65)"></span>不適旬</span>
-      ${heatedCount > 0 ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(167,139,250,0.75)"></span>加温補填旬</span>` : ''}
-      ${_absMinEff != null ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(239,68,68,0.8);border:1px dashed rgba(239,68,68,0.9)"></span>限界最低気温 ${_absMinEff}℃</span>` : ''}
-      <span class="adp-tl-item" style="color:var(--text3);font-size:10px;">${crop.name} 適正温度 ${tCMin}–${tCMax}℃</span>
+      <span class="adp-tl-item"><span class="adp-tl-dot adp-tl-dot-hatched" style="background-color:rgba(239,68,68,0.65)"></span>不適旬</span>
       ${matchStr ? `<span class="adp-tl-item adp-tl-period">${matchStr}</span>` : ''}
+    `;
+    const detailItems = [
+      houseNote,
+      `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(251,191,36,0.75)"></span>境界旬</span>`,
+      heatedCount > 0 ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(167,139,250,0.75)"></span>加温補填旬</span>` : '',
+      _absMinEff != null ? `<span class="adp-tl-item"><span class="adp-tl-dot" style="background:rgba(239,68,68,0.8);border:1px dashed rgba(239,68,68,0.9)"></span>限界最低気温 ${_absMinEff}℃</span>` : '',
+      `<span class="adp-tl-item" style="color:var(--text3);font-size:10px;">${crop.name} 適正温度 ${tCMin}–${tCMax}℃</span>`,
+    ].filter(Boolean).join('');
+
+    if (legendEl) legendEl.innerHTML = `
+      ${primaryHtml}
+      <details class="adp-tl-details">
+        <summary class="adp-tl-details-summary">凡例をもっと見る</summary>
+        <div class="adp-tl-details-body">${detailItems}</div>
+      </details>
     `;
   } else {
     if (subEl) subEl.textContent = '作物を選択すると適正温度を重畳表示';
@@ -5816,14 +5865,14 @@ function _awUpdateLivePreview() {
     if (s) {
       cropName  = s.crop.name;
       const cls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
-      scoreHtml = `<span class="aw-live-score ${s.viable ? cls : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>`;
+      scoreHtml = `<span class="aw-live-score ${s.viable ? cls : 'score-low'}">${s.viable ? _adpScoreBadgeText(s.score) : '× NG'}</span>`;
       if (s.viable) scoreVal = s.score;
     }
   } else if (_awAllScores.length) {
     const top = _awAllScores[0];
     cropName  = top.crop.name + '（おすすめ）';
     const cls = top.score >= 70 ? 'score-high' : top.score >= 40 ? 'score-mid' : 'score-low';
-    scoreHtml = `<span class="aw-live-score ${top.viable ? cls : 'score-low'}">${top.viable ? top.score + '%' : 'NG'}</span>`;
+    scoreHtml = `<span class="aw-live-score ${top.viable ? cls : 'score-low'}">${top.viable ? _adpScoreBadgeText(top.score) : '× NG'}</span>`;
     if (top.viable) scoreVal = top.score;
   }
 

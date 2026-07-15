@@ -22,6 +22,19 @@ function fmtYen(value) {
   return Math.round(Number(value)).toLocaleString() + '円';
 }
 
+// ─── スコア表示ヘルパー（2026-07: 「%」表記→「点」表記＋4段階アイコンに変更） ───
+// 「%」だと確率・成功率のように誤解されやすいため、点数表記＋◎○△×の4段階アイコンで
+// 直感的に良し悪しが伝わるようにする。色分け（scoreCls）は既存3クラスをそのまま流用。
+function scoreCls(score) {
+  return score >= 70 ? 'score-high' : score >= 40 ? 'score-mid' : 'score-low';
+}
+function scoreIcon(score) {
+  return score >= 70 ? '◎' : score >= 45 ? '○' : score >= 20 ? '△' : '×';
+}
+function scoreBadgeText(score) {
+  return `${scoreIcon(score)} ${Math.round(score)}点`;
+}
+
 // ─── カテゴリー定義 ───
 // 大カテゴリー → 小カテゴリーのマッピング
 const CR_MAJOR = {
@@ -164,20 +177,20 @@ function _crRenderList() {
     return;
   }
   el.innerHTML = scores.slice(0, 20).map((s, i) => {
-    const scoreCls = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
+    const cls = scoreCls(s.score);
     return `
       <div class="cr-item ${s.viable ? '' : 'cr-item-ng'}"
         onclick="adpCropTap('${s.crop.id}')">
         <div class="cr-item-header">
           <span class="cr-rank">#${i + 1}</span>
           <span class="cr-name">${escHtml(s.crop.name)}</span>
-          <span class="cr-score ${s.viable ? scoreCls : 'score-low'}">${s.viable ? s.score + '%' : 'NG'}</span>
+          <span class="cr-score ${s.viable ? cls : 'score-low'}">${s.viable ? scoreBadgeText(s.score) : '× NG'}</span>
           <svg class="cr-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </div>
         <div class="cr-bar-track">
-          <div class="cr-bar-fill ${s.viable ? scoreCls : 'score-low'}" style="width:${s.viable ? s.score : 0}%"></div>
+          <div class="cr-bar-fill ${s.viable ? cls : 'score-low'}" style="width:${s.viable ? s.score : 0}%"></div>
         </div>
         ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
       </div>
@@ -186,26 +199,44 @@ function _crRenderList() {
 }
 
 // ─── 作物×土地プロフィールのゲージ生成 ───
-function _crBuildGauges(crop, profile) {
+// 2026-07: cultivationMode(露地/ハウス/加温)を受け取り、年均気温ゲージの表示に反映する。
+// これまでスコア計算（engine.js）はハウス/加温を考慮していたが、ゲージ表示は露地基準の
+// ままだったため「スコアは高いのにゲージは範囲外」という食い違いが起きていた。
+function _crBuildGauges(crop, profile, cultivationMode = 'openField') {
   if (!profile) return '<div class="empty-mini">プロフィールデータなし</div>';
 
   const c = crop.conditions || {};
   const gauges = [];
+  const isGreenhouse = cultivationMode === 'greenhouse';
+  const isHeated      = cultivationMode === 'heatedGreenhouse';
 
   // 年均気温
   if (c.tempMeanMin != null && c.tempMeanMax != null) {
     const survivalTempMin = c.survivalTempMin ?? (c.tempMeanMin - 3);
+    // engine.js scoreCrop()と合わせ、ハウス時のみ下限を-4℃緩和して表示する
+    // （上限・加温ハウスの旬別判定はここでは近似しない。加温時は注記で補足する）
+    const houseOffset       = isGreenhouse ? 4 : 0;
+    const effOptimalMin     = c.tempMeanMin   - houseOffset;
+    const effSurvivalMin    = survivalTempMin - houseOffset;
+    const tempNote = isGreenhouse
+      ? '🏠 ハウス補正を適用（下限-4℃）して表示中'
+      : isHeated
+        ? '🔥 加温ハウスは暖房で下限を補うため、実際の適合判定は旬（10日）ごとの気温差で個別に行われます'
+        : null;
     gauges.push(rangeGauge({
       label: '年均気温',
       value: profile.avgTemp,
       unit: '℃',
-      min: survivalTempMin,
+      min: effSurvivalMin,
       max: c.tempMeanMax,
-      displayMin: survivalTempMin - 4,
+      displayMin: effSurvivalMin - 4,
       displayMax: c.tempMeanMax + 4,
-      optimalMin: c.tempMeanMin,
+      optimalMin: effOptimalMin,
       optimalMax: c.tempMeanMax,
-      survivalMin: survivalTempMin,
+      survivalMin: effSurvivalMin,
+      note: tempNote,
+      // 加温ハウスは下限を暖房で補える前提のため、下限側の「範囲外」表示は出さない
+      softenLowStatus: isHeated,
     }));
   }
 
@@ -290,7 +321,7 @@ function rangeStatus(value, min, max) {
   return 'in';
 }
 
-function rangeGauge({ label, value, unit = '', min, max, displayMin, displayMax, optimalMin, optimalMax, survivalMin = null }) {
+function rangeGauge({ label, value, unit = '', min, max, displayMin, displayMax, optimalMin, optimalMax, survivalMin = null, note = null, softenLowStatus = false }) {
   const hasValue = Number.isFinite(Number(value));
   const lo = Number.isFinite(Number(displayMin)) ? displayMin : min;
   const hi = Number.isFinite(Number(displayMax)) ? displayMax : max;
@@ -299,9 +330,20 @@ function rangeGauge({ label, value, unit = '', min, max, displayMin, displayMax,
   const optLeft  = clamp((optimalMin - lo) / span * 100, 0, 100);
   const optRight = clamp((optimalMax - lo) / span * 100, 0, 100);
   const optWidth = Math.max(2, optRight - optLeft);
-  const status = rangeStatus(value, optimalMin, optimalMax);
-  const statusLabel = status === 'missing' ? 'データなし' : status === 'out' ? '範囲外' : '適合';
-  const statusClass = status === 'in' ? 'rg-status-in' : status === 'out' ? 'rg-status-out' : 'rg-status-missing';
+  let status = rangeStatus(value, optimalMin, optimalMax);
+  // 2026-07: 加温ハウスは下限気温を暖房で補う前提のため、下限側だけの「範囲外」は
+  // 過度な警告にならないよう別ステータス（heated）に緩和する（上限超過はそのまま「範囲外」）。
+  if (softenLowStatus && status === 'out' && hasValue && Number(value) < optimalMin) {
+    status = 'heated';
+  }
+  const statusLabel = status === 'missing' ? 'データなし'
+    : status === 'out'    ? '範囲外'
+    : status === 'heated' ? '加温対応可'
+    : '適合';
+  const statusClass = status === 'in' ? 'rg-status-in'
+    : status === 'out'    ? 'rg-status-out'
+    : status === 'heated' ? 'rg-status-heated'
+    : 'rg-status-missing';
   const valueText = hasValue ? `${fmtNum(value, value % 1 === 0 ? 0 : 1)}${unit}` : '-';
   const minText = `${fmtNum(optimalMin, optimalMin % 1 === 0 ? 0 : 1)}${unit}`;
   const maxText = `${fmtNum(optimalMax, optimalMax % 1 === 0 ? 0 : 1)}${unit}`;
@@ -338,6 +380,7 @@ function rangeGauge({ label, value, unit = '', min, max, displayMin, displayMax,
           <span class="rg-survival-dot"></span>耐寒限界 ${fmtNum(survivalMin, 1)}${unit}
         </div>
       ` : ''}
+      ${note ? `<div class="rg-mode-note">${escHtml(note)}</div>` : ''}
     </div>
   `;
 }
@@ -579,7 +622,7 @@ function runSingleCropAnalysis(areaName) {
   // ─ ランキング欄に選択作物1件を展開済みで描画 ─
   const s           = result.scoreResult;
   const lp          = result.landProfile;
-  const scoreCls    = s.score >= 70 ? 'score-high' : s.score >= 40 ? 'score-mid' : 'score-low';
+  const cls         = scoreCls(s.score);
   const modeLabels  = {
     openField: '露地栽培', greenhouse: 'ハウス栽培', heatedGreenhouse: '加温ハウス栽培',
   };
@@ -606,17 +649,17 @@ function runSingleCropAnalysis(areaName) {
       style="cursor:default;">
       <div class="cr-item-header">
         <span class="cr-name" style="font-size:14px;font-weight:600;">${escHtml(result.crop.name)}</span>
-        <span class="cr-score ${s.viable ? scoreCls : 'score-low'}" style="font-size:14px;">
-          ${s.viable ? s.score + '%' : 'NG'}
+        <span class="cr-score ${s.viable ? cls : 'score-low'}" style="font-size:14px;">
+          ${s.viable ? scoreBadgeText(s.score) : '× NG'}
         </span>
       </div>
       <div class="cr-bar-track">
-        <div class="cr-bar-fill ${s.viable ? scoreCls : 'score-low'}"
+        <div class="cr-bar-fill ${s.viable ? cls : 'score-low'}"
           style="width:${s.viable ? s.score : 0}%"></div>
       </div>
       ${s.alert ? `<div class="cr-alert">${escHtml(s.alert)}</div>` : ''}
       <div class="cr-gauge-wrap">
-        ${_crBuildGauges(result.crop, lp)}
+        ${_crBuildGauges(result.crop, lp, result.cultivationMode)}
       </div>
     </div>
     <div class="sc-detail-section">
