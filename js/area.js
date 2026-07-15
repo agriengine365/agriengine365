@@ -5012,9 +5012,20 @@ function _adpSelectCropForAnalysis(cropId) {
 
 // 作物の播種/育苗「始まり月」を返す（calendar.sowing優先、なければseedling。
 // 両配列とも昇順ソート済み実データのためarr[0]で開始月として安全に使える）
+// ※ 単一の代表月としての用途向け（表示ラベル等）。月フィルタ判定には使わない（下記参照）。
 function _adpCropStartMonth(crop) {
   const arr = crop?.calendar?.sowing || crop?.calendar?.seedling;
   return (Array.isArray(arr) && arr.length) ? arr[0] : null;
+}
+
+// 2026-07修正: 春まき・秋まきなど年に複数回の播種期を持つ作物（大根・にんじん等66種）は
+// sowing配列が [3,4,8,9] のように複数クラスタになる。_adpCropStartMonth()はarr[0]（=先頭の
+// 春の月）しか見ないため、選んだ月が秋まき期に近くても弾かれてしまうバグがあった。
+// 「配列内のどれか1つでも選択月の前後1ヶ月以内なら一致」とする判定に変更する。
+function _adpCropMatchesMonth(crop, month) {
+  const arr = crop?.calendar?.sowing || crop?.calendar?.seedling;
+  if (!Array.isArray(arr) || !arr.length) return false;
+  return arr.some(sm => _adpMonthCircularDiff(sm, month) <= 1);
 }
 
 // 月と月の「循環距離」を返す（1〜12月を環状とみなし、12⇄1月のような年跨ぎも正しく1とする）
@@ -5117,10 +5128,7 @@ function _openCropPickerSheet(config) {
     if (month != null) {
       // AND結合：カテゴリ絞り込み済みリストの中で、さらに開始月が「選択月の前後1ヶ月以内」
       // （前月・当月・翌月の3ヶ月、12⇄1月の年跨ぎも_adpMonthCircularDiffで正しく扱う）のもののみ
-      list = catList.filter(c => {
-        const sm = _adpCropStartMonth(c);
-        return sm != null && _adpMonthCircularDiff(sm, month) <= 1;
-      });
+      list = catList.filter(c => _adpCropMatchesMonth(c, month));
     } else {
       list = catList;
     }
